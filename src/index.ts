@@ -3,20 +3,20 @@ import { Command } from "@effect/cli";
 import { NodeContext, NodeRuntime, NodeHttpClient } from "@effect/platform-node";
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "@effect/platform"
 import { Console, Effect } from "effect";
-import { LocalSystemDataService, LocalSystemDataServiceLive } from './services/local-system-data.service';
+import { CouchNodeSystemService, CouchNodeSystemServiceLive } from './services/couch/node-system';
 import * as Layer from "effect/Layer"
-import { CouchServiceLive } from './services/couch.service';
-import { DbsInfoService, DbsInfoServiceLive } from './services/dbs-info.service';
+import { CouchServiceLive } from './services/couch/couch';
+import { CouchDbsInfoService, CouchDbsInfoServiceLive } from './services/couch/dbs-info';
 
 const getCouchServiceData = Effect.flatMap(
-  LocalSystemDataService,
+  CouchNodeSystemService,
   (couchSystem) => couchSystem.get(),
 );
 
 // Define the top-level command  Effect<void, unknown, unknown>
 const command = Command.make("index", {}, () => getCouchServiceData.pipe(
   Effect.tap(Console.log),
-  Effect.andThen(DbsInfoService),
+  Effect.andThen(CouchDbsInfoService),
   // x => x,
   Effect.flatMap(dbsInfoService => dbsInfoService.get()),
   x => x,
@@ -34,7 +34,7 @@ const cli = Command.run(command, {
 cli(process.argv).pipe(
   Effect.provide(NodeContext.layer),
   Effect.provide(CouchServiceLive),
-  Effect.provide(LocalSystemDataServiceLive),
-  Effect.provide(DbsInfoServiceLive),
+  Effect.provide(CouchNodeSystemServiceLive),
+  Effect.provide(CouchDbsInfoServiceLive),
   NodeRuntime.runMain
 )

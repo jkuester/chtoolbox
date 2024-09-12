@@ -1,4 +1,4 @@
-import { EnvironmentService, EnvironmentServiceImpl } from './environment.service';
+import { EnvironmentService, EnvironmentServiceImpl } from '../environment.service';
 import * as Effect from 'effect/Effect';
 import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Context from 'effect/Context';
