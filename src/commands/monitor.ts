@@ -1,11 +1,10 @@
-import { Command } from "@effect/cli";
-import { Array, Console, Effect, pipe } from "effect";
+import { Command } from '@effect/cli';
+import { Array, Console, Effect, pipe } from 'effect';
 import { CouchNodeSystem, CouchNodeSystemService } from '../services/couch/node-system';
 import { CouchDbInfo, CouchDbsInfoService } from '../services/couch/dbs-info';
 
 const getCouchNodeSystem = Effect.flatMap(CouchNodeSystemService, (couchSystem) => couchSystem.get());
 const getCouchDbsInfo = Effect.flatMap(CouchDbsInfoService, (couchSystem) => couchSystem.get());
-
 
 const dbInfoDbNames = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 
@@ -23,18 +22,18 @@ const csvColumns = [
 ];
 
 const getDbInfoData = (dbInfo?: CouchDbInfo) => [
-  dbInfo?.info?.sizes?.file ?? -1,
-  dbInfo?.info?.sizes?.active ?? -1,
+  dbInfo?.info.sizes.file ?? -1,
+  dbInfo?.info.sizes.active ?? -1,
 ];
 
-const getDbInfoByName = (dbsInfo: ReadonlyArray<CouchDbInfo>) => (dbName: string) => dbsInfo.find(db => db.key === dbName);
-const getDbInfoForDbName = (dbsInfo: ReadonlyArray<CouchDbInfo>) => (dbName: string) => pipe(
+const getDbInfoByName = (dbsInfo: readonly CouchDbInfo[]) => (dbName: string) => dbsInfo.find(db => db.key === dbName);
+const getDbInfoForDbName = (dbsInfo: readonly CouchDbInfo[]) => (dbName: string) => pipe(
   dbName,
   getDbInfoByName(dbsInfo),
   getDbInfoData,
 );
 
-const getCsvData = ([nodeSystem, dbsInfo]: [CouchNodeSystem, ReadonlyArray<CouchDbInfo>]) => [
+const getCsvData = ([nodeSystem, dbsInfo]: [CouchNodeSystem, readonly CouchDbInfo[]]) => [
   nodeSystem.memory.atom,
   ...pipe(
     dbInfoDbNames,
@@ -42,9 +41,9 @@ const getCsvData = ([nodeSystem, dbsInfo]: [CouchNodeSystem, ReadonlyArray<Couch
   )
 ];
 
-const formatCsvRow = (row: ReadonlyArray<string | number>) => pipe(
+const formatCsvRow = (row: readonly (string | number)[]) => pipe(
   row,
-  Array.map(value => `${value}`),
+  Array.map(value => String(value)),
   Array.join(', ')
 );
 

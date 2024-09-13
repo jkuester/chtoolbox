@@ -4,19 +4,26 @@
   "description": "Toolbox of utilities for the CHT ",
   "main": "index.js",
   "scripts": {
+    "lint": "eslint --color --cache .",
     "run": "npx tsx src/index.ts",
     "run-monitor": "npx tsx src/index.ts monitor"
   },
   "author": "",
   "license": "AGPL-3.0-only",
   "devDependencies": {
+    "@medic/eslint-config": "^1.1.0",
+    "eslint-plugin-node": "^11.1.0",
+    "@tsconfig/node20": "^20.1.4",
     "@types/node": "^22.5.4",
+    "@typescript-eslint/eslint-plugin": "^8.5.0",
+    "@typescript-eslint/parser": "^8.5.0",
+    "eslint": "^8.49.0",
     "typescript": "^5.6.2"
   },
   "dependencies": {
-    "@effect/cli": "^0.43.2",
-    "@effect/platform": "^0.64.0",
-    "@effect/platform-node": "^0.59.0",
-    "effect": "^3.7.2"
+    "@effect/cli": "^0.43.3",
+    "@effect/platform": "^0.64.1",
+    "@effect/platform-node": "^0.59.1",
+    "effect": "^3.7.3"
   }
 }

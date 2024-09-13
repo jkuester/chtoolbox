@@ -6,22 +6,23 @@ import { Effect } from 'effect';
 const WITH_MEDIC_PATTERN = /^(.+)\/medic$/g;
 const { COUCH_URL } = process.env;
 
-class Environment extends Schema.Class<Environment>("Environment")({
+class Environment extends Schema.Class<Environment>('Environment')({
   couchUrl: Schema.String,
-}) { }
+}) {
+}
 
 interface EnvironmentService {
   readonly get: () => Environment;
 }
 
-export const EnvironmentService = Context.GenericTag<EnvironmentService>("chtoolbox/EnvironmentService");
+export const EnvironmentService = Context.GenericTag<EnvironmentService>('chtoolbox/EnvironmentService');
 
 const trimTrailingMedic = (url: string) => url.replace(WITH_MEDIC_PATTERN, '$1');
 
 const getCouchUrl = Effect
   .fromNullable(COUCH_URL)
   .pipe(
-    Effect.catchTag("NoSuchElementException", () => Effect.fail(new Error('COUCH_URL not set'))),
+    Effect.catchTag('NoSuchElementException', () => Effect.fail(new Error('COUCH_URL not set'))),
     Effect.map(trimTrailingMedic)
   );
 

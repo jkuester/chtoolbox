@@ -1,28 +1,26 @@
 import * as Schema from '@effect/schema/Schema';
-import type { HttpBody, HttpClientError } from "@effect/platform"
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
-import * as Effect from "effect/Effect"
-import type * as ParseResult from "@effect/schema/ParseResult"
+import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import * as Layer from "effect/Layer"
+import * as Layer from 'effect/Layer';
 import { CouchService, CouchServiceLive } from './couch';
 
-const NODE_SYSTEM_REQUEST = HttpClientRequest.get("/_node/_local/_system");
+const NODE_SYSTEM_REQUEST = HttpClientRequest.get('/_node/_local/_system');
 
-export class CouchNodeSystem extends Schema.Class<CouchNodeSystem>("CouchNodeSystem")({
+export class CouchNodeSystem extends Schema.Class<CouchNodeSystem>('CouchNodeSystem')({
   memory: Schema.Struct({
     other: Schema.Number,
     atom: Schema.Number,
   }),
 }) {
-  static readonly decodeResponse = HttpClientResponse.schemaBodyJsonScoped(CouchNodeSystem)
+  static readonly decodeResponse = HttpClientResponse.schemaBodyJsonScoped(CouchNodeSystem);
 }
 
-interface CouchNodeSystemService {
+export interface CouchNodeSystemService {
   readonly get: () => Effect.Effect<CouchNodeSystem, Error>
 }
 
-export const CouchNodeSystemService = Context.GenericTag<CouchNodeSystemService>("chtoolbox/CouchNodeSystemService");
+export const CouchNodeSystemService = Context.GenericTag<CouchNodeSystemService>('chtoolbox/CouchNodeSystemService');
 
 const createCouchNodeSystemService = CouchService.pipe(
   Effect.map(couch => CouchNodeSystemService.of({

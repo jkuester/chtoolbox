@@ -1,9 +1,9 @@
 import * as Schema from '@effect/schema/Schema';
-import type { HttpBody } from "@effect/platform"
+import type { HttpBody } from '@effect/platform';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
-import * as Effect from "effect/Effect"
+import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import * as Layer from "effect/Layer"
+import * as Layer from 'effect/Layer';
 import { CouchService, CouchServiceLive } from './couch';
 
 const DbsInfoBody = Schema.Struct({ keys: Schema.Array(Schema.String) });
@@ -11,12 +11,12 @@ const DbsInfoBody = Schema.Struct({ keys: Schema.Array(Schema.String) });
 const DBS_INFO_REQUEST = DbsInfoBody.pipe(
   HttpClientRequest.schemaBody,
   build => build(
-    HttpClientRequest.post("/_dbs_info"),
+    HttpClientRequest.post('/_dbs_info'),
     { keys: ['medic', 'medic-sentinel', 'medic-users-meta', '_users'] }
   )
 );
 
-export class CouchDbInfo extends Schema.Class<CouchDbInfo>("CouchDbInfo")({
+export class CouchDbInfo extends Schema.Class<CouchDbInfo>('CouchDbInfo')({
   key: Schema.String,
   info: Schema.Struct({
     compact_running: Schema.Boolean,
@@ -27,11 +27,11 @@ export class CouchDbInfo extends Schema.Class<CouchDbInfo>("CouchDbInfo")({
     }),
   }),
 }) {
-  static readonly decodeResponse = HttpClientResponse.schemaBodyJsonScoped(Schema.Array(CouchDbInfo))
+  static readonly decodeResponse = HttpClientResponse.schemaBodyJsonScoped(Schema.Array(CouchDbInfo));
 }
 
-interface CouchDbsInfoService {
-  readonly get: () => Effect.Effect<ReadonlyArray<CouchDbInfo>, HttpBody.HttpBodyError | Error>
+export interface CouchDbsInfoService {
+  readonly get: () => Effect.Effect<readonly CouchDbInfo[], HttpBody.HttpBodyError | Error>
 }
 
 export const CouchDbsInfoService = Context.GenericTag<CouchDbsInfoService>('chtoolbox/CouchDbsInfoService');

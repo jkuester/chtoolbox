@@ -6,10 +6,14 @@ import { Layer, Scope } from 'effect';
 import { NodeHttpClient } from '@effect/platform-node';
 
 interface CouchService {
-  readonly request: (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError, Scope.Scope>
+  readonly request: (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<
+    HttpClientResponse.HttpClientResponse,
+    HttpClientError.HttpClientError,
+    Scope.Scope
+  >
 }
 
-export const CouchService = Context.GenericTag<CouchService>("chtoolbox/CouchService");
+export const CouchService = Context.GenericTag<CouchService>('chtoolbox/CouchService');
 
 const getEnvironment = EnvironmentService.pipe(
   Effect.map(envService => envService.get()),
