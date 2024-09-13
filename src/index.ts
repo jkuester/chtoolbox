@@ -1,34 +1,24 @@
-// Import necessary modules from the libraries
+#!/usr/bin/env node
 import { Command } from '@effect/cli';
 import { NodeContext, NodeRuntime } from '@effect/platform-node';
-import { Console, Effect } from 'effect';
-import { CouchNodeSystemService, CouchNodeSystemServiceLive } from './services/couch/node-system';
+import { Console, Effect, pipe } from 'effect';
+import { CouchNodeSystemServiceLive } from './services/couch/node-system';
 import { CouchServiceLive } from './services/couch/couch';
-import { CouchDbsInfoService, CouchDbsInfoServiceLive } from './services/couch/dbs-info';
+import { CouchDbsInfoServiceLive } from './services/couch/dbs-info';
 import { monitor } from './commands/monitor';
+import packageJson from '../package.json';
 
-const getCouchServiceData = Effect.flatMap(
-  CouchNodeSystemService,
-  (couchSystem) => couchSystem.get(),
-);
-
-// Define the top-level command  Effect<void, unknown, unknown>
-const chtx = Command.make('chtx', {}, () => getCouchServiceData.pipe(
-  Effect.tap(Console.log),
-  Effect.andThen(CouchDbsInfoService),
-  // x => x,
-  Effect.flatMap(dbsInfoService => dbsInfoService.get()),
-  x => x,
-  Effect.tap(Console.log),
-  x => x
+const chtx = Command.make('chtx', {}, () => pipe(
+  'Hello world!',
+  Console.log,
 ));
 
 const command = chtx.pipe(Command.withSubcommands([monitor]));
 
-// Set up the CLI application
 const cli = Command.run(command, {
-  name: 'Hello World CLI',
-  version: 'v1.0.0'
+  name: 'CHT Toolbox',
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-assignment
+  version: packageJson.version
 });
 
 // Prepare and run the CLI application

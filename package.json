@@ -2,11 +2,21 @@
   "name": "chtoolbox",
   "version": "0.0.1",
   "description": "Toolbox of utilities for the CHT ",
-  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jkuester/chtoolbox.git"
+  },
+  "bin": {
+    "chtx": "dist/index.js"
+  },
+  "files": [
+    "/dist"
+  ],
   "scripts": {
+    "postinstall": "rm -rf dist && npm run build",
+    "build": "tsc -p tsconfig.build.json && chmod +x dist/index.js",
     "lint": "eslint --color --cache .",
-    "run": "npx tsx src/index.ts",
-    "run-monitor": "npx tsx src/index.ts monitor"
+    "local": "npx tsx src/index.ts"
   },
   "author": "",
   "license": "AGPL-3.0-only",

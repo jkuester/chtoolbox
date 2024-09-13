@@ -5,9 +5,13 @@
     "composite": true,
     "declarationMap": true,
     "outDir": "dist",
+    "resolveJsonModule": true,
     "sourceMap": true,
     "tsBuildInfoFile": "dist/tsconfig.build.tsbuildinfo",
   },
+  "files": [
+    "package.json"
+  ],
   "include": [
     "src/**/*.ts",
     "test/**/*.ts"
