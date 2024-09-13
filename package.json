@@ -4,7 +4,8 @@
   "description": "Toolbox of utilities for the CHT ",
   "main": "index.js",
   "scripts": {
-    "run": "npx tsx src/index.ts"
+    "run": "npx tsx src/index.ts",
+    "run-monitor": "npx tsx src/index.ts monitor"
   },
   "author": "",
   "license": "AGPL-3.0-only",

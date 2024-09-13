@@ -7,6 +7,7 @@ import { CouchNodeSystemService, CouchNodeSystemServiceLive } from './services/c
 import * as Layer from "effect/Layer"
 import { CouchServiceLive } from './services/couch/couch';
 import { CouchDbsInfoService, CouchDbsInfoServiceLive } from './services/couch/dbs-info';
+import { monitor } from './commands/monitor';
 
 const getCouchServiceData = Effect.flatMap(
   CouchNodeSystemService,
@@ -14,7 +15,7 @@ const getCouchServiceData = Effect.flatMap(
 );
 
 // Define the top-level command  Effect<void, unknown, unknown>
-const command = Command.make("index", {}, () => getCouchServiceData.pipe(
+const chtx = Command.make("chtx", {}, () => getCouchServiceData.pipe(
   Effect.tap(Console.log),
   Effect.andThen(CouchDbsInfoService),
   // x => x,
@@ -23,6 +24,8 @@ const command = Command.make("index", {}, () => getCouchServiceData.pipe(
   Effect.tap(Console.log),
   x => x
 ));
+
+const command = chtx.pipe(Command.withSubcommands([monitor]));
 
 // Set up the CLI application
 const cli = Command.run(command, {

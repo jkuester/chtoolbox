@@ -9,7 +9,7 @@ import { CouchService, CouchServiceLive } from './couch';
 
 const NODE_SYSTEM_REQUEST = HttpClientRequest.get("/_node/_local/_system");
 
-class CouchNodeSystem extends Schema.Class<CouchNodeSystem>("CouchNodeSystem")({
+export class CouchNodeSystem extends Schema.Class<CouchNodeSystem>("CouchNodeSystem")({
   memory: Schema.Struct({
     other: Schema.Number,
     atom: Schema.Number,

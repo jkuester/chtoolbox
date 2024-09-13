@@ -1,15 +1,22 @@
 import * as Schema from '@effect/schema/Schema';
-import type { HttpBody, HttpClientError } from "@effect/platform"
+import type { HttpBody } from "@effect/platform"
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from "effect/Effect"
-import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Context from 'effect/Context';
 import * as Layer from "effect/Layer"
 import { CouchService, CouchServiceLive } from './couch';
 
-const DBS_INFO_REQUEST = HttpClientRequest.get("/_dbs_info");
+const DbsInfoBody = Schema.Struct({ keys: Schema.Array(Schema.String) });
 
-class CouchDbInfo extends Schema.Class<CouchDbInfo>("CouchDbInfo")({
+const DBS_INFO_REQUEST = DbsInfoBody.pipe(
+  HttpClientRequest.schemaBody,
+  build => build(
+    HttpClientRequest.post("/_dbs_info"),
+    { keys: ['medic', 'medic-sentinel', 'medic-users-meta', '_users'] }
+  )
+);
+
+export class CouchDbInfo extends Schema.Class<CouchDbInfo>("CouchDbInfo")({
   key: Schema.String,
   info: Schema.Struct({
     compact_running: Schema.Boolean,
@@ -20,23 +27,21 @@ class CouchDbInfo extends Schema.Class<CouchDbInfo>("CouchDbInfo")({
     }),
   }),
 }) {
-}
-
-class CouchDbsInfo extends Schema.Class<Array<CouchDbInfo>>("CouchDbsInfo")({}) {
-  static readonly decodeResponse = HttpClientResponse.schemaBodyJsonScoped(CouchDbsInfo)
+  static readonly decodeResponse = HttpClientResponse.schemaBodyJsonScoped(Schema.Array(CouchDbInfo))
 }
 
 interface CouchDbsInfoService {
-  readonly get: () => Effect.Effect<CouchDbsInfo, Error>
+  readonly get: () => Effect.Effect<ReadonlyArray<CouchDbInfo>, HttpBody.HttpBodyError | Error>
 }
 
 export const CouchDbsInfoService = Context.GenericTag<CouchDbsInfoService>('chtoolbox/CouchDbsInfoService');
 
 const createDbsInfoService = CouchService.pipe(
   Effect.map(couch => CouchDbsInfoService.of({
-    get: () => couch
-      .request(DBS_INFO_REQUEST)
-      .pipe(CouchDbsInfo.decodeResponse)
+    get: () => DBS_INFO_REQUEST.pipe(
+      Effect.flatMap(request => couch.request(request)),
+      CouchDbInfo.decodeResponse
+    )
   })),
 );
 
