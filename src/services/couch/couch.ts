@@ -1,4 +1,4 @@
-import { EnvironmentService, EnvironmentServiceImpl } from '../environment.service';
+import { EnvironmentService, EnvironmentServiceLive } from '../environment';
 import * as Effect from 'effect/Effect';
 import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Context from 'effect/Context';
@@ -46,8 +46,8 @@ const createCouchService = getCouchClient.pipe(
 
 export const CouchServiceLive = Layer
   .effect(CouchService, createCouchService)
-  .pipe(
-    Layer.provide(NodeHttpClient.layer),
-    Layer.provide(EnvironmentServiceImpl)
-  );
+  // .pipe(
+  //   Layer.provide(NodeHttpClient.layer),
+  //   Layer.provide(EnvironmentServiceLive)
+  // );
 

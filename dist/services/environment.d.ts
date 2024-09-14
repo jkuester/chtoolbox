@@ -8,12 +8,12 @@ declare const Environment_base: Schema.Class<Environment, {
 }>, never, {
     readonly couchUrl: string;
 }, {}, {}>;
-declare class Environment extends Environment_base {
+export declare class Environment extends Environment_base {
 }
-interface EnvironmentService {
+export interface EnvironmentService {
     readonly get: () => Environment;
 }
 export declare const EnvironmentService: Context.Tag<EnvironmentService, EnvironmentService>;
-export declare const EnvironmentServiceImpl: Layer.Layer<EnvironmentService, Error, never>;
+export declare const EnvironmentServiceLive: Layer.Layer<EnvironmentService, Error, never>;
 export {};
-//# sourceMappingURL=environment.service.d.ts.map
+//# sourceMappingURL=environment.d.ts.map

@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.EnvironmentServiceImpl = exports.EnvironmentService = void 0;
+exports.EnvironmentServiceLive = exports.EnvironmentService = exports.Environment = void 0;
 const Schema = __importStar(require("@effect/schema/Schema"));
 const Context = __importStar(require("effect/Context"));
 const Layer = __importStar(require("effect/Layer"));
@@ -34,13 +34,15 @@ class Environment extends Schema.Class('Environment')({
     couchUrl: Schema.String,
 }) {
 }
+exports.Environment = Environment;
 exports.EnvironmentService = Context.GenericTag('chtoolbox/EnvironmentService');
 const trimTrailingMedic = (url) => url.replace(WITH_MEDIC_PATTERN, '$1');
+// TODO Should not call this if URL param is passed.
 const getCouchUrl = effect_1.Effect
     .fromNullable(COUCH_URL)
     .pipe(effect_1.Effect.catchTag('NoSuchElementException', () => effect_1.Effect.fail(new Error('COUCH_URL not set'))), effect_1.Effect.map(trimTrailingMedic));
 const createEnvironmentService = getCouchUrl.pipe(effect_1.Effect.map(couchUrl => new Environment({
     couchUrl
 })), effect_1.Effect.map(env => exports.EnvironmentService.of({ get: () => env })));
-exports.EnvironmentServiceImpl = Layer.effect(exports.EnvironmentService, createEnvironmentService);
-//# sourceMappingURL=environment.service.js.map
+exports.EnvironmentServiceLive = Layer.effect(exports.EnvironmentService, createEnvironmentService);
+//# sourceMappingURL=environment.js.map

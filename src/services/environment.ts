@@ -33,4 +33,4 @@ const createEnvironmentService = getCouchUrl.pipe(
   Effect.map(env => EnvironmentService.of({ get: () => env }))
 );
 
-export const EnvironmentServiceImpl = Layer.effect(EnvironmentService, createEnvironmentService);
+export const EnvironmentServiceLive = Layer.effect(EnvironmentService, createEnvironmentService);
