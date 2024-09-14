@@ -9,9 +9,6 @@
   "bin": {
     "chtx": "dist/index.js"
   },
-  "files": [
-    "/dist"
-  ],
   "scripts": {
     "prepare": "rm -rf dist && npm run build",
     "build": "tsc -p tsconfig.build.json && chmod +x dist/index.js",
