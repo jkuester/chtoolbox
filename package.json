@@ -13,9 +13,6 @@
     "/dist"
   ],
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.build.json && chmod +x dist/index.js",
-    "lint": "eslint --color --cache .",
-    "local": "npx tsx src/index.ts"
   },
   "author": "",
   "license": "AGPL-3.0-only",
