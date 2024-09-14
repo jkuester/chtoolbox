@@ -13,8 +13,7 @@
     "/dist"
   ],
   "scripts": {
-    "prepare": "rm -rf dist && npm run build",
-    "build": "tsc -p tsconfig.build.json && chmod +x dist/index.js",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && chmod +x dist/index.js",
     "lint": "eslint --color --cache .",
     "local": "npx tsx src/index.ts"
   },
