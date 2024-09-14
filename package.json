@@ -6,6 +6,11 @@
     "type": "git",
     "url": "https://github.com/jkuester/chtoolbox.git"
   },
+  "files": [
+    "dist",
+    "src",
+    "node_modules"
+  ],
   "bin": {
     "chtx": "dist/index.js"
   },
