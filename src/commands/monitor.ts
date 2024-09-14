@@ -13,12 +13,23 @@ const getDbInfoColumns = (dbName: string) => [
   `${dbName}_sizes_active`,
 ];
 
-const csvColumns = [
+const NODE_SYSTEM_COLUMNS = [
+  'memory_other',
   'memory_atom',
+  'memory_atom_used',
+  'memory_processes',
+  'memory_processes_used',
+  'memory_binary',
+  'memory_code',
+  'memory_ets',
+];
+
+const CSV_COLUMNS = [
   ...pipe(
     DB_NAMES,
     Array.flatMap(getDbInfoColumns)
   ),
+  ...NODE_SYSTEM_COLUMNS,
 ];
 
 const getDbInfoData = (dbInfo?: CouchDbInfo) => [
@@ -33,12 +44,23 @@ const getDbInfoForDbName = (dbsInfo: readonly CouchDbInfo[]) => (dbName: string)
   getDbInfoData,
 );
 
+const getNodeSystemData = ({ memory }: CouchNodeSystem) => [
+  memory.other,
+  memory.atom,
+  memory.atom_used,
+  memory.processes,
+  memory.processes_used,
+  memory.binary,
+  memory.code,
+  memory.ets,
+];
+
 const getCsvData = ([nodeSystem, dbsInfo]: [CouchNodeSystem, readonly CouchDbInfo[]]) => [
-  nodeSystem.memory.atom,
   ...pipe(
     DB_NAMES,
     Array.flatMap(getDbInfoForDbName(dbsInfo))
-  )
+  ),
+  ...getNodeSystemData(nodeSystem),
 ];
 
 const formatCsvRow = (row: readonly (string | number)[]) => pipe(
@@ -63,7 +85,7 @@ const interval = Options.integer('interval').pipe(
 );
 
 export const monitor = Command.make('monitor', { interval }, ({ interval }) => pipe(
-  csvColumns,
+  CSV_COLUMNS,
   formatCsvRow,
   Console.log,
   Effect.andThen(Effect.repeat(monitorData(interval), { until: () => false }))

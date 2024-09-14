@@ -6,16 +6,34 @@ declare const CouchNodeSystem_base: Schema.Class<CouchNodeSystem, {
     memory: Schema.Struct<{
         other: typeof Schema.Number;
         atom: typeof Schema.Number;
+        atom_used: typeof Schema.Number;
+        processes: typeof Schema.Number;
+        processes_used: typeof Schema.Number;
+        binary: typeof Schema.Number;
+        code: typeof Schema.Number;
+        ets: typeof Schema.Number;
     }>;
 }, Schema.Struct.Encoded<{
     memory: Schema.Struct<{
         other: typeof Schema.Number;
         atom: typeof Schema.Number;
+        atom_used: typeof Schema.Number;
+        processes: typeof Schema.Number;
+        processes_used: typeof Schema.Number;
+        binary: typeof Schema.Number;
+        code: typeof Schema.Number;
+        ets: typeof Schema.Number;
     }>;
 }>, never, {
     readonly memory: {
         readonly other: number;
         readonly atom: number;
+        readonly atom_used: number;
+        readonly processes: number;
+        readonly processes_used: number;
+        readonly binary: number;
+        readonly code: number;
+        readonly ets: number;
     };
 }, {}, {}>;
 export declare class CouchNodeSystem extends CouchNodeSystem_base {

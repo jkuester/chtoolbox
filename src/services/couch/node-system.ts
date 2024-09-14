@@ -11,6 +11,12 @@ export class CouchNodeSystem extends Schema.Class<CouchNodeSystem>('CouchNodeSys
   memory: Schema.Struct({
     other: Schema.Number,
     atom: Schema.Number,
+    atom_used: Schema.Number,
+    processes: Schema.Number,
+    processes_used: Schema.Number,
+    binary: Schema.Number,
+    code: Schema.Number,
+    ets: Schema.Number,
   }),
 }) {
   static readonly decodeResponse = HttpClientResponse.schemaBodyJsonScoped(CouchNodeSystem);
