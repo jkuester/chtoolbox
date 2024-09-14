@@ -1,12 +1,12 @@
-import { Command } from '@effect/cli';
+import { Command, Options } from '@effect/cli';
 import { Array, Console, Effect, pipe } from 'effect';
 import { CouchNodeSystem, CouchNodeSystemService } from '../services/couch/node-system';
 import { CouchDbInfo, CouchDbsInfoService } from '../services/couch/dbs-info';
 
+const DB_NAMES = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
+
 const getCouchNodeSystem = Effect.flatMap(CouchNodeSystemService, (couchSystem) => couchSystem.get());
 const getCouchDbsInfo = Effect.flatMap(CouchDbsInfoService, (couchSystem) => couchSystem.get());
-
-const dbInfoDbNames = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 
 const getDbInfoColumns = (dbName: string) => [
   `${dbName}_sizes_file`,
@@ -16,7 +16,7 @@ const getDbInfoColumns = (dbName: string) => [
 const csvColumns = [
   'memory_atom',
   ...pipe(
-    dbInfoDbNames,
+    DB_NAMES,
     Array.flatMap(getDbInfoColumns)
   ),
 ];
@@ -36,7 +36,7 @@ const getDbInfoForDbName = (dbsInfo: readonly CouchDbInfo[]) => (dbName: string)
 const getCsvData = ([nodeSystem, dbsInfo]: [CouchNodeSystem, readonly CouchDbInfo[]]) => [
   nodeSystem.memory.atom,
   ...pipe(
-    dbInfoDbNames,
+    DB_NAMES,
     Array.flatMap(getDbInfoForDbName(dbsInfo))
   )
 ];
@@ -47,20 +47,26 @@ const formatCsvRow = (row: readonly (string | number)[]) => pipe(
   Array.join(', ')
 );
 
-const monitorData = Effect
+const monitorData = (interval: number) => Effect
   .all([getCouchNodeSystem, getCouchDbsInfo])
   .pipe(
     Effect.map(getCsvData),
     Effect.map(formatCsvRow),
     Effect.tap(Console.log),
-    Effect.delay(1000)
+    Effect.delay(interval * 1000)
   );
 
-export const monitor = Command.make('monitor', { }, () => pipe(
+const interval = Options.integer('interval').pipe(
+  Options.withAlias('i'),
+  Options.withDescription('The interval in seconds to poll the data. Default is 1 second.'),
+  Options.withDefault(1),
+);
+
+export const monitor = Command.make('monitor', { interval }, ({ interval }) => pipe(
   csvColumns,
   formatCsvRow,
   Console.log,
-  Effect.andThen(Effect.repeat(monitorData, { until: () => false }))
+  Effect.andThen(Effect.repeat(monitorData(interval), { until: () => false }))
 )).pipe(
   Command.withDescription(`Poll CHT metrics.`),
 );
