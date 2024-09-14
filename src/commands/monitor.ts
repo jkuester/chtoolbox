@@ -56,9 +56,11 @@ const monitorData = Effect
     Effect.delay(1000)
   );
 
-export const monitor = Command.make('monitor', {}, () => pipe(
+export const monitor = Command.make('monitor', { }, () => pipe(
   csvColumns,
   formatCsvRow,
   Console.log,
   Effect.andThen(Effect.repeat(monitorData, { until: () => false }))
-));
+)).pipe(
+  Command.withDescription(`Poll CHT metrics.`),
+);

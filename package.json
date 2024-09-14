@@ -17,7 +17,6 @@
     "lint": "eslint --color --cache .",
     "local": "npx tsx src/index.ts"
   },
-  "author": "",
   "license": "AGPL-3.0-only",
   "devDependencies": {
     "@medic/eslint-config": "^1.1.0",

@@ -30,5 +30,5 @@ const formatCsvRow = (row) => (0, effect_1.pipe)(row, effect_1.Array.map(value =
 const monitorData = effect_1.Effect
     .all([getCouchNodeSystem, getCouchDbsInfo])
     .pipe(effect_1.Effect.map(getCsvData), effect_1.Effect.map(formatCsvRow), effect_1.Effect.tap(effect_1.Console.log), effect_1.Effect.delay(1000));
-exports.monitor = cli_1.Command.make('monitor', {}, () => (0, effect_1.pipe)(csvColumns, formatCsvRow, effect_1.Console.log, effect_1.Effect.andThen(effect_1.Effect.repeat(monitorData, { until: () => false }))));
+exports.monitor = cli_1.Command.make('monitor', {}, () => (0, effect_1.pipe)(csvColumns, formatCsvRow, effect_1.Console.log, effect_1.Effect.andThen(effect_1.Effect.repeat(monitorData, { until: () => false })))).pipe(cli_1.Command.withDescription(`Poll CHT metrics.`));
 //# sourceMappingURL=monitor.js.map
