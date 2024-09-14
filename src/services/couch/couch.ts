@@ -5,7 +5,7 @@ import * as Context from 'effect/Context';
 import { Layer, Scope } from 'effect';
 import { NodeHttpClient } from '@effect/platform-node';
 
-interface CouchService {
+export interface CouchService {
   readonly request: (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<
     HttpClientResponse.HttpClientResponse,
     HttpClientError.HttpClientError,

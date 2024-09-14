@@ -6,12 +6,12 @@ import { Effect } from 'effect';
 const WITH_MEDIC_PATTERN = /^(.+)\/medic$/g;
 const { COUCH_URL } = process.env;
 
-class Environment extends Schema.Class<Environment>('Environment')({
+export class Environment extends Schema.Class<Environment>('Environment')({
   couchUrl: Schema.String,
 }) {
 }
 
-interface EnvironmentService {
+export interface EnvironmentService {
   readonly get: () => Environment;
 }
 
