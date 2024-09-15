@@ -1,9 +1,8 @@
-import { EnvironmentService, EnvironmentServiceLive } from '../environment';
+import { EnvironmentService } from '../environment';
 import * as Effect from 'effect/Effect';
 import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Context from 'effect/Context';
 import { Layer, Scope } from 'effect';
-import { NodeHttpClient } from '@effect/platform-node';
 
 export interface CouchService {
   readonly request: (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<
@@ -45,9 +44,4 @@ const createCouchService = getCouchClient.pipe(
 );
 
 export const CouchServiceLive = Layer
-  .effect(CouchService, createCouchService)
-  // .pipe(
-  //   Layer.provide(NodeHttpClient.layer),
-  //   Layer.provide(EnvironmentServiceLive)
-  // );
-
+  .effect(CouchService, createCouchService);

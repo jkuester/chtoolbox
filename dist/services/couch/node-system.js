@@ -53,6 +53,5 @@ const createCouchNodeSystemService = couch_1.CouchService.pipe(Effect.map(couch 
         .pipe(CouchNodeSystem.decodeResponse)
 })));
 exports.CouchNodeSystemServiceLive = Layer
-    .effect(exports.CouchNodeSystemService, createCouchNodeSystemService)
-    .pipe(Layer.provide(couch_1.CouchServiceLive));
+    .effect(exports.CouchNodeSystemService, createCouchNodeSystemService);
 //# sourceMappingURL=node-system.js.map

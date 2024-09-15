@@ -3,6 +3,7 @@ import type { HttpBody } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import * as Layer from 'effect/Layer';
+import { CouchService } from './couch';
 declare const CouchDbInfo_base: Schema.Class<CouchDbInfo, {
     key: typeof Schema.String;
     info: Schema.Struct<{
@@ -42,6 +43,6 @@ export interface CouchDbsInfoService {
     readonly get: () => Effect.Effect<readonly CouchDbInfo[], HttpBody.HttpBodyError | Error>;
 }
 export declare const CouchDbsInfoService: Context.Tag<CouchDbsInfoService, CouchDbsInfoService>;
-export declare const CouchDbsInfoServiceLive: Layer.Layer<CouchDbsInfoService, Error, never>;
+export declare const CouchDbsInfoServiceLive: Layer.Layer<CouchDbsInfoService, never, CouchService>;
 export {};
 //# sourceMappingURL=dbs-info.d.ts.map

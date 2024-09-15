@@ -2,6 +2,7 @@ import * as Schema from '@effect/schema/Schema';
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import * as Layer from 'effect/Layer';
+import { CouchService } from './couch';
 declare const CouchNodeSystem_base: Schema.Class<CouchNodeSystem, {
     memory: Schema.Struct<{
         other: typeof Schema.Number;
@@ -43,6 +44,6 @@ export interface CouchNodeSystemService {
     readonly get: () => Effect.Effect<CouchNodeSystem, Error>;
 }
 export declare const CouchNodeSystemService: Context.Tag<CouchNodeSystemService, CouchNodeSystemService>;
-export declare const CouchNodeSystemServiceLive: Layer.Layer<CouchNodeSystemService, Error, never>;
+export declare const CouchNodeSystemServiceLive: Layer.Layer<CouchNodeSystemService, never, CouchService>;
 export {};
 //# sourceMappingURL=node-system.d.ts.map

@@ -29,7 +29,6 @@ const Effect = __importStar(require("effect/Effect"));
 const platform_1 = require("@effect/platform");
 const Context = __importStar(require("effect/Context"));
 const effect_1 = require("effect");
-const platform_node_1 = require("@effect/platform-node");
 exports.CouchService = Context.GenericTag('chtoolbox/CouchService');
 const getEnvironment = environment_1.EnvironmentService.pipe(Effect.map(envService => envService.get()));
 const getCouchRequest = getEnvironment.pipe(Effect.map(({ couchUrl }) => platform_1.HttpClientRequest.prependUrl(couchUrl)), Effect.map(req => platform_1.HttpClient.mapRequest(req)));
@@ -44,6 +43,5 @@ const createCouchService = getCouchClient.pipe(Effect.map(client => exports.Couc
     request: (request) => client(request)
 })));
 exports.CouchServiceLive = effect_1.Layer
-    .effect(exports.CouchService, createCouchService)
-    .pipe(effect_1.Layer.provide(platform_node_1.NodeHttpClient.layer), effect_1.Layer.provide(environment_1.EnvironmentServiceLive));
+    .effect(exports.CouchService, createCouchService);
 //# sourceMappingURL=couch.js.map

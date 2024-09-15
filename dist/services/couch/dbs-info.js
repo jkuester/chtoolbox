@@ -51,6 +51,5 @@ const createDbsInfoService = couch_1.CouchService.pipe(Effect.map(couch => expor
     get: () => DBS_INFO_REQUEST.pipe(Effect.flatMap(request => couch.request(request)), CouchDbInfo.decodeResponse)
 })));
 exports.CouchDbsInfoServiceLive = Layer
-    .effect(exports.CouchDbsInfoService, createDbsInfoService)
-    .pipe(Layer.provide(couch_1.CouchServiceLive));
+    .effect(exports.CouchDbsInfoService, createDbsInfoService);
 //# sourceMappingURL=dbs-info.js.map

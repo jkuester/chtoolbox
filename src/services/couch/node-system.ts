@@ -3,7 +3,7 @@ import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import * as Layer from 'effect/Layer';
-import { CouchService, CouchServiceLive } from './couch';
+import { CouchService } from './couch';
 
 const NODE_SYSTEM_REQUEST = HttpClientRequest.get('/_node/_local/_system');
 
@@ -37,5 +37,4 @@ const createCouchNodeSystemService = CouchService.pipe(
 );
 
 export const CouchNodeSystemServiceLive = Layer
-  .effect(CouchNodeSystemService, createCouchNodeSystemService)
-  .pipe(Layer.provide(CouchServiceLive));
+  .effect(CouchNodeSystemService, createCouchNodeSystemService);

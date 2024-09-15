@@ -4,7 +4,7 @@ import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import * as Layer from 'effect/Layer';
-import { CouchService, CouchServiceLive } from './couch';
+import { CouchService } from './couch';
 
 const DbsInfoBody = Schema.Struct({ keys: Schema.Array(Schema.String) });
 
@@ -46,5 +46,4 @@ const createDbsInfoService = CouchService.pipe(
 );
 
 export const CouchDbsInfoServiceLive = Layer
-  .effect(CouchDbsInfoService, createDbsInfoService)
-  .pipe(Layer.provide(CouchServiceLive));
+  .effect(CouchDbsInfoService, createDbsInfoService);
