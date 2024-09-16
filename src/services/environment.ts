@@ -1,6 +1,6 @@
 import * as Context from 'effect/Context';
 import * as Layer from 'effect/Layer';
-import { Config, Effect, Option, pipe, Ref } from 'effect';
+import { Config, Effect, pipe, Ref } from 'effect';
 
 const WITH_MEDIC_PATTERN = /^(.+)\/medic$/g;
 

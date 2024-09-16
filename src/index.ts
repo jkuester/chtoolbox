@@ -16,16 +16,17 @@ const url = Options
     Options.optional
   );
 
-export const populateUrl = (url: Option.Option<string>) => url.pipe(
-  Option.map(Config.succeed),
-  Effect.succeed,
-  Effect.tap(urlOpt => urlOpt.pipe(
-    Option.map(urlConfig => EnvironmentService.pipe(
-      Effect.tap(env => Ref.update(env.url, () => urlConfig)),
-    )),
-    Option.getOrUndefined,
-  )),
-);
+export const populateUrl = (url: Option.Option<string>): Effect.Effect<Option.Option<Config.Config<string>>> =>
+  url.pipe(
+    Option.map(Config.succeed),
+    Effect.succeed,
+    Effect.tap(urlOpt => urlOpt.pipe(
+      Option.map(urlConfig => EnvironmentService.pipe(
+        Effect.tap(env => Ref.update(env.url, () => urlConfig)),
+      )),
+      Option.getOrUndefined,
+    ))
+  );
 
 export const chtx = Command.make('chtx', { url }, () => pipe(
   'Hello World!',
