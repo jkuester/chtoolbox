@@ -24,6 +24,7 @@ const NODE_SYSTEM_COLUMNS = [
     'memory_ets',
 ];
 const CSV_COLUMNS = [
+    'unix_time',
     ...(0, effect_1.pipe)(DB_NAMES, effect_1.Array.flatMap(getDbInfoColumns)),
     ...NODE_SYSTEM_COLUMNS,
 ];
@@ -43,13 +44,18 @@ const getNodeSystemData = ({ memory }) => [
     memory.code,
     memory.ets,
 ];
-const getCsvData = ([nodeSystem, dbsInfo]) => [
+const getCsvData = ([unixTime, nodeSystem, dbsInfo]) => [
+    unixTime,
     ...(0, effect_1.pipe)(DB_NAMES, effect_1.Array.flatMap(getDbInfoForDbName(dbsInfo))),
     ...getNodeSystemData(nodeSystem),
 ];
 const formatCsvRow = (row) => (0, effect_1.pipe)(row, effect_1.Array.map(value => String(value)), effect_1.Array.join(', '));
 const monitorData = (interval) => effect_1.Effect
-    .all([getCouchNodeSystem, getCouchDbsInfo])
+    .all([
+    effect_1.Clock.currentTimeMillis.pipe(effect_1.Effect.map(effect_1.Number.unsafeDivide(1000)), effect_1.Effect.map(Math.floor)),
+    getCouchNodeSystem,
+    getCouchDbsInfo
+])
     .pipe(effect_1.Effect.map(getCsvData), effect_1.Effect.map(formatCsvRow), effect_1.Effect.tap(effect_1.Console.log), effect_1.Effect.delay(interval * 1000));
 const interval = cli_1.Options.integer('interval').pipe(cli_1.Options.withAlias('i'), cli_1.Options.withDescription('The interval in seconds to poll the data. Default is 1 second.'), cli_1.Options.withDefault(1));
 exports.monitor = cli_1.Command.make('monitor', { interval }, ({ interval }) => (0, effect_1.pipe)(effect_1.Effect.flatMap(index_1.chtx, (parentConfig) => parentConfig.url.pipe(index_1.populateUrl)), effect_1.Effect.andThen(CSV_COLUMNS), effect_1.Effect.map(formatCsvRow), effect_1.Effect.tap(effect_1.Console.log), effect_1.Effect.andThen(effect_1.Effect.repeat(monitorData(interval), { until: () => false })))).pipe(cli_1.Command.withDescription(`Poll CHT metrics.`));

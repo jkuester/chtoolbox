@@ -1,5 +1,5 @@
 import { Command, Options } from '@effect/cli';
-import { Array, Console, Effect, pipe } from 'effect';
+import { Array, Clock, Console, Effect, pipe, Number } from 'effect';
 import { CouchNodeSystem, CouchNodeSystemService } from '../services/couch/node-system';
 import { CouchDbInfo, CouchDbsInfoService } from '../services/couch/dbs-info';
 import { chtx, populateUrl } from '../index';
@@ -26,6 +26,7 @@ const NODE_SYSTEM_COLUMNS = [
 ];
 
 const CSV_COLUMNS = [
+  'unix_time',
   ...pipe(
     DB_NAMES,
     Array.flatMap(getDbInfoColumns)
@@ -56,7 +57,8 @@ const getNodeSystemData = ({ memory }: CouchNodeSystem) => [
   memory.ets,
 ];
 
-const getCsvData = ([nodeSystem, dbsInfo]: [CouchNodeSystem, readonly CouchDbInfo[]]) => [
+const getCsvData = ([unixTime, nodeSystem, dbsInfo]: [number, CouchNodeSystem, readonly CouchDbInfo[]]) => [
+  unixTime,
   ...pipe(
     DB_NAMES,
     Array.flatMap(getDbInfoForDbName(dbsInfo))
@@ -71,7 +73,14 @@ const formatCsvRow = (row: readonly (string | number)[]) => pipe(
 );
 
 const monitorData = (interval: number) => Effect
-  .all([getCouchNodeSystem, getCouchDbsInfo])
+  .all([
+    Clock.currentTimeMillis.pipe(
+      Effect.map(Number.unsafeDivide(1000)),
+      Effect.map(Math.floor)
+    ),
+    getCouchNodeSystem,
+    getCouchDbsInfo
+  ])
   .pipe(
     Effect.map(getCsvData),
     Effect.map(formatCsvRow),
