@@ -12,6 +12,7 @@ const getCouchDbsInfo = effect_1.Effect.flatMap(dbs_info_1.CouchDbsInfoService, 
 const getDbInfoColumns = (dbName) => [
     `${dbName}_sizes_file`,
     `${dbName}_sizes_active`,
+    `${dbName}_compact_running`,
 ];
 const NODE_SYSTEM_COLUMNS = [
     'memory_other',
@@ -31,6 +32,7 @@ const CSV_COLUMNS = [
 const getDbInfoData = (dbInfo) => [
     dbInfo?.info.sizes.file ?? -1,
     dbInfo?.info.sizes.active ?? -1,
+    dbInfo?.info.compact_running ?? false,
 ];
 const getDbInfoByName = (dbsInfo) => (dbName) => dbsInfo.find(db => db.key === dbName);
 const getDbInfoForDbName = (dbsInfo) => (dbName) => (0, effect_1.pipe)(dbName, getDbInfoByName(dbsInfo), getDbInfoData);

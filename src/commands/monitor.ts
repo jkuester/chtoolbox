@@ -12,6 +12,7 @@ const getCouchDbsInfo = Effect.flatMap(CouchDbsInfoService, (couchSystem) => cou
 const getDbInfoColumns = (dbName: string) => [
   `${dbName}_sizes_file`,
   `${dbName}_sizes_active`,
+  `${dbName}_compact_running`,
 ];
 
 const NODE_SYSTEM_COLUMNS = [
@@ -37,6 +38,7 @@ const CSV_COLUMNS = [
 const getDbInfoData = (dbInfo?: CouchDbInfo) => [
   dbInfo?.info.sizes.file ?? -1,
   dbInfo?.info.sizes.active ?? -1,
+  dbInfo?.info.compact_running ?? false,
 ];
 
 const getDbInfoByName = (dbsInfo: readonly CouchDbInfo[]) => (dbName: string) => dbsInfo.find(db => db.key === dbName);
@@ -66,7 +68,7 @@ const getCsvData = ([unixTime, nodeSystem, dbsInfo]: [number, CouchNodeSystem, r
   ...getNodeSystemData(nodeSystem),
 ];
 
-const formatCsvRow = (row: readonly (string | number)[]) => pipe(
+const formatCsvRow = (row: readonly (string | number | boolean)[]) => pipe(
   row,
   Array.map(value => String(value)),
   Array.join(', ')
