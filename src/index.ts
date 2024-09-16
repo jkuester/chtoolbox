@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Command, Options } from '@effect/cli';
 import { NodeContext, NodeHttpClient, NodeRuntime } from '@effect/platform-node';
-import { Config, Console, Effect, Layer, Option, pipe } from 'effect';
+import { Config, Console, Effect, Layer, Option, pipe, Redacted } from 'effect';
 import { CouchNodeSystemServiceLive } from './services/couch/node-system';
 import { CouchServiceLive } from './services/couch/couch';
 import { CouchDbsInfoServiceLive } from './services/couch/dbs-info';
@@ -25,6 +25,7 @@ const chtx = Command.make('chtx', { url }, () => pipe(
 
 export const initializeUrl = chtx.pipe(
   Effect.map(({ url }) => url),
+  Effect.map(Option.map(Redacted.make)),
   Effect.map(Option.map(Config.succeed)),
   Effect.flatMap(urlConfig => EnvironmentService.pipe(
     Effect.flatMap(env => optionalUpdate(env.url, urlConfig))

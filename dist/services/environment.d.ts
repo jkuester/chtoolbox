@@ -1,8 +1,8 @@
 import * as Context from 'effect/Context';
 import * as Layer from 'effect/Layer';
-import { Config, Ref } from 'effect';
+import { Config, Redacted, Ref } from 'effect';
 export interface EnvironmentService {
-    readonly url: Ref.Ref<Config.Config<string>>;
+    readonly url: Ref.Ref<Config.Config<Redacted.Redacted>>;
 }
 export declare const EnvironmentService: Context.Tag<EnvironmentService, EnvironmentService>;
 export declare const EnvironmentServiceLive: Layer.Layer<EnvironmentService, never, never>;

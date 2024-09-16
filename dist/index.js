@@ -20,7 +20,7 @@ const url = cli_1.Options
     .text('url')
     .pipe(cli_1.Options.withDescription('The URL of the CouchDB server. Defaults to the COUCH_URL environment variable.'), cli_1.Options.optional);
 const chtx = cli_1.Command.make('chtx', { url }, () => (0, effect_1.pipe)('Hello World!', effect_1.Console.log));
-exports.initializeUrl = chtx.pipe(effect_1.Effect.map(({ url }) => url), effect_1.Effect.map(effect_1.Option.map(effect_1.Config.succeed)), effect_1.Effect.flatMap(urlConfig => environment_1.EnvironmentService.pipe(effect_1.Effect.flatMap(env => (0, core_1.optionalUpdate)(env.url, urlConfig)))));
+exports.initializeUrl = chtx.pipe(effect_1.Effect.map(({ url }) => url), effect_1.Effect.map(effect_1.Option.map(effect_1.Redacted.make)), effect_1.Effect.map(effect_1.Option.map(effect_1.Config.succeed)), effect_1.Effect.flatMap(urlConfig => environment_1.EnvironmentService.pipe(effect_1.Effect.flatMap(env => (0, core_1.optionalUpdate)(env.url, urlConfig)))));
 const command = chtx.pipe(cli_1.Command.withSubcommands([monitor_1.monitor]));
 const cli = cli_1.Command.run(command, {
     name: 'CHT Toolbox',

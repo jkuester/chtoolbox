@@ -2,7 +2,7 @@ import { EnvironmentService } from '../environment';
 import * as Effect from 'effect/Effect';
 import { HttpClient, HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Context from 'effect/Context';
-import { Config, Layer, Ref, Scope } from 'effect';
+import { Config, Layer, Redacted, Ref, Scope } from 'effect';
 
 export interface CouchService {
   readonly request: (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<
@@ -18,8 +18,9 @@ const getHttpClient = HttpClient.HttpClient.pipe(
   Effect.map(HttpClient.filterStatusOk)
 );
 
-const getCouchRequest2 = (url: Ref.Ref<Config.Config<string>>) => url.pipe(
+const getCouchRequest2 = (url: Ref.Ref<Config.Config<Redacted.Redacted>>) => url.pipe(
   Ref.get,
+  Effect.map(Config.map(Redacted.value)),
   Effect.flatMap(Config.map(url => HttpClientRequest.prependUrl(url))),
   Effect.map(req => HttpClient.mapRequest(req)),
 );

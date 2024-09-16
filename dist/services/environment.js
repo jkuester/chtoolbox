@@ -29,10 +29,10 @@ const Layer = __importStar(require("effect/Layer"));
 const effect_1 = require("effect");
 const WITH_MEDIC_PATTERN = /^(.+)\/medic$/g;
 exports.EnvironmentService = Context.GenericTag('chtoolbox/EnvironmentService');
-const trimTrailingMedic = (url) => url.replace(WITH_MEDIC_PATTERN, '$1');
+const trimTrailingMedic = (url) => url.pipe(effect_1.Redacted.value, url => url.replace(WITH_MEDIC_PATTERN, '$1'), effect_1.Redacted.make);
 const COUCH_URL = effect_1.Config
-    .string('COUCH_URL')
-    .pipe(effect_1.Config.map(trimTrailingMedic));
+    .redacted('COUCH_URL')
+    .pipe(effect_1.Config.map(trimTrailingMedic), effect_1.Config.withDescription('The URL of the CouchDB server.'));
 const createEnvironmentService = (0, effect_1.pipe)(COUCH_URL, effect_1.Ref.make, effect_1.Effect.map(url => exports.EnvironmentService.of({
     url,
 })));
