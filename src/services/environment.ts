@@ -1,36 +1,32 @@
-import * as Schema from '@effect/schema/Schema';
 import * as Context from 'effect/Context';
 import * as Layer from 'effect/Layer';
-import { Effect } from 'effect';
+import { Config, Effect, Option, Ref } from 'effect';
 
 const WITH_MEDIC_PATTERN = /^(.+)\/medic$/g;
-const { COUCH_URL } = process.env;
 
-export class Environment extends Schema.Class<Environment>('Environment')({
-  couchUrl: Schema.String,
-}) {
-}
-
+// TODO Should be a ConfigurationProvider?
 export interface EnvironmentService {
-  readonly get: () => Environment;
+  readonly url: Ref.Ref<string>;
 }
 
 export const EnvironmentService = Context.GenericTag<EnvironmentService>('chtoolbox/EnvironmentService');
 
 const trimTrailingMedic = (url: string) => url.replace(WITH_MEDIC_PATTERN, '$1');
 
-const getCouchUrl = Effect
-  .fromNullable(COUCH_URL)
+const COUCH_URL = Config
+  .string('COUCH_URL')
   .pipe(
-    Effect.catchTag('NoSuchElementException', () => Effect.fail(new Error('COUCH_URL not set'))),
-    Effect.map(trimTrailingMedic)
+    Config.option,
+    Config.map(Option.map(trimTrailingMedic)),
+    Config.map(Option.getOrElse(() => ''))
   );
 
-const createEnvironmentService = getCouchUrl.pipe(
-  Effect.map(couchUrl => new Environment({
-    couchUrl
-  })),
-  Effect.map(env => EnvironmentService.of({ get: () => env }))
+// TODO Should consider using a Ref of a Config to do magic config stuff
+const createEnvironmentService = COUCH_URL.pipe(
+  Effect.flatMap(Ref.make),
+  Effect.map(url => EnvironmentService.of({
+    url,
+  }))
 );
 
 export const EnvironmentServiceLive = Layer.effect(EnvironmentService, createEnvironmentService);

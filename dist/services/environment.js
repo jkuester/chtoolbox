@@ -23,26 +23,19 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.EnvironmentServiceLive = exports.EnvironmentService = exports.Environment = void 0;
-const Schema = __importStar(require("@effect/schema/Schema"));
+exports.EnvironmentServiceLive = exports.EnvironmentService = void 0;
 const Context = __importStar(require("effect/Context"));
 const Layer = __importStar(require("effect/Layer"));
 const effect_1 = require("effect");
 const WITH_MEDIC_PATTERN = /^(.+)\/medic$/g;
-const { COUCH_URL } = process.env;
-class Environment extends Schema.Class('Environment')({
-    couchUrl: Schema.String,
-}) {
-}
-exports.Environment = Environment;
 exports.EnvironmentService = Context.GenericTag('chtoolbox/EnvironmentService');
 const trimTrailingMedic = (url) => url.replace(WITH_MEDIC_PATTERN, '$1');
-// TODO Should not call this if URL param is passed.
-const getCouchUrl = effect_1.Effect
-    .fromNullable(COUCH_URL)
-    .pipe(effect_1.Effect.catchTag('NoSuchElementException', () => effect_1.Effect.fail(new Error('COUCH_URL not set'))), effect_1.Effect.map(trimTrailingMedic));
-const createEnvironmentService = getCouchUrl.pipe(effect_1.Effect.map(couchUrl => new Environment({
-    couchUrl
-})), effect_1.Effect.map(env => exports.EnvironmentService.of({ get: () => env })));
+const COUCH_URL = effect_1.Config
+    .string('COUCH_URL')
+    .pipe(effect_1.Config.option, effect_1.Config.map(effect_1.Option.map(trimTrailingMedic)), effect_1.Config.map(effect_1.Option.getOrElse(() => '')));
+// TODO Should consider using a Ref of a Config to do magic config stuff
+const createEnvironmentService = COUCH_URL.pipe(effect_1.Effect.flatMap(effect_1.Ref.make), effect_1.Effect.map(url => exports.EnvironmentService.of({
+    url,
+})));
 exports.EnvironmentServiceLive = Layer.effect(exports.EnvironmentService, createEnvironmentService);
 //# sourceMappingURL=environment.js.map

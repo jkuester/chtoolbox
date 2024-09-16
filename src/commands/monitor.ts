@@ -2,6 +2,7 @@ import { Command, Options } from '@effect/cli';
 import { Array, Console, Effect, pipe } from 'effect';
 import { CouchNodeSystem, CouchNodeSystemService } from '../services/couch/node-system';
 import { CouchDbInfo, CouchDbsInfoService } from '../services/couch/dbs-info';
+import { chtx, populateUrl } from '../index';
 
 const DB_NAMES = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 
@@ -85,9 +86,13 @@ const interval = Options.integer('interval').pipe(
 );
 
 export const monitor = Command.make('monitor', { interval }, ({ interval }) => pipe(
-  CSV_COLUMNS,
-  formatCsvRow,
-  Console.log,
+  Effect.flatMap(chtx, (parentConfig) => parentConfig.url.pipe(
+    populateUrl
+  )),
+  Effect.tap(Console.log),
+  Effect.andThen(CSV_COLUMNS),
+  Effect.map(formatCsvRow),
+  Effect.tap(Console.log),
   Effect.andThen(Effect.repeat(monitorData(interval), { until: () => false }))
 )).pipe(
   Command.withDescription(`Poll CHT metrics.`),
