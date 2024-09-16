@@ -10,6 +10,7 @@ import packageJson from '../package.json';
 import { EnvironmentService, EnvironmentServiceLive, } from './services/environment';
 import { CouchDesignInfoServiceLive } from './services/couch/design-info';
 import { optionalUpdate } from './libs/core';
+import { MonitorServiceLive } from './services/monitor';
 
 const url = Options
   .text('url')
@@ -43,6 +44,7 @@ const cli = Command.run(command, {
 cli(process.argv)
   .pipe(
     Effect.provide(NodeContext.layer),
+    Effect.provide(MonitorServiceLive),
     Effect.provide(Layer
       .merge(CouchNodeSystemServiceLive, Layer.merge(CouchDbsInfoServiceLive, CouchDesignInfoServiceLive))
       .pipe(
