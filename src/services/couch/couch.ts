@@ -1,14 +1,13 @@
 import { EnvironmentService } from '../environment';
 import * as Effect from 'effect/Effect';
-import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from '@effect/platform';
+import { HttpClient, HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Context from 'effect/Context';
 import { Config, Layer, Ref, Scope } from 'effect';
-import { ConfigError } from 'effect/ConfigError';
 
 export interface CouchService {
   readonly request: (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<
     HttpClientResponse.HttpClientResponse,
-    HttpClientError.HttpClientError | ConfigError,
+    Error,
     Scope.Scope
   >
 }
@@ -32,6 +31,7 @@ const createCouchService = EnvironmentService.pipe(
         getCouchRequest2,
         Effect.map(req => req(httpClient)),
         Effect.flatMap(client => client(request)),
+        Effect.mapError(x => x as Error)
       )
     }))
   ))

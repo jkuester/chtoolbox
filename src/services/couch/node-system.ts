@@ -4,7 +4,6 @@ import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import * as Layer from 'effect/Layer';
 import { CouchService } from './couch';
-import { ConfigError } from 'effect/ConfigError';
 
 const NODE_SYSTEM_REQUEST = HttpClientRequest.get('/_node/_local/_system');
 
@@ -24,7 +23,7 @@ export class CouchNodeSystem extends Schema.Class<CouchNodeSystem>('CouchNodeSys
 }
 
 export interface CouchNodeSystemService {
-  readonly get: () => Effect.Effect<CouchNodeSystem, Error | ConfigError>
+  readonly get: () => Effect.Effect<CouchNodeSystem, Error>
 }
 
 export const CouchNodeSystemService = Context.GenericTag<CouchNodeSystemService>('chtoolbox/CouchNodeSystemService');
