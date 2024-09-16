@@ -32,9 +32,8 @@ exports.EnvironmentService = Context.GenericTag('chtoolbox/EnvironmentService');
 const trimTrailingMedic = (url) => url.replace(WITH_MEDIC_PATTERN, '$1');
 const COUCH_URL = effect_1.Config
     .string('COUCH_URL')
-    .pipe(effect_1.Config.option, effect_1.Config.map(effect_1.Option.map(trimTrailingMedic)), effect_1.Config.map(effect_1.Option.getOrElse(() => '')));
-// TODO Should consider using a Ref of a Config to do magic config stuff
-const createEnvironmentService = COUCH_URL.pipe(effect_1.Effect.flatMap(effect_1.Ref.make), effect_1.Effect.map(url => exports.EnvironmentService.of({
+    .pipe(effect_1.Config.map(trimTrailingMedic));
+const createEnvironmentService = (0, effect_1.pipe)(COUCH_URL, effect_1.Ref.make, effect_1.Effect.map(url => exports.EnvironmentService.of({
     url,
 })));
 exports.EnvironmentServiceLive = Layer.effect(exports.EnvironmentService, createEnvironmentService);

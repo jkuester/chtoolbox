@@ -5,6 +5,7 @@ import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import * as Layer from 'effect/Layer';
 import { CouchService } from './couch';
+import { ConfigError } from 'effect/ConfigError';
 
 const DbsInfoBody = Schema.Struct({ keys: Schema.Array(Schema.String) });
 
@@ -31,7 +32,7 @@ export class CouchDbInfo extends Schema.Class<CouchDbInfo>('CouchDbInfo')({
 }
 
 export interface CouchDbsInfoService {
-  readonly get: () => Effect.Effect<readonly CouchDbInfo[], HttpBody.HttpBodyError | Error>
+  readonly get: () => Effect.Effect<readonly CouchDbInfo[], HttpBody.HttpBodyError | Error | ConfigError>
 }
 
 export const CouchDbsInfoService = Context.GenericTag<CouchDbsInfoService>('chtoolbox/CouchDbsInfoService');

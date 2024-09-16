@@ -89,7 +89,6 @@ export const monitor = Command.make('monitor', { interval }, ({ interval }) => p
   Effect.flatMap(chtx, (parentConfig) => parentConfig.url.pipe(
     populateUrl
   )),
-  Effect.tap(Console.log),
   Effect.andThen(CSV_COLUMNS),
   Effect.map(formatCsvRow),
   Effect.tap(Console.log),

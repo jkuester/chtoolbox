@@ -17,9 +17,9 @@ const environment_1 = require("./services/environment");
 const url = cli_1.Options
     .text('url')
     .pipe(cli_1.Options.withDescription('The URL of the CouchDB server. Defaults to the COUCH_URL environment variable.'), cli_1.Options.optional);
-const populateUrl = (url) => environment_1.EnvironmentService.pipe(effect_1.Effect.flatMap(env => env.url.pipe(effect_1.Ref.get, effect_1.Effect.map(envUrl => url.pipe(effect_1.Option.getOrElse(() => envUrl))), effect_1.Effect.tap(urlValue => effect_1.Ref.update(env.url, () => urlValue)))));
+const populateUrl = (url) => url.pipe(effect_1.Option.map(effect_1.Config.succeed), effect_1.Effect.succeed, effect_1.Effect.tap(urlOpt => urlOpt.pipe(effect_1.Option.map(urlConfig => environment_1.EnvironmentService.pipe(effect_1.Effect.tap(env => effect_1.Ref.update(env.url, () => urlConfig)))), effect_1.Option.getOrUndefined)));
 exports.populateUrl = populateUrl;
-exports.chtx = cli_1.Command.make('chtx', { url }, ({ url }) => (0, effect_1.pipe)(environment_1.EnvironmentService, effect_1.Effect.tap(env => env.url.pipe(effect_1.Ref.get, effect_1.Effect.tap(effect_1.Console.log))), effect_1.Effect.andThen((0, exports.populateUrl)(url)), effect_1.Effect.andThen(environment_1.EnvironmentService), effect_1.Effect.tap(env => env.url.pipe(effect_1.Ref.get, effect_1.Effect.tap(effect_1.Console.log)))));
+exports.chtx = cli_1.Command.make('chtx', { url }, () => (0, effect_1.pipe)('Hello World!', effect_1.Console.log));
 const command = exports.chtx.pipe(cli_1.Command.withSubcommands([monitor_1.monitor]));
 const cli = cli_1.Command.run(command, {
     name: 'CHT Toolbox',

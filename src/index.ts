@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Command, Options } from '@effect/cli';
 import { NodeContext, NodeHttpClient, NodeRuntime } from '@effect/platform-node';
-import { Console, Effect, Layer, Option, pipe, Ref } from 'effect';
+import { Config, Console, Effect, Layer, Option, pipe, Ref } from 'effect';
 import { CouchNodeSystemServiceLive } from './services/couch/node-system';
 import { CouchServiceLive } from './services/couch/couch';
 import { CouchDbsInfoServiceLive } from './services/couch/dbs-info';
@@ -16,28 +16,20 @@ const url = Options
     Options.optional
   );
 
-export const populateUrl = (url: Option.Option<string>) => EnvironmentService.pipe(
-  Effect.flatMap(env => env.url.pipe(
-    Ref.get,
-    Effect.map(envUrl => url.pipe(
-      Option.getOrElse(() => envUrl),
+export const populateUrl = (url: Option.Option<string>) => url.pipe(
+  Option.map(Config.succeed),
+  Effect.succeed,
+  Effect.tap(urlOpt => urlOpt.pipe(
+    Option.map(urlConfig => EnvironmentService.pipe(
+      Effect.tap(env => Ref.update(env.url, () => urlConfig)),
     )),
-    Effect.tap(urlValue => Ref.update(env.url, () => urlValue)),
+    Option.getOrUndefined,
   )),
 );
 
-export const chtx = Command.make('chtx', { url }, ({ url }) => pipe(
-  EnvironmentService,
-  Effect.tap(env => env.url.pipe(
-    Ref.get,
-    Effect.tap(Console.log),
-  )),
-  Effect.andThen(populateUrl(url)),
-  Effect.andThen(EnvironmentService),
-  Effect.tap(env => env.url.pipe(
-    Ref.get,
-    Effect.tap(Console.log),
-  )),
+export const chtx = Command.make('chtx', { url }, () => pipe(
+  'Hello World!',
+  Console.log,
 ));
 
 const command = chtx.pipe(Command.withSubcommands([monitor]));

@@ -31,9 +31,9 @@ const Context = __importStar(require("effect/Context"));
 const effect_1 = require("effect");
 exports.CouchService = Context.GenericTag('chtoolbox/CouchService');
 const getHttpClient = platform_1.HttpClient.HttpClient.pipe(Effect.map(platform_1.HttpClient.filterStatusOk));
-const getCouchRequest2 = (url) => url.pipe(effect_1.Ref.get, Effect.map(url => platform_1.HttpClientRequest.prependUrl(url)), Effect.map(req => platform_1.HttpClient.mapRequest(req)));
+const getCouchRequest2 = (url) => url.pipe(effect_1.Ref.get, Effect.flatMap(effect_1.Config.map(url => platform_1.HttpClientRequest.prependUrl(url))), Effect.map(req => platform_1.HttpClient.mapRequest(req)));
 const createCouchService = environment_1.EnvironmentService.pipe(Effect.flatMap((env) => getHttpClient.pipe(Effect.map(httpClient => exports.CouchService.of({
-    request: (request) => env.url.pipe(getCouchRequest2, Effect.map(req => req(httpClient)), x => x, Effect.flatMap(client => client(request)), x => x)
+    request: (request) => env.url.pipe(getCouchRequest2, Effect.map(req => req(httpClient)), Effect.flatMap(client => client(request)))
 })))));
 exports.CouchServiceLive = effect_1.Layer
     .effect(exports.CouchService, createCouchService);
