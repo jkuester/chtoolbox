@@ -19,7 +19,6 @@ export class CouchDbInfo extends Schema.Class<CouchDbInfo>('CouchDbInfo')({
   key: Schema.String,
   info: Schema.Struct({
     compact_running: Schema.Boolean,
-    db_name: Schema.String,
     sizes: Schema.Struct({
       file: Schema.Number,
       active: Schema.Number,

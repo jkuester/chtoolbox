@@ -14,6 +14,7 @@ const dbs_info_1 = require("./services/couch/dbs-info");
 const monitor_1 = require("./commands/monitor");
 const package_json_1 = __importDefault(require("../package.json"));
 const environment_1 = require("./services/environment");
+const design_info_1 = require("./services/couch/design-info");
 const url = cli_1.Options
     .text('url')
     .pipe(cli_1.Options.withDescription('The URL of the CouchDB server. Defaults to the COUCH_URL environment variable.'), cli_1.Options.optional);
@@ -28,6 +29,6 @@ const cli = cli_1.Command.run(command, {
 });
 cli(process.argv)
     .pipe(effect_1.Effect.provide(platform_node_1.NodeContext.layer), effect_1.Effect.provide(effect_1.Layer
-    .merge(node_system_1.CouchNodeSystemServiceLive, dbs_info_1.CouchDbsInfoServiceLive)
+    .merge(node_system_1.CouchNodeSystemServiceLive, effect_1.Layer.merge(dbs_info_1.CouchDbsInfoServiceLive, design_info_1.CouchDesignInfoServiceLive))
     .pipe(effect_1.Layer.provide(couch_1.CouchServiceLive), effect_1.Layer.provideMerge(environment_1.EnvironmentServiceLive), effect_1.Layer.provide(platform_node_1.NodeHttpClient.layer))), platform_node_1.NodeRuntime.runMain);
 //# sourceMappingURL=index.js.map

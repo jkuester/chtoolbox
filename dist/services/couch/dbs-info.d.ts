@@ -7,7 +7,6 @@ declare const CouchDbInfo_base: Schema.Class<CouchDbInfo, {
     key: typeof Schema.String;
     info: Schema.Struct<{
         compact_running: typeof Schema.Boolean;
-        db_name: typeof Schema.String;
         sizes: Schema.Struct<{
             file: typeof Schema.Number;
             active: typeof Schema.Number;
@@ -17,7 +16,6 @@ declare const CouchDbInfo_base: Schema.Class<CouchDbInfo, {
     key: typeof Schema.String;
     info: Schema.Struct<{
         compact_running: typeof Schema.Boolean;
-        db_name: typeof Schema.String;
         sizes: Schema.Struct<{
             file: typeof Schema.Number;
             active: typeof Schema.Number;
@@ -28,7 +26,6 @@ declare const CouchDbInfo_base: Schema.Class<CouchDbInfo, {
 } & {
     readonly info: {
         readonly compact_running: boolean;
-        readonly db_name: string;
         readonly sizes: {
             readonly file: number;
             readonly active: number;

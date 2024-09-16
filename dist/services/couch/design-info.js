@@ -23,32 +23,32 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CouchDbsInfoServiceLive = exports.CouchDbsInfoService = exports.CouchDbInfo = void 0;
+exports.CouchDesignInfoServiceLive = exports.CouchDesignInfoService = exports.CouchDesignInfo = void 0;
 const Schema = __importStar(require("@effect/schema/Schema"));
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
 const Layer = __importStar(require("effect/Layer"));
 const couch_1 = require("./couch");
-const DbsInfoBody = Schema.Struct({ keys: Schema.Array(Schema.String) });
-const DBS_INFO_REQUEST = DbsInfoBody.pipe(platform_1.HttpClientRequest.schemaBody, build => build(platform_1.HttpClientRequest.post('/_dbs_info'), { keys: ['medic', 'medic-sentinel', 'medic-users-meta', '_users'] }));
-class CouchDbInfo extends Schema.Class('CouchDbInfo')({
-    key: Schema.String,
-    info: Schema.Struct({
+class CouchDesignInfo extends Schema.Class('DesignInfo')({
+    name: Schema.String,
+    view_index: Schema.Struct({
         compact_running: Schema.Boolean,
+        updater_running: Schema.Boolean,
         sizes: Schema.Struct({
             file: Schema.Number,
             active: Schema.Number,
         }),
     }),
 }) {
-    static decodeResponse = platform_1.HttpClientResponse.schemaBodyJsonScoped(Schema.Array(CouchDbInfo));
+    static decodeResponse = platform_1.HttpClientResponse.schemaBodyJsonScoped(CouchDesignInfo);
 }
-exports.CouchDbInfo = CouchDbInfo;
-exports.CouchDbsInfoService = Context.GenericTag('chtoolbox/CouchDbsInfoService');
-const createDbsInfoService = couch_1.CouchService.pipe(Effect.map(couch => exports.CouchDbsInfoService.of({
-    get: () => DBS_INFO_REQUEST.pipe(Effect.flatMap(request => couch.request(request)), CouchDbInfo.decodeResponse, Effect.mapError(x => x))
+exports.CouchDesignInfo = CouchDesignInfo;
+exports.CouchDesignInfoService = Context.GenericTag('chtoolbox/CouchDesignInfoService');
+const create = couch_1.CouchService.pipe(Effect.map(couch => exports.CouchDesignInfoService.of({
+    get: (dbName, designName) => couch
+        .request(platform_1.HttpClientRequest.get(`/${dbName}/_design/${designName}/_info`))
+        .pipe(CouchDesignInfo.decodeResponse)
 })));
-exports.CouchDbsInfoServiceLive = Layer
-    .effect(exports.CouchDbsInfoService, createDbsInfoService);
-//# sourceMappingURL=dbs-info.js.map
+exports.CouchDesignInfoServiceLive = Layer.effect(exports.CouchDesignInfoService, create);
+//# sourceMappingURL=design-info.js.map

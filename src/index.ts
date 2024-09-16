@@ -8,6 +8,7 @@ import { CouchDbsInfoServiceLive } from './services/couch/dbs-info';
 import { monitor } from './commands/monitor';
 import packageJson from '../package.json';
 import { EnvironmentService, EnvironmentServiceLive, } from './services/environment';
+import { CouchDesignInfoServiceLive } from './services/couch/design-info';
 
 const url = Options
   .text('url')
@@ -45,7 +46,7 @@ cli(process.argv)
   .pipe(
     Effect.provide(NodeContext.layer),
     Effect.provide(Layer
-      .merge(CouchNodeSystemServiceLive, CouchDbsInfoServiceLive)
+      .merge(CouchNodeSystemServiceLive, Layer.merge(CouchDbsInfoServiceLive, CouchDesignInfoServiceLive))
       .pipe(
         Layer.provide(CouchServiceLive),
         Layer.provideMerge(EnvironmentServiceLive),
