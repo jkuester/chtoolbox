@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 import { Command } from '@effect/cli';
-import { Config, Effect, Option } from 'effect';
-export declare const populateUrl: (url: Option.Option<string>) => Effect.Effect<Option.Option<Config.Config<string>>>;
-export declare const chtx: Command.Command<"chtx", never, never, {
-    readonly url: Option.Option<string>;
-}>;
+import { Effect } from 'effect';
+import { EnvironmentService } from './services/environment';
+export declare const initializeUrl: Effect.Effect<void, never, EnvironmentService | Command.Command.Context<"chtx">>;
 //# sourceMappingURL=index.d.ts.map

@@ -97,6 +97,6 @@ const interval = cli_1.Options
     .integer('interval')
     .pipe(cli_1.Options.withAlias('i'), cli_1.Options.withDescription('The interval in seconds to poll the data. Default is 1 second.'), cli_1.Options.withDefault(1));
 exports.monitor = cli_1.Command
-    .make('monitor', { interval }, ({ interval }) => (0, effect_1.pipe)(effect_1.Effect.flatMap(index_1.chtx, (parentConfig) => parentConfig.url.pipe(index_1.populateUrl)), effect_1.Effect.andThen(CSV_COLUMNS), effect_1.Effect.map(formatCsvRow), effect_1.Effect.tap(effect_1.Console.log), effect_1.Effect.andThen(effect_1.Effect.repeat(monitorData(interval), { until: () => false }))))
+    .make('monitor', { interval }, ({ interval }) => (0, effect_1.pipe)(index_1.initializeUrl, effect_1.Effect.andThen(CSV_COLUMNS), effect_1.Effect.map(formatCsvRow), effect_1.Effect.tap(effect_1.Console.log), effect_1.Effect.andThen(effect_1.Effect.repeat(monitorData(interval), { until: () => false }))))
     .pipe(cli_1.Command.withDescription(`Poll CHT metrics.`));
 //# sourceMappingURL=monitor.js.map

@@ -2,7 +2,7 @@ import { Command, Options } from '@effect/cli';
 import { Array, Clock, Console, Effect, Number, pipe } from 'effect';
 import { CouchNodeSystem, CouchNodeSystemService } from '../services/couch/node-system';
 import { CouchDbInfo, CouchDbsInfoService } from '../services/couch/dbs-info';
-import { chtx, populateUrl } from '../index';
+import { initializeUrl } from '../index';
 import { CouchDesignInfo, CouchDesignInfoService } from '../services/couch/design-info';
 
 const DB_NAMES = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
@@ -162,9 +162,7 @@ const interval = Options
 
 export const monitor = Command
   .make('monitor', { interval }, ({ interval }) => pipe(
-    Effect.flatMap(chtx, (parentConfig) => parentConfig.url.pipe(
-      populateUrl
-    )),
+    initializeUrl,
     Effect.andThen(CSV_COLUMNS),
     Effect.map(formatCsvRow),
     Effect.tap(Console.log),
