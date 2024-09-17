@@ -11,6 +11,7 @@ import { EnvironmentService, EnvironmentServiceLive, } from './services/environm
 import { CouchDesignInfoServiceLive } from './services/couch/design-info';
 import { optionalUpdate } from './libs/core';
 import { MonitorServiceLive } from './services/monitor';
+import { LocalDiskUsageServiceLive } from './services/local-disk-usage';
 
 const url = Options
   .text('url')
@@ -45,6 +46,7 @@ cli(process.argv)
   .pipe(
     Effect.provide(NodeContext.layer),
     Effect.provide(MonitorServiceLive),
+    Effect.provide(LocalDiskUsageServiceLive),
     Effect.provide(Layer
       .merge(CouchNodeSystemServiceLive, Layer.merge(CouchDbsInfoServiceLive, CouchDesignInfoServiceLive))
       .pipe(

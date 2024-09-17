@@ -17,6 +17,7 @@ const environment_1 = require("./services/environment");
 const design_info_1 = require("./services/couch/design-info");
 const core_1 = require("./libs/core");
 const monitor_2 = require("./services/monitor");
+const local_disk_usage_1 = require("./services/local-disk-usage");
 const url = cli_1.Options
     .text('url')
     .pipe(cli_1.Options.withDescription('The URL of the CouchDB server. Defaults to the COUCH_URL environment variable.'), cli_1.Options.optional);
@@ -29,7 +30,7 @@ const cli = cli_1.Command.run(command, {
     version: package_json_1.default.version
 });
 cli(process.argv)
-    .pipe(effect_1.Effect.provide(platform_node_1.NodeContext.layer), effect_1.Effect.provide(monitor_2.MonitorServiceLive), effect_1.Effect.provide(effect_1.Layer
+    .pipe(effect_1.Effect.provide(platform_node_1.NodeContext.layer), effect_1.Effect.provide(monitor_2.MonitorServiceLive), effect_1.Effect.provide(local_disk_usage_1.LocalDiskUsageServiceLive), effect_1.Effect.provide(effect_1.Layer
     .merge(node_system_1.CouchNodeSystemServiceLive, effect_1.Layer.merge(dbs_info_1.CouchDbsInfoServiceLive, design_info_1.CouchDesignInfoServiceLive))
     .pipe(effect_1.Layer.provide(couch_1.CouchServiceLive), effect_1.Layer.provideMerge(environment_1.EnvironmentServiceLive), effect_1.Layer.provide(platform_node_1.NodeHttpClient.layer))), platform_node_1.NodeRuntime.runMain);
 //# sourceMappingURL=index.js.map

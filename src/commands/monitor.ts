@@ -1,5 +1,5 @@
 import { Command, Options } from '@effect/cli';
-import { Array, Console, Effect, pipe } from 'effect';
+import { Array, Console, Effect, Option, pipe } from 'effect';
 import { initializeUrl } from '../index';
 import { MonitorService } from '../services/monitor';
 
@@ -10,8 +10,8 @@ const printCsvRow = (row: readonly (string | number | boolean)[]) => pipe(
   Console.log
 );
 
-const monitorData = (monitor: MonitorService, interval: number) => pipe(
-  monitor.getAsCsv(),
+const monitorData = (monitor: MonitorService, interval: number, trackDirSize: Option.Option<string>) => pipe(
+  monitor.getAsCsv(trackDirSize),
   Effect.tap(printCsvRow),
   Effect.delay(interval * 1000)
 );
@@ -24,14 +24,23 @@ const interval = Options
     Options.withDefault(1),
   );
 
+const trackDirSize = Options
+  .directory('track-dir-size', { exists: 'yes' })
+  .pipe(
+    Options.withDescription(
+      'The local directory to monitor disk usage. (Useful when monitoring a locally deployed CHT instance.)'
+    ),
+    Options.optional,
+  );
+
 export const monitor = Command
-  .make('monitor', { interval }, ({ interval }) => pipe(
+  .make('monitor', { interval, trackDirSize }, ({ interval, trackDirSize }) => pipe(
     initializeUrl,
     Effect.andThen(MonitorService),
     Effect.tap(monitor => pipe(
-      monitor.getCsvHeader(),
+      monitor.getCsvHeader(trackDirSize),
       printCsvRow,
-      Effect.andThen(Effect.repeat(monitorData(monitor, interval), { until: () => false }))
+      Effect.andThen(Effect.repeat(monitorData(monitor, interval, trackDirSize), { until: () => false }))
     )),
   ))
   .pipe(

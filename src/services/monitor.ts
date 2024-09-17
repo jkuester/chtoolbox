@@ -4,7 +4,10 @@ import * as Layer from 'effect/Layer';
 import { CouchDbInfo, CouchDbsInfoService } from './couch/dbs-info';
 import { CouchDesignInfo, CouchDesignInfoService } from './couch/design-info';
 import { CouchNodeSystem, CouchNodeSystemService } from './couch/node-system';
-import { Array, Clock, Number, pipe } from 'effect';
+import { Array, Clock, Number, Option, pipe } from 'effect';
+import { LocalDiskUsageService } from './local-disk-usage';
+import { PlatformError } from '@effect/platform/Error';
+import { CommandExecutor } from '@effect/platform/CommandExecutor';
 
 interface DatabaseInfo extends CouchDbInfo {
   designs: CouchDesignInfo[]
@@ -13,19 +16,20 @@ interface DatabaseInfo extends CouchDbInfo {
 export interface MonitoringData extends CouchNodeSystem {
   unix_time: number,
   databases: DatabaseInfo[]
+  directory_size: Option.Option<number>
 }
 
 export interface MonitorService {
-  readonly get: () => Effect.Effect<
+  readonly get: (directory: Option.Option<string>) => Effect.Effect<
     MonitoringData,
-    Error,
-    CouchNodeSystemService | CouchDbsInfoService | CouchDesignInfoService
+    Error | PlatformError,
+    CouchNodeSystemService | CouchDbsInfoService | CouchDesignInfoService | LocalDiskUsageService | CommandExecutor
   >,
-  readonly getCsvHeader: () => string[],
-  readonly getAsCsv: () => Effect.Effect<
+  readonly getCsvHeader: (directory: Option.Option<string>) => string[],
+  readonly getAsCsv: (directory: Option.Option<string>) => Effect.Effect<
     string[],
-    Error,
-    CouchNodeSystemService | CouchDbsInfoService | CouchDesignInfoService
+    Error | PlatformError,
+    CouchNodeSystemService | CouchDbsInfoService | CouchDesignInfoService | LocalDiskUsageService | CommandExecutor
   >,
 }
 
@@ -65,25 +69,40 @@ const getCouchDesignInfos = pipe(
   Effect.all,
 );
 
-const getMonitoringData = pipe(
+const getDirectorySize = (directory: Option.Option<string>) => LocalDiskUsageService.pipe(
+  Effect.flatMap(service => directory.pipe(
+    Option.map(dir => service.getSize(dir)),
+    Option.getOrElse(() => Effect.succeed(null))
+  )),
+  Effect.map(Option.fromNullable),
+);
+
+const getMonitoringData = (directory: Option.Option<string>) => pipe(
   Effect.all([
     currentTimeSec,
     getCouchNodeSystem,
     getCouchDbsInfo,
-    getCouchDesignInfos
+    getCouchDesignInfos,
+    getDirectorySize(directory),
   ]),
-  Effect.map(([unixTime, nodeSystem, dbsInfo, designInfos]): MonitoringData => ({
+  Effect.map(([
+    unixTime,
+    nodeSystem,
+    dbsInfo,
+    designInfos,
+    directory_size
+  ]): MonitoringData => ({
     ...nodeSystem,
     unix_time: unixTime,
     databases: dbsInfo.map((dbInfo, i) => ({
       ...dbInfo,
       designs: designInfos[i]
     })),
+    directory_size
   })),
-  x => x,
 );
 
-const getCsvHeader = () => [
+const getCsvHeader = (directory: Option.Option<string>) => [
   'unix_time',
   ...DB_NAMES.flatMap(dbName => [
     `${dbName}_sizes_file`,
@@ -104,10 +123,15 @@ const getCsvHeader = () => [
   'memory_binary',
   'memory_code',
   'memory_ets',
+  ...(directory.pipe(
+    Option.map(() => 'directory_size'),
+    Option.map(Array.of),
+    Option.getOrElse(() => []),
+  ))
 ];
 
-const getAsCsv = () => pipe(
-  getMonitoringData,
+const getAsCsv = (directory: Option.Option<string>) => pipe(
+  getMonitoringData(directory),
   Effect.map(data => [
     data.unix_time.toString(),
     ...data.databases.flatMap(db => [
@@ -129,12 +153,17 @@ const getAsCsv = () => pipe(
     data.memory.binary.toString(),
     data.memory.code.toString(),
     data.memory.ets.toString(),
+    ...(data.directory_size.pipe(
+      Option.map(value => value.toString()),
+      Option.map(Array.of),
+      Option.getOrElse(() => []),
+    )),
   ]),
 );
 
 const createMonitorService = pipe(
   MonitorService.of({
-    get: () => getMonitoringData,
+    get: getMonitoringData,
     getCsvHeader,
     getAsCsv,
   })

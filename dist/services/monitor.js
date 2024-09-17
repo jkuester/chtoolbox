@@ -31,6 +31,7 @@ const dbs_info_1 = require("./couch/dbs-info");
 const design_info_1 = require("./couch/design-info");
 const node_system_1 = require("./couch/node-system");
 const effect_1 = require("effect");
+const local_disk_usage_1 = require("./local-disk-usage");
 exports.MonitorService = Context.GenericTag('chtoolbox/MonitorService');
 const currentTimeSec = effect_1.Clock.currentTimeMillis.pipe(Effect.map(effect_1.Number.unsafeDivide(1000)), Effect.map(Math.floor));
 const DB_NAMES = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
@@ -51,20 +52,23 @@ const getCouchNodeSystem = Effect.flatMap(node_system_1.CouchNodeSystemService, 
 const getCouchDbsInfo = Effect.flatMap(dbs_info_1.CouchDbsInfoService, (couchSystem) => couchSystem.get());
 const getCouchDesignInfosForDb = (dbName) => design_info_1.CouchDesignInfoService.pipe(Effect.flatMap(service => Effect.all((0, effect_1.pipe)(VIEW_INDEXES_BY_DB[dbName], effect_1.Array.map(designName => service.get(dbName, designName))))));
 const getCouchDesignInfos = (0, effect_1.pipe)(DB_NAMES, effect_1.Array.map(getCouchDesignInfosForDb), Effect.all);
-const getMonitoringData = (0, effect_1.pipe)(Effect.all([
+const getDirectorySize = (directory) => local_disk_usage_1.LocalDiskUsageService.pipe(Effect.flatMap(service => directory.pipe(effect_1.Option.map(dir => service.getSize(dir)), effect_1.Option.getOrElse(() => Effect.succeed(null)))), Effect.map(effect_1.Option.fromNullable));
+const getMonitoringData = (directory) => (0, effect_1.pipe)(Effect.all([
     currentTimeSec,
     getCouchNodeSystem,
     getCouchDbsInfo,
-    getCouchDesignInfos
-]), Effect.map(([unixTime, nodeSystem, dbsInfo, designInfos]) => ({
+    getCouchDesignInfos,
+    getDirectorySize(directory),
+]), Effect.map(([unixTime, nodeSystem, dbsInfo, designInfos, directory_size]) => ({
     ...nodeSystem,
     unix_time: unixTime,
     databases: dbsInfo.map((dbInfo, i) => ({
         ...dbInfo,
         designs: designInfos[i]
     })),
-})), x => x);
-const getCsvHeader = () => [
+    directory_size
+})));
+const getCsvHeader = (directory) => [
     'unix_time',
     ...DB_NAMES.flatMap(dbName => [
         `${dbName}_sizes_file`,
@@ -85,8 +89,9 @@ const getCsvHeader = () => [
     'memory_binary',
     'memory_code',
     'memory_ets',
+    ...(directory.pipe(effect_1.Option.map(() => 'directory_size'), effect_1.Option.map(effect_1.Array.of), effect_1.Option.getOrElse(() => [])))
 ];
-const getAsCsv = () => (0, effect_1.pipe)(getMonitoringData, Effect.map(data => [
+const getAsCsv = (directory) => (0, effect_1.pipe)(getMonitoringData(directory), Effect.map(data => [
     data.unix_time.toString(),
     ...data.databases.flatMap(db => [
         db.info.sizes.file.toString(),
@@ -107,9 +112,10 @@ const getAsCsv = () => (0, effect_1.pipe)(getMonitoringData, Effect.map(data => 
     data.memory.binary.toString(),
     data.memory.code.toString(),
     data.memory.ets.toString(),
+    ...(data.directory_size.pipe(effect_1.Option.map(value => value.toString()), effect_1.Option.map(effect_1.Array.of), effect_1.Option.getOrElse(() => []))),
 ]));
 const createMonitorService = (0, effect_1.pipe)(exports.MonitorService.of({
-    get: () => getMonitoringData,
+    get: getMonitoringData,
     getCsvHeader,
     getAsCsv,
 }));
