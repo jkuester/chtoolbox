@@ -12,7 +12,11 @@ export interface CouchResponseEffect<A, E = never, R = never> extends Effect.Eff
 }
 
 export interface CouchService {
-  readonly request: (request: HttpClientRequest.HttpClientRequest) => CouchResponseEffect<HttpClientResponse.HttpClientResponse, never, Scope.Scope>
+  readonly request: (request: HttpClientRequest.HttpClientRequest) => CouchResponseEffect<
+    HttpClientResponse.HttpClientResponse,
+    never,
+    Scope.Scope
+  >
 }
 
 export const CouchService = Context.GenericTag<CouchService>('chtoolbox/CouchService');

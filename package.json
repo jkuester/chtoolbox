@@ -15,17 +15,26 @@
   "scripts": {
     "build-app": "rm -rf dist && tsc -p tsconfig.build.json && chmod +x dist/index.js",
     "lint": "eslint --color --cache .",
-    "local": "npx tsx src/index.ts"
+    "local": "ts-node src/index.ts",
+    "test": "mocha \"test/**/*\""
   },
   "license": "AGPL-3.0-only",
   "devDependencies": {
     "@medic/eslint-config": "^1.1.0",
+    "@stylistic/eslint-plugin-plus": "^2.8.0",
+    "@stylistic/eslint-plugin-ts": "^2.8.0",
     "@tsconfig/node20": "^20.1.4",
+    "@types/chai": "^4.3.6",
+    "@types/mocha": "^10.0.1",
     "@types/node": "^22.5.4",
     "@typescript-eslint/eslint-plugin": "^8.5.0",
     "@typescript-eslint/parser": "^8.5.0",
+    "chai": "^4.3.8",
     "eslint": "^8.49.0",
     "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^7.1.0",
+    "mocha": "^10.7.3",
+    "ts-node": "^10.9.2",
     "typescript": "^5.6.2"
   },
   "dependencies": {
