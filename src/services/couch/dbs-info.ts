@@ -3,7 +3,7 @@ import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import * as Layer from 'effect/Layer';
-import { CouchService } from './couch';
+import { CouchResponseEffect, CouchService } from './couch';
 
 const DbsInfoBody = Schema.Struct({ keys: Schema.Array(Schema.String) });
 
@@ -29,20 +29,17 @@ export class CouchDbInfo extends Schema.Class<CouchDbInfo>('CouchDbInfo')({
 }
 
 export interface CouchDbsInfoService {
-  readonly get: () => Effect.Effect<readonly CouchDbInfo[], Error>
+  readonly get: () => CouchResponseEffect<readonly CouchDbInfo[]>
 }
 
 export const CouchDbsInfoService = Context.GenericTag<CouchDbsInfoService>('chtoolbox/CouchDbsInfoService');
 
-const createDbsInfoService = CouchService.pipe(
-  Effect.map(couch => CouchDbsInfoService.of({
-    get: () => DBS_INFO_REQUEST.pipe(
-      Effect.flatMap(request => couch.request(request)),
+export const CouchDbsInfoServiceLive = Layer.succeed(CouchDbsInfoService, CouchDbsInfoService.of({
+  get: () => Effect
+    .all([CouchService, DBS_INFO_REQUEST])
+    .pipe(
+      Effect.flatMap(([couch, request]) => couch.request(request)),
       CouchDbInfo.decodeResponse,
-      Effect.mapError(x => x as Error)
+      Effect.mapError(x => x as Error),
     )
-  })),
-);
-
-export const CouchDbsInfoServiceLive = Layer
-  .effect(CouchDbsInfoService, createDbsInfoService);
+}));

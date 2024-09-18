@@ -114,10 +114,9 @@ const getAsCsv = (directory) => (0, effect_1.pipe)(getMonitoringData(directory),
     data.memory.ets.toString(),
     ...(data.directory_size.pipe(effect_1.Option.map(value => value.toString()), effect_1.Option.map(effect_1.Array.of), effect_1.Option.getOrElse(() => []))),
 ]));
-const createMonitorService = (0, effect_1.pipe)(exports.MonitorService.of({
+exports.MonitorServiceLive = Layer.succeed(exports.MonitorService, exports.MonitorService.of({
     get: getMonitoringData,
     getCsvHeader,
     getAsCsv,
 }));
-exports.MonitorServiceLive = Layer.succeed(exports.MonitorService, createMonitorService);
 //# sourceMappingURL=monitor.js.map

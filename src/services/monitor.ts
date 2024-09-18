@@ -8,6 +8,7 @@ import { Array, Clock, Number, Option, pipe } from 'effect';
 import { LocalDiskUsageService } from './local-disk-usage';
 import { PlatformError } from '@effect/platform/Error';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
+import { CouchResponseEffect } from './couch/couch';
 
 interface DatabaseInfo extends CouchDbInfo {
   designs: CouchDesignInfo[]
@@ -19,18 +20,17 @@ export interface MonitoringData extends CouchNodeSystem {
   directory_size: Option.Option<number>
 }
 
+interface MonitoringDataEffect<A extends MonitoringData | string[]> extends CouchResponseEffect<
+  A,
+  PlatformError,
+  CouchNodeSystemService | CouchDbsInfoService | CouchDesignInfoService | LocalDiskUsageService | CommandExecutor
+> {
+}
+
 export interface MonitorService {
-  readonly get: (directory: Option.Option<string>) => Effect.Effect<
-    MonitoringData,
-    Error | PlatformError,
-    CouchNodeSystemService | CouchDbsInfoService | CouchDesignInfoService | LocalDiskUsageService | CommandExecutor
-  >,
+  readonly get: (directory: Option.Option<string>) => MonitoringDataEffect<MonitoringData>,
   readonly getCsvHeader: (directory: Option.Option<string>) => string[],
-  readonly getAsCsv: (directory: Option.Option<string>) => Effect.Effect<
-    string[],
-    Error | PlatformError,
-    CouchNodeSystemService | CouchDbsInfoService | CouchDesignInfoService | LocalDiskUsageService | CommandExecutor
-  >,
+  readonly getAsCsv: (directory: Option.Option<string>) => MonitoringDataEffect<string[]>,
 }
 
 export const MonitorService = Context.GenericTag<MonitorService>('chtoolbox/MonitorService');
@@ -77,7 +77,7 @@ const getDirectorySize = (directory: Option.Option<string>) => LocalDiskUsageSer
   Effect.map(Option.fromNullable),
 );
 
-const getMonitoringData = (directory: Option.Option<string>) => pipe(
+const getMonitoringData = (directory: Option.Option<string>): MonitoringDataEffect<MonitoringData> => pipe(
   Effect.all([
     currentTimeSec,
     getCouchNodeSystem,
@@ -161,12 +161,8 @@ const getAsCsv = (directory: Option.Option<string>) => pipe(
   ]),
 );
 
-const createMonitorService = pipe(
-  MonitorService.of({
-    get: getMonitoringData,
-    getCsvHeader,
-    getAsCsv,
-  })
-);
-
-export const MonitorServiceLive = Layer.succeed(MonitorService, createMonitorService);
+export const MonitorServiceLive = Layer.succeed(MonitorService, MonitorService.of({
+  get: getMonitoringData,
+  getCsvHeader,
+  getAsCsv,
+}));

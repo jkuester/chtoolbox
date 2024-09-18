@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Command, Options } from '@effect/cli';
 import { NodeContext, NodeHttpClient, NodeRuntime } from '@effect/platform-node';
-import { Config, Console, Effect, Layer, Option, pipe, Redacted } from 'effect';
+import { Config, Console, Effect, Option, pipe, Redacted } from 'effect';
 import { CouchNodeSystemServiceLive } from './services/couch/node-system';
 import { CouchServiceLive } from './services/couch/couch';
 import { CouchDbsInfoServiceLive } from './services/couch/dbs-info';
@@ -45,14 +45,13 @@ const cli = Command.run(command, {
 cli(process.argv)
   .pipe(
     Effect.provide(NodeContext.layer),
-    Effect.provide(MonitorServiceLive),
+    Effect.provide(NodeHttpClient.layer),
+    Effect.provide(EnvironmentServiceLive),
+    Effect.provide(CouchServiceLive),
+    Effect.provide(CouchNodeSystemServiceLive),
+    Effect.provide(CouchDbsInfoServiceLive),
+    Effect.provide(CouchDesignInfoServiceLive),
     Effect.provide(LocalDiskUsageServiceLive),
-    Effect.provide(Layer
-      .merge(CouchNodeSystemServiceLive, Layer.merge(CouchDbsInfoServiceLive, CouchDesignInfoServiceLive))
-      .pipe(
-        Layer.provide(CouchServiceLive),
-        Layer.provideMerge(EnvironmentServiceLive),
-        Layer.provide(NodeHttpClient.layer)
-      )),
+    Effect.provide(MonitorServiceLive),
     NodeRuntime.runMain
   );

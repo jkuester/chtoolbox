@@ -47,11 +47,7 @@ class CouchNodeSystem extends Schema.Class('CouchNodeSystem')({
 }
 exports.CouchNodeSystem = CouchNodeSystem;
 exports.CouchNodeSystemService = Context.GenericTag('chtoolbox/CouchNodeSystemService');
-const createCouchNodeSystemService = couch_1.CouchService.pipe(Effect.map(couch => exports.CouchNodeSystemService.of({
-    get: () => couch
-        .request(NODE_SYSTEM_REQUEST)
-        .pipe(CouchNodeSystem.decodeResponse)
-})));
-exports.CouchNodeSystemServiceLive = Layer
-    .effect(exports.CouchNodeSystemService, createCouchNodeSystemService);
+exports.CouchNodeSystemServiceLive = Layer.succeed(exports.CouchNodeSystemService, exports.CouchNodeSystemService.of({
+    get: () => couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(NODE_SYSTEM_REQUEST)), CouchNodeSystem.decodeResponse)
+}));
 //# sourceMappingURL=node-system.js.map

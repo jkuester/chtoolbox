@@ -4,39 +4,36 @@ import { HttpClient, HttpClientRequest, HttpClientResponse } from '@effect/platf
 import * as Context from 'effect/Context';
 import { Config, Layer, Redacted, Ref, Scope } from 'effect';
 
+export interface CouchResponseEffect<A, E = never, R = never> extends Effect.Effect<
+  A,
+  E | Error,
+  R | EnvironmentService | HttpClient.HttpClient.Default | CouchService
+> {
+}
+
 export interface CouchService {
-  readonly request: (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<
-    HttpClientResponse.HttpClientResponse,
-    Error,
-    Scope.Scope
-  >
+  readonly request: (request: HttpClientRequest.HttpClientRequest) => CouchResponseEffect<HttpClientResponse.HttpClientResponse, never, Scope.Scope>
 }
 
 export const CouchService = Context.GenericTag<CouchService>('chtoolbox/CouchService');
 
-const getHttpClient = HttpClient.HttpClient.pipe(
-  Effect.map(HttpClient.filterStatusOk)
-);
-
-const getCouchRequest2 = (url: Ref.Ref<Config.Config<Redacted.Redacted>>) => url.pipe(
-  Ref.get,
+const getCouchUrl = EnvironmentService.pipe(
+  Effect.map(env => env.url),
+  Effect.flatMap(Ref.get),
   Effect.map(Config.map(Redacted.value)),
-  Effect.flatMap(Config.map(url => HttpClientRequest.prependUrl(url))),
-  Effect.map(req => HttpClient.mapRequest(req)),
 );
 
-const createCouchService = EnvironmentService.pipe(
-  Effect.flatMap((env) => getHttpClient.pipe(
-    Effect.map(httpClient => CouchService.of({
-      request: (request: HttpClientRequest.HttpClientRequest) => env.url.pipe(
-        getCouchRequest2,
-        Effect.map(req => req(httpClient)),
-        Effect.flatMap(client => client(request)),
-        Effect.mapError(x => x as Error)
-      )
-    }))
-  ))
+const getClientWithUrl = getCouchUrl.pipe(
+  Effect.flatMap(Config.map(url => HttpClient.HttpClient.pipe(
+    Effect.map(HttpClient.filterStatusOk),
+    Effect.map(HttpClient.mapRequest(HttpClientRequest.prependUrl(url))),
+  ))),
+  Effect.flatten,
 );
 
-export const CouchServiceLive = Layer
-  .effect(CouchService, createCouchService);
+export const CouchServiceLive = Layer.succeed(CouchService, CouchService.of({
+  request: (request: HttpClientRequest.HttpClientRequest) => getClientWithUrl.pipe(
+    Effect.flatMap(client => client(request)),
+    Effect.mapError(x => x as Error),
+  )
+}));

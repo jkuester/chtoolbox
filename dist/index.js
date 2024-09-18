@@ -30,7 +30,5 @@ const cli = cli_1.Command.run(command, {
     version: package_json_1.default.version
 });
 cli(process.argv)
-    .pipe(effect_1.Effect.provide(platform_node_1.NodeContext.layer), effect_1.Effect.provide(monitor_2.MonitorServiceLive), effect_1.Effect.provide(local_disk_usage_1.LocalDiskUsageServiceLive), effect_1.Effect.provide(effect_1.Layer
-    .merge(node_system_1.CouchNodeSystemServiceLive, effect_1.Layer.merge(dbs_info_1.CouchDbsInfoServiceLive, design_info_1.CouchDesignInfoServiceLive))
-    .pipe(effect_1.Layer.provide(couch_1.CouchServiceLive), effect_1.Layer.provideMerge(environment_1.EnvironmentServiceLive), effect_1.Layer.provide(platform_node_1.NodeHttpClient.layer))), platform_node_1.NodeRuntime.runMain);
+    .pipe(effect_1.Effect.provide(platform_node_1.NodeContext.layer), effect_1.Effect.provide(platform_node_1.NodeHttpClient.layer), effect_1.Effect.provide(environment_1.EnvironmentServiceLive), effect_1.Effect.provide(couch_1.CouchServiceLive), effect_1.Effect.provide(node_system_1.CouchNodeSystemServiceLive), effect_1.Effect.provide(dbs_info_1.CouchDbsInfoServiceLive), effect_1.Effect.provide(design_info_1.CouchDesignInfoServiceLive), effect_1.Effect.provide(local_disk_usage_1.LocalDiskUsageServiceLive), effect_1.Effect.provide(monitor_2.MonitorServiceLive), platform_node_1.NodeRuntime.runMain);
 //# sourceMappingURL=index.js.map

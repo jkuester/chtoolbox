@@ -3,7 +3,7 @@ import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import * as Layer from 'effect/Layer';
-import { CouchService } from './couch';
+import { CouchResponseEffect, CouchService } from './couch';
 
 export class CouchDesignInfo extends Schema.Class<CouchDesignInfo>('DesignInfo')({
   name: Schema.String,
@@ -20,17 +20,14 @@ export class CouchDesignInfo extends Schema.Class<CouchDesignInfo>('DesignInfo')
 }
 
 export interface CouchDesignInfoService {
-  readonly get: (dbName: string, designName: string) => Effect.Effect<CouchDesignInfo, Error>
+  readonly get: (dbName: string, designName: string) => CouchResponseEffect<CouchDesignInfo>
 }
 
 export const CouchDesignInfoService = Context.GenericTag<CouchDesignInfoService>('chtoolbox/CouchDesignInfoService');
 
-const create = CouchService.pipe(
-  Effect.map(couch => CouchDesignInfoService.of({
-    get: (dbName, designName) => couch
-      .request(HttpClientRequest.get(`/${dbName}/_design/${designName}/_info`))
-      .pipe(CouchDesignInfo.decodeResponse)
-  })),
-);
-
-export const CouchDesignInfoServiceLive = Layer.effect(CouchDesignInfoService, create);
+export const CouchDesignInfoServiceLive = Layer.succeed(CouchDesignInfoService, CouchDesignInfoService.of({
+  get: (dbName: string, designName: string) => CouchService.pipe(
+    Effect.flatMap(couch => couch.request(HttpClientRequest.get(`/${dbName}/_design/${designName}/_info`))),
+    CouchDesignInfo.decodeResponse,
+  )
+}));

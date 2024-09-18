@@ -46,9 +46,9 @@ class CouchDbInfo extends Schema.Class('CouchDbInfo')({
 }
 exports.CouchDbInfo = CouchDbInfo;
 exports.CouchDbsInfoService = Context.GenericTag('chtoolbox/CouchDbsInfoService');
-const createDbsInfoService = couch_1.CouchService.pipe(Effect.map(couch => exports.CouchDbsInfoService.of({
-    get: () => DBS_INFO_REQUEST.pipe(Effect.flatMap(request => couch.request(request)), CouchDbInfo.decodeResponse, Effect.mapError(x => x))
-})));
-exports.CouchDbsInfoServiceLive = Layer
-    .effect(exports.CouchDbsInfoService, createDbsInfoService);
+exports.CouchDbsInfoServiceLive = Layer.succeed(exports.CouchDbsInfoService, exports.CouchDbsInfoService.of({
+    get: () => Effect
+        .all([couch_1.CouchService, DBS_INFO_REQUEST])
+        .pipe(Effect.flatMap(([couch, request]) => couch.request(request)), CouchDbInfo.decodeResponse, Effect.mapError(x => x))
+}));
 //# sourceMappingURL=dbs-info.js.map

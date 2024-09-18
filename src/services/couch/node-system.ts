@@ -3,7 +3,7 @@ import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import * as Layer from 'effect/Layer';
-import { CouchService } from './couch';
+import { CouchResponseEffect, CouchService } from './couch';
 
 const NODE_SYSTEM_REQUEST = HttpClientRequest.get('/_node/_local/_system');
 
@@ -23,18 +23,14 @@ export class CouchNodeSystem extends Schema.Class<CouchNodeSystem>('CouchNodeSys
 }
 
 export interface CouchNodeSystemService {
-  readonly get: () => Effect.Effect<CouchNodeSystem, Error>
+  readonly get: () => CouchResponseEffect<CouchNodeSystem>
 }
 
 export const CouchNodeSystemService = Context.GenericTag<CouchNodeSystemService>('chtoolbox/CouchNodeSystemService');
 
-const createCouchNodeSystemService = CouchService.pipe(
-  Effect.map(couch => CouchNodeSystemService.of({
-    get: () => couch
-      .request(NODE_SYSTEM_REQUEST)
-      .pipe(CouchNodeSystem.decodeResponse)
-  })),
-);
-
-export const CouchNodeSystemServiceLive = Layer
-  .effect(CouchNodeSystemService, createCouchNodeSystemService);
+export const CouchNodeSystemServiceLive = Layer.succeed(CouchNodeSystemService, CouchNodeSystemService.of({
+  get: () => CouchService.pipe(
+    Effect.flatMap(couch => couch.request(NODE_SYSTEM_REQUEST)),
+    CouchNodeSystem.decodeResponse,
+  )
+}));
