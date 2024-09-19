@@ -37,6 +37,7 @@ export declare class CouchDbInfo extends CouchDbInfo_base {
 }
 export interface CouchDbsInfoService {
     readonly post: () => CouchResponseEffect<readonly CouchDbInfo[]>;
+    readonly get: () => CouchResponseEffect<readonly CouchDbInfo[]>;
     readonly getDbNames: () => CouchResponseEffect<readonly string[]>;
 }
 export declare const CouchDbsInfoService: Context.Tag<CouchDbsInfoService, CouchDbsInfoService>;

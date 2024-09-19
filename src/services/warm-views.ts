@@ -28,7 +28,7 @@ const dbNames = CouchDbsInfoService.pipe(
   Effect.flatMap(infoService => infoService.getDbNames()),
 );
 
-const getDesignDocIds = (dbName: string) => CouchDesignDocsService.pipe(
+const getDesignDocNames = (dbName: string) => CouchDesignDocsService.pipe(
   Effect.flatMap(designDocsService => designDocsService.getNames(dbName)),
 );
 
@@ -45,11 +45,11 @@ const getDesignInfo = (dbName: string, designId: string) => CouchDesignInfoServi
 );
 
 const warmAll = dbNames.pipe(
-  Effect.map(Array.map(dbName => getDesignDocIds(dbName)
+  Effect.map(Array.map(dbName => getDesignDocNames(dbName)
     .pipe(
-      Effect.map(Array.map(designId => getViewNames(dbName, designId)
+      Effect.map(Array.map(designName => getViewNames(dbName, designName)
         .pipe(
-          Effect.map(Array.map(warmView(dbName, designId))),
+          Effect.map(Array.map(warmView(dbName, designName))),
           Effect.flatMap(Effect.all),
         ))),
       Effect.flatMap(Effect.all),
@@ -60,7 +60,7 @@ const warmAll = dbNames.pipe(
 );
 
 const designsCurrentlyUpdating = dbNames.pipe(
-  Effect.map(Array.map(dbName => getDesignDocIds(dbName)
+  Effect.map(Array.map(dbName => getDesignDocNames(dbName)
     .pipe(
       Effect.map(Array.map(designId => getDesignInfo(dbName, designId))),
       Effect.flatMap(Effect.all),
@@ -75,38 +75,3 @@ export const WarmViewsServiceLive = Layer.succeed(WarmViewsService, WarmViewsSer
   warmAll,
   designsCurrentlyUpdating,
 }));
-
-// (async () => {
-//   await Effect.runPromise(WarmViewsService.pipe(
-//     Effect.flatMap(s => s.warmAll),
-//     Effect.provide(NodeContext.layer),
-//     Effect.provide(NodeHttpClient.layer),
-//     Effect.provide(EnvironmentServiceLive),
-//     Effect.provide(CouchServiceLive),
-//     Effect.provide(CouchNodeSystemServiceLive),
-//     Effect.provide(CouchDbsInfoServiceLive),
-//     Effect.provide(CouchDesignDocsServiceLive),
-//     Effect.provide(CouchDesignInfoServiceLive),
-//     Effect.provide(CouchDesignServiceLive),
-//     Effect.provide(CouchViewServiceLive),
-//     Effect.provide(LocalDiskUsageServiceLive),
-//     Effect.provide(MonitorServiceLive),
-//     Effect.provide(WarmViewsServiceLive),
-//   ));
-//
-//   await Effect.runPromise(anyDesignUpdating.pipe(
-//     Effect.provide(NodeContext.layer),
-//     Effect.provide(NodeHttpClient.layer),
-//     Effect.provide(EnvironmentServiceLive),
-//     Effect.provide(CouchServiceLive),
-//     Effect.provide(CouchNodeSystemServiceLive),
-//     Effect.provide(CouchDbsInfoServiceLive),
-//     Effect.provide(CouchDesignDocsServiceLive),
-//     Effect.provide(CouchDesignInfoServiceLive),
-//     Effect.provide(CouchDesignServiceLive),
-//     Effect.provide(CouchViewServiceLive),
-//     Effect.provide(LocalDiskUsageServiceLive),
-//     Effect.provide(MonitorServiceLive),
-//     Effect.provide(WarmViewsServiceLive),
-//   ));
-// })();

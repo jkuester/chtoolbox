@@ -43,6 +43,4 @@ export const monitor = Command
       Effect.andThen(Effect.repeat(monitorData(monitor, interval, trackDirSize), { until: () => false }))
     )),
   ))
-  .pipe(
-    Command.withDescription(`Poll CHT metrics.`),
-  );
+  .pipe(Command.withDescription(`Poll CHT metrics.`));

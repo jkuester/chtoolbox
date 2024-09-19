@@ -14,7 +14,7 @@ const DBS_INFO_REQUEST = DbsInfoBody.pipe(
   build => build(
     HttpClientRequest.post(ENDPOINT),
     { keys: ['medic', 'medic-sentinel', 'medic-users-meta', '_users'] }
-  )
+  ),
 );
 
 export class CouchDbInfo extends Schema.Class<CouchDbInfo>('CouchDbInfo')({
@@ -32,10 +32,16 @@ export class CouchDbInfo extends Schema.Class<CouchDbInfo>('CouchDbInfo')({
 
 export interface CouchDbsInfoService {
   readonly post: () => CouchResponseEffect<readonly CouchDbInfo[]>
+  readonly get: () => CouchResponseEffect<readonly CouchDbInfo[]>
   readonly getDbNames: () => CouchResponseEffect<readonly string[]>
 }
 
 export const CouchDbsInfoService = Context.GenericTag<CouchDbsInfoService>('chtoolbox/CouchDbsInfoService');
+
+const dbsInfo = CouchService.pipe(
+  Effect.flatMap(couch => couch.request(HttpClientRequest.get(ENDPOINT))),
+  CouchDbInfo.decodeResponse,
+);
 
 export const CouchDbsInfoServiceLive = Layer.succeed(CouchDbsInfoService, CouchDbsInfoService.of({
   post: () => Effect
@@ -45,9 +51,6 @@ export const CouchDbsInfoServiceLive = Layer.succeed(CouchDbsInfoService, CouchD
       CouchDbInfo.decodeResponse,
       Effect.mapError(x => x as Error),
     ),
-  getDbNames: () => CouchService.pipe(
-    Effect.flatMap(couch => couch.request(HttpClientRequest.get(ENDPOINT))),
-    CouchDbInfo.decodeResponse,
-    Effect.map(Array.map(x => x.key)),
-  )
+  get: () => dbsInfo,
+  getDbNames: () => dbsInfo.pipe(Effect.map(Array.map(x => x.key)))
 }));

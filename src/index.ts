@@ -17,6 +17,9 @@ import { CouchViewServiceLive } from './services/couch/view';
 import { CouchDesignDocsServiceLive } from './services/couch/design-docs';
 import { WarmViewsServiceLive } from './services/warm-views';
 import { warmViews } from './commands/warm-views';
+import { CouchCompactServiceLive } from './services/couch/compact';
+import { CompactServiceLive } from './services/compact';
+import { compact } from './commands/compact';
 
 const url = Options
   .text('url')
@@ -39,7 +42,7 @@ export const initializeUrl = chtx.pipe(
   )),
 );
 
-const command = chtx.pipe(Command.withSubcommands([monitor, warmViews]));
+const command = chtx.pipe(Command.withSubcommands([compact, monitor, warmViews]));
 
 const cli = Command.run(command, {
   name: 'CHT Toolbox',
@@ -53,12 +56,14 @@ cli(process.argv)
     Effect.provide(NodeHttpClient.layer),
     Effect.provide(EnvironmentServiceLive),
     Effect.provide(CouchServiceLive),
+    Effect.provide(CouchCompactServiceLive),
     Effect.provide(CouchNodeSystemServiceLive),
     Effect.provide(CouchDbsInfoServiceLive),
     Effect.provide(CouchDesignDocsServiceLive),
     Effect.provide(CouchDesignInfoServiceLive),
     Effect.provide(CouchDesignServiceLive),
     Effect.provide(CouchViewServiceLive),
+    Effect.provide(CompactServiceLive),
     Effect.provide(LocalDiskUsageServiceLive),
     Effect.provide(MonitorServiceLive),
     Effect.provide(WarmViewsServiceLive),
