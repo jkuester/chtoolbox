@@ -36,7 +36,8 @@ export declare class CouchDbInfo extends CouchDbInfo_base {
     static readonly decodeResponse: <E, E2, R2>(effect: Effect.Effect<import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>, E2, R2>) => Effect.Effect<readonly CouchDbInfo[], import("@effect/schema/ParseResult").ParseError | E | E2, Exclude<R2, import("effect/Scope").Scope>>;
 }
 export interface CouchDbsInfoService {
-    readonly get: () => CouchResponseEffect<readonly CouchDbInfo[]>;
+    readonly post: () => CouchResponseEffect<readonly CouchDbInfo[]>;
+    readonly getDbNames: () => CouchResponseEffect<readonly string[]>;
 }
 export declare const CouchDbsInfoService: Context.Tag<CouchDbsInfoService, CouchDbsInfoService>;
 export declare const CouchDbsInfoServiceLive: Layer.Layer<CouchDbsInfoService, never, never>;

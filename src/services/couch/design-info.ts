@@ -5,7 +5,7 @@ import * as Context from 'effect/Context';
 import * as Layer from 'effect/Layer';
 import { CouchResponseEffect, CouchService } from './couch';
 
-export class CouchDesignInfo extends Schema.Class<CouchDesignInfo>('DesignInfo')({
+export class CouchDesignInfo extends Schema.Class<CouchDesignInfo>('CouchDesignInfo')({
   name: Schema.String,
   view_index: Schema.Struct({
     compact_running: Schema.Boolean,

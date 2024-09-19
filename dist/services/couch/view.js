@@ -23,29 +23,24 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CouchDesignInfoServiceLive = exports.CouchDesignInfoService = exports.CouchDesignInfo = void 0;
+exports.CouchViewServiceLive = exports.CouchViewService = exports.CouchView = void 0;
 const Schema = __importStar(require("@effect/schema/Schema"));
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
 const Layer = __importStar(require("effect/Layer"));
 const couch_1 = require("./couch");
-class CouchDesignInfo extends Schema.Class('CouchDesignInfo')({
-    name: Schema.String,
-    view_index: Schema.Struct({
-        compact_running: Schema.Boolean,
-        updater_running: Schema.Boolean,
-        sizes: Schema.Struct({
-            file: Schema.Number,
-            active: Schema.Number,
-        }),
-    }),
+class CouchView extends Schema.Class('CouchView')({
+    total_rows: Schema.UndefinedOr(Schema.Number),
 }) {
-    static decodeResponse = platform_1.HttpClientResponse.schemaBodyJsonScoped(CouchDesignInfo);
+    static decodeResponse = platform_1.HttpClientResponse.schemaBodyJsonScoped(CouchView);
 }
-exports.CouchDesignInfo = CouchDesignInfo;
-exports.CouchDesignInfoService = Context.GenericTag('chtoolbox/CouchDesignInfoService');
-exports.CouchDesignInfoServiceLive = Layer.succeed(exports.CouchDesignInfoService, exports.CouchDesignInfoService.of({
-    get: (dbName, designName) => couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(`/${dbName}/_design/${designName}/_info`))), CouchDesignInfo.decodeResponse)
+exports.CouchView = CouchView;
+exports.CouchViewService = Context.GenericTag('chtoolbox/CouchViewService');
+const getWarmRequest = (dbName, designName, viewName) => platform_1.HttpClientRequest
+    .get(`/${dbName}/_design/${designName}/_view/${viewName}`)
+    .pipe(platform_1.HttpClientRequest.setUrlParam('limit', '0'));
+exports.CouchViewServiceLive = Layer.succeed(exports.CouchViewService, exports.CouchViewService.of({
+    warm: (dbName, designName, viewName) => couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(getWarmRequest(dbName, designName, viewName))), CouchView.decodeResponse)
 }));
-//# sourceMappingURL=design-info.js.map
+//# sourceMappingURL=view.js.map

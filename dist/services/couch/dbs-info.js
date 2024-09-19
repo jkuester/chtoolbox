@@ -29,9 +29,11 @@ const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
 const Layer = __importStar(require("effect/Layer"));
+const effect_1 = require("effect");
 const couch_1 = require("./couch");
+const ENDPOINT = '/_dbs_info';
 const DbsInfoBody = Schema.Struct({ keys: Schema.Array(Schema.String) });
-const DBS_INFO_REQUEST = DbsInfoBody.pipe(platform_1.HttpClientRequest.schemaBody, build => build(platform_1.HttpClientRequest.post('/_dbs_info'), { keys: ['medic', 'medic-sentinel', 'medic-users-meta', '_users'] }));
+const DBS_INFO_REQUEST = DbsInfoBody.pipe(platform_1.HttpClientRequest.schemaBody, build => build(platform_1.HttpClientRequest.post(ENDPOINT), { keys: ['medic', 'medic-sentinel', 'medic-users-meta', '_users'] }));
 class CouchDbInfo extends Schema.Class('CouchDbInfo')({
     key: Schema.String,
     info: Schema.Struct({
@@ -47,8 +49,9 @@ class CouchDbInfo extends Schema.Class('CouchDbInfo')({
 exports.CouchDbInfo = CouchDbInfo;
 exports.CouchDbsInfoService = Context.GenericTag('chtoolbox/CouchDbsInfoService');
 exports.CouchDbsInfoServiceLive = Layer.succeed(exports.CouchDbsInfoService, exports.CouchDbsInfoService.of({
-    get: () => Effect
+    post: () => Effect
         .all([couch_1.CouchService, DBS_INFO_REQUEST])
-        .pipe(Effect.flatMap(([couch, request]) => couch.request(request)), CouchDbInfo.decodeResponse, Effect.mapError(x => x))
+        .pipe(Effect.flatMap(([couch, request]) => couch.request(request)), CouchDbInfo.decodeResponse, Effect.mapError(x => x)),
+    getDbNames: () => couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(ENDPOINT))), CouchDbInfo.decodeResponse, Effect.map(effect_1.Array.map(x => x.key)))
 }));
 //# sourceMappingURL=dbs-info.js.map

@@ -56,7 +56,7 @@ const VIEW_INDEXES_BY_DB: Record<typeof DB_NAMES[number], string[]> = {
 };
 
 const getCouchNodeSystem = Effect.flatMap(CouchNodeSystemService, (couchSystem) => couchSystem.get());
-const getCouchDbsInfo = Effect.flatMap(CouchDbsInfoService, (couchSystem) => couchSystem.get());
+const getCouchDbsInfo = Effect.flatMap(CouchDbsInfoService, (couchSystem) => couchSystem.post());
 const getCouchDesignInfosForDb = (dbName: string) => CouchDesignInfoService.pipe(
   Effect.flatMap(service => Effect.all(pipe(
     VIEW_INDEXES_BY_DB[dbName],
