@@ -27,12 +27,14 @@ exports.LocalDiskUsageServiceLive = exports.LocalDiskUsageService = void 0;
 const platform_1 = require("@effect/platform");
 const effect_1 = require("effect");
 const Context = __importStar(require("effect/Context"));
+const CommandExecutor_1 = require("@effect/platform/CommandExecutor");
 exports.LocalDiskUsageService = Context.GenericTag('chtoolbox/LocalDiskUsageService');
 const parseSize = (output) => (0, effect_1.pipe)(output.split(/\s/)[0], parseInt);
 const duCommand = (path) => platform_1.Command
     .make('du', '-s', path)
     .pipe(platform_1.Command.string, effect_1.Effect.map(parseSize));
-exports.LocalDiskUsageServiceLive = effect_1.Layer.succeed(exports.LocalDiskUsageService, exports.LocalDiskUsageService.of({
-    getSize: path => (0, effect_1.pipe)(path, duCommand)
-}));
+const ServiceContext = CommandExecutor_1.CommandExecutor.pipe(effect_1.Effect.map(executor => Context.make(CommandExecutor_1.CommandExecutor, executor)));
+exports.LocalDiskUsageServiceLive = effect_1.Layer.effect(exports.LocalDiskUsageService, ServiceContext.pipe(effect_1.Effect.map(context => exports.LocalDiskUsageService.of({
+    getSize: path => duCommand(path).pipe(effect_1.Effect.provide(context)),
+}))));
 //# sourceMappingURL=local-disk-usage.js.map

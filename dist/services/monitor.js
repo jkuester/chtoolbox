@@ -114,9 +114,21 @@ const getAsCsv = (directory) => (0, effect_1.pipe)(getMonitoringData(directory),
     data.memory.ets.toString(),
     ...(data.directory_size.pipe(effect_1.Option.map(value => value.toString()), effect_1.Option.map(effect_1.Array.of), effect_1.Option.getOrElse(() => []))),
 ]));
-exports.MonitorServiceLive = Layer.succeed(exports.MonitorService, exports.MonitorService.of({
-    get: getMonitoringData,
+const ServiceContext = Effect
+    .all([
+    node_system_1.CouchNodeSystemService,
+    dbs_info_1.CouchDbsInfoService,
+    design_info_1.CouchDesignInfoService,
+    local_disk_usage_1.LocalDiskUsageService,
+])
+    .pipe(Effect.map(([couchNodeSystem, couchDbsInfo, couchDesignInfo, localDiskUsage,]) => Context
+    .make(node_system_1.CouchNodeSystemService, couchNodeSystem)
+    .pipe(Context.add(dbs_info_1.CouchDbsInfoService, couchDbsInfo), Context.add(design_info_1.CouchDesignInfoService, couchDesignInfo), Context.add(local_disk_usage_1.LocalDiskUsageService, localDiskUsage))));
+exports.MonitorServiceLive = Layer.effect(exports.MonitorService, ServiceContext.pipe(Effect.map(context => exports.MonitorService.of({
+    get: (directory) => getMonitoringData(directory)
+        .pipe(Effect.provide(context)),
     getCsvHeader,
-    getAsCsv,
-}));
+    getAsCsv: (directory) => getAsCsv(directory)
+        .pipe(Effect.provide(context)),
+}))));
 //# sourceMappingURL=monitor.js.map

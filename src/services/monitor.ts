@@ -7,8 +7,6 @@ import { CouchNodeSystem, CouchNodeSystemService } from './couch/node-system';
 import { Array, Clock, Number, Option, pipe } from 'effect';
 import { LocalDiskUsageService } from './local-disk-usage';
 import { PlatformError } from '@effect/platform/Error';
-import { CommandExecutor } from '@effect/platform/CommandExecutor';
-import { CouchResponseEffect } from './couch/couch';
 
 interface DatabaseInfo extends CouchDbInfo {
   designs: CouchDesignInfo[]
@@ -20,17 +18,10 @@ export interface MonitoringData extends CouchNodeSystem {
   directory_size: Option.Option<number>
 }
 
-interface MonitoringDataEffect<A extends MonitoringData | string[]> extends CouchResponseEffect<
-  A,
-  PlatformError,
-  CouchNodeSystemService | CouchDbsInfoService | CouchDesignInfoService | LocalDiskUsageService | CommandExecutor
-> {
-}
-
 export interface MonitorService {
-  readonly get: (directory: Option.Option<string>) => MonitoringDataEffect<MonitoringData>,
+  readonly get: (directory: Option.Option<string>) => Effect.Effect<MonitoringData, Error | PlatformError>,
   readonly getCsvHeader: (directory: Option.Option<string>) => string[],
-  readonly getAsCsv: (directory: Option.Option<string>) => MonitoringDataEffect<string[]>,
+  readonly getAsCsv: (directory: Option.Option<string>) => Effect.Effect<string[], Error | PlatformError>,
 }
 
 export const MonitorService = Context.GenericTag<MonitorService>('chtoolbox/MonitorService');
@@ -77,7 +68,7 @@ const getDirectorySize = (directory: Option.Option<string>) => LocalDiskUsageSer
   Effect.map(Option.fromNullable),
 );
 
-const getMonitoringData = (directory: Option.Option<string>): MonitoringDataEffect<MonitoringData> => pipe(
+const getMonitoringData = (directory: Option.Option<string>) => pipe(
   Effect.all([
     currentTimeSec,
     getCouchNodeSystem,
@@ -161,8 +152,32 @@ const getAsCsv = (directory: Option.Option<string>) => pipe(
   ]),
 );
 
-export const MonitorServiceLive = Layer.succeed(MonitorService, MonitorService.of({
-  get: getMonitoringData,
-  getCsvHeader,
-  getAsCsv,
-}));
+const ServiceContext = Effect
+  .all([
+    CouchNodeSystemService,
+    CouchDbsInfoService,
+    CouchDesignInfoService,
+    LocalDiskUsageService,
+  ])
+  .pipe(Effect.map(([
+    couchNodeSystem,
+    couchDbsInfo,
+    couchDesignInfo,
+    localDiskUsage,
+  ]) => Context
+    .make(CouchNodeSystemService, couchNodeSystem)
+    .pipe(
+      Context.add(CouchDbsInfoService, couchDbsInfo),
+      Context.add(CouchDesignInfoService, couchDesignInfo),
+      Context.add(LocalDiskUsageService, localDiskUsage),
+    )));
+
+export const MonitorServiceLive = Layer.effect(MonitorService, ServiceContext.pipe(Effect.map(
+  context => MonitorService.of({
+    get: (directory: Option.Option<string>) => getMonitoringData(directory)
+      .pipe(Effect.provide(context)),
+    getCsvHeader,
+    getAsCsv: (directory: Option.Option<string>) => getAsCsv(directory)
+      .pipe(Effect.provide(context)),
+  })
+)));

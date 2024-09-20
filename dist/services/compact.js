@@ -48,8 +48,18 @@ const currentlyCompacting = dbsInfo.pipe(Effect.map(effect_1.Array.map(dbInfo =>
     ...viewNames,
     ...(dbInfo.info.compact_running ? [dbInfo.key] : []),
 ])))), Effect.flatMap(Effect.all), Effect.map(effect_1.Array.flatten));
-exports.CompactServiceLive = Layer.succeed(exports.CompactService, exports.CompactService.of({
-    compactAll,
-    currentlyCompacting,
-}));
+const ServiceContext = Effect
+    .all([
+    dbs_info_1.CouchDbsInfoService,
+    design_docs_1.CouchDesignDocsService,
+    compact_1.CouchCompactService,
+    design_info_1.CouchDesignInfoService,
+])
+    .pipe(Effect.map(([dbsInfo, designDocs, compact, designInfo]) => Context
+    .make(dbs_info_1.CouchDbsInfoService, dbsInfo)
+    .pipe(Context.add(design_docs_1.CouchDesignDocsService, designDocs), Context.add(compact_1.CouchCompactService, compact), Context.add(design_info_1.CouchDesignInfoService, designInfo))));
+exports.CompactServiceLive = Layer.effect(exports.CompactService, ServiceContext.pipe(Effect.map(context => exports.CompactService.of({
+    compactAll: compactAll.pipe(Effect.provide(context)),
+    currentlyCompacting: currentlyCompacting.pipe(Effect.provide(context)),
+}))));
 //# sourceMappingURL=compact.js.map

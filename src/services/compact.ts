@@ -1,32 +1,15 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import * as Layer from 'effect/Layer';
-import { Array, Console, pipe } from 'effect';
-import { CouchDbsInfoService, CouchDbsInfoServiceLive } from './couch/dbs-info';
-import { CouchDesignDocsService, CouchDesignDocsServiceLive } from './couch/design-docs';
-import { CouchCompactService, CouchCompactServiceLive } from './couch/compact';
-import { CouchResponseEffect, CouchServiceLive } from './couch/couch';
-import { CouchDesignInfoService, CouchDesignInfoServiceLive } from './couch/design-info';
-import { NodeContext, NodeHttpClient } from '@effect/platform-node';
-import { EnvironmentServiceLive } from './environment';
-import { CouchNodeSystemServiceLive } from './couch/node-system';
-import { CouchDesignServiceLive } from './couch/design';
-import { CouchViewServiceLive } from './couch/view';
-import { LocalDiskUsageServiceLive } from './local-disk-usage';
-import { MonitorServiceLive } from './monitor';
-import { WarmViewsServiceLive } from './warm-views';
+import { Array, pipe } from 'effect';
+import { CouchDbsInfoService } from './couch/dbs-info';
+import { CouchDesignDocsService } from './couch/design-docs';
+import { CouchCompactService } from './couch/compact';
+import { CouchDesignInfoService } from './couch/design-info';
 
 export interface CompactService {
-  readonly compactAll: CouchResponseEffect<
-    void,
-    never,
-    CouchDbsInfoService | CouchDesignDocsService | CouchCompactService
-  >
-  readonly currentlyCompacting: CouchResponseEffect<
-    string[],
-    never,
-    CouchDbsInfoService | CouchDesignInfoService | CouchDesignDocsService
-  >
+  readonly compactAll: Effect.Effect<void, Error>
+  readonly currentlyCompacting: Effect.Effect<string[], Error>
 }
 
 export const CompactService = Context.GenericTag<CompactService>('chtoolbox/CompactService');
@@ -90,7 +73,29 @@ const currentlyCompacting = dbsInfo.pipe(
   Effect.map(Array.flatten),
 );
 
-export const CompactServiceLive = Layer.succeed(CompactService, CompactService.of({
-  compactAll,
-  currentlyCompacting,
-}));
+const ServiceContext = Effect
+  .all([
+    CouchDbsInfoService,
+    CouchDesignDocsService,
+    CouchCompactService,
+    CouchDesignInfoService,
+  ])
+  .pipe(Effect.map(([
+    dbsInfo,
+    designDocs,
+    compact,
+    designInfo
+  ]) => Context
+    .make(CouchDbsInfoService, dbsInfo)
+    .pipe(
+      Context.add(CouchDesignDocsService, designDocs),
+      Context.add(CouchCompactService, compact),
+      Context.add(CouchDesignInfoService, designInfo),
+    )));
+
+export const CompactServiceLive = Layer.effect(CompactService, ServiceContext.pipe(Effect.map(
+  context => CompactService.of({
+    compactAll: compactAll.pipe(Effect.provide(context)),
+    currentlyCompacting: currentlyCompacting.pipe(Effect.provide(context)),
+  })
+)));

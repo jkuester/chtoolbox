@@ -5,7 +5,7 @@ import { PlatformError } from '@effect/platform/Error';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
 
 export interface LocalDiskUsageService {
-  readonly getSize: (path: string) => Effect.Effect<number, PlatformError, CommandExecutor>
+  readonly getSize: (path: string) => Effect.Effect<number, PlatformError>
 }
 
 export const LocalDiskUsageService = Context.GenericTag<LocalDiskUsageService>('chtoolbox/LocalDiskUsageService');
@@ -22,6 +22,12 @@ const duCommand = (path: string) => Command
     Effect.map(parseSize),
   );
 
-export const LocalDiskUsageServiceLive = Layer.succeed(LocalDiskUsageService, LocalDiskUsageService.of({
-  getSize: path => pipe(path, duCommand)
-}));
+const ServiceContext = CommandExecutor.pipe(Effect.map(executor => Context.make(CommandExecutor, executor)));
+
+export const LocalDiskUsageServiceLive = Layer.effect(LocalDiskUsageService, ServiceContext.pipe(Effect.map(
+  context => LocalDiskUsageService.of({
+    getSize: path => duCommand(path).pipe(
+      Effect.provide(context)
+    ),
+  })
+)));

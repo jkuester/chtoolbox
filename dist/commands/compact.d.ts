@@ -1,4 +1,4 @@
 import { Command } from '@effect/cli';
 import { CompactService } from '../services/compact';
-export declare const compact: Command.Command<"compact", import("../services/environment").EnvironmentService | import("@effect/platform/HttpClient").HttpClient.Default | import("../services/couch/couch").CouchService | import("../services/couch/dbs-info").CouchDbsInfoService | import("../services/couch/design-info").CouchDesignInfoService | Command.Command.Context<"chtx"> | import("../services/couch/design-docs").CouchDesignDocsService | import("../services/couch/compact").CouchCompactService | CompactService, Error, {}>;
+export declare const compact: Command.Command<"compact", import("../services/environment").EnvironmentService | Command.Command.Context<"chtx"> | CompactService, Error, {}>;
 //# sourceMappingURL=compact.d.ts.map

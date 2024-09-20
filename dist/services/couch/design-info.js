@@ -45,7 +45,8 @@ class CouchDesignInfo extends Schema.Class('CouchDesignInfo')({
 }
 exports.CouchDesignInfo = CouchDesignInfo;
 exports.CouchDesignInfoService = Context.GenericTag('chtoolbox/CouchDesignInfoService');
-exports.CouchDesignInfoServiceLive = Layer.succeed(exports.CouchDesignInfoService, exports.CouchDesignInfoService.of({
-    get: (dbName, designName) => couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(`/${dbName}/_design/${designName}/_info`))), CouchDesignInfo.decodeResponse)
-}));
+const ServiceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
+exports.CouchDesignInfoServiceLive = Layer.effect(exports.CouchDesignInfoService, ServiceContext.pipe(Effect.map(context => exports.CouchDesignInfoService.of({
+    get: (dbName, designName) => couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(`/${dbName}/_design/${designName}/_info`))), CouchDesignInfo.decodeResponse, Effect.provide(context))
+}))));
 //# sourceMappingURL=design-info.js.map

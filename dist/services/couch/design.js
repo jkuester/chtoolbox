@@ -38,7 +38,8 @@ class CouchDesign extends Schema.Class('CouchDesign')({
     static decodeResponse = platform_1.HttpClientResponse.schemaBodyJsonScoped(CouchDesign);
 }
 exports.CouchDesignService = Context.GenericTag('chtoolbox/CouchDesignService');
-exports.CouchDesignServiceLive = Layer.succeed(exports.CouchDesignService, exports.CouchDesignService.of({
-    getViewNames: (dbName, designName) => couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(`/${dbName}/_design/${designName}`))), CouchDesign.decodeResponse, Effect.map(design => design.views), Effect.map(effect_1.Option.fromNullable), Effect.map(effect_1.Option.map(Object.keys)), Effect.map(effect_1.Option.getOrElse(() => []))),
-}));
+const ServiceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
+exports.CouchDesignServiceLive = Layer.effect(exports.CouchDesignService, ServiceContext.pipe(Effect.map(context => exports.CouchDesignService.of({
+    getViewNames: (dbName, designName) => couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(`/${dbName}/_design/${designName}`))), CouchDesign.decodeResponse, Effect.map(design => design.views), Effect.map(effect_1.Option.fromNullable), Effect.map(effect_1.Option.map(Object.keys)), Effect.map(effect_1.Option.getOrElse(() => [])), Effect.provide(context)),
+}))));
 //# sourceMappingURL=design.js.map

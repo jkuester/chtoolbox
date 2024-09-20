@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Command, Options } from '@effect/cli';
 import { NodeContext, NodeHttpClient, NodeRuntime } from '@effect/platform-node';
-import { Config, Console, Effect, Option, pipe, Redacted } from 'effect';
+import { Config, Console, Effect, Layer, Option, pipe, Redacted } from 'effect';
 import { CouchNodeSystemServiceLive } from './services/couch/node-system';
 import { CouchServiceLive } from './services/couch/couch';
 import { CouchDbsInfoServiceLive } from './services/couch/dbs-info';
@@ -50,22 +50,28 @@ const cli = Command.run(command, {
   version: packageJson.version
 });
 
+const CouchServicesLayer = CouchCompactServiceLive.pipe(
+  Layer.merge(CouchNodeSystemServiceLive),
+  Layer.merge(CouchDbsInfoServiceLive),
+  Layer.merge(CouchDesignDocsServiceLive),
+  Layer.merge(CouchDesignInfoServiceLive),
+  Layer.merge(CouchDesignServiceLive),
+  Layer.merge(CouchViewServiceLive),
+  Layer.provide(CouchServiceLive.pipe(
+    Layer.provide(NodeHttpClient.layer),
+    Layer.provide(EnvironmentServiceLive),
+  )),
+);
+
 cli(process.argv)
   .pipe(
     Effect.provide(NodeContext.layer),
-    Effect.provide(NodeHttpClient.layer),
     Effect.provide(EnvironmentServiceLive),
-    Effect.provide(CouchServiceLive),
-    Effect.provide(CouchCompactServiceLive),
-    Effect.provide(CouchNodeSystemServiceLive),
-    Effect.provide(CouchDbsInfoServiceLive),
-    Effect.provide(CouchDesignDocsServiceLive),
-    Effect.provide(CouchDesignInfoServiceLive),
-    Effect.provide(CouchDesignServiceLive),
-    Effect.provide(CouchViewServiceLive),
-    Effect.provide(CompactServiceLive),
-    Effect.provide(LocalDiskUsageServiceLive),
-    Effect.provide(MonitorServiceLive),
-    Effect.provide(WarmViewsServiceLive),
+    Effect.provide(CompactServiceLive.pipe(Layer.provide(CouchServicesLayer))),
+    Effect.provide(MonitorServiceLive.pipe(
+      Layer.provide(CouchServicesLayer),
+      Layer.provide(LocalDiskUsageServiceLive.pipe(Layer.provide(NodeContext.layer))),
+    )),
+    Effect.provide(WarmViewsServiceLive.pipe(Layer.provide(CouchServicesLayer))),
     NodeRuntime.runMain
   );

@@ -49,11 +49,12 @@ class CouchDbInfo extends Schema.Class('CouchDbInfo')({
 exports.CouchDbInfo = CouchDbInfo;
 exports.CouchDbsInfoService = Context.GenericTag('chtoolbox/CouchDbsInfoService');
 const dbsInfo = couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(ENDPOINT))), CouchDbInfo.decodeResponse);
-exports.CouchDbsInfoServiceLive = Layer.succeed(exports.CouchDbsInfoService, exports.CouchDbsInfoService.of({
+const ServiceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
+exports.CouchDbsInfoServiceLive = Layer.effect(exports.CouchDbsInfoService, ServiceContext.pipe(Effect.map(context => exports.CouchDbsInfoService.of({
     post: () => Effect
         .all([couch_1.CouchService, DBS_INFO_REQUEST])
-        .pipe(Effect.flatMap(([couch, request]) => couch.request(request)), CouchDbInfo.decodeResponse, Effect.mapError(x => x)),
-    get: () => dbsInfo,
-    getDbNames: () => dbsInfo.pipe(Effect.map(effect_1.Array.map(x => x.key)))
-}));
+        .pipe(Effect.flatMap(([couch, request]) => couch.request(request)), CouchDbInfo.decodeResponse, Effect.mapError(x => x), Effect.provide(context)),
+    get: () => dbsInfo.pipe(Effect.provide(context)),
+    getDbNames: () => dbsInfo.pipe(Effect.map(effect_1.Array.map(x => x.key)), Effect.provide(context))
+}))));
 //# sourceMappingURL=dbs-info.js.map

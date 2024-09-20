@@ -35,11 +35,12 @@ const getDesignPath = (designName) => designName ? `/${designName}` : '';
 const getCompactRequest = (dbName, designName) => Schema
     .Struct({})
     .pipe(platform_1.HttpClientRequest.schemaBody, build => build(platform_1.HttpClientRequest.post(`/${dbName}/_compact${getDesignPath(designName)}`), {}));
-const compact = (dbName, designName) => Effect
+const compact = (context) => (dbName, designName) => Effect
     .all([couch_1.CouchService, getCompactRequest(dbName, designName)])
-    .pipe(Effect.flatMap(([couch, request]) => couch.request(request)), Effect.andThen(Effect.void), Effect.mapError(x => x), Effect.scoped);
-exports.CouchCompactServiceLive = Layer.succeed(exports.CouchCompactService, exports.CouchCompactService.of({
-    compactDb: compact,
-    compactDesign: compact,
-}));
+    .pipe(Effect.flatMap(([couch, request]) => couch.request(request)), Effect.andThen(Effect.void), Effect.mapError(x => x), Effect.scoped, Effect.provide(context));
+const ServiceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
+exports.CouchCompactServiceLive = Layer.effect(exports.CouchCompactService, ServiceContext.pipe(Effect.map(context => exports.CouchCompactService.of({
+    compactDb: compact(context),
+    compactDesign: compact(context),
+}))));
 //# sourceMappingURL=compact.js.map

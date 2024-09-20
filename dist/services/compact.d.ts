@@ -1,14 +1,14 @@
+import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import * as Layer from 'effect/Layer';
 import { CouchDbsInfoService } from './couch/dbs-info';
 import { CouchDesignDocsService } from './couch/design-docs';
 import { CouchCompactService } from './couch/compact';
-import { CouchResponseEffect } from './couch/couch';
 import { CouchDesignInfoService } from './couch/design-info';
 export interface CompactService {
-    readonly compactAll: CouchResponseEffect<void, never, CouchDbsInfoService | CouchDesignDocsService | CouchCompactService>;
-    readonly currentlyCompacting: CouchResponseEffect<string[], never, CouchDbsInfoService | CouchDesignInfoService | CouchDesignDocsService>;
+    readonly compactAll: Effect.Effect<void, Error>;
+    readonly currentlyCompacting: Effect.Effect<string[], Error>;
 }
 export declare const CompactService: Context.Tag<CompactService, CompactService>;
-export declare const CompactServiceLive: Layer.Layer<CompactService, never, never>;
+export declare const CompactServiceLive: Layer.Layer<CompactService, never, CouchDbsInfoService | CouchDesignInfoService | CouchDesignDocsService | CouchCompactService>;
 //# sourceMappingURL=compact.d.ts.map

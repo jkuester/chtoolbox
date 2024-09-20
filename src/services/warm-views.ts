@@ -6,20 +6,11 @@ import { CouchDbsInfoService } from './couch/dbs-info';
 import { CouchDesignDocsService } from './couch/design-docs';
 import { CouchDesignService } from './couch/design';
 import { CouchView, CouchViewService } from './couch/view';
-import { CouchResponseEffect } from './couch/couch';
 import { CouchDesignInfoService } from './couch/design-info';
 
 export interface WarmViewsService {
-  readonly warmAll: CouchResponseEffect<
-    readonly CouchView[],
-    never,
-    CouchDbsInfoService | CouchDesignDocsService | CouchDesignService | CouchViewService
-  >,
-  readonly designsCurrentlyUpdating: CouchResponseEffect<
-    { dbName: string, designId: string }[],
-    never,
-    CouchDbsInfoService | CouchDesignDocsService | CouchDesignInfoService
-  >
+  readonly warmAll: Effect.Effect<readonly CouchView[], Error>,
+  readonly designsCurrentlyUpdating: Effect.Effect<{ dbName: string, designId: string }[], Error>
 }
 
 export const WarmViewsService = Context.GenericTag<WarmViewsService>('chtoolbox/WarmViewsService');
@@ -71,7 +62,32 @@ const designsCurrentlyUpdating = dbNames.pipe(
   Effect.map(Array.flatten),
 );
 
-export const WarmViewsServiceLive = Layer.succeed(WarmViewsService, WarmViewsService.of({
-  warmAll,
-  designsCurrentlyUpdating,
-}));
+const ServiceContext = Effect
+  .all([
+    CouchDbsInfoService,
+    CouchDesignDocsService,
+    CouchDesignService,
+    CouchViewService,
+    CouchDesignInfoService,
+  ])
+  .pipe(Effect.map(([
+    couchDbsInfo,
+    couchDesignDocs,
+    couchDesign,
+    couchView,
+    couchDesignInfo
+  ]) => Context
+    .make(CouchDbsInfoService, couchDbsInfo)
+    .pipe(
+      Context.add(CouchDesignDocsService, couchDesignDocs),
+      Context.add(CouchDesignService, couchDesign),
+      Context.add(CouchViewService, couchView),
+      Context.add(CouchDesignInfoService, couchDesignInfo),
+    )));
+
+export const WarmViewsServiceLive = Layer.effect(WarmViewsService, ServiceContext.pipe(Effect.map(
+  contect => WarmViewsService.of({
+    warmAll: warmAll.pipe(Effect.provide(contect)),
+    designsCurrentlyUpdating: designsCurrentlyUpdating.pipe(Effect.provide(contect)),
+  })
+)));

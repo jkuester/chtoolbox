@@ -44,8 +44,19 @@ const warmAll = dbNames.pipe(Effect.map(effect_1.Array.map(dbName => getDesignDo
     .pipe(Effect.map(effect_1.Array.map(warmView(dbName, designName))), Effect.flatMap(Effect.all)))), Effect.flatMap(Effect.all), Effect.map(effect_1.Array.flatten)))), Effect.flatMap(Effect.all), Effect.map(effect_1.Array.flatten));
 const designsCurrentlyUpdating = dbNames.pipe(Effect.map(effect_1.Array.map(dbName => getDesignDocNames(dbName)
     .pipe(Effect.map(effect_1.Array.map(designId => getDesignInfo(dbName, designId))), Effect.flatMap(Effect.all), Effect.map(effect_1.Array.filter(designInfo => designInfo.view_index.updater_running)), Effect.map(effect_1.Array.map(designInfo => ({ dbName, designId: designInfo.name })))))), Effect.flatMap(Effect.all), Effect.map(effect_1.Array.flatten));
-exports.WarmViewsServiceLive = Layer.succeed(exports.WarmViewsService, exports.WarmViewsService.of({
-    warmAll,
-    designsCurrentlyUpdating,
-}));
+const ServiceContext = Effect
+    .all([
+    dbs_info_1.CouchDbsInfoService,
+    design_docs_1.CouchDesignDocsService,
+    design_1.CouchDesignService,
+    view_1.CouchViewService,
+    design_info_1.CouchDesignInfoService,
+])
+    .pipe(Effect.map(([couchDbsInfo, couchDesignDocs, couchDesign, couchView, couchDesignInfo]) => Context
+    .make(dbs_info_1.CouchDbsInfoService, couchDbsInfo)
+    .pipe(Context.add(design_docs_1.CouchDesignDocsService, couchDesignDocs), Context.add(design_1.CouchDesignService, couchDesign), Context.add(view_1.CouchViewService, couchView), Context.add(design_info_1.CouchDesignInfoService, couchDesignInfo))));
+exports.WarmViewsServiceLive = Layer.effect(exports.WarmViewsService, ServiceContext.pipe(Effect.map(contect => exports.WarmViewsService.of({
+    warmAll: warmAll.pipe(Effect.provide(contect)),
+    designsCurrentlyUpdating: designsCurrentlyUpdating.pipe(Effect.provide(contect)),
+}))));
 //# sourceMappingURL=warm-views.js.map
