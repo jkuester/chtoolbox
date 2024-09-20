@@ -24,7 +24,7 @@ describe('Environment service', () => {
   )(Effect.gen(function* () {
     const service = yield* EnvironmentService;
     const urlConfig = yield* Ref.get(service.url);
-    const urlValue = yield* urlConfig.pipe(Config.map(Redacted.value))
+    const urlValue = yield* urlConfig.pipe(Config.map(Redacted.value));
 
     expect(urlValue).to.equal(BASE_URL);
   })));
@@ -36,7 +36,7 @@ describe('Environment service', () => {
     yield* Ref.update(service.url, () => Config.succeed(Redacted.make(URL_WITH_MEDIC)));
 
     const urlConfig = yield* Ref.get(service.url);
-    const urlValue = yield* urlConfig.pipe(Config.map(Redacted.value))
+    const urlValue = yield* urlConfig.pipe(Config.map(Redacted.value));
     expect(urlValue).to.equal(URL_WITH_MEDIC);
   })));
 
@@ -45,7 +45,7 @@ describe('Environment service', () => {
   )(Effect.gen(function* () {
     const service = yield* EnvironmentService;
     const urlConfig = yield* Ref.get(service.url);
-    const urlValue = yield* urlConfig.pipe(Config.map(Redacted.value))
+    const urlValue = yield* urlConfig.pipe(Config.map(Redacted.value));
 
     expect(urlValue).to.equal(BASE_URL);
   })));
