@@ -11,6 +11,7 @@ module.exports = {
   },
   ignorePatterns: [
     '.eslintrc.js',
+    'nyc.config.js',
     'dist/',
     'node_modules'
   ],
@@ -56,5 +57,13 @@ module.exports = {
     'semi-spacing': ['error', { 'before': false, 'after': true }],
     'semi-style': ['error', 'last'],
     'template-curly-spacing': 'error',
-  }
+  },
+  overrides: [
+    {
+      files: ['**/test/**'],
+      rules: {
+        '@typescript-eslint/no-unused-expressions': ['off'],
+      }
+    }
+  ]
 };
