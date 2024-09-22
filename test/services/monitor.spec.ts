@@ -7,7 +7,6 @@ import sinon, { SinonStub } from 'sinon';
 import { CouchDbsInfoService } from '../../src/services/couch/dbs-info';
 import { CouchDesignInfoService } from '../../src/services/couch/design-info';
 import { LocalDiskUsageService } from '../../src/services/local-disk-usage';
-import { PlatformError } from '@effect/platform/Error';
 
 const EXPECTED_DESIGN_INFO_ARGS = [
   ['medic', 'medic'],
@@ -126,7 +125,9 @@ describe('Monitor service', () => {
     diskUsageServiceGetSize = sinon.stub();
   });
 
-  const run = (test:  Effect.Effect<void, Error | PlatformError, MonitorService>) => async () => {
+  afterEach(() => sinon.restore());
+
+  const run = (test:  Effect.Effect<unknown, unknown, MonitorService>) => async () => {
     await Effect.runPromise(test.pipe(
       Effect.provide(MonitorServiceLive),
       Effect.provide(TestContext.TestContext),
