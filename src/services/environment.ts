@@ -4,8 +4,12 @@ import { Config, Effect, pipe, Redacted, Ref } from 'effect';
 
 const WITH_MEDIC_PATTERN = /^(.+)\/medic$/g;
 
-export interface EnvironmentService {
+export interface Environment {
   readonly url: Ref.Ref<Config.Config<Redacted.Redacted>>;
+}
+
+export interface EnvironmentService {
+  readonly get: () => Environment;
 }
 
 export const EnvironmentService = Context.GenericTag<EnvironmentService>('chtoolbox/EnvironmentService');
@@ -26,8 +30,9 @@ const COUCH_URL = Config
 const createEnvironmentService = pipe(
   COUCH_URL,
   Ref.make,
-  Effect.map(url => EnvironmentService.of({
-    url,
+  Effect.map(url => ({ url })),
+  Effect.map(env => EnvironmentService.of({
+    get: () => env,
   }))
 );
 

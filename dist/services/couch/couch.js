@@ -30,7 +30,7 @@ const platform_1 = require("@effect/platform");
 const Context = __importStar(require("effect/Context"));
 const effect_1 = require("effect");
 exports.CouchService = Context.GenericTag('chtoolbox/CouchService');
-const getCouchUrl = environment_1.EnvironmentService.pipe(Effect.map(env => env.url), Effect.flatMap(effect_1.Ref.get), Effect.map(effect_1.Config.map(effect_1.Redacted.value)));
+const getCouchUrl = environment_1.EnvironmentService.pipe(Effect.map(service => service.get().url), Effect.flatMap(effect_1.Ref.get), Effect.map(effect_1.Config.map(effect_1.Redacted.value)));
 const getClientWithUrl = getCouchUrl.pipe(Effect.flatMap(effect_1.Config.map(url => platform_1.HttpClient.HttpClient.pipe(Effect.map(platform_1.HttpClient.filterStatusOk), Effect.map(platform_1.HttpClient.mapRequest(platform_1.HttpClientRequest.prependUrl(url)))))), Effect.flatten);
 const ServiceContext = Effect
     .all([

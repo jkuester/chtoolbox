@@ -38,7 +38,8 @@ export const initializeUrl = chtx.pipe(
   Effect.map(Option.map(Redacted.make)),
   Effect.map(Option.map(Config.succeed)),
   Effect.flatMap(urlConfig => EnvironmentService.pipe(
-    Effect.flatMap(env => optionalUpdate(env.url, urlConfig))
+    Effect.map(service => service.get()),
+    Effect.flatMap(({ url }) => optionalUpdate(url, urlConfig))
   )),
 );
 

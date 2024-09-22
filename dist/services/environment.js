@@ -33,8 +33,8 @@ const trimTrailingMedic = (url) => url.pipe(effect_1.Redacted.value, url => url.
 const COUCH_URL = effect_1.Config
     .redacted('COUCH_URL')
     .pipe(effect_1.Config.map(trimTrailingMedic), effect_1.Config.withDescription('The URL of the CouchDB server.'));
-const createEnvironmentService = (0, effect_1.pipe)(COUCH_URL, effect_1.Ref.make, effect_1.Effect.map(url => exports.EnvironmentService.of({
-    url,
+const createEnvironmentService = (0, effect_1.pipe)(COUCH_URL, effect_1.Ref.make, effect_1.Effect.map(url => ({ url })), effect_1.Effect.map(env => exports.EnvironmentService.of({
+    get: () => env,
 })));
 exports.EnvironmentServiceLive = Layer.effect(exports.EnvironmentService, createEnvironmentService);
 //# sourceMappingURL=environment.js.map
