@@ -15,7 +15,8 @@ export interface CouchService {
 export const CouchService = Context.GenericTag<CouchService>('chtoolbox/CouchService');
 
 const getCouchUrl = EnvironmentService.pipe(
-  Effect.map(service => service.get().url),
+  Effect.map(service => service.get()),
+  Effect.map(env => env.url),
   Effect.flatMap(Ref.get),
   Effect.map(Config.map(Redacted.value)),
 );
