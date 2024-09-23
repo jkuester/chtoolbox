@@ -6,6 +6,8 @@ import { CouchService } from '../../../src/services/couch/couch';
 import { HttpClientRequest } from '@effect/platform';
 import { CouchDesignDocsService, CouchDesignDocsServiceLive } from '../../../src/services/couch/design-docs';
 
+const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
+
 describe('Couch Design Docs Service', () => {
   let couchRequest: SinonStub;
   let requestGet: SinonStub;
@@ -28,8 +30,7 @@ describe('Couch Design Docs Service', () => {
   };
 
   it('gets design names for a database', run(Effect.gen(function* () {
-    const fakeClientRequest = { hello: 'world' };
-    requestGet.returns(fakeClientRequest);
+    requestGet.returns(FAKE_CLIENT_REQUEST);
     couchRequest.returns(Effect.succeed({
       json: Effect.succeed({
         rows: [
@@ -45,12 +46,11 @@ describe('Couch Design Docs Service', () => {
 
     expect(designNames).to.deep.equal(['medic', 'medic-client', 'medic-sms']);
     expect(requestGet.calledOnceWithExactly('/medic/_design_docs')).to.be.true;
-    expect(couchRequest.calledOnceWithExactly(fakeClientRequest)).to.be.true;
+    expect(couchRequest.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
   })));
 
   it('returns an empty array if the database has no designs', run(Effect.gen(function* () {
-    const fakeClientRequest = { hello: 'world' };
-    requestGet.returns(fakeClientRequest);
+    requestGet.returns(FAKE_CLIENT_REQUEST);
     couchRequest.returns(Effect.succeed({
       json: Effect.succeed({ rows: [] }),
     }));
@@ -60,6 +60,6 @@ describe('Couch Design Docs Service', () => {
 
     expect(designNames).to.deep.equal([]);
     expect(requestGet.calledOnceWithExactly('/medic/_design_docs')).to.be.true;
-    expect(couchRequest.calledOnceWithExactly(fakeClientRequest)).to.be.true;
+    expect(couchRequest.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
   })));
 });

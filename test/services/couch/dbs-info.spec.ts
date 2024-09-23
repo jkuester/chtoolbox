@@ -7,6 +7,8 @@ import { HttpClientRequest } from '@effect/platform';
 import { CouchDbsInfoService, CouchDbsInfoServiceLive } from '../../../src/services/couch/dbs-info';
 import { createDbInfo } from '../../utils/data-models';
 
+const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
+
 describe('Couch Dbs Info Service', () => {
   let couchRequest: SinonStub;
   let requestBuild: SinonStub;
@@ -35,8 +37,7 @@ describe('Couch Dbs Info Service', () => {
   };
 
   it('gets db info for all databases', run(Effect.gen(function* () {
-    const fakeClientRequest = { hello: 'world' };
-    requestGet.returns(fakeClientRequest);
+    requestGet.returns(FAKE_CLIENT_REQUEST);
     const testDbInfo = createDbInfo({ key: 'test', compact_running: true, file: 123, active: 234 });
     const emptyDbInfo = createDbInfo();
     couchRequest.returns(Effect.succeed({
@@ -48,15 +49,14 @@ describe('Couch Dbs Info Service', () => {
 
     expect(dbInfos).to.deep.equal([testDbInfo, emptyDbInfo]);
     expect(requestGet.calledOnceWithExactly('/_dbs_info')).to.be.true;
-    expect(couchRequest.calledOnceWithExactly(fakeClientRequest)).to.be.true;
+    expect(couchRequest.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
     expect(requestBuild.notCalled).to.be.true;
     expect(requestSchemaBody.notCalled).to.be.true;
     expect(requestPost.notCalled).to.be.true;
   })));
 
   it('gets db names for all databases', run(Effect.gen(function* () {
-    const fakeClientRequest = { hello: 'world' };
-    requestGet.returns(fakeClientRequest);
+    requestGet.returns(FAKE_CLIENT_REQUEST);
     const testDbInfo = createDbInfo({ key: 'test', compact_running: true, file: 123, active: 234 });
     const emptyDbInfo = createDbInfo();
     couchRequest.returns(Effect.succeed({
@@ -68,16 +68,15 @@ describe('Couch Dbs Info Service', () => {
 
     expect(dbNames).to.deep.equal([testDbInfo.key, emptyDbInfo.key]);
     expect(requestGet.calledOnceWithExactly('/_dbs_info')).to.be.true;
-    expect(couchRequest.calledOnceWithExactly(fakeClientRequest)).to.be.true;
+    expect(couchRequest.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
     expect(requestBuild.notCalled).to.be.true;
     expect(requestSchemaBody.notCalled).to.be.true;
     expect(requestPost.notCalled).to.be.true;
   })));
 
   it('posts db info for specified databases', run(Effect.gen(function* () {
-    const fakeClientRequest = { hello: 'world' };
-    const fakeBuiltClientRequest = { ...fakeClientRequest, built: true };
-    requestPost.returns(fakeClientRequest);
+    const fakeBuiltClientRequest = { ...FAKE_CLIENT_REQUEST, built: true };
+    requestPost.returns(FAKE_CLIENT_REQUEST);
     requestBuild.returns(Effect.succeed(fakeBuiltClientRequest));
     const medicDbInfo = createDbInfo({ key: 'medic', compact_running: true, file: 123, active: 234 });
     const sentinelDbInfo = createDbInfo({ key: 'medic-sentinel', file: 12 });
@@ -94,7 +93,7 @@ describe('Couch Dbs Info Service', () => {
     expect(requestGet.notCalled).to.be.true;
     expect(couchRequest.calledOnceWithExactly(fakeBuiltClientRequest)).to.be.true;
     expect(requestBuild.calledOnceWithExactly(
-      fakeClientRequest,
+      FAKE_CLIENT_REQUEST,
       { keys: ['medic', 'medic-sentinel', 'medic-users-meta', '_users'] }
     )).to.be.true;
     expect(requestSchemaBody.calledOnce).to.be.true;

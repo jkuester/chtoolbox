@@ -6,6 +6,8 @@ import { CouchService } from '../../../src/services/couch/couch';
 import { HttpClientRequest } from '@effect/platform';
 import { CouchDesignService, CouchDesignServiceLive } from '../../../src/services/couch/design';
 
+const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
+
 describe('Couch Design Service', () => {
   let couchRequest: SinonStub;
   let requestGet: SinonStub;
@@ -28,8 +30,7 @@ describe('Couch Design Service', () => {
   };
 
   it('gets view names for a database and design', run(Effect.gen(function* () {
-    const fakeClientRequest = { hello: 'world' };
-    requestGet.returns(fakeClientRequest);
+    requestGet.returns(FAKE_CLIENT_REQUEST);
     const designData = {
       _id: 'medic-client',
       views: {
@@ -47,12 +48,11 @@ describe('Couch Design Service', () => {
 
     expect(dbInfos).to.deep.equal(Object.keys(designData.views));
     expect(requestGet.calledOnceWithExactly(`/medic/_design/${designData._id}`)).to.be.true;
-    expect(couchRequest.calledOnceWithExactly(fakeClientRequest)).to.be.true;
+    expect(couchRequest.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
   })));
 
   it('returns an empty array if no views exist', run(Effect.gen(function* () {
-    const fakeClientRequest = { hello: 'world' };
-    requestGet.returns(fakeClientRequest);
+    requestGet.returns(FAKE_CLIENT_REQUEST);
     const designData = {
       _id: 'medic-client',
     };
@@ -65,6 +65,6 @@ describe('Couch Design Service', () => {
 
     expect(dbInfos).to.deep.equal([]);
     expect(requestGet.calledOnceWithExactly(`/medic/_design/${designData._id}`)).to.be.true;
-    expect(couchRequest.calledOnceWithExactly(fakeClientRequest)).to.be.true;
+    expect(couchRequest.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
   })));
 });

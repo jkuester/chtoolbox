@@ -13,3 +13,21 @@ export const createDbInfo = ({
     },
   },
 });
+
+export const createDesignInfo = ({
+  name = '',
+  compact_running = false,
+  updater_running = false,
+  file = 0,
+  active = 0
+}) => ({
+  name,
+  view_index: {
+    compact_running,
+    updater_running,
+    sizes: {
+      file,
+      active,
+    },
+  },
+});

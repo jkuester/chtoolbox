@@ -6,6 +6,8 @@ import { CouchCompactService, CouchCompactServiceLive } from '../../../src/servi
 import { CouchService } from '../../../src/services/couch/couch';
 import { HttpClientRequest } from '@effect/platform';
 
+const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
+
 describe('Couch Compact Service', () => {
   let couchRequest: SinonStub;
   let requestBuild: SinonStub;
@@ -33,9 +35,8 @@ describe('Couch Compact Service', () => {
 
   it('posts _compact for the given database', run(Effect.gen(function* () {
     const dbName = 'db-name';
-    const fakeClientRequest = { hello: 'world' };
-    const fakeBuiltClientRequest = { ...fakeClientRequest, built: true };
-    requestPost.returns(fakeClientRequest);
+    const fakeBuiltClientRequest = { ...FAKE_CLIENT_REQUEST, built: true };
+    requestPost.returns(FAKE_CLIENT_REQUEST);
     couchRequest.returns(Effect.void);
     requestBuild.returns(Effect.succeed(fakeBuiltClientRequest));
 
@@ -45,16 +46,15 @@ describe('Couch Compact Service', () => {
     expect(requestSchemaBody.calledOnce).to.be.true;
     expect(requestSchemaBody.args[0][0]).to.deep.include({ fields: {} });
     expect(requestPost.calledOnceWithExactly(`/${dbName}/_compact`)).to.be.true;
-    expect(requestBuild.calledOnceWithExactly(fakeClientRequest, {})).to.be.true;
+    expect(requestBuild.calledOnceWithExactly(FAKE_CLIENT_REQUEST, {})).to.be.true;
     expect(couchRequest.calledOnceWithExactly(fakeBuiltClientRequest)).to.be.true;
   })));
 
   it('posts _compact for the given design', run(Effect.gen(function* () {
     const dbName = 'db-name';
     const designName = 'design-name';
-    const fakeClientRequest = { hello: 'world' };
-    const fakeBuiltClientRequest = { ...fakeClientRequest, built: true };
-    requestPost.returns(fakeClientRequest);
+    const fakeBuiltClientRequest = { ...FAKE_CLIENT_REQUEST, built: true };
+    requestPost.returns(FAKE_CLIENT_REQUEST);
     couchRequest.returns(Effect.void);
     requestBuild.returns(Effect.succeed(fakeBuiltClientRequest));
 
@@ -64,7 +64,7 @@ describe('Couch Compact Service', () => {
     expect(requestSchemaBody.calledOnce).to.be.true;
     expect(requestSchemaBody.args[0][0]).to.deep.include({ fields: {} });
     expect(requestPost.calledOnceWithExactly(`/${dbName}/_compact/${designName}`)).to.be.true;
-    expect(requestBuild.calledOnceWithExactly(fakeClientRequest, {})).to.be.true;
+    expect(requestBuild.calledOnceWithExactly(FAKE_CLIENT_REQUEST, {})).to.be.true;
     expect(couchRequest.calledOnceWithExactly(fakeBuiltClientRequest)).to.be.true;
   })));
 });
