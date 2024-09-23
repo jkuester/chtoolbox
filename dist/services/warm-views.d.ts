@@ -4,10 +4,10 @@ import * as Layer from 'effect/Layer';
 import { CouchDbsInfoService } from './couch/dbs-info';
 import { CouchDesignDocsService } from './couch/design-docs';
 import { CouchDesignService } from './couch/design';
-import { CouchView, CouchViewService } from './couch/view';
+import { CouchViewService } from './couch/view';
 import { CouchDesignInfoService } from './couch/design-info';
 export interface WarmViewsService {
-    readonly warmAll: Effect.Effect<readonly CouchView[], Error>;
+    readonly warmAll: Effect.Effect<void, Error>;
     readonly designsCurrentlyUpdating: Effect.Effect<{
         dbName: string;
         designId: string;

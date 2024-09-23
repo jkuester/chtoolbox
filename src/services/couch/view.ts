@@ -1,18 +1,11 @@
-import * as Schema from '@effect/schema/Schema';
-import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
+import { HttpClientRequest } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import * as Layer from 'effect/Layer';
 import { CouchService } from './couch';
 
-export class CouchView extends Schema.Class<CouchView>('CouchView')({
-  total_rows: Schema.UndefinedOr(Schema.Number),
-}) {
-  static readonly decodeResponse = HttpClientResponse.schemaBodyJsonScoped(CouchView);
-}
-
 export interface CouchViewService {
-  readonly warm: (dbName: string, designName: string, viewName: string) => Effect.Effect<CouchView, Error>
+  readonly warm: (dbName: string, designName: string, viewName: string) => Effect.Effect<void, Error>
 }
 
 export const CouchViewService = Context.GenericTag<CouchViewService>('chtoolbox/CouchViewService');
@@ -27,8 +20,9 @@ export const CouchViewServiceLive = Layer.effect(CouchViewService, ServiceContex
   context => CouchViewService.of({
     warm: (dbName: string, designName: string, viewName: string) => CouchService.pipe(
       Effect.flatMap(couch => couch.request(getWarmRequest(dbName, designName, viewName))),
-      CouchView.decodeResponse,
+      Effect.andThen(Effect.void),
+      Effect.scoped,
       Effect.provide(context),
-    )
-  })
+    ),
+  }),
 )));
