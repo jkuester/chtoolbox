@@ -7,7 +7,7 @@ import sinon, { SinonStub } from 'sinon';
 import { CouchDbsInfoService } from '../../src/services/couch/dbs-info';
 import { CouchDesignInfoService } from '../../src/services/couch/design-info';
 import { LocalDiskUsageService } from '../../src/services/local-disk-usage';
-import { createDbInfo, createDesignInfo } from '../utils/data-models';
+import { createDbInfo, createDesignInfo, createNodeSystem } from '../utils/data-models';
 
 const EXPECTED_DESIGN_INFO_ARGS = [
   ['medic', 'medic'],
@@ -20,28 +20,6 @@ const EXPECTED_DESIGN_INFO_ARGS = [
   ['medic-users-meta', 'users-meta'],
   ['_users', 'users'],
 ];
-
-const createNodeSystem = ({
-  other = 0,
-  atom = 0,
-  atom_used = 0,
-  processes = 0,
-  processes_used = 0,
-  binary = 0,
-  code = 0,
-  ets = 0,
-} = { }) => ({
-  memory: {
-    other,
-    atom,
-    atom_used,
-    processes,
-    processes_used,
-    binary,
-    code,
-    ets,
-  }
-});
 
 const nodeSystem = createNodeSystem({
   other: 12352352,

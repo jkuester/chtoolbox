@@ -4,12 +4,12 @@ import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
 import { CouchService } from '../../../src/services/couch/couch';
 import { HttpClientRequest } from '@effect/platform';
-import { CouchDesignInfoService, CouchDesignInfoServiceLive } from '../../../src/services/couch/design-info';
-import { createDesignInfo } from '../../utils/data-models';
+import { createNodeSystem } from '../../utils/data-models';
+import { CouchNodeSystemService, CouchNodeSystemServiceLive } from '../../../src/services/couch/node-system';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
 
-describe('Couch Design Info Service', () => {
+describe('Couch Node System Service', () => {
   let couchRequest: SinonStub;
   let requestGet: SinonStub;
 
@@ -20,9 +20,9 @@ describe('Couch Design Info Service', () => {
 
   afterEach(() => sinon.restore());
 
-  const run = (test:  Effect.Effect<unknown, unknown, CouchDesignInfoService>) => async () => {
+  const run = (test:  Effect.Effect<unknown, unknown, CouchNodeSystemService>) => async () => {
     await Effect.runPromise(test.pipe(
-      Effect.provide(CouchDesignInfoServiceLive),
+      Effect.provide(CouchNodeSystemServiceLive),
       Effect.provide(TestContext.TestContext),
       Effect.provide(Layer.succeed(CouchService, CouchService.of({
         request: couchRequest,
@@ -30,26 +30,27 @@ describe('Couch Design Info Service', () => {
     ));
   };
 
-  it('gets design info for a database', run(Effect.gen(function* () {
-    const db = 'medic';
-    const design = 'medic-client';
+  it('gets node system data', run(Effect.gen(function* () {
     requestGet.returns(FAKE_CLIENT_REQUEST);
-    const medicClientDesignInfo = createDesignInfo({
-      name: design,
-      compact_running: true,
-      updater_running: true,
-      file: 123,
-      active: 234
+    const expectedNodeSystem = createNodeSystem({
+      other: 12352352,
+      atom: 235235,
+      atom_used: 1453,
+      processes: 32232,
+      processes_used: 324116345634,
+      binary: 34,
+      code: 23232,
+      ets: 999,
     });
     couchRequest.returns(Effect.succeed({
-      json: Effect.succeed(medicClientDesignInfo),
+      json: Effect.succeed(expectedNodeSystem),
     }));
 
-    const service = yield* CouchDesignInfoService;
-    const designInfo = yield* service.get(db, design);
+    const service = yield* CouchNodeSystemService;
+    const nodeSystem = yield* service.get();
 
-    expect(designInfo).to.deep.equal(medicClientDesignInfo);
-    expect(requestGet.calledOnceWithExactly(`/${db}/_design/${design}/_info`)).to.be.true;
+    expect(nodeSystem).to.deep.equal(expectedNodeSystem);
+    expect(requestGet.calledOnceWithExactly('/_node/_local/_system')).to.be.true;
     expect(couchRequest.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
   })));
 });

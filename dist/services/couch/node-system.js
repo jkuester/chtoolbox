@@ -30,7 +30,7 @@ const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
 const Layer = __importStar(require("effect/Layer"));
 const couch_1 = require("./couch");
-const NODE_SYSTEM_REQUEST = platform_1.HttpClientRequest.get('/_node/_local/_system');
+const ENDPOINT = '/_node/_local/_system';
 class CouchNodeSystem extends Schema.Class('CouchNodeSystem')({
     memory: Schema.Struct({
         other: Schema.Number,
@@ -49,6 +49,6 @@ exports.CouchNodeSystem = CouchNodeSystem;
 exports.CouchNodeSystemService = Context.GenericTag('chtoolbox/CouchNodeSystemService');
 const ServiceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
 exports.CouchNodeSystemServiceLive = Layer.effect(exports.CouchNodeSystemService, ServiceContext.pipe(Effect.map(context => exports.CouchNodeSystemService.of({
-    get: () => couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(NODE_SYSTEM_REQUEST)), CouchNodeSystem.decodeResponse, Effect.provide(context)),
+    get: () => couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(ENDPOINT))), CouchNodeSystem.decodeResponse, Effect.provide(context)),
 }))));
 //# sourceMappingURL=node-system.js.map
