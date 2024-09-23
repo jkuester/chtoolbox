@@ -7,6 +7,7 @@ import sinon, { SinonStub } from 'sinon';
 import { CouchDbsInfoService } from '../../src/services/couch/dbs-info';
 import { CouchDesignInfoService } from '../../src/services/couch/design-info';
 import { LocalDiskUsageService } from '../../src/services/local-disk-usage';
+import { createDbInfo } from '../utils/data-models';
 
 const EXPECTED_DESIGN_INFO_ARGS = [
   ['medic', 'medic'],
@@ -40,22 +41,6 @@ const createNodeSystem = ({
     code,
     ets,
   }
-});
-
-const createDbInfo = ({
-  key = '',
-  compact_running = false,
-  file = 0,
-  active = 0,
-}) => ({
-  key,
-  info: {
-    compact_running,
-    sizes: {
-      file,
-      active,
-    },
-  },
 });
 
 const createDesignInfo = ({

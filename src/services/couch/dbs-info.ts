@@ -9,7 +9,7 @@ import { CouchService } from './couch';
 const ENDPOINT = '/_dbs_info';
 
 const DbsInfoBody = Schema.Struct({ keys: Schema.Array(Schema.String) });
-const DBS_INFO_REQUEST = DbsInfoBody.pipe(
+const getPostRequest = () => DbsInfoBody.pipe(
   HttpClientRequest.schemaBody,
   build => build(
     HttpClientRequest.post(ENDPOINT),
@@ -48,7 +48,7 @@ const ServiceContext = CouchService.pipe(Effect.map(couch => Context.make(CouchS
 export const CouchDbsInfoServiceLive = Layer.effect(CouchDbsInfoService, ServiceContext.pipe(Effect.map(
   context => CouchDbsInfoService.of({
     post: () => Effect
-      .all([CouchService, DBS_INFO_REQUEST])
+      .all([CouchService, getPostRequest()])
       .pipe(
         Effect.flatMap(([couch, request]) => couch.request(request)),
         CouchDbInfo.decodeResponse,
