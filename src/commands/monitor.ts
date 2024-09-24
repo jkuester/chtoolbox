@@ -13,6 +13,7 @@ const printCsvRow = (row: readonly (string | number | boolean)[]) => pipe(
 const monitorData = (monitor: MonitorService, interval: number, trackDirSize: Option.Option<string>) => pipe(
   monitor.getAsCsv(trackDirSize),
   Effect.tap(printCsvRow),
+  Effect.catchAll(Console.error),
   Effect.delay(interval * 1000)
 );
 

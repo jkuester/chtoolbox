@@ -7,6 +7,7 @@ import { CouchNodeSystem, CouchNodeSystemService } from './couch/node-system';
 import { Array, Clock, Number, Option, pipe } from 'effect';
 import { LocalDiskUsageService } from './local-disk-usage';
 import { PlatformError } from '@effect/platform/Error';
+import { ResponseError } from '@effect/platform/HttpClientError';
 
 interface DatabaseInfo extends CouchDbInfo {
   designs: CouchDesignInfo[]
@@ -40,20 +41,51 @@ const VIEW_INDEXES_BY_DB: Record<typeof DB_NAMES[number], string[]> = {
     'medic-conflicts',
     'medic-scripts',
     'medic-sms',
+    ':staged:medic',
+    ':staged:medic-admin',
+    ':staged:medic-client',
+    ':staged:medic-conflicts',
+    ':staged:medic-scripts',
+    ':staged:medic-sms',
   ],
-  'medic-sentinel': ['sentinel'],
-  'medic-users-meta': ['users-meta'],
-  '_users': ['users'],
+  'medic-sentinel': [
+    'sentinel',
+    ':staged:sentinel',
+  ],
+  'medic-users-meta': [
+    'users-meta',
+    ':staged:users-meta',
+  ],
+  '_users': [
+    'users',
+    ':staged:users',
+  ],
 };
 
 const getCouchNodeSystem = Effect.flatMap(CouchNodeSystemService, (couchSystem) => couchSystem.get());
 const getCouchDbsInfo = Effect.flatMap(CouchDbsInfoService, (couchSystem) => couchSystem.post());
+const emptyDesignInfo: CouchDesignInfo = {
+  name: '',
+  view_index: {
+    compact_running: false,
+    updater_running: false,
+    sizes: {
+      file: 0,
+      active: 0,
+    },
+  },
+};
 const getCouchDesignInfosForDb = (dbName: string) => CouchDesignInfoService.pipe(
   Effect.flatMap(service => Effect.all(pipe(
     VIEW_INDEXES_BY_DB[dbName],
-    Array.map(designName => service.get(dbName, designName))
-  )))
+    Array.map(designName => service.get(dbName, designName)),
+    Array.map(Effect.catchIf(
+      (error) => error instanceof ResponseError && error.response.status === 404,
+      () => Effect.succeed(emptyDesignInfo),
+    )),
+  ))),
 );
+
 const getCouchDesignInfos = pipe(
   DB_NAMES,
   Array.map(getCouchDesignInfosForDb),

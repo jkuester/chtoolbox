@@ -1,13 +1,15 @@
 import { afterEach, describe, it } from 'mocha';
-import { Effect, Layer, Option, TestClock, TestContext } from 'effect';
+import { Effect, Either, Layer, Option, TestClock, TestContext } from 'effect';
 import { expect } from 'chai';
 import { MonitorService, MonitorServiceLive } from '../../src/services/monitor';
-import { CouchNodeSystemService } from '../../src/services/couch/node-system';
+import { CouchNodeSystem, CouchNodeSystemService } from '../../src/services/couch/node-system';
 import sinon, { SinonStub } from 'sinon';
-import { CouchDbsInfoService } from '../../src/services/couch/dbs-info';
-import { CouchDesignInfoService } from '../../src/services/couch/design-info';
+import { CouchDbInfo, CouchDbsInfoService } from '../../src/services/couch/dbs-info';
+import { CouchDesignInfo, CouchDesignInfoService } from '../../src/services/couch/design-info';
 import { LocalDiskUsageService } from '../../src/services/local-disk-usage';
 import { createDbInfo, createDesignInfo, createNodeSystem } from '../utils/data-models';
+import { ResponseError } from '@effect/platform/HttpClientError';
+import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 
 const EXPECTED_DESIGN_INFO_ARGS = [
   ['medic', 'medic'],
@@ -16,9 +18,18 @@ const EXPECTED_DESIGN_INFO_ARGS = [
   ['medic', 'medic-conflicts'],
   ['medic', 'medic-scripts'],
   ['medic', 'medic-sms'],
+  ['medic', ':staged:medic'],
+  ['medic', ':staged:medic-admin'],
+  ['medic', ':staged:medic-client'],
+  ['medic', ':staged:medic-conflicts'],
+  ['medic', ':staged:medic-scripts'],
+  ['medic', ':staged:medic-sms'],
   ['medic-sentinel', 'sentinel'],
+  ['medic-sentinel', ':staged:sentinel'],
   ['medic-users-meta', 'users-meta'],
+  ['medic-users-meta', ':staged:users-meta'],
   ['_users', 'users'],
+  ['_users', ':staged:users'],
 ];
 
 const nodeSystem = createNodeSystem({
@@ -42,13 +53,27 @@ const medicDesignInfo = createDesignInfo({
   file: 123,
   active: 234
 });
+const medicStagedDesignInfo = createDesignInfo({
+  name: ':staged:medic',
+  compact_running: true,
+  updater_running: true,
+  file: 1234523,
+  active: 23453434
+});
 const medicAdminDesignInfo = createDesignInfo({ name: 'medic-admin', compact_running: true, file: 135232423 });
+const medicAdminStagedDesignInfo = createDesignInfo({ name: ':staged:medic-admin', compact_running: true });
 const medicClientDesignInfo = createDesignInfo({ name: 'medic-client', updater_running: true, active: 12345232 });
+const medicClientStagedDesignInfo = createDesignInfo({ name: ':staged:medic-client', active: 122342345232 });
 const medicConflictsDesignInfo = createDesignInfo({ name: 'medic-conflicts', file: 1212121, active: 42334534534});
+const medicConflictsStagedDesignInfo = createDesignInfo({ name: ':staged:medic-conflicts', file: 121244121, });
 const medicScriptsDesignInfo = createDesignInfo({ name: 'medic-scripts', file: 312121212 });
+const medicScriptsStagedDesignInfo = createDesignInfo({ name: ':staged:medic-scripts', active: 2 });
 const medicSmsDesignInfo = createDesignInfo({ name: 'medic-sms', active: 1 });
+const medicSmsStagedDesignInfo = createDesignInfo({ name: ':staged:medic-sms', file: 1 });
 const sentinelDesignInfo = createDesignInfo({ name: 'sentinel' });
+const sentinelStagedDesignInfo = createDesignInfo({ name: ':staged:sentinel' });
 const usersMetaDesignInfo = createDesignInfo({ name: 'users-meta' });
+const usersMetaStagedDesignInfo = createDesignInfo({ name: ':staged:users-meta' });
 const usersDesignInfo = createDesignInfo({
   name: 'users',
   compact_running: true,
@@ -56,6 +81,55 @@ const usersDesignInfo = createDesignInfo({
   file: 12323234444,
   active: 23422232
 });
+const usersStagedDesignInfo = createDesignInfo({
+  name: ':staged:users',
+  compact_running: true,
+  updater_running: true,
+  file: 1,
+  active: 1
+});
+const emptyDesignInfo: CouchDesignInfo = {
+  name: '',
+  view_index: {
+    compact_running: false,
+    updater_running: false,
+    sizes: {
+      file: 0,
+      active: 0,
+    },
+  },
+};
+
+const initializeDesignInfoServiceGet = (designInfoServiceGet: SinonStub) => {
+  designInfoServiceGet.withArgs('medic', 'medic').returns(Effect.succeed(medicDesignInfo));
+  designInfoServiceGet.withArgs('medic', ':staged:medic').returns(Effect.succeed(medicStagedDesignInfo));
+  designInfoServiceGet.withArgs('medic', 'medic-admin').returns(Effect.succeed(medicAdminDesignInfo));
+  designInfoServiceGet.withArgs('medic', ':staged:medic-admin').returns(Effect.succeed(medicAdminStagedDesignInfo));
+  designInfoServiceGet.withArgs('medic', 'medic-client').returns(Effect.succeed(medicClientDesignInfo));
+  designInfoServiceGet
+    .withArgs('medic', ':staged:medic-client')
+    .returns(Effect.succeed(medicClientStagedDesignInfo));
+  designInfoServiceGet.withArgs('medic', 'medic-conflicts').returns(Effect.succeed(medicConflictsDesignInfo));
+  designInfoServiceGet
+    .withArgs('medic', ':staged:medic-conflicts')
+    .returns(Effect.succeed(medicConflictsStagedDesignInfo));
+  designInfoServiceGet.withArgs('medic', 'medic-scripts').returns(Effect.succeed(medicScriptsDesignInfo));
+  designInfoServiceGet
+    .withArgs('medic', ':staged:medic-scripts')
+    .returns(Effect.succeed(medicScriptsStagedDesignInfo));
+  designInfoServiceGet.withArgs('medic', 'medic-sms').returns(Effect.succeed(medicSmsDesignInfo));
+  designInfoServiceGet.withArgs('medic', ':staged:medic-sms').returns(Effect.succeed(medicSmsStagedDesignInfo));
+  designInfoServiceGet.withArgs('medic-sentinel', 'sentinel').returns(Effect.succeed(sentinelDesignInfo));
+  designInfoServiceGet
+    .withArgs('medic-sentinel', ':staged:sentinel')
+    .returns(Effect.succeed(sentinelStagedDesignInfo));
+  designInfoServiceGet.withArgs('medic-users-meta', 'users-meta').returns(Effect.succeed(usersMetaDesignInfo));
+  designInfoServiceGet
+    .withArgs('medic-users-meta', ':staged:users-meta')
+    .returns(Effect.succeed(usersMetaStagedDesignInfo));
+  designInfoServiceGet.withArgs('_users', 'users').returns(Effect.succeed(usersDesignInfo));
+  designInfoServiceGet.withArgs('_users', ':staged:users').returns(Effect.succeed(usersStagedDesignInfo));
+};
 
 describe('Monitor service', () => {
   let nodeSystemServiceGet: SinonStub;
@@ -119,15 +193,7 @@ describe('Monitor service', () => {
       const unix_time = 123456789;
       yield* TestClock.setTime(unix_time * 1000);
       dbsInfoServicePost.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
-      designInfoServiceGet.withArgs('medic', 'medic').returns(Effect.succeed(medicDesignInfo));
-      designInfoServiceGet.withArgs('medic', 'medic-admin').returns(Effect.succeed(medicAdminDesignInfo));
-      designInfoServiceGet.withArgs('medic', 'medic-client').returns(Effect.succeed(medicClientDesignInfo));
-      designInfoServiceGet.withArgs('medic', 'medic-conflicts').returns(Effect.succeed(medicConflictsDesignInfo));
-      designInfoServiceGet.withArgs('medic', 'medic-scripts').returns(Effect.succeed(medicScriptsDesignInfo));
-      designInfoServiceGet.withArgs('medic', 'medic-sms').returns(Effect.succeed(medicSmsDesignInfo));
-      designInfoServiceGet.withArgs('medic-sentinel', 'sentinel').returns(Effect.succeed(sentinelDesignInfo));
-      designInfoServiceGet.withArgs('medic-users-meta', 'users-meta').returns(Effect.succeed(usersMetaDesignInfo));
-      designInfoServiceGet.withArgs('_users', 'users').returns(Effect.succeed(usersDesignInfo));
+      initializeDesignInfoServiceGet(designInfoServiceGet);
       const directory = 'directory';
       const directorySize = 444444;
       diskUsageServiceGetSize.returns(Effect.succeed(directorySize));
@@ -146,12 +212,18 @@ describe('Monitor service', () => {
               medicClientDesignInfo,
               medicConflictsDesignInfo,
               medicScriptsDesignInfo,
-              medicSmsDesignInfo
+              medicSmsDesignInfo,
+              medicStagedDesignInfo,
+              medicAdminStagedDesignInfo,
+              medicClientStagedDesignInfo,
+              medicConflictsStagedDesignInfo,
+              medicScriptsStagedDesignInfo,
+              medicSmsStagedDesignInfo,
             ],
           },
-          { ...sentinelDbInfo, designs: [sentinelDesignInfo] },
-          { ...usersMetaDbInfo, designs: [usersMetaDesignInfo] },
-          { ...usersDbInfo, designs: [usersDesignInfo] },
+          { ...sentinelDbInfo, designs: [sentinelDesignInfo, sentinelStagedDesignInfo] },
+          { ...usersMetaDbInfo, designs: [usersMetaDesignInfo, usersMetaStagedDesignInfo] },
+          { ...usersDbInfo, designs: [usersDesignInfo, usersStagedDesignInfo] },
         ],
         directory_size: Option.some(directorySize),
       });
@@ -159,6 +231,104 @@ describe('Monitor service', () => {
       expect(dbsInfoServicePost.calledOnceWithExactly()).to.be.true;
       expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
+    })));
+
+    it('includes empty data for designs that do not exist', run(Effect.gen(function* () {
+      nodeSystemServiceGet.returns(Effect.succeed(nodeSystem));
+      const unix_time = 123456789;
+      yield* TestClock.setTime(unix_time * 1000);
+      dbsInfoServicePost.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
+      designInfoServiceGet.withArgs('medic', 'medic').returns(Effect.succeed(medicDesignInfo));
+      designInfoServiceGet.withArgs('medic', 'medic-admin').returns(Effect.succeed(medicAdminDesignInfo));
+      designInfoServiceGet.withArgs('medic', 'medic-client').returns(Effect.succeed(medicClientDesignInfo));
+      designInfoServiceGet.withArgs('medic', 'medic-conflicts').returns(Effect.succeed(medicConflictsDesignInfo));
+      designInfoServiceGet.withArgs('medic', 'medic-scripts').returns(Effect.succeed(medicScriptsDesignInfo));
+      designInfoServiceGet.withArgs('medic', 'medic-sms').returns(Effect.succeed(medicSmsDesignInfo));
+      designInfoServiceGet.withArgs('medic-sentinel', 'sentinel').returns(Effect.succeed(sentinelDesignInfo));
+      designInfoServiceGet.withArgs('medic-users-meta', 'users-meta').returns(Effect.succeed(usersMetaDesignInfo));
+      designInfoServiceGet.withArgs('_users', 'users').returns(Effect.succeed(usersDesignInfo));
+      designInfoServiceGet.returns(Effect.fail(new ResponseError({
+        request: {} as unknown as HttpClientRequest.HttpClientRequest,
+        response: { status: 404 } as unknown as HttpClientResponse.HttpClientResponse,
+        reason: 'StatusCode'
+      })));
+      const directory = 'directory';
+      const directorySize = 444444;
+      diskUsageServiceGetSize.returns(Effect.succeed(directorySize));
+
+      const service = yield* MonitorService;
+      const data = yield* service.get(Option.some(directory));
+
+      expect(data).to.deep.equal({
+        ...nodeSystem,
+        unix_time,
+        databases: [
+          {
+            ...medicDbInfo, designs: [
+              medicDesignInfo,
+              medicAdminDesignInfo,
+              medicClientDesignInfo,
+              medicConflictsDesignInfo,
+              medicScriptsDesignInfo,
+              medicSmsDesignInfo,
+              emptyDesignInfo,
+              emptyDesignInfo,
+              emptyDesignInfo,
+              emptyDesignInfo,
+              emptyDesignInfo,
+              emptyDesignInfo,
+            ],
+          },
+          { ...sentinelDbInfo, designs: [sentinelDesignInfo, emptyDesignInfo] },
+          { ...usersMetaDbInfo, designs: [usersMetaDesignInfo, emptyDesignInfo] },
+          { ...usersDbInfo, designs: [usersDesignInfo, emptyDesignInfo] },
+        ],
+        directory_size: Option.some(directorySize),
+      });
+      expect(nodeSystemServiceGet.calledOnceWithExactly()).to.be.true;
+      expect(dbsInfoServicePost.calledOnceWithExactly()).to.be.true;
+      expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
+      expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
+    })));
+
+    it('fails when any other error is experienced', run(Effect.gen(function* () {
+      nodeSystemServiceGet.returns(Effect.succeed(nodeSystem));
+      const unix_time = 123456789;
+      yield* TestClock.setTime(unix_time * 1000);
+      dbsInfoServicePost.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
+      designInfoServiceGet.withArgs('medic', 'medic').returns(Effect.succeed(medicDesignInfo));
+      designInfoServiceGet.withArgs('medic', 'medic-admin').returns(Effect.succeed(medicAdminDesignInfo));
+      designInfoServiceGet.withArgs('medic', 'medic-client').returns(Effect.succeed(medicClientDesignInfo));
+      designInfoServiceGet.withArgs('medic', 'medic-conflicts').returns(Effect.succeed(medicConflictsDesignInfo));
+      designInfoServiceGet.withArgs('medic', 'medic-scripts').returns(Effect.succeed(medicScriptsDesignInfo));
+      designInfoServiceGet.withArgs('medic', 'medic-sms').returns(Effect.succeed(medicSmsDesignInfo));
+      designInfoServiceGet.withArgs('medic-sentinel', 'sentinel').returns(Effect.succeed(sentinelDesignInfo));
+      designInfoServiceGet.withArgs('medic-users-meta', 'users-meta').returns(Effect.succeed(usersMetaDesignInfo));
+      designInfoServiceGet.withArgs('_users', 'users').returns(Effect.succeed(usersDesignInfo));
+      const expectedError = new ResponseError({
+        request: {} as unknown as HttpClientRequest.HttpClientRequest,
+        response: { status: 500 } as unknown as HttpClientResponse.HttpClientResponse,
+        reason: 'StatusCode'
+      });
+      designInfoServiceGet.returns(Effect.fail(expectedError));
+      const directory = 'directory';
+      const directorySize = 444444;
+      diskUsageServiceGetSize.returns(Effect.succeed(directorySize));
+
+      const service = yield* MonitorService;
+      const failureOrSuccess = yield* Effect.either(service.get(Option.some(directory)));
+
+      if (Either.isLeft(failureOrSuccess)) {
+        const error = failureOrSuccess.left;
+        expect(error).to.equal(expectedError);
+
+        expect(nodeSystemServiceGet.calledOnceWithExactly()).to.be.true;
+        expect(dbsInfoServicePost.calledOnceWithExactly()).to.be.true;
+        expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS.slice(0, 12));
+        expect(diskUsageServiceGetSize.notCalled).to.be.true;
+      } else {
+        expect.fail('Expected error to be thrown');
+      }
     })));
 
     it('trims milliseconds from unix_time value', run(Effect.gen(function* () {
@@ -187,55 +357,20 @@ describe('Monitor service', () => {
   });
 
   describe('getAsCsv', () => {
-    const expectedCsvData = [
-      medicDbInfo.info.sizes.file.toString(),
-      medicDbInfo.info.sizes.active.toString(),
-      medicDbInfo.info.compact_running.toString(),
-      medicDesignInfo.view_index.compact_running.toString(),
-      medicDesignInfo.view_index.updater_running.toString(),
-      medicDesignInfo.view_index.sizes.file.toString(),
-      medicDesignInfo.view_index.sizes.active.toString(),
-      medicAdminDesignInfo.view_index.compact_running.toString(),
-      medicAdminDesignInfo.view_index.updater_running.toString(),
-      medicAdminDesignInfo.view_index.sizes.file.toString(),
-      medicAdminDesignInfo.view_index.sizes.active.toString(),
-      medicClientDesignInfo.view_index.compact_running.toString(),
-      medicClientDesignInfo.view_index.updater_running.toString(),
-      medicClientDesignInfo.view_index.sizes.file.toString(),
-      medicClientDesignInfo.view_index.sizes.active.toString(),
-      medicConflictsDesignInfo.view_index.compact_running.toString(),
-      medicConflictsDesignInfo.view_index.updater_running.toString(),
-      medicConflictsDesignInfo.view_index.sizes.file.toString(),
-      medicConflictsDesignInfo.view_index.sizes.active.toString(),
-      medicScriptsDesignInfo.view_index.compact_running.toString(),
-      medicScriptsDesignInfo.view_index.updater_running.toString(),
-      medicScriptsDesignInfo.view_index.sizes.file.toString(),
-      medicScriptsDesignInfo.view_index.sizes.active.toString(),
-      medicSmsDesignInfo.view_index.compact_running.toString(),
-      medicSmsDesignInfo.view_index.updater_running.toString(),
-      medicSmsDesignInfo.view_index.sizes.file.toString(),
-      medicSmsDesignInfo.view_index.sizes.active.toString(),
-      sentinelDbInfo.info.sizes.file.toString(),
-      sentinelDbInfo.info.sizes.active.toString(),
-      sentinelDbInfo.info.compact_running.toString(),
-      sentinelDesignInfo.view_index.compact_running.toString(),
-      sentinelDesignInfo.view_index.updater_running.toString(),
-      sentinelDesignInfo.view_index.sizes.file.toString(),
-      sentinelDesignInfo.view_index.sizes.active.toString(),
-      usersMetaDbInfo.info.sizes.file.toString(),
-      usersMetaDbInfo.info.sizes.active.toString(),
-      usersMetaDbInfo.info.compact_running.toString(),
-      usersMetaDesignInfo.view_index.compact_running.toString(),
-      usersMetaDesignInfo.view_index.updater_running.toString(),
-      usersMetaDesignInfo.view_index.sizes.file.toString(),
-      usersMetaDesignInfo.view_index.sizes.active.toString(),
-      usersDbInfo.info.sizes.file.toString(),
-      usersDbInfo.info.sizes.active.toString(),
-      usersDbInfo.info.compact_running.toString(),
-      usersDesignInfo.view_index.compact_running.toString(),
-      usersDesignInfo.view_index.updater_running.toString(),
-      usersDesignInfo.view_index.sizes.file.toString(),
-      usersDesignInfo.view_index.sizes.active.toString(),
+    const getDbInfoCsvData = (dbInfo: CouchDbInfo) => [
+      dbInfo.info.sizes.file.toString(),
+      dbInfo.info.sizes.active.toString(),
+      dbInfo.info.compact_running.toString(),
+    ];
+
+    const getDesignInfoCsvData = (designInfo: CouchDesignInfo) => [
+      designInfo.view_index.compact_running.toString(),
+      designInfo.view_index.updater_running.toString(),
+      designInfo.view_index.sizes.file.toString(),
+      designInfo.view_index.sizes.active.toString(),
+    ];
+
+    const getNodeSystemCsvData = (nodeSystem: CouchNodeSystem) => [
       nodeSystem.memory.other.toString(),
       nodeSystem.memory.atom.toString(),
       nodeSystem.memory.atom_used.toString(),
@@ -243,7 +378,33 @@ describe('Monitor service', () => {
       nodeSystem.memory.processes_used.toString(),
       nodeSystem.memory.binary.toString(),
       nodeSystem.memory.code.toString(),
-      nodeSystem.memory.ets.toString()
+      nodeSystem.memory.ets.toString(),
+    ];
+
+    const expectedCsvData = [
+      ...getDbInfoCsvData(medicDbInfo),
+      ...getDesignInfoCsvData(medicDesignInfo),
+      ...getDesignInfoCsvData(medicAdminDesignInfo),
+      ...getDesignInfoCsvData(medicClientDesignInfo),
+      ...getDesignInfoCsvData(medicConflictsDesignInfo),
+      ...getDesignInfoCsvData(medicScriptsDesignInfo),
+      ...getDesignInfoCsvData(medicSmsDesignInfo),
+      ...getDesignInfoCsvData(medicStagedDesignInfo),
+      ...getDesignInfoCsvData(medicAdminStagedDesignInfo),
+      ...getDesignInfoCsvData(medicClientStagedDesignInfo),
+      ...getDesignInfoCsvData(medicConflictsStagedDesignInfo),
+      ...getDesignInfoCsvData(medicScriptsStagedDesignInfo),
+      ...getDesignInfoCsvData(medicSmsStagedDesignInfo),
+      ...getDbInfoCsvData(sentinelDbInfo),
+      ...getDesignInfoCsvData(sentinelDesignInfo),
+      ...getDesignInfoCsvData(sentinelStagedDesignInfo),
+      ...getDbInfoCsvData(usersMetaDbInfo),
+      ...getDesignInfoCsvData(usersMetaDesignInfo),
+      ...getDesignInfoCsvData(usersMetaStagedDesignInfo),
+      ...getDbInfoCsvData(usersDbInfo),
+      ...getDesignInfoCsvData(usersDesignInfo),
+      ...getDesignInfoCsvData(usersStagedDesignInfo),
+      ...getNodeSystemCsvData(nodeSystem),
     ];
 
     it('returns complete monitoring data', run(Effect.gen(function* () {
@@ -251,15 +412,7 @@ describe('Monitor service', () => {
       const unix_time = 123456789;
       yield* TestClock.setTime(unix_time * 1000);
       dbsInfoServicePost.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
-      designInfoServiceGet.withArgs('medic', 'medic').returns(Effect.succeed(medicDesignInfo));
-      designInfoServiceGet.withArgs('medic', 'medic-admin').returns(Effect.succeed(medicAdminDesignInfo));
-      designInfoServiceGet.withArgs('medic', 'medic-client').returns(Effect.succeed(medicClientDesignInfo));
-      designInfoServiceGet.withArgs('medic', 'medic-conflicts').returns(Effect.succeed(medicConflictsDesignInfo));
-      designInfoServiceGet.withArgs('medic', 'medic-scripts').returns(Effect.succeed(medicScriptsDesignInfo));
-      designInfoServiceGet.withArgs('medic', 'medic-sms').returns(Effect.succeed(medicSmsDesignInfo));
-      designInfoServiceGet.withArgs('medic-sentinel', 'sentinel').returns(Effect.succeed(sentinelDesignInfo));
-      designInfoServiceGet.withArgs('medic-users-meta', 'users-meta').returns(Effect.succeed(usersMetaDesignInfo));
-      designInfoServiceGet.withArgs('_users', 'users').returns(Effect.succeed(usersDesignInfo));
+      initializeDesignInfoServiceGet(designInfoServiceGet);
       const directory = 'directory';
       const directorySize = 444444;
       diskUsageServiceGetSize.returns(Effect.succeed(directorySize));
@@ -274,10 +427,10 @@ describe('Monitor service', () => {
       expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
     })));
 
-    it('does not include directory_size column when no directory provided', run(Effect.gen(function* () {
+    it('includes empty data for designs that do not exist', run(Effect.gen(function* () {
       nodeSystemServiceGet.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
-      yield* TestClock.setTime(123456789458);
+      yield* TestClock.setTime(unix_time * 1000);
       dbsInfoServicePost.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
       designInfoServiceGet.withArgs('medic', 'medic').returns(Effect.succeed(medicDesignInfo));
       designInfoServiceGet.withArgs('medic', 'medic-admin').returns(Effect.succeed(medicAdminDesignInfo));
@@ -288,6 +441,58 @@ describe('Monitor service', () => {
       designInfoServiceGet.withArgs('medic-sentinel', 'sentinel').returns(Effect.succeed(sentinelDesignInfo));
       designInfoServiceGet.withArgs('medic-users-meta', 'users-meta').returns(Effect.succeed(usersMetaDesignInfo));
       designInfoServiceGet.withArgs('_users', 'users').returns(Effect.succeed(usersDesignInfo));
+      designInfoServiceGet.returns(Effect.fail(new ResponseError({
+        request: {} as unknown as HttpClientRequest.HttpClientRequest,
+        response: { status: 404 } as unknown as HttpClientResponse.HttpClientResponse,
+        reason: 'StatusCode'
+      })));
+      const directory = 'directory';
+      const directorySize = 444444;
+      diskUsageServiceGetSize.returns(Effect.succeed(directorySize));
+
+      const service = yield* MonitorService;
+      const data = yield* service.getAsCsv(Option.some(directory));
+
+      const expectedCsvData = [
+        unix_time.toString(),
+        ...getDbInfoCsvData(medicDbInfo),
+        ...getDesignInfoCsvData(medicDesignInfo),
+        ...getDesignInfoCsvData(medicAdminDesignInfo),
+        ...getDesignInfoCsvData(medicClientDesignInfo),
+        ...getDesignInfoCsvData(medicConflictsDesignInfo),
+        ...getDesignInfoCsvData(medicScriptsDesignInfo),
+        ...getDesignInfoCsvData(medicSmsDesignInfo),
+        ...getDesignInfoCsvData(emptyDesignInfo),
+        ...getDesignInfoCsvData(emptyDesignInfo),
+        ...getDesignInfoCsvData(emptyDesignInfo),
+        ...getDesignInfoCsvData(emptyDesignInfo),
+        ...getDesignInfoCsvData(emptyDesignInfo),
+        ...getDesignInfoCsvData(emptyDesignInfo),
+        ...getDbInfoCsvData(sentinelDbInfo),
+        ...getDesignInfoCsvData(sentinelDesignInfo),
+        ...getDesignInfoCsvData(emptyDesignInfo),
+        ...getDbInfoCsvData(usersMetaDbInfo),
+        ...getDesignInfoCsvData(usersMetaDesignInfo),
+        ...getDesignInfoCsvData(emptyDesignInfo),
+        ...getDbInfoCsvData(usersDbInfo),
+        ...getDesignInfoCsvData(usersDesignInfo),
+        ...getDesignInfoCsvData(emptyDesignInfo),
+        ...getNodeSystemCsvData(nodeSystem),
+        directorySize.toString(),
+      ];
+      expect(data).to.deep.equal(expectedCsvData);
+      expect(nodeSystemServiceGet.calledOnceWithExactly()).to.be.true;
+      expect(dbsInfoServicePost.calledOnceWithExactly()).to.be.true;
+      expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
+      expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
+    })));
+
+    it('does not include directory_size column when no directory provided', run(Effect.gen(function* () {
+      nodeSystemServiceGet.returns(Effect.succeed(nodeSystem));
+      const unix_time = 123456789;
+      yield* TestClock.setTime(123456789458);
+      dbsInfoServicePost.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
+      initializeDesignInfoServiceGet(designInfoServiceGet);
 
       const service = yield* MonitorService;
       const data = yield* service.getAsCsv(Option.none());
@@ -330,6 +535,30 @@ describe('Monitor service', () => {
       `medic_medic-sms_updater_running`,
       `medic_medic-sms_sizes_file`,
       `medic_medic-sms_sizes_active`,
+      `medic_:staged:medic_compact_running`,
+      `medic_:staged:medic_updater_running`,
+      `medic_:staged:medic_sizes_file`,
+      `medic_:staged:medic_sizes_active`,
+      `medic_:staged:medic-admin_compact_running`,
+      `medic_:staged:medic-admin_updater_running`,
+      `medic_:staged:medic-admin_sizes_file`,
+      `medic_:staged:medic-admin_sizes_active`,
+      `medic_:staged:medic-client_compact_running`,
+      `medic_:staged:medic-client_updater_running`,
+      `medic_:staged:medic-client_sizes_file`,
+      `medic_:staged:medic-client_sizes_active`,
+      `medic_:staged:medic-conflicts_compact_running`,
+      `medic_:staged:medic-conflicts_updater_running`,
+      `medic_:staged:medic-conflicts_sizes_file`,
+      `medic_:staged:medic-conflicts_sizes_active`,
+      `medic_:staged:medic-scripts_compact_running`,
+      `medic_:staged:medic-scripts_updater_running`,
+      `medic_:staged:medic-scripts_sizes_file`,
+      `medic_:staged:medic-scripts_sizes_active`,
+      `medic_:staged:medic-sms_compact_running`,
+      `medic_:staged:medic-sms_updater_running`,
+      `medic_:staged:medic-sms_sizes_file`,
+      `medic_:staged:medic-sms_sizes_active`,
       'medic-sentinel_sizes_file',
       'medic-sentinel_sizes_active',
       'medic-sentinel_compact_running',
@@ -337,6 +566,10 @@ describe('Monitor service', () => {
       `medic-sentinel_sentinel_updater_running`,
       `medic-sentinel_sentinel_sizes_file`,
       `medic-sentinel_sentinel_sizes_active`,
+      `medic-sentinel_:staged:sentinel_compact_running`,
+      `medic-sentinel_:staged:sentinel_updater_running`,
+      `medic-sentinel_:staged:sentinel_sizes_file`,
+      `medic-sentinel_:staged:sentinel_sizes_active`,
       'medic-users-meta_sizes_file',
       'medic-users-meta_sizes_active',
       'medic-users-meta_compact_running',
@@ -344,6 +577,10 @@ describe('Monitor service', () => {
       `medic-users-meta_users-meta_updater_running`,
       `medic-users-meta_users-meta_sizes_file`,
       `medic-users-meta_users-meta_sizes_active`,
+      `medic-users-meta_:staged:users-meta_compact_running`,
+      `medic-users-meta_:staged:users-meta_updater_running`,
+      `medic-users-meta_:staged:users-meta_sizes_file`,
+      `medic-users-meta_:staged:users-meta_sizes_active`,
       '_users_sizes_file',
       '_users_sizes_active',
       '_users_compact_running',
@@ -351,6 +588,10 @@ describe('Monitor service', () => {
       `_users_users_updater_running`,
       `_users_users_sizes_file`,
       `_users_users_sizes_active`,
+      `_users_:staged:users_compact_running`,
+      `_users_:staged:users_updater_running`,
+      `_users_:staged:users_sizes_file`,
+      `_users_:staged:users_sizes_active`,
       'memory_other',
       'memory_atom',
       'memory_atom_used',
