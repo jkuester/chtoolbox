@@ -66,7 +66,9 @@ cli(process.argv)
       Layer.merge(CouchDesignServiceLive),
       Layer.merge(CouchViewServiceLive),
       Layer.provide(CouchServiceLive.pipe(
-        Layer.provide(NodeHttpClient.layer),
+        Layer.provide(NodeHttpClient.layerWithoutAgent.pipe(
+          Layer.provide(NodeHttpClient.makeAgentLayer({ rejectUnauthorized: false }))
+        )),
       )),
     )),
     Effect.provide(EnvironmentServiceLive),
