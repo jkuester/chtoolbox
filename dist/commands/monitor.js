@@ -6,7 +6,7 @@ const effect_1 = require("effect");
 const index_1 = require("../index");
 const monitor_1 = require("../services/monitor");
 const printCsvRow = (row) => (0, effect_1.pipe)(row, effect_1.Array.map(value => String(value)), effect_1.Array.join(', '), effect_1.Console.log);
-const monitorData = (monitor, interval, trackDirSize) => (0, effect_1.pipe)(monitor.getAsCsv(trackDirSize), effect_1.Effect.tap(printCsvRow), effect_1.Effect.delay(interval * 1000));
+const monitorData = (monitor, interval, trackDirSize) => (0, effect_1.pipe)(monitor.getAsCsv(trackDirSize), effect_1.Effect.tap(printCsvRow), effect_1.Effect.catchAll(effect_1.Console.error), effect_1.Effect.delay(interval * 1000));
 const interval = cli_1.Options
     .integer('interval')
     .pipe(cli_1.Options.withAlias('i'), cli_1.Options.withDescription('The interval in seconds to poll the data. Default is 1 second.'), cli_1.Options.withDefault(1));
