@@ -39,7 +39,7 @@ export const initializeUrl = chtx.pipe(
   Effect.map(Option.map(Config.succeed)),
   Effect.flatMap(urlConfig => EnvironmentService.pipe(
     Effect.map(service => service.get()),
-    Effect.flatMap(({ url }) => optionalUpdate(url, urlConfig))
+    Effect.flatMap(({ url }) => optionalUpdate(url, urlConfig)),
   )),
 );
 
@@ -51,28 +51,25 @@ const cli = Command.run(command, {
   version: packageJson.version
 });
 
-const CouchServicesLayer = CouchCompactServiceLive.pipe(
-  Layer.merge(CouchNodeSystemServiceLive),
-  Layer.merge(CouchDbsInfoServiceLive),
-  Layer.merge(CouchDesignDocsServiceLive),
-  Layer.merge(CouchDesignInfoServiceLive),
-  Layer.merge(CouchDesignServiceLive),
-  Layer.merge(CouchViewServiceLive),
-  Layer.provide(CouchServiceLive.pipe(
-    Layer.provide(NodeHttpClient.layer),
-    Layer.provide(EnvironmentServiceLive),
-  )),
-);
-
 cli(process.argv)
   .pipe(
-    Effect.provide(NodeContext.layer),
-    Effect.provide(EnvironmentServiceLive),
-    Effect.provide(CompactServiceLive.pipe(Layer.provide(CouchServicesLayer))),
+    Effect.provide(CompactServiceLive),
     Effect.provide(MonitorServiceLive.pipe(
-      Layer.provide(CouchServicesLayer),
-      Layer.provide(LocalDiskUsageServiceLive.pipe(Layer.provide(NodeContext.layer))),
+      Layer.provide(LocalDiskUsageServiceLive),
     )),
-    Effect.provide(WarmViewsServiceLive.pipe(Layer.provide(CouchServicesLayer))),
+    Effect.provide(WarmViewsServiceLive),
+    Effect.provide(CouchCompactServiceLive.pipe(
+      Layer.merge(CouchNodeSystemServiceLive),
+      Layer.merge(CouchDbsInfoServiceLive),
+      Layer.merge(CouchDesignDocsServiceLive),
+      Layer.merge(CouchDesignInfoServiceLive),
+      Layer.merge(CouchDesignServiceLive),
+      Layer.merge(CouchViewServiceLive),
+      Layer.provide(CouchServiceLive.pipe(
+        Layer.provide(NodeHttpClient.layer),
+      )),
+    )),
+    Effect.provide(EnvironmentServiceLive),
+    Effect.provide(NodeContext.layer),
     NodeRuntime.runMain
   );
