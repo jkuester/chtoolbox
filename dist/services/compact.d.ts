@@ -6,8 +6,8 @@ import { CouchDesignDocsService } from './couch/design-docs';
 import { CouchCompactService } from './couch/compact';
 import { CouchDesignInfoService } from './couch/design-info';
 export interface CompactService {
-    readonly compactAll: Effect.Effect<void, Error>;
-    readonly currentlyCompacting: Effect.Effect<string[], Error>;
+    readonly compactAll: () => Effect.Effect<void, Error>;
+    readonly currentlyCompacting: () => Effect.Effect<string[], Error>;
 }
 export declare const CompactService: Context.Tag<CompactService, CompactService>;
 export declare const CompactServiceLive: Layer.Layer<CompactService, never, CouchDbsInfoService | CouchDesignInfoService | CouchDesignDocsService | CouchCompactService>;

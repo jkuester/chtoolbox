@@ -8,8 +8,8 @@ import { CouchCompactService } from './couch/compact';
 import { CouchDesignInfoService } from './couch/design-info';
 
 export interface CompactService {
-  readonly compactAll: Effect.Effect<void, Error>
-  readonly currentlyCompacting: Effect.Effect<string[], Error>
+  readonly compactAll: () => Effect.Effect<void, Error>
+  readonly currentlyCompacting: () => Effect.Effect<string[], Error>
 }
 
 export const CompactService = Context.GenericTag<CompactService>('chtoolbox/CompactService');
@@ -95,7 +95,7 @@ const ServiceContext = Effect
 
 export const CompactServiceLive = Layer.effect(CompactService, ServiceContext.pipe(Effect.map(
   context => CompactService.of({
-    compactAll: compactAll.pipe(Effect.provide(context)),
-    currentlyCompacting: currentlyCompacting.pipe(Effect.provide(context)),
+    compactAll: () => compactAll.pipe(Effect.provide(context)),
+    currentlyCompacting: () => currentlyCompacting.pipe(Effect.provide(context)),
   })
 )));

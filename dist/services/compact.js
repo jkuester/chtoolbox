@@ -59,7 +59,7 @@ const ServiceContext = Effect
     .make(dbs_info_1.CouchDbsInfoService, dbsInfo)
     .pipe(Context.add(design_docs_1.CouchDesignDocsService, designDocs), Context.add(compact_1.CouchCompactService, compact), Context.add(design_info_1.CouchDesignInfoService, designInfo))));
 exports.CompactServiceLive = Layer.effect(exports.CompactService, ServiceContext.pipe(Effect.map(context => exports.CompactService.of({
-    compactAll: compactAll.pipe(Effect.provide(context)),
-    currentlyCompacting: currentlyCompacting.pipe(Effect.provide(context)),
+    compactAll: () => compactAll.pipe(Effect.provide(context)),
+    currentlyCompacting: () => currentlyCompacting.pipe(Effect.provide(context)),
 }))));
 //# sourceMappingURL=compact.js.map

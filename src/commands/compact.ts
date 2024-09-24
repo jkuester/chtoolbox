@@ -5,7 +5,7 @@ import { CompactService } from '../services/compact';
 
 const currentlyCompacting = CompactService.pipe(
   Effect.delay(1000),
-  Effect.flatMap(service => service.currentlyCompacting),
+  Effect.flatMap(service => service.currentlyCompacting()),
   Effect.tap(Console.log('Currently compacting:')),
   Effect.tap(Console.log),
 );
@@ -24,7 +24,7 @@ export const compact = Command
   .make('compact', {}, () => initializeUrl.pipe(
     Effect.tap(Console.log('Compacting all dbs and views...')),
     Effect.andThen(CompactService),
-    Effect.flatMap(compactService => compactService.compactAll),
+    Effect.flatMap(compactService => compactService.compactAll()),
     Effect.andThen(Effect.repeat(currentlyCompacting, { until: compactingComplete })),
     Effect.tap(Console.log('Compaction complete.')),
   ))
