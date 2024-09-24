@@ -33,14 +33,8 @@ const EXPECTED_DESIGN_INFO_ARGS = [
 ];
 
 const nodeSystem = createNodeSystem({
-  other: 12352352,
-  atom: 235235,
-  atom_used: 1453,
-  processes: 32232,
   processes_used: 324116345634,
   binary: 34,
-  code: 23232,
-  ets: 999,
 });
 const medicDbInfo = createDbInfo({ key: 'medic', compact_running: true, file: 123, active: 234 });
 const sentinelDbInfo = createDbInfo({ key: 'medic-sentinel', file: 12 });
@@ -371,14 +365,8 @@ describe('Monitor service', () => {
     ];
 
     const getNodeSystemCsvData = (nodeSystem: CouchNodeSystem) => [
-      nodeSystem.memory.other.toString(),
-      nodeSystem.memory.atom.toString(),
-      nodeSystem.memory.atom_used.toString(),
-      nodeSystem.memory.processes.toString(),
       nodeSystem.memory.processes_used.toString(),
       nodeSystem.memory.binary.toString(),
-      nodeSystem.memory.code.toString(),
-      nodeSystem.memory.ets.toString(),
     ];
 
     const expectedCsvData = [
@@ -592,14 +580,8 @@ describe('Monitor service', () => {
       `_users_:staged:users_updater_running`,
       `_users_:staged:users_sizes_file`,
       `_users_:staged:users_sizes_active`,
-      'memory_other',
-      'memory_atom',
-      'memory_atom_used',
-      'memory_processes',
       'memory_processes_used',
       'memory_binary',
-      'memory_code',
-      'memory_ets',
       'directory_size',
     ];
 

@@ -20,7 +20,7 @@ describe('Couch Node System Service', () => {
 
   afterEach(() => sinon.restore());
 
-  const run = (test:  Effect.Effect<unknown, unknown, CouchNodeSystemService>) => async () => {
+  const run = (test: Effect.Effect<unknown, unknown, CouchNodeSystemService>) => async () => {
     await Effect.runPromise(test.pipe(
       Effect.provide(CouchNodeSystemServiceLive),
       Effect.provide(TestContext.TestContext),
@@ -33,14 +33,8 @@ describe('Couch Node System Service', () => {
   it('gets node system data', run(Effect.gen(function* () {
     requestGet.returns(FAKE_CLIENT_REQUEST);
     const expectedNodeSystem = createNodeSystem({
-      other: 12352352,
-      atom: 235235,
-      atom_used: 1453,
-      processes: 32232,
       processes_used: 324116345634,
       binary: 34,
-      code: 23232,
-      ets: 999,
     });
     couchRequest.returns(Effect.succeed({
       json: Effect.succeed(expectedNodeSystem),

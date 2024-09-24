@@ -108,14 +108,8 @@ const getCsvHeader = (directory) => [
             `${dbName}_${designName}_sizes_active`,
         ])
     ]),
-    'memory_other',
-    'memory_atom',
-    'memory_atom_used',
-    'memory_processes',
     'memory_processes_used',
     'memory_binary',
-    'memory_code',
-    'memory_ets',
     ...(directory.pipe(effect_1.Option.map(() => 'directory_size'), effect_1.Option.map(effect_1.Array.of), effect_1.Option.getOrElse(() => [])))
 ];
 const getAsCsv = (directory) => (0, effect_1.pipe)(getMonitoringData(directory), Effect.map(data => [
@@ -131,14 +125,8 @@ const getAsCsv = (directory) => (0, effect_1.pipe)(getMonitoringData(directory),
             design.view_index.sizes.active.toString(),
         ])
     ]),
-    data.memory.other.toString(),
-    data.memory.atom.toString(),
-    data.memory.atom_used.toString(),
-    data.memory.processes.toString(),
     data.memory.processes_used.toString(),
     data.memory.binary.toString(),
-    data.memory.code.toString(),
-    data.memory.ets.toString(),
     ...(data.directory_size.pipe(effect_1.Option.map(value => value.toString()), effect_1.Option.map(effect_1.Array.of), effect_1.Option.getOrElse(() => []))),
 ]));
 const ServiceContext = Effect

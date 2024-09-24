@@ -33,14 +33,8 @@ const couch_1 = require("./couch");
 const ENDPOINT = '/_node/_local/_system';
 class CouchNodeSystem extends Schema.Class('CouchNodeSystem')({
     memory: Schema.Struct({
-        other: Schema.Number,
-        atom: Schema.Number,
-        atom_used: Schema.Number,
-        processes: Schema.Number,
         processes_used: Schema.Number,
         binary: Schema.Number,
-        code: Schema.Number,
-        ets: Schema.Number,
     }),
 }) {
     static decodeResponse = platform_1.HttpClientResponse.schemaBodyJsonScoped(CouchNodeSystem);

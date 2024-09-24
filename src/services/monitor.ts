@@ -138,14 +138,8 @@ const getCsvHeader = (directory: Option.Option<string>) => [
       `${dbName}_${designName}_sizes_active`,
     ])
   ]),
-  'memory_other',
-  'memory_atom',
-  'memory_atom_used',
-  'memory_processes',
   'memory_processes_used',
   'memory_binary',
-  'memory_code',
-  'memory_ets',
   ...(directory.pipe(
     Option.map(() => 'directory_size'),
     Option.map(Array.of),
@@ -168,14 +162,8 @@ const getAsCsv = (directory: Option.Option<string>) => pipe(
         design.view_index.sizes.active.toString(),
       ])
     ]),
-    data.memory.other.toString(),
-    data.memory.atom.toString(),
-    data.memory.atom_used.toString(),
-    data.memory.processes.toString(),
     data.memory.processes_used.toString(),
     data.memory.binary.toString(),
-    data.memory.code.toString(),
-    data.memory.ets.toString(),
     ...(data.directory_size.pipe(
       Option.map(value => value.toString()),
       Option.map(Array.of),

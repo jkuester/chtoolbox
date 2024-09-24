@@ -33,23 +33,11 @@ export const createDesignInfo = ({
 });
 
 export const createNodeSystem = ({
-  other = 0,
-  atom = 0,
-  atom_used = 0,
-  processes = 0,
   processes_used = 0,
   binary = 0,
-  code = 0,
-  ets = 0,
 } = { }) => ({
   memory: {
-    other,
-    atom,
-    atom_used,
-    processes,
     processes_used,
     binary,
-    code,
-    ets,
   }
 });
