@@ -1,0 +1,20 @@
+name: CI
+
+on: [push, pull_request]
+
+env:
+  NODE_VERSION: '20.11'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build-app
+      - run: npm test
