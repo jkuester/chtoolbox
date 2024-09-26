@@ -9,8 +9,8 @@ import { CouchViewService } from './couch/view';
 import { CouchDesignInfoService } from './couch/design-info';
 
 export interface WarmViewsService {
-  readonly warmAll: Effect.Effect<void, Error>,
-  readonly designsCurrentlyUpdating: Effect.Effect<{ dbName: string, designId: string }[], Error>
+  readonly warmAll: () => Effect.Effect<void, Error>,
+  readonly designsCurrentlyUpdating: () => Effect.Effect<{ dbName: string, designId: string }[], Error>
 }
 
 export const WarmViewsService = Context.GenericTag<WarmViewsService>('chtoolbox/WarmViewsService');
@@ -87,7 +87,7 @@ const ServiceContext = Effect
 
 export const WarmViewsServiceLive = Layer.effect(WarmViewsService, ServiceContext.pipe(Effect.map(
   contect => WarmViewsService.of({
-    warmAll: warmAll.pipe(Effect.provide(contect)),
-    designsCurrentlyUpdating: designsCurrentlyUpdating.pipe(Effect.provide(contect)),
+    warmAll: () => warmAll.pipe(Effect.provide(contect)),
+    designsCurrentlyUpdating: () => designsCurrentlyUpdating.pipe(Effect.provide(contect)),
   })
 )));

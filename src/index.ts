@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Command, Options } from '@effect/cli';
 import { NodeContext, NodeHttpClient, NodeRuntime } from '@effect/platform-node';
-import { Config, Console, Effect, Layer, Option, pipe, Redacted } from 'effect';
+import { Config, Effect, Layer, Option, Redacted } from 'effect';
 import { CouchNodeSystemServiceLive } from './services/couch/node-system';
 import { CouchServiceLive } from './services/couch/couch';
 import { CouchDbsInfoServiceLive } from './services/couch/dbs-info';
@@ -30,10 +30,7 @@ const url = Options
     Options.optional
   );
 
-const chtx = Command.make('chtx', { url }, () => pipe(
-  'Hello World!',
-  Console.log,
-));
+const chtx = Command.make('chtx', { url });
 
 export const initializeUrl = chtx.pipe(
   Effect.map(({ url }) => url),

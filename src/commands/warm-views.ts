@@ -5,7 +5,7 @@ import { WarmViewsService } from '../services/warm-views';
 
 const designsCurrentlyUpdating = WarmViewsService.pipe(
   Effect.delay(1000),
-  Effect.flatMap(service => service.designsCurrentlyUpdating),
+  Effect.flatMap(service => service.designsCurrentlyUpdating()),
   Effect.map(Array.map(({ dbName, designId }) => `${dbName}/${designId}`)),
   Effect.tap(Console.log('Designs currently updating:')),
   Effect.tap(Console.log),
@@ -26,7 +26,7 @@ export const warmViews = Command
     initializeUrl,
     Effect.tap(Console.log('Warming views...')),
     Effect.andThen(WarmViewsService),
-    Effect.flatMap(warmViewsService => warmViewsService.warmAll),
+    Effect.flatMap(warmViewsService => warmViewsService.warmAll()),
     Effect.andThen(Effect.repeat(designsCurrentlyUpdating, { until: viewWarmingComplete })),
     Effect.tap(Console.log('View warming complete.')),
   ))

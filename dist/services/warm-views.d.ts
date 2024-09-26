@@ -7,8 +7,8 @@ import { CouchDesignService } from './couch/design';
 import { CouchViewService } from './couch/view';
 import { CouchDesignInfoService } from './couch/design-info';
 export interface WarmViewsService {
-    readonly warmAll: Effect.Effect<void, Error>;
-    readonly designsCurrentlyUpdating: Effect.Effect<{
+    readonly warmAll: () => Effect.Effect<void, Error>;
+    readonly designsCurrentlyUpdating: () => Effect.Effect<{
         dbName: string;
         designId: string;
     }[], Error>;
