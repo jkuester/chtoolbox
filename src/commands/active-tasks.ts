@@ -1,5 +1,5 @@
 import { Command, Options } from '@effect/cli';
-import { Array, Console, DateTime, Effect, Number, Option, pipe, Record } from 'effect';
+import { Array, Console, DateTime, Effect, Number, Option, Order, pipe, Record } from 'effect';
 import { initializeUrl } from '../index';
 import { CouchActiveTask, CouchActiveTasksService } from '../services/couch/active-tasks';
 
@@ -35,7 +35,12 @@ const getTasksDisplayData = (tasks: readonly CouchActiveTask[]) => pipe(
 
 const couchActiveTasks = Effect.flatMap(CouchActiveTasksService, service => service.get());
 
+const orderByStartedOn = Order.make(
+  (a: CouchActiveTask, b: CouchActiveTask) => Number.Order(a.started_on, b.started_on)
+);
+
 const printActiveTasks = couchActiveTasks.pipe(
+  Effect.map(Array.sort(orderByStartedOn)),
   Effect.map(getTasksDisplayData),
   Effect.tap(Console.table),
 );

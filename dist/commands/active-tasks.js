@@ -20,7 +20,8 @@ const getTaskDisplayData = ({ type, database, design_document, pid, progress, st
 });
 const getTasksDisplayData = (tasks) => (0, effect_1.pipe)(effect_1.Array.map(tasks, getTaskDisplayData), effect_1.Array.reduce({}, (data, task) => effect_1.Record.set(task.pid, effect_1.Record.remove('pid')(task))(data)));
 const couchActiveTasks = effect_1.Effect.flatMap(active_tasks_1.CouchActiveTasksService, service => service.get());
-const printActiveTasks = couchActiveTasks.pipe(effect_1.Effect.map(getTasksDisplayData), effect_1.Effect.tap(effect_1.Console.table));
+const orderByStartedOn = effect_1.Order.make((a, b) => effect_1.Number.Order(a.started_on, b.started_on));
+const printActiveTasks = couchActiveTasks.pipe(effect_1.Effect.map(effect_1.Array.sort(orderByStartedOn)), effect_1.Effect.map(getTasksDisplayData), effect_1.Effect.tap(effect_1.Console.table));
 const followActiveTasks = effect_1.Effect.repeat(effect_1.Console.clear.pipe(effect_1.Effect.andThen(printActiveTasks), effect_1.Effect.delay(5000)), { until: () => false });
 const follow = cli_1.Options
     .boolean('follow')
