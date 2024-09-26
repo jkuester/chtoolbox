@@ -9,7 +9,6 @@ import { CouchDesignDocsService } from '../../src/services/couch/design-docs';
 import { CouchCompactService } from '../../src/services/couch/compact';
 import { createDbInfo, createDesignInfo } from '../utils/data-models';
 
-
 describe('Compact service', () => {
   let dbsInfoSvcGetDbNames: SinonStub;
   let dbInfoSvcGet: SinonStub;
