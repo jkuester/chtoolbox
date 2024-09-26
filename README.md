@@ -1,6 +1,8 @@
 # chtoolbox
 
-Toolbox of utilities for the CHT
+**Toolbox of utilities for the CHT**
+
+CHToolbox is a command-line utility for development and testing of the Community Health Toolkit. The goal is to provide a platform that makes it easy to create and share utility scripts.
 
 ## Installation
 
@@ -16,6 +18,14 @@ A particular branch can be installed by running:
 
 ```shell
 npm i -g git+https://github.com/jkuester/chtoolbox.git#<branch>
+```
+
+## Usage
+
+Check the help text for the latest usage information:
+
+```shell
+chtx --help
 ```
 
 ## Development

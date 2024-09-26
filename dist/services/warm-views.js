@@ -56,7 +56,7 @@ const ServiceContext = Effect
     .make(dbs_info_1.CouchDbsInfoService, couchDbsInfo)
     .pipe(Context.add(design_docs_1.CouchDesignDocsService, couchDesignDocs), Context.add(design_1.CouchDesignService, couchDesign), Context.add(view_1.CouchViewService, couchView), Context.add(design_info_1.CouchDesignInfoService, couchDesignInfo))));
 exports.WarmViewsServiceLive = Layer.effect(exports.WarmViewsService, ServiceContext.pipe(Effect.map(contect => exports.WarmViewsService.of({
-    warmAll: warmAll.pipe(Effect.provide(contect)),
-    designsCurrentlyUpdating: designsCurrentlyUpdating.pipe(Effect.provide(contect)),
+    warmAll: () => warmAll.pipe(Effect.provide(contect)),
+    designsCurrentlyUpdating: () => designsCurrentlyUpdating.pipe(Effect.provide(contect)),
 }))));
 //# sourceMappingURL=warm-views.js.map

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Command, Options } from '@effect/cli';
 import { NodeContext, NodeHttpClient, NodeRuntime } from '@effect/platform-node';
-import { Config, Console, Effect, Layer, Option, pipe, Redacted } from 'effect';
+import { Config, Effect, Layer, Option, Redacted } from 'effect';
 import { CouchNodeSystemServiceLive } from './services/couch/node-system';
 import { CouchServiceLive } from './services/couch/couch';
 import { CouchDbsInfoServiceLive } from './services/couch/dbs-info';
@@ -20,6 +20,8 @@ import { warmViews } from './commands/warm-views';
 import { CouchCompactServiceLive } from './services/couch/compact';
 import { CompactServiceLive } from './services/compact';
 import { compact } from './commands/compact';
+import { activeTasks } from './commands/active-tasks';
+import { CouchActiveTasksServiceLive } from './services/couch/active-tasks';
 
 const url = Options
   .text('url')
@@ -28,10 +30,7 @@ const url = Options
     Options.optional
   );
 
-const chtx = Command.make('chtx', { url }, () => pipe(
-  'Hello World!',
-  Console.log,
-));
+const chtx = Command.make('chtx', { url });
 
 export const initializeUrl = chtx.pipe(
   Effect.map(({ url }) => url),
@@ -43,7 +42,7 @@ export const initializeUrl = chtx.pipe(
   )),
 );
 
-const command = chtx.pipe(Command.withSubcommands([compact, monitor, warmViews]));
+const command = chtx.pipe(Command.withSubcommands([compact, monitor, warmViews, activeTasks]));
 
 const cli = Command.run(command, {
   name: 'CHT Toolbox',
@@ -53,22 +52,22 @@ const cli = Command.run(command, {
 
 cli(process.argv)
   .pipe(
+    Effect.provide(CouchActiveTasksServiceLive),
     Effect.provide(CompactServiceLive),
-    Effect.provide(MonitorServiceLive.pipe(
-      Layer.provide(LocalDiskUsageServiceLive),
-    )),
+    Effect.provide(MonitorServiceLive),
+    Effect.provide(LocalDiskUsageServiceLive),
     Effect.provide(WarmViewsServiceLive),
-    Effect.provide(CouchCompactServiceLive.pipe(
-      Layer.merge(CouchNodeSystemServiceLive),
-      Layer.merge(CouchDbsInfoServiceLive),
-      Layer.merge(CouchDesignDocsServiceLive),
-      Layer.merge(CouchDesignInfoServiceLive),
-      Layer.merge(CouchDesignServiceLive),
-      Layer.merge(CouchViewServiceLive),
-      Layer.provide(CouchServiceLive.pipe(
-        Layer.provide(NodeHttpClient.layerWithoutAgent.pipe(
-          Layer.provide(NodeHttpClient.makeAgentLayer({ rejectUnauthorized: false }))
-        )),
+    Effect.provide(CouchActiveTasksServiceLive),
+    Effect.provide(CouchCompactServiceLive),
+    Effect.provide(CouchNodeSystemServiceLive),
+    Effect.provide(CouchDbsInfoServiceLive),
+    Effect.provide(CouchDesignDocsServiceLive),
+    Effect.provide(CouchDesignInfoServiceLive),
+    Effect.provide(CouchDesignServiceLive),
+    Effect.provide(CouchViewServiceLive),
+    Effect.provide(CouchServiceLive.pipe(
+      Layer.provide(NodeHttpClient.layerWithoutAgent.pipe(
+        Layer.provide(NodeHttpClient.makeAgentLayer({ rejectUnauthorized: false }))
       )),
     )),
     Effect.provide(EnvironmentServiceLive),
