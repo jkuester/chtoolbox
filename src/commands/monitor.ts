@@ -6,7 +6,7 @@ import { MonitorService } from '../services/monitor';
 const printCsvRow = (row: readonly (string | number | boolean)[]) => pipe(
   row,
   Array.map(value => String(value)),
-  Array.join(', '),
+  Array.join(','),
   Console.log
 );
 
