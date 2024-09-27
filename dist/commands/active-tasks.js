@@ -13,7 +13,7 @@ const getTaskDisplayData = ({ type, database, design_document, pid, progress, st
     type,
     database: `${getDbNameFromShard(database)}${getDesignName(design_document)}`,
     pid: pid.substring(1, pid.length - 1),
-    progress: `${progress.toString()}%`,
+    progress: `${progress?.toString() ?? '?'}%`,
     started_at: effect_1.DateTime
         .unsafeMake(effect_1.Number.multiply(started_on, 1000))
         .pipe(effect_1.DateTime.formatLocal({ hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })),

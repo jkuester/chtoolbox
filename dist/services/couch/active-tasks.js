@@ -35,7 +35,7 @@ class CouchActiveTask extends Schema.Class('CouchActiveTask')({
     database: Schema.String,
     design_document: Schema.UndefinedOr(Schema.String),
     pid: Schema.String,
-    progress: Schema.Number,
+    progress: Schema.UndefinedOr(Schema.Number),
     started_on: Schema.Number,
     type: Schema.String,
 }) {

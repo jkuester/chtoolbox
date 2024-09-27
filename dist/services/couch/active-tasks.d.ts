@@ -7,14 +7,14 @@ declare const CouchActiveTask_base: Schema.Class<CouchActiveTask, {
     database: typeof Schema.String;
     design_document: Schema.UndefinedOr<typeof Schema.String>;
     pid: typeof Schema.String;
-    progress: typeof Schema.Number;
+    progress: Schema.UndefinedOr<typeof Schema.Number>;
     started_on: typeof Schema.Number;
     type: typeof Schema.String;
 }, Schema.Struct.Encoded<{
     database: typeof Schema.String;
     design_document: Schema.UndefinedOr<typeof Schema.String>;
     pid: typeof Schema.String;
-    progress: typeof Schema.Number;
+    progress: Schema.UndefinedOr<typeof Schema.Number>;
     started_on: typeof Schema.Number;
     type: typeof Schema.String;
 }>, never, {
@@ -22,13 +22,13 @@ declare const CouchActiveTask_base: Schema.Class<CouchActiveTask, {
 } & {
     readonly pid: string;
 } & {
-    readonly progress: number;
-} & {
     readonly started_on: number;
 } & {
     readonly type: string;
 } & {
     readonly design_document: string | undefined;
+} & {
+    readonly progress: number | undefined;
 }, {}, {}>;
 export declare class CouchActiveTask extends CouchActiveTask_base {
     static readonly decodeResponse: <E, E2, R2>(effect: Effect.Effect<import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>, E2, R2>) => Effect.Effect<readonly CouchActiveTask[], import("@effect/schema/ParseResult").ParseError | E | E2, Exclude<R2, import("effect/Scope").Scope>>;
