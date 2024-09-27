@@ -22,6 +22,9 @@ import { CompactServiceLive } from './services/compact';
 import { compact } from './commands/compact';
 import { activeTasks } from './commands/active-tasks';
 import { CouchActiveTasksServiceLive } from './services/couch/active-tasks';
+import { PouchDBServiceLive } from './services/pouchdb';
+import { replicate } from './commands/replicate';
+import { ReplicateServiceLive } from './services/replicate';
 
 const url = Options
   .text('url')
@@ -42,7 +45,7 @@ export const initializeUrl = chtx.pipe(
   )),
 );
 
-const command = chtx.pipe(Command.withSubcommands([compact, monitor, warmViews, activeTasks]));
+const command = chtx.pipe(Command.withSubcommands([compact, monitor, warmViews, activeTasks, replicate]));
 
 const cli = Command.run(command, {
   name: 'CHT Toolbox',
@@ -57,6 +60,7 @@ cli(process.argv)
     Effect.provide(MonitorServiceLive),
     Effect.provide(LocalDiskUsageServiceLive),
     Effect.provide(WarmViewsServiceLive),
+    Effect.provide(ReplicateServiceLive),
     Effect.provide(CouchActiveTasksServiceLive),
     Effect.provide(CouchCompactServiceLive),
     Effect.provide(CouchNodeSystemServiceLive),
@@ -65,6 +69,7 @@ cli(process.argv)
     Effect.provide(CouchDesignInfoServiceLive),
     Effect.provide(CouchDesignServiceLive),
     Effect.provide(CouchViewServiceLive),
+    Effect.provide(PouchDBServiceLive),
     Effect.provide(CouchServiceLive.pipe(
       Layer.provide(NodeHttpClient.layerWithoutAgent.pipe(
         Layer.provide(NodeHttpClient.makeAgentLayer({ rejectUnauthorized: false }))
