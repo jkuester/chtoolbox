@@ -4,14 +4,13 @@ import * as Layer from 'effect/Layer';
 import { Array, Config, Option, pipe, Redacted, Ref, String } from 'effect';
 import { PouchDBService } from './pouchdb';
 import { EnvironmentService } from './environment';
-import ReplicationResultComplete = PouchDB.Replication.ReplicationResultComplete;
 
 export interface ReplicateService {
   readonly replicateAsync: (source: string, target: string) => Effect.Effect<
     (PouchDB.Core.Response | PouchDB.Core.Error)[],
     Error
   >,
-  readonly replicate: (source: string, target: string) => Effect.Effect<ReplicationResultComplete<object>, Error>
+  readonly replicate: (source: string, target: string) => Effect.Effect<PouchDB.Replication.Replication<object>, Error>
 }
 
 export const ReplicateService = Context.GenericTag<ReplicateService>('chtoolbox/ReplicateService');
@@ -77,7 +76,7 @@ export const ReplicateServiceLive = Layer.effect(ReplicateService, ServiceContex
     replicate: (source: string, target: string) => Effect
       .all(Array.map([source, target], getPouchDb))
       .pipe(
-        Effect.flatMap(([sourceDb, targetDb]) => Effect.promise(() => sourceDb.replicate.to(targetDb))),
+        Effect.map(([sourceDb, targetDb]) => sourceDb.replicate.to(targetDb)),
         Effect.provide(context),
       ),
   })

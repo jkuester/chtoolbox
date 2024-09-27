@@ -83,7 +83,8 @@ describe('Replicate Service', () => {
       pouchGet.withArgs(target).returns(Effect.succeed(targetDb));
 
       const replicateSvc = yield* ReplicateService;
-      const response = yield* replicateSvc.replicate(source, target);
+      const replication = yield* replicateSvc.replicate(source, target);
+      const response = yield* Effect.promise(() => replication);
 
       expect(response).to.deep.equal(FAKE_RESPONSE);
       expect(pouchGet.args).to.deep.equal([[source], [target]]);

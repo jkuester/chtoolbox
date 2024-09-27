@@ -60,6 +60,6 @@ exports.ReplicateServiceLive = Layer.effect(exports.ReplicateService, ServiceCon
         .pipe(Effect.flatMap(([db, doc]) => Effect.promise(() => db.bulkDocs([doc]))), Effect.mapError(x => x), Effect.provide(context)),
     replicate: (source, target) => Effect
         .all(effect_1.Array.map([source, target], getPouchDb))
-        .pipe(Effect.flatMap(([sourceDb, targetDb]) => Effect.promise(() => sourceDb.replicate.to(targetDb))), Effect.provide(context)),
+        .pipe(Effect.map(([sourceDb, targetDb]) => sourceDb.replicate.to(targetDb)), Effect.provide(context)),
 }))));
 //# sourceMappingURL=replicate.js.map

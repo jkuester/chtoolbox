@@ -3,23 +3,36 @@ import { Console, Effect, Option } from 'effect';
 import { initializeUrl } from '../index';
 import { ReplicateService } from '../services/replicate';
 
+const repSyncMessage = Console.clear.pipe(
+  Effect.tap(Console.log(`Replicating synchronously. Do not kill this process...`)),
+);
+
+const monitorReplication = (rep: PouchDB.Replication.Replication<object>) => new Promise((resolve, reject) => {
+  void rep
+    .on('error', err => reject(new Error(JSON.stringify(err))))
+    .on('change', info => Effect.runSync(repSyncMessage.pipe(Effect.tap(Console.log(
+      `Docs replicated: ${info.docs_written.toString()}`
+    )))))
+    .on('complete', resolve);
+});
+
 const replicateSync = (source: string, target: string) => ReplicateService.pipe(
   Effect.tap(Console.log(`Replicating ${source} > ${target} synchronously. Do not kill this process...`)),
   Effect.flatMap(service => service.replicate(source, target)),
-  Effect.tap(Console.log('Replication complete!')),
+  Effect.flatMap(rep => Effect.promise(() => monitorReplication(rep))),
+  Effect.tap(repSyncMessage.pipe(Effect.tap(Console.log('Replication completed.')))),
 );
 
 const replicateAsync = (source: string, target: string) => ReplicateService.pipe(
-  Effect.tap(Console.log(`Replicating ${source} > ${target} asynchronously...`)),
   Effect.flatMap(service => service.replicateAsync(source, target)),
   Effect.tap(Console.log('Replication started. Watch the active tasks for progress: chtx active-tasks')),
 );
 
-const follow = Options
-  .boolean('follow')
+const async = Options
+  .boolean('async')
   .pipe(
-    Options.withAlias('f'),
-    Options.withDescription('Run the replication synchronously.'),
+    Options.withAlias('a'),
+    Options.withDescription('Run the replication asynchronously. Do not wait for replication to complete.'),
     Options.withDefault(false),
   );
 
@@ -31,9 +44,9 @@ const target = Args
   .pipe(Args.withDescription('The target database name.'));
 
 export const replicate = Command
-  .make('replicate', { follow, source, target }, ({ follow, source, target }) => initializeUrl.pipe(
-    Effect.andThen(replicateSync(source, target)),
-    Option.liftPredicate(() => follow),
-    Option.getOrElse(() => replicateAsync(source, target)),
+  .make('replicate', { async, source, target }, ({ async, source, target }) => initializeUrl.pipe(
+    Effect.andThen(replicateAsync(source, target)),
+    Option.liftPredicate(() => async),
+    Option.getOrElse(() => replicateSync(source, target)),
   ))
   .pipe(Command.withDescription(`Triggers a one-time replication from the source to the target database.`));
