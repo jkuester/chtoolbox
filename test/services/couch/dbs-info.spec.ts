@@ -6,6 +6,7 @@ import { CouchService } from '../../../src/services/couch/couch';
 import { HttpClientRequest } from '@effect/platform';
 import { CouchDbsInfoService, CouchDbsInfoServiceLive } from '../../../src/services/couch/dbs-info';
 import { createDbInfo } from '../../utils/data-models';
+import { NonEmptyArray } from 'effect/Array';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
 
@@ -85,16 +86,17 @@ describe('Couch Dbs Info Service', () => {
     couchRequest.returns(Effect.succeed({
       json: Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]),
     }));
+    const dbNames: NonEmptyArray<string> = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 
     const service = yield* CouchDbsInfoService;
-    const dbInfos = yield* service.post();
+    const dbInfos = yield* service.post(dbNames);
 
     expect(dbInfos).to.deep.equal([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]);
     expect(requestGet.notCalled).to.be.true;
     expect(couchRequest.calledOnceWithExactly(fakeBuiltClientRequest)).to.be.true;
     expect(requestBuild.calledOnceWithExactly(
       FAKE_CLIENT_REQUEST,
-      { keys: ['medic', 'medic-sentinel', 'medic-users-meta', '_users'] }
+      { keys: dbNames }
     )).to.be.true;
     expect(requestSchemaBody.calledOnce).to.be.true;
     expect(requestPost.calledOnceWithExactly('/_dbs_info')).to.be.true;

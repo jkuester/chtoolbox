@@ -5,15 +5,16 @@ import * as Context from 'effect/Context';
 import * as Layer from 'effect/Layer';
 import { Array } from 'effect';
 import { CouchService } from './couch';
+import { NonEmptyArray } from 'effect/Array';
 
 const ENDPOINT = '/_dbs_info';
 
 const DbsInfoBody = Schema.Struct({ keys: Schema.Array(Schema.String) });
-const getPostRequest = () => DbsInfoBody.pipe(
+const getPostRequest = (keys: NonEmptyArray<string>) => DbsInfoBody.pipe(
   HttpClientRequest.schemaBody,
   build => build(
     HttpClientRequest.post(ENDPOINT),
-    { keys: ['medic', 'medic-sentinel', 'medic-users-meta', '_users'] }
+    { keys }
   ),
 );
 
@@ -31,7 +32,7 @@ export class CouchDbInfo extends Schema.Class<CouchDbInfo>('CouchDbInfo')({
 }
 
 export interface CouchDbsInfoService {
-  readonly post: () => Effect.Effect<readonly CouchDbInfo[], Error>
+  readonly post: (dbNames: NonEmptyArray<string>) => Effect.Effect<readonly CouchDbInfo[], Error>
   readonly get: () => Effect.Effect<readonly CouchDbInfo[], Error>
   readonly getDbNames: () => Effect.Effect<readonly string[], Error>
 }
@@ -47,8 +48,8 @@ const ServiceContext = CouchService.pipe(Effect.map(couch => Context.make(CouchS
 
 export const CouchDbsInfoServiceLive = Layer.effect(CouchDbsInfoService, ServiceContext.pipe(Effect.map(
   context => CouchDbsInfoService.of({
-    post: () => Effect
-      .all([CouchService, getPostRequest()])
+    post: (dbNames: NonEmptyArray<string>) => Effect
+      .all([CouchService, getPostRequest(dbNames)])
       .pipe(
         Effect.flatMap(([couch, request]) => couch.request(request)),
         CouchDbInfo.decodeResponse,

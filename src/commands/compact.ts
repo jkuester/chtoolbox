@@ -1,4 +1,4 @@
-import { Command } from '@effect/cli';
+import { Command, Options } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe } from 'effect';
 import { initializeUrl } from '../index';
 import { CompactService } from '../services/compact';
@@ -20,12 +20,28 @@ const compactingComplete = (compacting: string[]) => pipe(
   count => count === 3,
 );
 
+const followCompacting = Effect
+  .repeat(currentlyCompacting, { until: compactingComplete })
+  .pipe(Effect.tap(Console.log('Compaction complete.')));
+
+const follow = Options
+  .boolean('follow')
+  .pipe(
+    Options.withAlias('f'),
+    Options.withDescription('After triggering compaction, wait for all compacting jobs to complete.'),
+    Options.withDefault(false),
+  );
+
 export const compact = Command
-  .make('compact', {}, () => initializeUrl.pipe(
+  .make('compact', { follow }, ({ follow }) => initializeUrl.pipe(
     Effect.tap(Console.log('Compacting all dbs and views...')),
     Effect.andThen(CompactService),
     Effect.flatMap(compactService => compactService.compactAll()),
-    Effect.andThen(Effect.repeat(currentlyCompacting, { until: compactingComplete })),
-    Effect.tap(Console.log('Compaction complete.')),
+    Effect.andThen(() => followCompacting.pipe(
+      Option.liftPredicate(() => follow),
+      Option.getOrElse(() => Console.log(
+        'Compaction started. Watch the active tasks for progress: chtx active-tasks'
+      )),
+    )),
   ))
   .pipe(Command.withDescription(`Force compaction on databases and views.`));

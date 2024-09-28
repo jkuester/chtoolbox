@@ -1,4 +1,4 @@
-import { Command } from '@effect/cli';
+import { Command, Options } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe } from 'effect';
 import { initializeUrl } from '../index';
 import { WarmViewsService } from '../services/warm-views';
@@ -21,13 +21,29 @@ const viewWarmingComplete = (designsUpdating: string[]) => pipe(
   count => count === 3,
 );
 
+const followIndexing = Effect
+  .repeat(designsCurrentlyUpdating, { until: viewWarmingComplete })
+  .pipe(Effect.tap(Console.log('View warming complete.')));
+
+const follow = Options
+  .boolean('follow')
+  .pipe(
+    Options.withAlias('f'),
+    Options.withDescription('After triggering warming, wait for all indexing jobs to complete.'),
+    Options.withDefault(false),
+  );
+
 export const warmViews = Command
-  .make('warm-views', {}, () => pipe(
+  .make('warm-views', { follow }, ({ follow }) => pipe(
     initializeUrl,
     Effect.tap(Console.log('Warming views...')),
     Effect.andThen(WarmViewsService),
     Effect.flatMap(warmViewsService => warmViewsService.warmAll()),
-    Effect.andThen(Effect.repeat(designsCurrentlyUpdating, { until: viewWarmingComplete })),
-    Effect.tap(Console.log('View warming complete.')),
+    Effect.andThen(() => followIndexing.pipe(
+      Option.liftPredicate(() => follow),
+      Option.getOrElse(() => Console.log(
+        'View warming started. Watch the active tasks for progress: chtx active-tasks'
+      )),
+    )),
   ))
   .pipe(Command.withDescription(`Warm all view indexes.`));

@@ -33,21 +33,23 @@ const getTasksDisplayData = (tasks: readonly CouchActiveTask[]) => pipe(
   Array.reduce({}, (data, task) => Record.set(task.pid, Record.remove('pid')(task))(data)),
 );
 
-const couchActiveTasks = Effect.flatMap(CouchActiveTasksService, service => service.get());
-
 const orderByStartedOn = Order.make(
   (a: CouchActiveTask, b: CouchActiveTask) => Number.Order(a.started_on, b.started_on)
 );
 
-const printActiveTasks = couchActiveTasks.pipe(
+const couchActiveTasks = CouchActiveTasksService.pipe(
+  Effect.flatMap(service => service.get()),
   Effect.map(Array.sort(orderByStartedOn)),
-  Effect.map(getTasksDisplayData),
-  Effect.tap(Console.table),
+  Effect.map(Option.liftPredicate(Array.isNonEmptyArray)),
+  Effect.map(Option.map(getTasksDisplayData)),
+  Effect.map(Option.getOrElse(() => 'No active tasks.')),
 );
 
 const followActiveTasks = Effect.repeat(
-  Console.clear.pipe(
-    Effect.andThen(printActiveTasks),
+  couchActiveTasks.pipe(
+    Effect.flatMap(tasks => Console.clear.pipe(
+      Effect.tap(Console.table(tasks)),
+    )),
     Effect.delay(5000),
   ),
   { until: () => false }
@@ -65,6 +67,6 @@ export const activeTasks = Command
   .make('active-tasks', { follow }, ({ follow }) => initializeUrl.pipe(
     Effect.andThen(followActiveTasks),
     Option.liftPredicate(() => follow),
-    Option.getOrElse(() => printActiveTasks),
+    Option.getOrElse(() => couchActiveTasks.pipe(Effect.tap(Console.table))),
   ))
   .pipe(Command.withDescription(`Force compaction on databases and views.`));

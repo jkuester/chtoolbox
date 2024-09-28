@@ -31,12 +31,13 @@ const active_tasks_2 = require("./services/couch/active-tasks");
 const pouchdb_1 = require("./services/pouchdb");
 const replicate_1 = require("./commands/replicate");
 const replicate_2 = require("./services/replicate");
+const db_1 = require("./commands/db");
 const url = cli_1.Options
     .text('url')
     .pipe(cli_1.Options.withDescription('The URL of the CouchDB server. Defaults to the COUCH_URL environment variable.'), cli_1.Options.optional);
 const chtx = cli_1.Command.make('chtx', { url });
 exports.initializeUrl = chtx.pipe(effect_1.Effect.map(({ url }) => url), effect_1.Effect.map(effect_1.Option.map(effect_1.Redacted.make)), effect_1.Effect.map(effect_1.Option.map(effect_1.Config.succeed)), effect_1.Effect.flatMap(urlConfig => environment_1.EnvironmentService.pipe(effect_1.Effect.map(service => service.get()), effect_1.Effect.flatMap(({ url }) => (0, core_1.optionalUpdate)(url, urlConfig)))));
-const command = chtx.pipe(cli_1.Command.withSubcommands([compact_3.compact, monitor_1.monitor, warm_views_2.warmViews, active_tasks_1.activeTasks, replicate_1.replicate]));
+const command = chtx.pipe(cli_1.Command.withSubcommands([compact_3.compact, monitor_1.monitor, warm_views_2.warmViews, active_tasks_1.activeTasks, replicate_1.replicate, db_1.db]));
 const cli = cli_1.Command.run(command, {
     name: 'CHT Toolbox',
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-assignment

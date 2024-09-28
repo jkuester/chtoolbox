@@ -19,14 +19,13 @@ const getTaskDisplayData = ({ type, database, design_document, pid, progress, st
         .pipe(effect_1.DateTime.formatLocal({ hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })),
 });
 const getTasksDisplayData = (tasks) => (0, effect_1.pipe)(effect_1.Array.map(tasks, getTaskDisplayData), effect_1.Array.reduce({}, (data, task) => effect_1.Record.set(task.pid, effect_1.Record.remove('pid')(task))(data)));
-const couchActiveTasks = effect_1.Effect.flatMap(active_tasks_1.CouchActiveTasksService, service => service.get());
 const orderByStartedOn = effect_1.Order.make((a, b) => effect_1.Number.Order(a.started_on, b.started_on));
-const printActiveTasks = couchActiveTasks.pipe(effect_1.Effect.map(effect_1.Array.sort(orderByStartedOn)), effect_1.Effect.map(getTasksDisplayData), effect_1.Effect.tap(effect_1.Console.table));
-const followActiveTasks = effect_1.Effect.repeat(effect_1.Console.clear.pipe(effect_1.Effect.andThen(printActiveTasks), effect_1.Effect.delay(5000)), { until: () => false });
+const couchActiveTasks = active_tasks_1.CouchActiveTasksService.pipe(effect_1.Effect.flatMap(service => service.get()), effect_1.Effect.map(effect_1.Array.sort(orderByStartedOn)), effect_1.Effect.map(effect_1.Option.liftPredicate(effect_1.Array.isNonEmptyArray)), effect_1.Effect.map(effect_1.Option.map(getTasksDisplayData)), effect_1.Effect.map(effect_1.Option.getOrElse(() => 'No active tasks.')));
+const followActiveTasks = effect_1.Effect.repeat(couchActiveTasks.pipe(effect_1.Effect.flatMap(tasks => effect_1.Console.clear.pipe(effect_1.Effect.tap(effect_1.Console.table(tasks)))), effect_1.Effect.delay(5000)), { until: () => false });
 const follow = cli_1.Options
     .boolean('follow')
     .pipe(cli_1.Options.withAlias('f'), cli_1.Options.withDescription('Continuously poll the active tasks.'), cli_1.Options.withDefault(false));
 exports.activeTasks = cli_1.Command
-    .make('active-tasks', { follow }, ({ follow }) => index_1.initializeUrl.pipe(effect_1.Effect.andThen(followActiveTasks), effect_1.Option.liftPredicate(() => follow), effect_1.Option.getOrElse(() => printActiveTasks)))
+    .make('active-tasks', { follow }, ({ follow }) => index_1.initializeUrl.pipe(effect_1.Effect.andThen(followActiveTasks), effect_1.Option.liftPredicate(() => follow), effect_1.Option.getOrElse(() => couchActiveTasks.pipe(effect_1.Effect.tap(effect_1.Console.table)))))
     .pipe(cli_1.Command.withDescription(`Force compaction on databases and views.`));
 //# sourceMappingURL=active-tasks.js.map

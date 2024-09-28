@@ -1,4 +1,6 @@
 import { Command } from '@effect/cli';
 import { CompactService } from '../services/compact';
-export declare const compact: Command.Command<"compact", import("../services/environment").EnvironmentService | Command.Command.Context<"chtx"> | CompactService, Error, {}>;
+export declare const compact: Command.Command<"compact", import("../services/environment").EnvironmentService | Command.Command.Context<"chtx"> | CompactService, Error, {
+    readonly follow: boolean;
+}>;
 //# sourceMappingURL=compact.d.ts.map
