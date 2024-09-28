@@ -27,11 +27,11 @@ declare const CouchDesignInfo_base: Schema.Class<CouchDesignInfo, {
     readonly name: string;
 } & {
     readonly view_index: {
-        readonly compact_running: boolean;
         readonly sizes: {
             readonly file: number;
             readonly active: number;
         };
+        readonly compact_running: boolean;
         readonly updater_running: boolean;
     };
 }, {}, {}>;

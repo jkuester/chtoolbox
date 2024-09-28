@@ -39,7 +39,20 @@ describe('Couch Dbs Info Service', () => {
 
   it('gets db info for all databases', run(Effect.gen(function* () {
     requestGet.returns(FAKE_CLIENT_REQUEST);
-    const testDbInfo = createDbInfo({ key: 'test', compact_running: true, file: 123, active: 234 });
+    const testDbInfo = createDbInfo({
+      key: 'test',
+      compact_running: true,
+      file: 123,
+      external: 23412341,
+      active: 234,
+      update_seq: 'update_seq',
+      purge_seq: 'purge_seq',
+      doc_del_count: 12312312,
+      doc_count: 123123323423,
+      disk_format_version: 42,
+      cluster: { q: 1, n: 2, w: 3, r: 4 },
+      instance_start_time: '12312312312',
+    });
     const emptyDbInfo = createDbInfo();
     couchRequest.returns(Effect.succeed({
       json: Effect.succeed([testDbInfo, emptyDbInfo]),

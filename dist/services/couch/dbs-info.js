@@ -37,11 +37,25 @@ const getPostRequest = (keys) => DbsInfoBody.pipe(platform_1.HttpClientRequest.s
 class CouchDbInfo extends Schema.Class('CouchDbInfo')({
     key: Schema.String,
     info: Schema.Struct({
-        compact_running: Schema.Boolean,
+        db_name: Schema.String,
+        update_seq: Schema.String,
         sizes: Schema.Struct({
             file: Schema.Number,
+            external: Schema.Number,
             active: Schema.Number,
         }),
+        purge_seq: Schema.String,
+        doc_del_count: Schema.Number,
+        doc_count: Schema.Number,
+        disk_format_version: Schema.Number,
+        compact_running: Schema.Boolean,
+        cluster: Schema.Struct({
+            q: Schema.Number,
+            n: Schema.Number,
+            w: Schema.Number,
+            r: Schema.Number,
+        }),
+        instance_start_time: Schema.String,
     }),
 }) {
     static decodeResponse = platform_1.HttpClientResponse.schemaBodyJsonScoped(Schema.Array(CouchDbInfo));
