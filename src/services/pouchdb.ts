@@ -6,18 +6,27 @@ import { pouchDB } from '../libs/core';
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
 // @ts-expect-error no types for this package
 import PouchDBSessionAuthentication from 'pouchdb-session-authentication';
-import PouchDBReplication from 'pouchdb-replication';
 import { EnvironmentService } from './environment';
 
 PouchDB.plugin(PouchDBAdapterHttp);
 PouchDB.plugin(PouchDBSessionAuthentication);
-PouchDB.plugin(PouchDBReplication);
 
 export interface PouchDBService {
   readonly get: (dbName: string) => Effect.Effect<PouchDB.Database, Error>
 }
 
 export const PouchDBService = Context.GenericTag<PouchDBService>('chtoolbox/PouchDBService');
+
+const isPouchResponse = (
+  value: PouchDB.Core.Response | PouchDB.Core.Error
+): value is PouchDB.Core.Response => 'ok' in value && value.ok;
+
+export const assertPouchResponse = (
+  value: PouchDB.Core.Response | PouchDB.Core.Error
+): PouchDB.Core.Response => pipe(
+  Option.liftPredicate(value, isPouchResponse),
+  Option.getOrThrowWith(() => value),
+);
 
 const couchUrl = EnvironmentService.pipe(
   Effect.map(service => service.get()),

@@ -1,16 +1,14 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import * as Layer from 'effect/Layer';
-import { Array, Config, Option, pipe, Redacted, Ref, String } from 'effect';
-import { PouchDBService } from './pouchdb';
+import { Config, Option, pipe, Redacted, Ref, String } from 'effect';
+import { assertPouchResponse, PouchDBService } from './pouchdb';
 import { EnvironmentService } from './environment';
+import { Schema } from '@effect/schema';
 
 export interface ReplicateService {
-  readonly replicateAsync: (source: string, target: string) => Effect.Effect<
-    (PouchDB.Core.Response | PouchDB.Core.Error)[],
-    Error
-  >,
-  readonly replicate: (source: string, target: string) => Effect.Effect<PouchDB.Replication.Replication<object>, Error>
+  readonly replicate: (source: string, target: string) => Effect.Effect<PouchDB.Core.Response, Error>,
+  readonly watch: (repDocId: string) => Effect.Effect<PouchDB.Core.Changes<ReplicationDoc>, Error>
 }
 
 export const ReplicateService = Context.GenericTag<ReplicateService>('chtoolbox/ReplicateService');
@@ -29,7 +27,7 @@ const couchUrl = EnvironmentService.pipe(
 );
 
 const COUCH_USER_PATTERN = /^https?:\/\/([^:]+):.+$/;
-const getCouchUser = (url: string) => pipe(
+const getCouchUser = (url: string) => pipe(// TODO centralize this logic
   COUCH_USER_PATTERN.exec(url)?.[1],
   Option.fromNullable,
   Option.getOrThrow,
@@ -64,20 +62,34 @@ const ServiceContext = Effect
     .make(PouchDBService, pouch)
     .pipe(Context.add(EnvironmentService, env))));
 
+export class ReplicationDoc extends Schema.Class<ReplicationDoc>('ReplicationDoc')({
+  _replication_state: Schema.String,
+  _replication_stats: Schema.Struct({
+    docs_written: Schema.Number,
+  }),
+}) {
+}
+
 export const ReplicateServiceLive = Layer.effect(ReplicateService, ServiceContext.pipe(Effect.map(
   context => ReplicateService.of({
-    replicateAsync: (source: string, target: string) => Effect
+    replicate: (source: string, target: string) => Effect
       .all([getPouchDb('_replicator'), createReplicationDoc(source, target)])
       .pipe(
         Effect.flatMap(([db, doc]) => Effect.promise(() => db.bulkDocs([doc]))),
+        Effect.map(([resp]) => resp),
+        Effect.map(assertPouchResponse),
         Effect.mapError(x => x as Error),
         Effect.provide(context),
       ),
-    replicate: (source: string, target: string) => Effect
-      .all(Array.map([source, target], getPouchDb))
+    watch: (repDocId: string) => getPouchDb('_replicator')
       .pipe(
-        Effect.map(([sourceDb, targetDb]) => sourceDb.replicate.to(targetDb)),
+        Effect.map(db => (db as PouchDB.Database<ReplicationDoc>).changes({
+          since: 'now',
+          live: true,
+          include_docs: true,
+          doc_ids: [repDocId],
+        })),
         Effect.provide(context),
       ),
-  })
+  }),
 )));

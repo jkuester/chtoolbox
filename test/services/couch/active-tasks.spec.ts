@@ -5,25 +5,21 @@ import sinon, { SinonStub } from 'sinon';
 import { CouchService } from '../../../src/services/couch/couch';
 import { HttpClientRequest } from '@effect/platform';
 import { CouchActiveTasksService, CouchActiveTasksServiceLive } from '../../../src/services/couch/active-tasks';
+import { createActiveTask } from '../../utils/data-models';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
 
-const TASK_WITH_DESIGN = {
+const TASK_ALL_DATA = createActiveTask({
   database: 'shards/aaaaaaa8-bffffffc/medic.1727212895',
+  design_document: '_design/medic-client',
+  doc_id: '123123123',
+  docs_written: 110,
   pid: '<0.6320.88>',
   progress: 52,
   started_on: 1727298631,
   type: 'view_compaction',
-  design_document: '_design/medic-client',
-};
-const TASK_WITHOUT_DESIGN = {
-  database: 'shards/23452323-12111/medic-sentinel.123123123',
-  pid: '<0.777.455>',
-  progress: 1,
-  started_on: 172720000,
-  type: 'indexer',
-  design_document: undefined
-};
+});
+const TASK_MIN_DATA = createActiveTask();
 
 describe('Couch Active Tasks Service', () => {
   let couchRequest: SinonStub;
@@ -49,13 +45,13 @@ describe('Couch Active Tasks Service', () => {
   it('returns active tasks', run(Effect.gen(function* () {
     requestGet.returns(FAKE_CLIENT_REQUEST);
     couchRequest.returns(Effect.succeed({
-      json: Effect.succeed([TASK_WITH_DESIGN, TASK_WITHOUT_DESIGN]),
+      json: Effect.succeed([TASK_ALL_DATA, TASK_MIN_DATA]),
     }));
 
     const service = yield* CouchActiveTasksService;
     const tasks = yield* service.get();
 
-    expect(tasks).to.deep.equal([TASK_WITH_DESIGN, TASK_WITHOUT_DESIGN]);
+    expect(tasks).to.deep.equal([TASK_ALL_DATA, TASK_MIN_DATA]);
     expect(requestGet.calledOnceWithExactly('/_active_tasks')).to.be.true;
     expect(couchRequest.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
   })));

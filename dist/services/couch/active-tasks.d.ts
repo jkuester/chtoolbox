@@ -6,6 +6,8 @@ import { CouchService } from './couch';
 declare const CouchActiveTask_base: Schema.Class<CouchActiveTask, {
     database: typeof Schema.String;
     design_document: Schema.UndefinedOr<typeof Schema.String>;
+    doc_id: Schema.UndefinedOr<typeof Schema.String>;
+    docs_written: Schema.UndefinedOr<typeof Schema.Number>;
     pid: typeof Schema.String;
     progress: Schema.UndefinedOr<typeof Schema.Number>;
     started_on: typeof Schema.Number;
@@ -13,6 +15,8 @@ declare const CouchActiveTask_base: Schema.Class<CouchActiveTask, {
 }, Schema.Struct.Encoded<{
     database: typeof Schema.String;
     design_document: Schema.UndefinedOr<typeof Schema.String>;
+    doc_id: Schema.UndefinedOr<typeof Schema.String>;
+    docs_written: Schema.UndefinedOr<typeof Schema.Number>;
     pid: typeof Schema.String;
     progress: Schema.UndefinedOr<typeof Schema.Number>;
     started_on: typeof Schema.Number;
@@ -27,6 +31,10 @@ declare const CouchActiveTask_base: Schema.Class<CouchActiveTask, {
     readonly type: string;
 } & {
     readonly design_document: string | undefined;
+} & {
+    readonly doc_id: string | undefined;
+} & {
+    readonly docs_written: number | undefined;
 } & {
     readonly progress: number | undefined;
 }, {}, {}>;

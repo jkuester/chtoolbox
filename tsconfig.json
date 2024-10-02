@@ -4,6 +4,7 @@
     "allowSyntheticDefaultImports": true,
     "composite": true,
     "declarationMap": true,
+    "exactOptionalPropertyTypes": true,
     "outDir": "dist",
     "resolveJsonModule": true,
     "sourceMap": true,

@@ -1,7 +1,9 @@
 import { describe, it } from 'mocha';
 import { Effect, Option, Ref, TestContext } from 'effect';
 import { expect } from 'chai';
-import { optionalUpdate } from '../../src/libs/core';
+import { optionalUpdate, pouchDB } from '../../src/libs/core';
+import PouchDB from 'pouchdb-core';
+import PouchDBAdapterHttp from 'pouchdb-adapter-http';
 
 describe('Core libs', () => {
   const run = (test:  Effect.Effect<void>) => async () => {
@@ -28,5 +30,12 @@ describe('Core libs', () => {
 
       expect(updatedValue).to.equal('hello');
     })));
+  });
+
+  it('pouchDB', () => {
+    PouchDB.plugin(PouchDBAdapterHttp);
+    const db = pouchDB('http://test.db');
+
+    expect(db).to.be.an.instanceOf(PouchDB);
   });
 });

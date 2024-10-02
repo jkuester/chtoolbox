@@ -58,3 +58,23 @@ export const createNodeSystem = ({
     binary,
   }
 });
+
+export const createActiveTask = ({
+  database = '',
+  design_document = undefined as string | undefined,
+  doc_id = undefined as string | undefined,
+  docs_written = undefined as number | undefined,
+  pid = '',
+  progress = undefined as number | undefined,
+  started_on = 0,
+  type = '',
+} = {}) => ({
+  database,
+  design_document,
+  doc_id,
+  docs_written,
+  pid,
+  progress,
+  started_on,
+  type,
+});

@@ -1,6 +1,7 @@
 import { describe, it } from 'mocha';
 import { Config, Effect, Layer, Redacted, Ref, TestContext } from 'effect';
 import sinon, { SinonStub } from 'sinon';
+import * as PouchSvc from '../../src/services/pouchdb';
 import { PouchDBService } from '../../src/services/pouchdb';
 import { EnvironmentService } from '../../src/services/environment';
 import { expect } from 'chai';
@@ -32,12 +33,14 @@ describe('Replicate Service', () => {
     ));
   };
 
-  describe('replicateAsync', () => {
+  describe('replicate', () => {
     let bulkDocs: SinonStub;
+    let assertPouchResponse: SinonStub;
 
     beforeEach(() => {
       bulkDocs = sinon.stub();
       pouchGet.returns(Effect.succeed({ bulkDocs }));
+      assertPouchResponse = sinon.stub(PouchSvc, 'assertPouchResponse');
     });
 
     it('creates a doc in the _replication database', run(Effect.gen(function* () {
@@ -51,10 +54,11 @@ describe('Replicate Service', () => {
       environmentGet.returns(env);
       const source = 'source';
       const target = 'target';
-      bulkDocs.resolves(FAKE_RESPONSE);
+      bulkDocs.resolves([FAKE_RESPONSE]);
+      assertPouchResponse.returns(FAKE_RESPONSE);
 
       const replicateSvc = yield* ReplicateService;
-      const response = yield* replicateSvc.replicateAsync(source, target);
+      const response = yield* replicateSvc.replicate(source, target);
 
       expect(response).to.deep.equal(FAKE_RESPONSE);
       expect(pouchGet.calledOnceWithExactly('_replicator')).to.be.true;
@@ -70,26 +74,7 @@ describe('Replicate Service', () => {
         continuous: false,
         owner,
       }])).to.be.true;
-    })));
-  });
-
-  describe('replicate', () => {
-    it('replicates the source database into the target', run(Effect.gen(function* () {
-      const source = 'source';
-      const target = 'target';
-      const sourceDb = { replicate: { to: sinon.stub().resolves(FAKE_RESPONSE) } };
-      const targetDb = { target: true };
-      pouchGet.withArgs(source).returns(Effect.succeed(sourceDb));
-      pouchGet.withArgs(target).returns(Effect.succeed(targetDb));
-
-      const replicateSvc = yield* ReplicateService;
-      const replication = yield* replicateSvc.replicate(source, target);
-      const response = yield* Effect.promise(() => replication);
-
-      expect(response).to.deep.equal(FAKE_RESPONSE);
-      expect(pouchGet.args).to.deep.equal([[source], [target]]);
-      expect(environmentGet.notCalled).to.be.true;
-      expect(sourceDb.replicate.to.calledOnceWithExactly(targetDb)).to.be.true;
+      expect(assertPouchResponse.calledOnceWithExactly(FAKE_RESPONSE)).to.be.true;
     })));
   });
 });
