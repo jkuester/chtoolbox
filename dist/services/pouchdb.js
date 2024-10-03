@@ -42,8 +42,8 @@ exports.PouchDBService = Context.GenericTag('chtoolbox/PouchDBService');
 const isPouchResponse = (value) => 'ok' in value && value.ok;
 const assertPouchResponse = (value) => (0, effect_1.pipe)(effect_1.Option.liftPredicate(value, isPouchResponse), effect_1.Option.getOrThrowWith(() => value));
 exports.assertPouchResponse = assertPouchResponse;
-const couchUrl = environment_1.EnvironmentService.pipe(Effect.map(service => service.get()), Effect.map(env => env.url), Effect.flatMap(effect_1.Ref.get), Effect.map(effect_1.Config.map(effect_1.Redacted.value)), Effect.map(effect_1.Config.map(url => (0, effect_1.pipe)(effect_1.Option.liftPredicate(url, effect_1.String.endsWith('/')), effect_1.Option.getOrElse(() => `${url}/`)))), Effect.flatten, Effect.mapError(x => x));
-const getPouchDB = (dbName) => couchUrl.pipe(Effect.map(url => (0, core_1.pouchDB)(`${url}${dbName}`)));
+const couchUrl = environment_1.EnvironmentService.pipe(Effect.flatMap(service => service.get()), Effect.map(({ url }) => url));
+const getPouchDB = (dbName) => couchUrl.pipe(Effect.map(url => (0, core_1.pouchDB)(`${effect_1.Redacted.value(url)}${dbName}`)));
 const ServiceContext = environment_1.EnvironmentService.pipe(Effect.map(env => Context.make(environment_1.EnvironmentService, env)));
 exports.PouchDBServiceLive = effect_1.Layer.effect(exports.PouchDBService, Effect
     .all([

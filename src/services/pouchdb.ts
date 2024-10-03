@@ -1,6 +1,6 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { Config, Layer, Option, pipe, Redacted, Ref, String } from 'effect';
+import { Layer, Option, pipe, Redacted } from 'effect';
 import PouchDB from 'pouchdb-core';
 import { pouchDB } from '../libs/core';
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
@@ -29,19 +29,11 @@ export const assertPouchResponse = (
 );
 
 const couchUrl = EnvironmentService.pipe(
-  Effect.map(service => service.get()),
-  Effect.map(env => env.url),
-  Effect.flatMap(Ref.get),
-  Effect.map(Config.map(Redacted.value)),
-  Effect.map(Config.map(url => pipe(
-    Option.liftPredicate(url, String.endsWith('/')),
-    Option.getOrElse(() => `${url}/`),
-  ))),
-  Effect.flatten,
-  Effect.mapError(x => x as unknown as Error),
+  Effect.flatMap(service => service.get()),
+  Effect.map(({ url }) => url),
 );
 
-const getPouchDB = (dbName: string) => couchUrl.pipe(Effect.map(url => pouchDB(`${url}${dbName}`)));
+const getPouchDB = (dbName: string) => couchUrl.pipe(Effect.map(url => pouchDB(`${Redacted.value(url)}${dbName}`)));
 
 const ServiceContext = EnvironmentService.pipe(Effect.map(env => Context.make(EnvironmentService, env)));
 

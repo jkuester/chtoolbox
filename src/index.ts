@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Command, Options } from '@effect/cli';
 import { NodeContext, NodeHttpClient, NodeRuntime } from '@effect/platform-node';
-import { Config, Effect, Layer, Option, Redacted } from 'effect';
+import { Effect, Layer, Option, Redacted, String } from 'effect';
 import { CouchNodeSystemServiceLive } from './services/couch/node-system';
 import { CouchServiceLive } from './services/couch/couch';
 import { CouchDbsInfoServiceLive } from './services/couch/dbs-info';
@@ -9,7 +9,6 @@ import { monitor } from './commands/monitor';
 import packageJson from '../package.json';
 import { EnvironmentService, EnvironmentServiceLive, } from './services/environment';
 import { CouchDesignInfoServiceLive } from './services/couch/design-info';
-import { optionalUpdate } from './libs/core';
 import { MonitorServiceLive } from './services/monitor';
 import { LocalDiskUsageServiceLive } from './services/local-disk-usage';
 import { CouchDesignServiceLive } from './services/couch/design';
@@ -35,14 +34,19 @@ const url = Options
 
 const chtx = Command.make('chtx', { url });
 
+const setEnv = (url: Redacted.Redacted) => Effect.flatMap(EnvironmentService, envSvc => envSvc.setUrl(url));
+const getEnv = Effect.flatMap(EnvironmentService, envSvc => envSvc.get());
+
 export const initializeUrl = chtx.pipe(
   Effect.map(({ url }) => url),
   Effect.map(Option.map(Redacted.make)),
-  Effect.map(Option.map(Config.succeed)),
-  Effect.flatMap(urlConfig => EnvironmentService.pipe(
-    Effect.map(service => service.get()),
-    Effect.flatMap(({ url }) => optionalUpdate(url, urlConfig)),
-  )),
+  Effect.map(Option.map(setEnv)),
+  Effect.flatMap(Option.getOrElse(() => getEnv)),
+  Effect.map(({ url }) => Redacted.value(url)),
+  Effect.map(Option.liftPredicate(String.isNonEmpty)),
+  Effect.map(Option.getOrThrowWith(() => new Error(
+    'A value must be set for the COUCH_URL envar or the --url option.'
+  ))),
 );
 
 const command = chtx.pipe(Command.withSubcommands([compact, monitor, warmViews, activeTasks, db]));

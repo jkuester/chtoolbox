@@ -15,7 +15,6 @@ const monitor_1 = require("./commands/monitor");
 const package_json_1 = __importDefault(require("../package.json"));
 const environment_1 = require("./services/environment");
 const design_info_1 = require("./services/couch/design-info");
-const core_1 = require("./libs/core");
 const monitor_2 = require("./services/monitor");
 const local_disk_usage_1 = require("./services/local-disk-usage");
 const design_1 = require("./services/couch/design");
@@ -35,7 +34,9 @@ const url = cli_1.Options
     .text('url')
     .pipe(cli_1.Options.withDescription('The URL of the CouchDB server. Defaults to the COUCH_URL environment variable.'), cli_1.Options.optional);
 const chtx = cli_1.Command.make('chtx', { url });
-exports.initializeUrl = chtx.pipe(effect_1.Effect.map(({ url }) => url), effect_1.Effect.map(effect_1.Option.map(effect_1.Redacted.make)), effect_1.Effect.map(effect_1.Option.map(effect_1.Config.succeed)), effect_1.Effect.flatMap(urlConfig => environment_1.EnvironmentService.pipe(effect_1.Effect.map(service => service.get()), effect_1.Effect.flatMap(({ url }) => (0, core_1.optionalUpdate)(url, urlConfig)))));
+const setEnv = (url) => effect_1.Effect.flatMap(environment_1.EnvironmentService, envSvc => envSvc.setUrl(url));
+const getEnv = effect_1.Effect.flatMap(environment_1.EnvironmentService, envSvc => envSvc.get());
+exports.initializeUrl = chtx.pipe(effect_1.Effect.map(({ url }) => url), effect_1.Effect.map(effect_1.Option.map(effect_1.Redacted.make)), effect_1.Effect.map(effect_1.Option.map(setEnv)), effect_1.Effect.flatMap(effect_1.Option.getOrElse(() => getEnv)), effect_1.Effect.map(({ url }) => effect_1.Redacted.value(url)), effect_1.Effect.map(effect_1.Option.liftPredicate(effect_1.String.isNonEmpty)), effect_1.Effect.map(effect_1.Option.getOrThrowWith(() => new Error('A value must be set for the COUCH_URL envar or the --url option.'))));
 const command = chtx.pipe(cli_1.Command.withSubcommands([compact_3.compact, monitor_1.monitor, warm_views_2.warmViews, active_tasks_1.activeTasks, db_1.db]));
 const cli = cli_1.Command.run(command, {
     name: 'CHT Toolbox',

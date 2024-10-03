@@ -1,10 +1,10 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import * as Layer from 'effect/Layer';
-import { Config, Option, pipe, Redacted, Ref, String } from 'effect';
 import { assertPouchResponse, PouchDBService } from './pouchdb';
 import { EnvironmentService } from './environment';
 import { Schema } from '@effect/schema';
+import { Redacted } from 'effect';
 
 export interface ReplicateService {
   readonly replicate: (source: string, target: string) => Effect.Effect<PouchDB.Core.Response, Error>,
@@ -15,39 +15,20 @@ export const ReplicateService = Context.GenericTag<ReplicateService>('chtoolbox/
 
 const getPouchDb = (dbName: string) => Effect.flatMap(PouchDBService, pouch => pouch.get(dbName));
 
-const couchUrl = EnvironmentService.pipe(
-  Effect.map(service => service.get()),
-  Effect.map(env => env.url),
-  Effect.flatMap(Ref.get),
-  Effect.flatMap(Config.map(Redacted.value)),
-  Effect.map(url => pipe(
-    Option.liftPredicate(url, String.endsWith('/')),
-    Option.getOrElse(() => `${url}/`),
-  )),
-);
+const environment = Effect.flatMap(EnvironmentService, envSvc => envSvc.get());
 
-const COUCH_USER_PATTERN = /^https?:\/\/([^:]+):.+$/;
-const getCouchUser = (url: string) => pipe(// TODO centralize this logic
-  COUCH_USER_PATTERN.exec(url)?.[1],
-  Option.fromNullable,
-  Option.getOrThrow,
-);
-
-const createReplicationDoc = (source: string, target: string) => couchUrl.pipe(
-  Effect.map(url => pipe(
-    getCouchUser(url),
-    owner => ({
-      user_ctx: {
-        name: owner,
-        roles: ['_admin', '_reader', '_writer'],
-      },
-      source: { url: `${url}${source}` },
-      target: { url: `${url}${target}` },
-      create_target: false,
-      continuous: false,
-      owner,
-    }),
-  )),
+const createReplicationDoc = (source: string, target: string) => environment.pipe(
+  Effect.map(env => ({
+    user_ctx: {
+      name: env.user,
+      roles: ['_admin', '_reader', '_writer'],
+    },
+    source: { url: `${Redacted.value(env.url)}${source}` },
+    target: { url: `${Redacted.value(env.url)}${target}` },
+    create_target: false,
+    continuous: false,
+    owner: env.user,
+  })),
 );
 
 const ServiceContext = Effect
@@ -78,7 +59,6 @@ export const ReplicateServiceLive = Layer.effect(ReplicateService, ServiceContex
         Effect.flatMap(([db, doc]) => Effect.promise(() => db.bulkDocs([doc]))),
         Effect.map(([resp]) => resp),
         Effect.map(assertPouchResponse),
-        Effect.mapError(x => x as Error),
         Effect.provide(context),
       ),
     watch: (repDocId: string) => getPouchDb('_replicator')

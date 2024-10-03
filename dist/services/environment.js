@@ -27,14 +27,23 @@ exports.EnvironmentServiceLive = exports.EnvironmentService = void 0;
 const Context = __importStar(require("effect/Context"));
 const Layer = __importStar(require("effect/Layer"));
 const effect_1 = require("effect");
-const WITH_MEDIC_PATTERN = /^(.+)\/medic$/g;
+const COUCH_URL_PATTERN = /^(https?:\/\/([^:]+):[^/]+).*$/;
 exports.EnvironmentService = Context.GenericTag('chtoolbox/EnvironmentService');
-const trimTrailingMedic = (url) => url.pipe(effect_1.Redacted.value, url => url.replace(WITH_MEDIC_PATTERN, '$1'), effect_1.Redacted.make);
+const parseCouchUrl = (url) => url.pipe(effect_1.Redacted.value, effect_1.String.match(COUCH_URL_PATTERN), effect_1.Option.map(([, url, user]) => ({
+    url: effect_1.Redacted.make(`${url}/`),
+    user
+})), effect_1.Option.getOrThrowWith(() => Error('Could not parse URL.')));
 const COUCH_URL = effect_1.Config
     .redacted('COUCH_URL')
-    .pipe(effect_1.Config.map(trimTrailingMedic), effect_1.Config.withDescription('The URL of the CouchDB server.'));
-const createEnvironmentService = (0, effect_1.pipe)(COUCH_URL, effect_1.Ref.make, effect_1.Effect.map(url => ({ url })), effect_1.Effect.map(env => exports.EnvironmentService.of({
-    get: () => env,
-})));
+    .pipe(effect_1.Config.withDescription('The URL of the CouchDB server.'), effect_1.Config.option);
+const createEnvironmentService = effect_1.Ref
+    .make({
+    url: effect_1.Redacted.make(effect_1.String.empty),
+    user: effect_1.String.empty,
+})
+    .pipe(effect_1.Effect.map(env => exports.EnvironmentService.of({
+    get: () => effect_1.Ref.get(env),
+    setUrl: url => effect_1.Ref.setAndGet(env, parseCouchUrl(url)),
+})), effect_1.Effect.tap((envService) => COUCH_URL.pipe(effect_1.Config.map(effect_1.Option.map(envService.setUrl)), effect_1.Config.map(effect_1.Option.map(effect_1.Effect.asVoid)), effect_1.Effect.flatMap(effect_1.Option.getOrElse(() => effect_1.Effect.void)))));
 exports.EnvironmentServiceLive = Layer.effect(exports.EnvironmentService, createEnvironmentService);
 //# sourceMappingURL=environment.js.map
