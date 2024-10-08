@@ -1,5 +1,5 @@
 import { Command, Options } from '@effect/cli';
-import { Array, Console, DateTime, Effect, Number, Option, Order, pipe, Record } from 'effect';
+import { Array, Console, DateTime, Effect, Number, Option, Order, pipe, Record, Schedule } from 'effect';
 import { initializeUrl } from '../index';
 import { CouchActiveTask, CouchActiveTasksService } from '../services/couch/active-tasks';
 
@@ -45,14 +45,14 @@ const couchActiveTasks = CouchActiveTasksService.pipe(
   Effect.map(Option.getOrElse(() => 'No active tasks.')),
 );
 
+
 const followActiveTasks = Effect.repeat(
   couchActiveTasks.pipe(
     Effect.flatMap(tasks => Console.clear.pipe(
       Effect.tap(Console.table(tasks)),
     )),
-    Effect.delay(5000),
   ),
-  { until: () => false }
+  Schedule.spaced(5000)
 );
 
 const follow = Options
