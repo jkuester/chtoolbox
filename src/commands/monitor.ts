@@ -1,5 +1,5 @@
 import { Command, Options } from '@effect/cli';
-import { Array, Console, Effect, Option, pipe } from 'effect';
+import { Array, Console, Effect, Option, pipe, Schedule } from 'effect';
 import { initializeUrl } from '../index';
 import { MonitorService } from '../services/monitor';
 
@@ -10,11 +10,10 @@ const printCsvRow = (row: readonly (string | number | boolean)[]) => pipe(
   Console.log
 );
 
-const monitorData = (monitor: MonitorService, interval: number, trackDirSize: Option.Option<string>) => pipe(
+const monitorData = (monitor: MonitorService, trackDirSize: Option.Option<string>) => pipe(
   monitor.getAsCsv(trackDirSize),
   Effect.tap(printCsvRow),
   Effect.catchAll(Console.error),
-  Effect.delay(interval * 1000)
 );
 
 const interval = Options
@@ -41,7 +40,7 @@ export const monitor = Command
     Effect.tap(monitor => pipe(
       monitor.getCsvHeader(trackDirSize),
       printCsvRow,
-      Effect.andThen(Effect.repeat(monitorData(monitor, interval, trackDirSize), { until: () => false }))
+      Effect.andThen(Effect.repeat(monitorData(monitor, trackDirSize), Schedule.spaced(interval * 1000)))
     )),
   ))
   .pipe(Command.withDescription(`Poll CHT metrics.`));
