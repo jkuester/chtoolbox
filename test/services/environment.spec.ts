@@ -1,10 +1,11 @@
 import { describe, it } from 'mocha';
-import { Config, ConfigProvider, Effect, Layer, Redacted, Ref, TestContext } from 'effect';
+import { ConfigProvider, Effect, Layer, pipe, Redacted, String, TestContext } from 'effect';
 import { EnvironmentService, EnvironmentServiceLive } from '../../src/services/environment';
 import { expect } from 'chai';
 
-const BASE_URL = 'http://medic:password@hostlocal:5984';
-const URL_WITH_MEDIC = `${BASE_URL}/medic`;
+const BASE_URL = 'http://medic:password@hostlocal:5984/';
+const URL_WITHOUT_SLASH = pipe(BASE_URL, String.slice(0, -1));
+const URL_WITH_MEDIC = `${BASE_URL}medic`;
 
 describe('Environment service', () => {
   const run = (
@@ -19,34 +20,61 @@ describe('Environment service', () => {
     ));
   };
 
-  it('loads url from COUCH_URL envar', run(
+  it('stores updated url in shared Ref', run(
     [['COUCH_URL', BASE_URL]]
   )(Effect.gen(function* () {
-    const service = yield* EnvironmentService;
-    const urlConfig = yield* Ref.get(service.get().url);
-    const urlValue = yield* urlConfig.pipe(Config.map(Redacted.value));
+    const updatedUrlBase = 'http://admin:12345@hostlocal:4443/';
+    const updatedUrl = `${updatedUrlBase}medic/somethingelse`;
 
-    expect(urlValue).to.equal(BASE_URL);
+    const service = yield* EnvironmentService;
+    const originalEnvironment = yield* service.get();
+    const updatedEnvironment = yield* service.setUrl(Redacted.make(updatedUrl));
+    const updatedEnvironment1 = yield* (yield* EnvironmentService).get();
+
+    expect(originalEnvironment).to.deep.equal({
+      url: Redacted.make(BASE_URL),
+      user: 'medic'
+    });
+    expect(updatedEnvironment).to.deep.equal({
+      url: Redacted.make(updatedUrlBase),
+      user: 'admin'
+    });
+    expect(updatedEnvironment1).to.equal(updatedEnvironment);
   })));
 
-  it('loads url from updated Ref', run(
-    [['COUCH_URL', BASE_URL]]
-  )(Effect.gen(function* () {
-    const service = yield* EnvironmentService;
-    yield* Ref.update(service.get().url, () => Config.succeed(Redacted.make(URL_WITH_MEDIC)));
-
-    const urlConfig = yield* Ref.get(service.get().url);
-    const urlValue = yield* urlConfig.pipe(Config.map(Redacted.value));
-    expect(urlValue).to.equal(URL_WITH_MEDIC);
-  })));
-
-  it('trims trailing /medic from url value loaded from COUCH_URL', run(
+  it('trims trailing /medic from url value', run(
     [['COUCH_URL', URL_WITH_MEDIC]]
   )(Effect.gen(function* () {
     const service = yield* EnvironmentService;
-    const urlConfig = yield* Ref.get(service.get().url);
-    const urlValue = yield* urlConfig.pipe(Config.map(Redacted.value));
+    const env = yield* service.get();
 
-    expect(urlValue).to.equal(BASE_URL);
+    expect(env).to.deep.equal({
+      url: Redacted.make(BASE_URL),
+      user: 'medic'
+    });
+  })));
+
+  it('trims trailing / from url value', run(
+    [['COUCH_URL', URL_WITHOUT_SLASH]]
+  )(Effect.gen(function* () {
+    const service = yield* EnvironmentService;
+    const env = yield* service.get();
+
+    expect(env).to.deep.equal({
+      url: Redacted.make(BASE_URL),
+      user: 'medic'
+    });
+  })));
+
+  it('initializes with empty values if no COUCH_URL envar exists', run(
+    [['NOT_COUCH_URL', BASE_URL]]
+  )(Effect.gen(function* () {
+    const service = yield* EnvironmentService;
+    const env = yield* service.get();
+
+    expect(env).to.deep.equal({
+      url: Redacted.make(String.empty),
+      user: String.empty
+    });
   })));
 });
