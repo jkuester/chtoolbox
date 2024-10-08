@@ -5,11 +5,14 @@ const cli_1 = require("@effect/cli");
 const effect_1 = require("effect");
 const index_1 = require("../index");
 const compact_1 = require("../services/compact");
-const currentlyCompacting = compact_1.CompactService.pipe(effect_1.Effect.delay(1000), effect_1.Effect.flatMap(service => service.currentlyCompacting()), effect_1.Effect.tap(effect_1.Console.log('Currently compacting:')), effect_1.Effect.tap(effect_1.Console.log));
+const currentlyCompacting = compact_1.CompactService.pipe(effect_1.Effect.flatMap(service => service.currentlyCompacting()), effect_1.Effect.tap(effect_1.Console.log('Currently compacting:')), effect_1.Effect.tap(effect_1.Console.log));
 let noCompactingCount = 0;
 const compactingComplete = (compacting) => (0, effect_1.pipe)(compacting, effect_1.Array.length, effect_1.Option.liftPredicate(length => length === 0), effect_1.Option.map(() => noCompactingCount += 1), effect_1.Option.getOrElse(() => noCompactingCount = 0), count => count === 3);
+const repeatSchedule = effect_1.Schedule
+    .recurUntil(compactingComplete)
+    .pipe(effect_1.Schedule.delayed(() => 1000));
 const followCompacting = effect_1.Effect
-    .repeat(currentlyCompacting, { until: compactingComplete })
+    .repeat(currentlyCompacting, repeatSchedule)
     .pipe(effect_1.Effect.tap(effect_1.Console.log('Compaction complete.')));
 const follow = cli_1.Options
     .boolean('follow')
