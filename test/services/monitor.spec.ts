@@ -10,7 +10,9 @@ import { LocalDiskUsageService } from '../../src/services/local-disk-usage';
 import { createDbInfo, createDesignInfo, createNodeSystem } from '../utils/data-models';
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
+import { NonEmptyArray } from 'effect/Array';
 
+const DB_NAMES: NonEmptyArray<string> = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 const EXPECTED_DESIGN_INFO_ARGS = [
   ['medic', 'medic'],
   ['medic', 'medic-admin'],
@@ -177,7 +179,7 @@ describe('Monitor service', () => {
         directory_size: Option.none(),
       });
       expect(nodeSystemServiceGet.calledOnceWithExactly()).to.be.true;
-      expect(dbsInfoServicePost.calledOnceWithExactly()).to.be.true;
+      expect(dbsInfoServicePost.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(diskUsageServiceGetSize.notCalled).to.be.true;
     })));
@@ -222,7 +224,7 @@ describe('Monitor service', () => {
         directory_size: Option.some(directorySize),
       });
       expect(nodeSystemServiceGet.calledOnceWithExactly()).to.be.true;
-      expect(dbsInfoServicePost.calledOnceWithExactly()).to.be.true;
+      expect(dbsInfoServicePost.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
     })));
@@ -280,7 +282,7 @@ describe('Monitor service', () => {
         directory_size: Option.some(directorySize),
       });
       expect(nodeSystemServiceGet.calledOnceWithExactly()).to.be.true;
-      expect(dbsInfoServicePost.calledOnceWithExactly()).to.be.true;
+      expect(dbsInfoServicePost.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
     })));
@@ -317,7 +319,7 @@ describe('Monitor service', () => {
         expect(error).to.equal(expectedError);
 
         expect(nodeSystemServiceGet.calledOnceWithExactly()).to.be.true;
-        expect(dbsInfoServicePost.calledOnceWithExactly()).to.be.true;
+        expect(dbsInfoServicePost.calledOnceWithExactly(DB_NAMES)).to.be.true;
         expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS.slice(0, 12));
         expect(diskUsageServiceGetSize.notCalled).to.be.true;
       } else {
@@ -344,7 +346,7 @@ describe('Monitor service', () => {
         directory_size: Option.none(),
       });
       expect(nodeSystemServiceGet.calledOnceWithExactly()).to.be.true;
-      expect(dbsInfoServicePost.calledOnceWithExactly()).to.be.true;
+      expect(dbsInfoServicePost.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(diskUsageServiceGetSize.notCalled).to.be.true;
     })));
@@ -410,7 +412,7 @@ describe('Monitor service', () => {
 
       expect(data).to.deep.equal([unix_time.toString(), ...expectedCsvData, directorySize.toString()]);
       expect(nodeSystemServiceGet.calledOnceWithExactly()).to.be.true;
-      expect(dbsInfoServicePost.calledOnceWithExactly()).to.be.true;
+      expect(dbsInfoServicePost.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
     })));
@@ -470,7 +472,7 @@ describe('Monitor service', () => {
       ];
       expect(data).to.deep.equal(expectedCsvData);
       expect(nodeSystemServiceGet.calledOnceWithExactly()).to.be.true;
-      expect(dbsInfoServicePost.calledOnceWithExactly()).to.be.true;
+      expect(dbsInfoServicePost.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
     })));
@@ -487,7 +489,7 @@ describe('Monitor service', () => {
 
       expect(data).to.deep.equal([unix_time.toString(), ...expectedCsvData]);
       expect(nodeSystemServiceGet.calledOnceWithExactly()).to.be.true;
-      expect(dbsInfoServicePost.calledOnceWithExactly()).to.be.true;
+      expect(dbsInfoServicePost.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(diskUsageServiceGetSize.notCalled).to.be.true;
     })));

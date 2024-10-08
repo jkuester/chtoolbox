@@ -26,7 +26,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PouchDBServiceLive = exports.PouchDBService = void 0;
+exports.PouchDBServiceLive = exports.assertPouchResponse = exports.PouchDBService = void 0;
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
 const effect_1 = require("effect");
@@ -35,14 +35,15 @@ const core_1 = require("../libs/core");
 const pouchdb_adapter_http_1 = __importDefault(require("pouchdb-adapter-http"));
 // @ts-expect-error no types for this package
 const pouchdb_session_authentication_1 = __importDefault(require("pouchdb-session-authentication"));
-const pouchdb_replication_1 = __importDefault(require("pouchdb-replication"));
 const environment_1 = require("./environment");
 pouchdb_core_1.default.plugin(pouchdb_adapter_http_1.default);
 pouchdb_core_1.default.plugin(pouchdb_session_authentication_1.default);
-pouchdb_core_1.default.plugin(pouchdb_replication_1.default);
 exports.PouchDBService = Context.GenericTag('chtoolbox/PouchDBService');
-const couchUrl = environment_1.EnvironmentService.pipe(Effect.map(service => service.get()), Effect.map(env => env.url), Effect.flatMap(effect_1.Ref.get), Effect.map(effect_1.Config.map(effect_1.Redacted.value)), Effect.map(effect_1.Config.map(url => (0, effect_1.pipe)(effect_1.Option.liftPredicate(url, effect_1.String.endsWith('/')), effect_1.Option.getOrElse(() => `${url}/`)))), Effect.flatten, Effect.mapError(x => x));
-const getPouchDB = (dbName) => couchUrl.pipe(Effect.map(url => (0, core_1.pouchDB)(`${url}${dbName}`)));
+const isPouchResponse = (value) => 'ok' in value && value.ok;
+const assertPouchResponse = (value) => (0, effect_1.pipe)(effect_1.Option.liftPredicate(value, isPouchResponse), effect_1.Option.getOrThrowWith(() => value));
+exports.assertPouchResponse = assertPouchResponse;
+const couchUrl = environment_1.EnvironmentService.pipe(Effect.flatMap(service => service.get()), Effect.map(({ url }) => url));
+const getPouchDB = (dbName) => couchUrl.pipe(Effect.map(url => (0, core_1.pouchDB)(`${effect_1.Redacted.value(url)}${dbName}`)));
 const ServiceContext = environment_1.EnvironmentService.pipe(Effect.map(env => Context.make(environment_1.EnvironmentService, env)));
 exports.PouchDBServiceLive = effect_1.Layer.effect(exports.PouchDBService, Effect
     .all([

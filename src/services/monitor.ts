@@ -8,6 +8,7 @@ import { Array, Clock, Number, Option, pipe } from 'effect';
 import { LocalDiskUsageService } from './local-disk-usage';
 import { PlatformError } from '@effect/platform/Error';
 import { ResponseError } from '@effect/platform/HttpClientError';
+import { NonEmptyArray } from 'effect/Array';
 
 interface DatabaseInfo extends CouchDbInfo {
   designs: CouchDesignInfo[]
@@ -32,7 +33,7 @@ const currentTimeSec = Clock.currentTimeMillis.pipe(
   Effect.map(Math.floor)
 );
 
-const DB_NAMES = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
+const DB_NAMES: NonEmptyArray<string> = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 const VIEW_INDEXES_BY_DB: Record<typeof DB_NAMES[number], string[]> = {
   medic: [
     'medic',
@@ -63,7 +64,7 @@ const VIEW_INDEXES_BY_DB: Record<typeof DB_NAMES[number], string[]> = {
 };
 
 const getCouchNodeSystem = Effect.flatMap(CouchNodeSystemService, (couchSystem) => couchSystem.get());
-const getCouchDbsInfo = Effect.flatMap(CouchDbsInfoService, (couchSystem) => couchSystem.post());
+const getCouchDbsInfo = Effect.flatMap(CouchDbsInfoService, (couchSystem) => couchSystem.post(DB_NAMES));
 const emptyDesignInfo: CouchDesignInfo = {
   name: '',
   view_index: {

@@ -34,6 +34,8 @@ const ENDPOINT = '/_active_tasks';
 class CouchActiveTask extends Schema.Class('CouchActiveTask')({
     database: Schema.String,
     design_document: Schema.UndefinedOr(Schema.String),
+    doc_id: Schema.UndefinedOr(Schema.String),
+    docs_written: Schema.UndefinedOr(Schema.Number),
     pid: Schema.String,
     progress: Schema.UndefinedOr(Schema.Number),
     started_on: Schema.Number,

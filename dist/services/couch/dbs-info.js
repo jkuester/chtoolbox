@@ -33,15 +33,29 @@ const effect_1 = require("effect");
 const couch_1 = require("./couch");
 const ENDPOINT = '/_dbs_info';
 const DbsInfoBody = Schema.Struct({ keys: Schema.Array(Schema.String) });
-const getPostRequest = () => DbsInfoBody.pipe(platform_1.HttpClientRequest.schemaBody, build => build(platform_1.HttpClientRequest.post(ENDPOINT), { keys: ['medic', 'medic-sentinel', 'medic-users-meta', '_users'] }));
+const getPostRequest = (keys) => DbsInfoBody.pipe(platform_1.HttpClientRequest.schemaBody, build => build(platform_1.HttpClientRequest.post(ENDPOINT), { keys }), Effect.mapError(x => x));
 class CouchDbInfo extends Schema.Class('CouchDbInfo')({
     key: Schema.String,
     info: Schema.Struct({
-        compact_running: Schema.Boolean,
+        db_name: Schema.String,
+        update_seq: Schema.String,
         sizes: Schema.Struct({
             file: Schema.Number,
+            external: Schema.Number,
             active: Schema.Number,
         }),
+        purge_seq: Schema.String,
+        doc_del_count: Schema.Number,
+        doc_count: Schema.Number,
+        disk_format_version: Schema.Number,
+        compact_running: Schema.Boolean,
+        cluster: Schema.Struct({
+            q: Schema.Number,
+            n: Schema.Number,
+            w: Schema.Number,
+            r: Schema.Number,
+        }),
+        instance_start_time: Schema.String,
     }),
 }) {
     static decodeResponse = platform_1.HttpClientResponse.schemaBodyJsonScoped(Schema.Array(CouchDbInfo));
@@ -51,9 +65,9 @@ exports.CouchDbsInfoService = Context.GenericTag('chtoolbox/CouchDbsInfoService'
 const dbsInfo = couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(ENDPOINT))), CouchDbInfo.decodeResponse);
 const ServiceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
 exports.CouchDbsInfoServiceLive = Layer.effect(exports.CouchDbsInfoService, ServiceContext.pipe(Effect.map(context => exports.CouchDbsInfoService.of({
-    post: () => Effect
-        .all([couch_1.CouchService, getPostRequest()])
-        .pipe(Effect.flatMap(([couch, request]) => couch.request(request)), CouchDbInfo.decodeResponse, Effect.mapError(x => x), Effect.provide(context)),
+    post: (dbNames) => Effect
+        .all([couch_1.CouchService, getPostRequest(dbNames)])
+        .pipe(Effect.flatMap(([couch, request]) => couch.request(request)), CouchDbInfo.decodeResponse, Effect.provide(context)),
     get: () => dbsInfo.pipe(Effect.provide(context)),
     getDbNames: () => dbsInfo.pipe(Effect.map(effect_1.Array.map(x => x.key)), Effect.provide(context))
 }))));

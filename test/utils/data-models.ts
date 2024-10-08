@@ -1,16 +1,33 @@
 export const createDbInfo = ({
   key = '',
-  compact_running = false,
+  update_seq = '',
   file = 0,
+  external = 0,
   active = 0,
+  purge_seq = '',
+  doc_del_count = 0,
+  doc_count = 0,
+  disk_format_version = 0,
+  compact_running = false,
+  cluster = { q: 0, n: 0, w: 0, r: 0 },
+  instance_start_time = '',
 } = {}) => ({
   key,
   info: {
-    compact_running,
+    db_name: key,
+    update_seq,
     sizes: {
       file,
+      external,
       active,
     },
+    purge_seq,
+    doc_del_count,
+    doc_count,
+    disk_format_version,
+    compact_running,
+    cluster,
+    instance_start_time,
   },
 });
 
@@ -35,9 +52,29 @@ export const createDesignInfo = ({
 export const createNodeSystem = ({
   processes_used = 0,
   binary = 0,
-} = { }) => ({
+} = {}) => ({
   memory: {
     processes_used,
     binary,
   }
+});
+
+export const createActiveTask = ({
+  database = '',
+  design_document = undefined as string | undefined,
+  doc_id = undefined as string | undefined,
+  docs_written = undefined as number | undefined,
+  pid = '',
+  progress = undefined as number | undefined,
+  started_on = 0,
+  type = '',
+} = {}) => ({
+  database,
+  design_document,
+  doc_id,
+  docs_written,
+  pid,
+  progress,
+  started_on,
+  type,
 });

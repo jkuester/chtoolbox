@@ -20,12 +20,14 @@
   },
   "license": "AGPL-3.0-only",
   "devDependencies": {
+    "@istanbuljs/nyc-config-typescript": "^1.0.2",
     "@medic/eslint-config": "^1.1.0",
     "@tsconfig/node20": "^20.1.4",
     "@types/chai": "^4.3.6",
     "@types/mocha": "^10.0.1",
     "@types/node": "^22.5.4",
-    "@types/pouchdb": "^6.4.0",
+    "@types/pouchdb-adapter-http": "^6.1.6",
+    "@types/pouchdb-core": "^7.0.15",
     "@types/sinon": "^10.0.16",
     "@typescript-eslint/eslint-plugin": "^8.5.0",
     "@typescript-eslint/parser": "^8.5.0",
@@ -44,9 +46,8 @@
     "@effect/platform": "^0.64.1",
     "@effect/platform-node": "^0.59.1",
     "effect": "^3.7.3",
-    "pouchdb-adapter-http": "^7.3.1",
-    "pouchdb-core": "^7.3.1",
-    "pouchdb-replication": "^7.3.1",
+    "pouchdb-adapter-http": "^9.0.0",
+    "pouchdb-core": "^9.0.0",
     "pouchdb-session-authentication": "^1.1.0"
   }
 }

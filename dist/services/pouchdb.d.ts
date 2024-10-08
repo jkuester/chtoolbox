@@ -6,5 +6,6 @@ export interface PouchDBService {
     readonly get: (dbName: string) => Effect.Effect<PouchDB.Database, Error>;
 }
 export declare const PouchDBService: Context.Tag<PouchDBService, PouchDBService>;
+export declare const assertPouchResponse: (value: PouchDB.Core.Response | PouchDB.Core.Error) => PouchDB.Core.Response;
 export declare const PouchDBServiceLive: Layer.Layer<PouchDBService, never, EnvironmentService>;
 //# sourceMappingURL=pouchdb.d.ts.map
