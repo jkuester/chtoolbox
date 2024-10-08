@@ -7,8 +7,8 @@ export interface Environment {
 }
 export interface EnvironmentService {
     readonly get: () => Effect.Effect<Environment>;
-    readonly setUrl: (url: Redacted.Redacted) => Effect.Effect<Environment>;
+    readonly setUrl: (url: Redacted.Redacted) => Effect.Effect<Environment, Error>;
 }
 export declare const EnvironmentService: Context.Tag<EnvironmentService, EnvironmentService>;
-export declare const EnvironmentServiceLive: Layer.Layer<EnvironmentService, import("effect/ConfigError").ConfigError, never>;
+export declare const EnvironmentServiceLive: Layer.Layer<EnvironmentService, Error | import("effect/ConfigError").ConfigError, never>;
 //# sourceMappingURL=environment.d.ts.map

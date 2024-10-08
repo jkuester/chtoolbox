@@ -11,19 +11,20 @@ export interface Environment {
 
 export interface EnvironmentService {
   readonly get: () => Effect.Effect<Environment>;
-  readonly setUrl: (url: Redacted.Redacted) => Effect.Effect<Environment>;
+  readonly setUrl: (url: Redacted.Redacted) => Effect.Effect<Environment, Error>;
 }
 
 export const EnvironmentService = Context.GenericTag<EnvironmentService>('chtoolbox/EnvironmentService');
 
-const parseCouchUrl = (url: Redacted.Redacted) => url.pipe(
+const parseCouchUrl = (url: Redacted.Redacted): Effect.Effect<Environment, Error> => url.pipe(
   Redacted.value,
   String.match(COUCH_URL_PATTERN),
   Option.map(([, url, user]) => ({
     url: Redacted.make(`${url}/`),
     user
   })),
-  Option.getOrThrowWith(() => Error('Could not parse URL.')),
+  Option.map(Effect.succeed),
+  Option.getOrElse(() => Effect.fail(Error('Could not parse URL.'))),
 );
 
 const COUCH_URL = Config
@@ -41,7 +42,7 @@ const createEnvironmentService = Ref
   .pipe(
     Effect.map(env => EnvironmentService.of({
       get: () => Ref.get(env),
-      setUrl: url => Ref.setAndGet(env, parseCouchUrl(url)),
+      setUrl: url => parseCouchUrl(url).pipe(Effect.flatMap(newEnv => Ref.setAndGet(env, newEnv))),
     })),
     Effect.tap((envService) => COUCH_URL.pipe(
       Config.map(Option.map(envService.setUrl)),

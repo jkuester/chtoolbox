@@ -19,6 +19,7 @@ const getCompactRequest = (dbName: string, designName?: string) => Schema
   .pipe(
     HttpClientRequest.schemaBody,
     build => build(HttpClientRequest.post(`/${dbName}/_compact${getDesignPath(designName)}`), {}),
+    Effect.mapError(x => x as unknown as Error),
   );
 
 const compact = (context: Context.Context<CouchService>) => (dbName: string, designName?: string) => Effect
@@ -26,7 +27,6 @@ const compact = (context: Context.Context<CouchService>) => (dbName: string, des
   .pipe(
     Effect.flatMap(([couch, request]) => couch.request(request)),
     Effect.andThen(Effect.void),
-    Effect.mapError(x => x as Error),
     Effect.scoped,
     Effect.provide(context),
   );

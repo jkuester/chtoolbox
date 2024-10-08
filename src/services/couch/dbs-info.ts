@@ -16,6 +16,7 @@ const getPostRequest = (keys: NonEmptyArray<string>) => DbsInfoBody.pipe(
     HttpClientRequest.post(ENDPOINT),
     { keys }
   ),
+  Effect.mapError(x => x as unknown as Error),
 );
 
 export class CouchDbInfo extends Schema.Class<CouchDbInfo>('CouchDbInfo')({
@@ -67,7 +68,6 @@ export const CouchDbsInfoServiceLive = Layer.effect(CouchDbsInfoService, Service
       .pipe(
         Effect.flatMap(([couch, request]) => couch.request(request)),
         CouchDbInfo.decodeResponse,
-        Effect.mapError(x => x as Error),
         Effect.provide(context),
       ),
     get: () => dbsInfo.pipe(Effect.provide(context)),

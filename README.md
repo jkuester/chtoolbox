@@ -74,3 +74,17 @@ You can include sub-commands, options, and arguments after `--` in the command. 
 ```shell
 npm run local -- monitor
 ```
+
+### Unit tests
+
+To execute the tests, run:
+
+```shell
+npm run test
+```
+
+Note that currently, the code in `src/commands` is not covered by tests. The goal is to strike a balance between development speed and stability. Reusable code in (e.g. `src/libs` and `src/services`) should be fully covered by automated tests. However, the top-level command code does not have any unit tests.
+
+#### Code coverage
+
+The `test` script will automatically evaluate the code coverage of the tests. If the tests do not fully exercise the implementation code, the script will fail. For more details about the current code coverage, you can view the HTML report in `./.nyc_output/reports`.

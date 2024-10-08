@@ -32,7 +32,7 @@ exports.EnvironmentService = Context.GenericTag('chtoolbox/EnvironmentService');
 const parseCouchUrl = (url) => url.pipe(effect_1.Redacted.value, effect_1.String.match(COUCH_URL_PATTERN), effect_1.Option.map(([, url, user]) => ({
     url: effect_1.Redacted.make(`${url}/`),
     user
-})), effect_1.Option.getOrThrowWith(() => Error('Could not parse URL.')));
+})), effect_1.Option.map(effect_1.Effect.succeed), effect_1.Option.getOrElse(() => effect_1.Effect.fail(Error('Could not parse URL.'))));
 const COUCH_URL = effect_1.Config
     .redacted('COUCH_URL')
     .pipe(effect_1.Config.withDescription('The URL of the CouchDB server.'), effect_1.Config.option);
@@ -43,7 +43,7 @@ const createEnvironmentService = effect_1.Ref
 })
     .pipe(effect_1.Effect.map(env => exports.EnvironmentService.of({
     get: () => effect_1.Ref.get(env),
-    setUrl: url => effect_1.Ref.setAndGet(env, parseCouchUrl(url)),
+    setUrl: url => parseCouchUrl(url).pipe(effect_1.Effect.flatMap(newEnv => effect_1.Ref.setAndGet(env, newEnv))),
 })), effect_1.Effect.tap((envService) => COUCH_URL.pipe(effect_1.Config.map(effect_1.Option.map(envService.setUrl)), effect_1.Config.map(effect_1.Option.map(effect_1.Effect.asVoid)), effect_1.Effect.flatMap(effect_1.Option.getOrElse(() => effect_1.Effect.void)))));
 exports.EnvironmentServiceLive = Layer.effect(exports.EnvironmentService, createEnvironmentService);
 //# sourceMappingURL=environment.js.map

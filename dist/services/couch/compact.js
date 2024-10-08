@@ -34,10 +34,10 @@ exports.CouchCompactService = Context.GenericTag('chtoolbox/CouchCompactService'
 const getDesignPath = (designName) => designName ? `/${designName}` : '';
 const getCompactRequest = (dbName, designName) => Schema
     .Struct({})
-    .pipe(platform_1.HttpClientRequest.schemaBody, build => build(platform_1.HttpClientRequest.post(`/${dbName}/_compact${getDesignPath(designName)}`), {}));
+    .pipe(platform_1.HttpClientRequest.schemaBody, build => build(platform_1.HttpClientRequest.post(`/${dbName}/_compact${getDesignPath(designName)}`), {}), Effect.mapError(x => x));
 const compact = (context) => (dbName, designName) => Effect
     .all([couch_1.CouchService, getCompactRequest(dbName, designName)])
-    .pipe(Effect.flatMap(([couch, request]) => couch.request(request)), Effect.andThen(Effect.void), Effect.mapError(x => x), Effect.scoped, Effect.provide(context));
+    .pipe(Effect.flatMap(([couch, request]) => couch.request(request)), Effect.andThen(Effect.void), Effect.scoped, Effect.provide(context));
 const ServiceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
 exports.CouchCompactServiceLive = Layer.effect(exports.CouchCompactService, ServiceContext.pipe(Effect.map(context => exports.CouchCompactService.of({
     compactDb: compact(context),
