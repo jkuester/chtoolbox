@@ -1,5 +1,5 @@
 import { describe, it } from 'mocha';
-import { Config, Effect, Layer, Redacted, Ref, TestContext } from 'effect';
+import { Effect, Layer, Redacted, TestContext } from 'effect';
 import sinon, { SinonStub } from 'sinon';
 import * as PouchSvc from '../../src/services/pouchdb';
 import { PouchDBService } from '../../src/services/pouchdb';
@@ -71,6 +71,33 @@ describe('Replicate Service', () => {
         owner,
       }])).to.be.true;
       expect(assertPouchResponse.calledOnceWithExactly(FAKE_RESPONSE)).to.be.true;
+    })));
+  });
+
+  describe('watch', () => {
+    let changes: SinonStub;
+
+    beforeEach(() => {
+      changes = sinon.stub();
+      pouchGet.returns(Effect.succeed({ changes }));
+    });
+
+    it('watches a replication doc', run(Effect.gen(function* () {
+      const docId = 'repDocId';
+      changes.returns(FAKE_RESPONSE);
+
+      const replicateSvc = yield* ReplicateService;
+      const changesFeed = yield* replicateSvc.watch(docId);
+
+      expect(changesFeed).to.equal(FAKE_RESPONSE);
+      expect(pouchGet.calledOnceWithExactly('_replicator')).to.be.true;
+      expect(environmentGet.notCalled).to.be.true;
+      expect(changes.calledOnceWithExactly({
+        since: 'now',
+        live: true,
+        include_docs: true,
+        doc_ids: [docId],
+      })).to.be.true;
     })));
   });
 });
