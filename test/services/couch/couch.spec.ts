@@ -1,5 +1,5 @@
 import { describe, it } from 'mocha';
-import { Config, Effect, Layer, Redacted, Ref, Scope, TestContext } from 'effect';
+import { Effect, Layer, Redacted, Scope, TestContext } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
 import { CouchService, CouchServiceLive } from '../../../src/services/couch/couch';
@@ -26,9 +26,9 @@ describe('Couch Service', () => {
     await Effect.runPromise(test.pipe(
       Effect.provide(CouchServiceLive),
       Effect.provide(TestContext.TestContext),
-      Effect.provide(Layer.succeed(EnvironmentService, EnvironmentService.of({
+      Effect.provide(Layer.succeed(EnvironmentService, {
         get: environmentGet,
-      }))),
+      } as unknown as EnvironmentService)),
       Effect.provide(NodeHttpClient.layer),
       Effect.scoped,
     ));
@@ -36,12 +36,8 @@ describe('Couch Service', () => {
 
   it('prepends the url to the request', run(Effect.gen(function* () {
     const url = 'http://localhost:5984';
-    const env = yield* Redacted.make(url).pipe(
-      Config.succeed,
-      Ref.make,
-      Effect.map(url => ({ url }))
-    );
-    environmentGet.returns(env);
+    const env = Redacted.make(url).pipe(url => ({ url }));
+    environmentGet.returns(Effect.succeed(env));
     const fakeHttpClientEffect = Effect.succeed({ hello: 'world' });
     filterStatusOkay.returns(fakeHttpClientEffect);
     const fakeHttpRequest = { fake: 'request' };

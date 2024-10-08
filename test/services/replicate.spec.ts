@@ -27,9 +27,9 @@ describe('Replicate Service', () => {
       Effect.provide(Layer.succeed(PouchDBService, PouchDBService.of({
         get: pouchGet,
       }))),
-      Effect.provide(Layer.succeed(EnvironmentService, EnvironmentService.of({
+      Effect.provide(Layer.succeed(EnvironmentService, {
         get: environmentGet,
-      }))),
+      } as unknown as EnvironmentService)),
     ));
   };
 
@@ -45,13 +45,9 @@ describe('Replicate Service', () => {
 
     it('creates a doc in the _replication database', run(Effect.gen(function* () {
       const owner = 'medic';
-      const url = `http://${owner}:password@localhost:5984`;
-      const env = yield* Redacted.make(url).pipe(
-        Config.succeed,
-        Ref.make,
-        Effect.map(url => ({ url }))
-      );
-      environmentGet.returns(env);
+      const url = `http://${owner}:password@localhost:5984/`;
+      const env = Redacted.make(url).pipe(url => ({ url, user: owner }));
+      environmentGet.returns(Effect.succeed(env));
       const source = 'source';
       const target = 'target';
       bulkDocs.resolves([FAKE_RESPONSE]);
@@ -68,8 +64,8 @@ describe('Replicate Service', () => {
           name: owner,
           roles: ['_admin', '_reader', '_writer'],
         },
-        source: { url: `${url}/${source}` },
-        target: { url: `${url}/${target}` },
+        source: { url: `${url}${source}` },
+        target: { url: `${url}${target}` },
         create_target: false,
         continuous: false,
         owner,
