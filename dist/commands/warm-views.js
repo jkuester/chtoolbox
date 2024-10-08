@@ -5,11 +5,14 @@ const cli_1 = require("@effect/cli");
 const effect_1 = require("effect");
 const index_1 = require("../index");
 const warm_views_1 = require("../services/warm-views");
-const designsCurrentlyUpdating = warm_views_1.WarmViewsService.pipe(effect_1.Effect.delay(1000), effect_1.Effect.flatMap(service => service.designsCurrentlyUpdating()), effect_1.Effect.map(effect_1.Array.map(({ dbName, designId }) => `${dbName}/${designId}`)), effect_1.Effect.tap(effect_1.Console.log('Designs currently updating:')), effect_1.Effect.tap(effect_1.Console.log));
+const designsCurrentlyUpdating = warm_views_1.WarmViewsService.pipe(effect_1.Effect.flatMap(service => service.designsCurrentlyUpdating()), effect_1.Effect.map(effect_1.Array.map(({ dbName, designId }) => `${dbName}/${designId}`)), effect_1.Effect.tap(effect_1.Console.log('Designs currently updating:')), effect_1.Effect.tap(effect_1.Console.log));
 let noViewsWarmingCount = 0;
 const viewWarmingComplete = (designsUpdating) => (0, effect_1.pipe)(designsUpdating, effect_1.Array.length, effect_1.Option.liftPredicate(length => length === 0), effect_1.Option.map(() => noViewsWarmingCount += 1), effect_1.Option.getOrElse(() => noViewsWarmingCount = 0), count => count === 3);
+const repeatSchedule = effect_1.Schedule
+    .recurUntil(viewWarmingComplete)
+    .pipe(effect_1.Schedule.delayed(() => 1000));
 const followIndexing = effect_1.Effect
-    .repeat(designsCurrentlyUpdating, { until: viewWarmingComplete })
+    .repeat(designsCurrentlyUpdating, repeatSchedule)
     .pipe(effect_1.Effect.tap(effect_1.Console.log('View warming complete.')));
 const follow = cli_1.Options
     .boolean('follow')
