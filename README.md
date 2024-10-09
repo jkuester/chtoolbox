@@ -4,6 +4,13 @@
 
 CHToolbox is a command-line utility for development and testing of the Community Health Toolkit. The goal is to provide a platform that makes it easy to create and share utility scripts.
 
+Features include:
+
+- Add, remove, replicate Couch databases
+- Monitor storage metrics for CHT databases and view indexes
+- View and follow active tasks on the Couch server
+- And more!
+
 ## Installation
 
 To globally install the app run:

@@ -1,10 +1,9 @@
 import { Command, Options } from '@effect/cli';
-import { Array, Console, Effect, Option, pipe } from 'effect';
+import { Array, Console, Effect, Option, pipe, Schedule } from 'effect';
 import { initializeUrl } from '../index';
 import { WarmViewsService } from '../services/warm-views';
 
 const designsCurrentlyUpdating = WarmViewsService.pipe(
-  Effect.delay(1000),
   Effect.flatMap(service => service.designsCurrentlyUpdating()),
   Effect.map(Array.map(({ dbName, designId }) => `${dbName}/${designId}`)),
   Effect.tap(Console.log('Designs currently updating:')),
@@ -21,8 +20,12 @@ const viewWarmingComplete = (designsUpdating: string[]) => pipe(
   count => count === 3,
 );
 
+const repeatSchedule = Schedule
+  .recurUntil(viewWarmingComplete)
+  .pipe(Schedule.delayed(() => 1000));
+
 const followIndexing = Effect
-  .repeat(designsCurrentlyUpdating, { until: viewWarmingComplete })
+  .repeat(designsCurrentlyUpdating, repeatSchedule)
   .pipe(Effect.tap(Console.log('View warming complete.')));
 
 const follow = Options
