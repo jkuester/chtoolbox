@@ -45,7 +45,6 @@ const couchActiveTasks = CouchActiveTasksService.pipe(
   Effect.map(Option.getOrElse(() => 'No active tasks.')),
 );
 
-
 const followActiveTasks = Effect.repeat(
   couchActiveTasks.pipe(
     Effect.flatMap(tasks => Console.clear.pipe(
