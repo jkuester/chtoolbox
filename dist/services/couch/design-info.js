@@ -33,12 +33,24 @@ const couch_1 = require("./couch");
 class CouchDesignInfo extends Schema.Class('CouchDesignInfo')({
     name: Schema.String,
     view_index: Schema.Struct({
+        collator_versions: Schema.Array(Schema.String),
         compact_running: Schema.Boolean,
-        updater_running: Schema.Boolean,
+        language: Schema.String,
+        purge_seq: Schema.Number,
+        signature: Schema.String,
         sizes: Schema.Struct({
-            file: Schema.Number,
             active: Schema.Number,
+            external: Schema.Number,
+            file: Schema.Number,
         }),
+        updater_running: Schema.Boolean,
+        updates_pending: Schema.Struct({
+            minimum: Schema.Number,
+            preferred: Schema.Number,
+            total: Schema.Number,
+        }),
+        waiting_commit: Schema.Boolean,
+        waiting_clients: Schema.Number,
     }),
 }) {
     static decodeResponse = platform_1.HttpClientResponse.schemaBodyJsonScoped(CouchDesignInfo);

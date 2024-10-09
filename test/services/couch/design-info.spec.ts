@@ -30,26 +30,39 @@ describe('Couch Design Info Service', () => {
     ));
   };
 
-  it('gets design info for a database', run(Effect.gen(function* () {
-    const db = 'medic';
-    const design = 'medic-client';
-    requestGet.returns(FAKE_CLIENT_REQUEST);
-    const medicClientDesignInfo = createDesignInfo({
-      name: design,
+  [
+    createDesignInfo({
+      name: 'medic-client',
+      collator_versions: ['153.104', '1222.121214'],
       compact_running: true,
-      updater_running: true,
+      language: 'javascript',
+      purge_seq: 123,
+      signature: 'c87f8fefeb37cdcd27e9e06ba6a89059',
+      active: 234,
+      external: 345,
       file: 123,
-      active: 234
-    });
-    couchRequest.returns(Effect.succeed({
-      json: Effect.succeed(medicClientDesignInfo),
-    }));
+      updater_running: true,
+      minimum: 1,
+      preferred: 2,
+      total: 3,
+      waiting_commit: true,
+      waiting_clients: 4,
+    }),
+    createDesignInfo(),
+  ].forEach(expectedDesignInfo => {
+    it('gets design info for a database', run(Effect.gen(function* () {
+      const db = 'medic';
+      requestGet.returns(FAKE_CLIENT_REQUEST);
+      couchRequest.returns(Effect.succeed({
+        json: Effect.succeed(expectedDesignInfo),
+      }));
 
-    const service = yield* CouchDesignInfoService;
-    const designInfo = yield* service.get(db, design);
+      const service = yield* CouchDesignInfoService;
+      const designInfo = yield* service.get(db, expectedDesignInfo.name);
 
-    expect(designInfo).to.deep.equal(medicClientDesignInfo);
-    expect(requestGet.calledOnceWithExactly(`/${db}/_design/${design}/_info`)).to.be.true;
-    expect(couchRequest.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
-  })));
+      expect(designInfo).to.deep.equal(expectedDesignInfo);
+      expect(requestGet.calledOnceWithExactly(`/${db}/_design/${expectedDesignInfo.name}/_info`)).to.be.true;
+      expect(couchRequest.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
+    })));
+  });
 });

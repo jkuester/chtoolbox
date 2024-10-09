@@ -75,7 +75,7 @@ const emptyDesignInfo: CouchDesignInfo = {
       active: 0,
     },
   },
-};
+} as CouchDesignInfo;
 const getCouchDesignInfosForDb = (dbName: string) => CouchDesignInfoService.pipe(
   Effect.flatMap(service => Effect.all(pipe(
     VIEW_INDEXES_BY_DB[dbName],
