@@ -48,7 +48,7 @@ export class CouchDbInfo extends Schema.Class<CouchDbInfo>('CouchDbInfo')({
 
 export interface CouchDbsInfoService {
   readonly post: (dbNames: NonEmptyArray<string>) => Effect.Effect<readonly CouchDbInfo[], Error>
-  readonly get: () => Effect.Effect<readonly CouchDbInfo[], Error>
+  readonly get: () => Effect.Effect<readonly CouchDbInfo[], Error> //TODO Not sure this is being used anymore
   readonly getDbNames: () => Effect.Effect<readonly string[], Error>
 }
 
