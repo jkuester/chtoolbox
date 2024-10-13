@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.compact = void 0;
+exports.compact = exports.streamActiveTasks = void 0;
 const cli_1 = require("@effect/cli");
 const effect_1 = require("effect");
 const index_1 = require("../index");
@@ -14,10 +14,11 @@ const getTaskDisplayData = (task) => ({
     progress: (0, active_tasks_1.getProgressPct)(task),
 });
 const streamActiveTasks = (taskStream) => taskStream.pipe(effect_1.Stream.map(effect_1.Array.map(getTaskDisplayData)), effect_1.Stream.map(active_tasks_1.getDisplayDictByPid), effect_1.Stream.runForEach(taskDict => effect_1.Console.clear.pipe(effect_1.Effect.tap(effect_1.Console.log('Currently compacting:')), effect_1.Effect.tap(effect_1.Console.table(taskDict)))), effect_1.Effect.tap(effect_1.Console.clear.pipe(effect_1.Effect.tap(effect_1.Console.log('Compaction complete.')))));
+exports.streamActiveTasks = streamActiveTasks;
 const follow = cli_1.Options
     .boolean('follow')
     .pipe(cli_1.Options.withAlias('f'), cli_1.Options.withDescription('After triggering compaction, wait for all compacting jobs to complete.'), cli_1.Options.withDefault(false));
 exports.compact = cli_1.Command
-    .make('compact', { follow }, ({ follow }) => index_1.initializeUrl.pipe(effect_1.Effect.tap(effect_1.Console.log('Compacting all dbs and views...')), effect_1.Effect.andThen(compact_1.CompactService), effect_1.Effect.flatMap(compactService => compactService.compactAll()), effect_1.Effect.map(effect_1.Option.liftPredicate(() => follow)), effect_1.Effect.map(effect_1.Option.map(streamActiveTasks)), effect_1.Effect.flatMap(effect_1.Option.getOrElse(() => effect_1.Console.log('Compaction started. Watch the active tasks for progress: chtx active-tasks')))))
+    .make('compact', { follow }, ({ follow }) => index_1.initializeUrl.pipe(effect_1.Effect.tap(effect_1.Console.log('Compacting all dbs and views...')), effect_1.Effect.andThen(compact_1.CompactService), effect_1.Effect.flatMap(compactService => compactService.compactAll()), effect_1.Effect.map(effect_1.Option.liftPredicate(() => follow)), effect_1.Effect.map(effect_1.Option.map(exports.streamActiveTasks)), effect_1.Effect.flatMap(effect_1.Option.getOrElse(() => effect_1.Console.log('Compaction started. Watch the active tasks for progress: chtx active-tasks')))))
     .pipe(cli_1.Command.withDescription(`Force compaction on databases and views.`));
 //# sourceMappingURL=compact.js.map

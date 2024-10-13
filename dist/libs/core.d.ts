@@ -1,4 +1,4 @@
-import { Effect } from 'effect';
+import { Effect, Stream } from 'effect';
 /**
  * Returns a function that takes an array. The function will return `false` until
  * it has been called `target` times with an empty array.
@@ -10,4 +10,5 @@ export declare const untilEmptyCount: (target: number) => (data: unknown[]) => E
  * Shim to make PouchDB easier to mock.
  */
 export declare const pouchDB: (name?: string, options?: PouchDB.Configuration.DatabaseConfiguration) => PouchDB.Database<{}>;
+export declare const mergeArrayStreams: <T>(streams: Stream.Stream<T[], Error>[]) => Stream.Stream<T[], Error, never>;
 //# sourceMappingURL=core.d.ts.map
