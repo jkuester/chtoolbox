@@ -17,4 +17,4 @@ export const ls = Command
     Effect.map(getDisplayDictByPid),
     Effect.tap(Console.table),
   ))
-  .pipe(Command.withDescription(`Display detailed information on one or more Couch databases`));
+  .pipe(Command.withDescription(`List Couch databases`));
