@@ -1,0 +1,20 @@
+import { Command } from '@effect/cli';
+import { Array, Console, Effect } from 'effect';
+import { initializeUrl } from '../../index';
+import { CouchDbInfo, CouchDbsInfoService } from '../../services/couch/dbs-info';
+import { getDisplayDictByPid } from '../../services/couch/active-tasks';
+
+const getDbDisplay = ({ info: { db_name, doc_count } }: CouchDbInfo) => ({
+  pid: db_name,
+  doc_count,
+});
+
+export const ls = Command
+  .make('ls', {}, () => initializeUrl.pipe(
+    Effect.andThen(CouchDbsInfoService),
+    Effect.flatMap(service => service.get()),
+    Effect.map(Array.map(getDbDisplay)),
+    Effect.map(getDisplayDictByPid),
+    Effect.tap(Console.table),
+  ))
+  .pipe(Command.withDescription(`Display detailed information on one or more Couch databases`));

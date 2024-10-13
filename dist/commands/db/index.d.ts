@@ -14,6 +14,6 @@ export declare const db: Command.Command<"db", import("../../services/environmen
     } | {
         readonly follow: boolean;
         readonly databases: [string, ...string[]];
-    }>;
+    } | {}>;
 }>;
 //# sourceMappingURL=index.d.ts.map
