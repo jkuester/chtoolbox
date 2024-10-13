@@ -2,6 +2,20 @@ import { Args, Command } from '@effect/cli';
 import { Array, Console, Effect, pipe } from 'effect';
 import { initializeUrl } from '../../index';
 import { CouchDesignInfoService } from '../../services/couch/design-info';
+import { CouchDesignService } from '../../services/couch/design';
+
+const getDesignInfo = (database: string, design: string) => Effect
+  .flatMap(CouchDesignInfoService, svc => svc.get(database, design));
+
+const getViewNames = (database: string, design: string) => Effect
+  .flatMap(CouchDesignService, svc => svc.getViewNames(database, design));
+
+const getViewData = (database: string) => (design: string) => Effect.all([
+  getDesignInfo(database, design),
+  getViewNames(database, design),
+]).pipe(
+  Effect.map(([designInfo, views]) => ({ ...designInfo, views })),
+);
 
 const database = Args
   .text({ name: 'database' })
@@ -18,10 +32,9 @@ const designs = Args
 
 export const inspect = Command
   .make('inspect', { database, designs }, ({ database, designs }) => initializeUrl.pipe(
-    Effect.andThen(CouchDesignInfoService),
-    Effect.flatMap(service => pipe(
+    Effect.andThen(pipe(
       designs,
-      Array.map(design => service.get(database, design)),
+      Array.map(getViewData(database)),
       Effect.all,
     )),
     Effect.map(d => JSON.stringify(d, null, 2)),

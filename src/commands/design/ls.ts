@@ -9,7 +9,10 @@ const getDesignDocNames = (dbName: string) => CouchDesignDocsService.pipe(
 );
 
 const printDesignDocNames = (dbName: string) => getDesignDocNames(dbName)
-  .pipe(Effect.flatMap(Console.log));
+  .pipe(
+    Effect.map(d => JSON.stringify(d, null, 2)),
+    Effect.flatMap(Console.log)
+  );
 
 const getDisplayDict = (data: [readonly string[], string][]) => Array.reduce(
   data,
@@ -26,6 +29,7 @@ const printAllDesignDocNames = Effect
       Effect.map(Array.zip(dbNames)),
       Effect.map(getDisplayDict),
     )),
+    Effect.map(d => JSON.stringify(d, null, 2)),
     Effect.flatMap(Console.log),
   );
 
