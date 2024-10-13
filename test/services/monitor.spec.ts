@@ -94,7 +94,7 @@ const emptyDesignInfo: CouchDesignInfo = {
       active: 0,
     },
   },
-};
+} as CouchDesignInfo;
 
 const initializeDesignInfoServiceGet = (designInfoServiceGet: SinonStub) => {
   designInfoServiceGet.withArgs('medic', 'medic').returns(Effect.succeed(medicDesignInfo));

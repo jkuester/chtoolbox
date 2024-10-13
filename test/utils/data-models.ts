@@ -33,19 +33,41 @@ export const createDbInfo = ({
 
 export const createDesignInfo = ({
   name = '',
+  collator_versions = [] as string[],
   compact_running = false,
-  updater_running = false,
+  language = '',
+  purge_seq = 0,
+  signature = '',
+  active = 0,
+  external = 0,
   file = 0,
-  active = 0
-}) => ({
+  updater_running = false,
+  minimum = 0,
+  preferred = 0,
+  total = 0,
+  waiting_commit = false,
+  waiting_clients = 0,
+} = {}) => ({
   name,
   view_index: {
+    collator_versions,
     compact_running,
-    updater_running,
+    language,
+    purge_seq,
+    signature,
     sizes: {
-      file,
       active,
+      external,
+      file,
     },
+    updater_running,
+    updates_pending: {
+      minimum,
+      preferred,
+      total,
+    },
+    waiting_commit,
+    waiting_clients,
   },
 });
 

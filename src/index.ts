@@ -24,6 +24,7 @@ import { CouchActiveTasksServiceLive } from './services/couch/active-tasks';
 import { PouchDBServiceLive } from './services/pouchdb';
 import { ReplicateServiceLive } from './services/replicate';
 import { db } from './commands/db';
+import { design } from './commands/design';
 
 const url = Options
   .text('url')
@@ -49,7 +50,7 @@ export const initializeUrl = chtx.pipe(
   ))),
 );
 
-const command = chtx.pipe(Command.withSubcommands([compact, monitor, warmViews, activeTasks, db]));
+const command = chtx.pipe(Command.withSubcommands([compact, design, monitor, warmViews, activeTasks, db]));
 
 const cli = Command.run(command, {
   name: 'CHT Toolbox',

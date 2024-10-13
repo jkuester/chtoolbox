@@ -1,36 +1,26 @@
 import { describe, it } from 'mocha';
-import { Effect, Option, Ref, TestContext } from 'effect';
+import { Chunk, Effect, Stream, TestContext } from 'effect';
 import { expect } from 'chai';
-import { optionalUpdate, pouchDB } from '../../src/libs/core';
+import { mergeArrayStreams, pouchDB, untilEmptyCount } from '../../src/libs/core';
 import PouchDB from 'pouchdb-core';
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
 
 describe('Core libs', () => {
-  const run = (test:  Effect.Effect<void>) => async () => {
+  const run = (test:  Effect.Effect<void, Error>) => async () => {
     await Effect.runPromise(test.pipe(Effect.provide(TestContext.TestContext)));
   };
 
-  describe('optionalUpdate', () => {
-    it('updates the ref when the option has some value', run(Effect.gen(function* () {
-      const stringRef = yield* Ref.make('hello');
-      const stringOpt = Option.some('world');
+  it('untilEmptyCount', run(Effect.gen(function* () {
+    const isArrayEmpty = untilEmptyCount(3);
 
-      yield* optionalUpdate(stringRef, stringOpt);
-      const updatedValue = yield* Ref.get(stringRef);
-
-      expect(updatedValue).to.equal('world');
-    })));
-
-    it('does not update the ref when the option has none', run(Effect.gen(function* () {
-      const stringRef = yield* Ref.make('hello');
-      const stringOpt = Option.none();
-
-      yield* optionalUpdate(stringRef, stringOpt);
-      const updatedValue = yield* Ref.get(stringRef);
-
-      expect(updatedValue).to.equal('hello');
-    })));
-  });
+    expect(yield* isArrayEmpty([1])).to.be.false;
+    expect(yield* isArrayEmpty([])).to.be.false;
+    expect(yield* isArrayEmpty([])).to.be.false;
+    expect(yield* isArrayEmpty([1])).to.be.false;
+    expect(yield* isArrayEmpty([])).to.be.false;
+    expect(yield* isArrayEmpty([])).to.be.false;
+    expect(yield* isArrayEmpty([])).to.be.true;
+  })));
 
   it('pouchDB', () => {
     PouchDB.plugin(PouchDBAdapterHttp);
@@ -38,4 +28,21 @@ describe('Core libs', () => {
 
     expect(db).to.be.an.instanceOf(PouchDB);
   });
+
+  it('mergeArrayStreams', run(Effect.gen(function* () {
+    const mergedStream = mergeArrayStreams([
+      Stream.make([1, 2, 3], [4, 5, 6], [7, 8, 9]),
+      Stream.make([1], [2], [3]),
+      Stream.make([1]),
+      Stream.empty,
+    ]);
+
+    const data = Chunk.toReadonlyArray(yield* Stream.runCollect(mergedStream));
+
+    expect(data).to.deep.equal([
+      [1, 2, 3, 1, 1],
+      [4, 5, 6, 2],
+      [7, 8, 9, 3],
+    ]);
+  })));
 });

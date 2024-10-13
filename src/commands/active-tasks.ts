@@ -1,57 +1,54 @@
 import { Command, Options } from '@effect/cli';
-import { Array, Console, DateTime, Effect, Number, Option, Order, pipe, Record, Schedule } from 'effect';
+import { Array, Console, DateTime, Effect, Number, Option, pipe, Stream, String } from 'effect';
 import { initializeUrl } from '../index';
-import { CouchActiveTask, CouchActiveTasksService } from '../services/couch/active-tasks';
+import {
+  CouchActiveTask,
+  CouchActiveTasksService,
+  getDbName,
+  getDesignName,
+  getDisplayDictByPid,
+  getPid,
+  getProgressPct
+} from '../services/couch/active-tasks';
 
-const getDbNameFromShard = (shard: string) => shard.split('/')[2].split('.')[0];
-const getDesignName = (design_document?: string) => Option
-  .fromNullable(design_document)
+const getDesignDisplayName = (task: CouchActiveTask) => getDesignName(task)
   .pipe(
-    Option.map(d => `/${d.split('/')[1]}`),
-    Option.getOrElse(() => ''),
+    Option.map(design => `/${design}`),
+    Option.getOrElse(() => String.empty),
   );
 
-const getTaskDisplayData = ({
-  type,
-  database,
-  design_document,
-  pid,
-  progress,
-  started_on,
-}: CouchActiveTask) => ({
-  type,
-  database: `${getDbNameFromShard(database)}${getDesignName(design_document)}`,
-  pid: pid.substring(1, pid.length - 1),
-  progress: `${progress?.toString() ?? '?'}%`,
+const getTaskDisplayData = (task: CouchActiveTask) => ({
+  type: task.type,
+  database: `${getDbName(task)}${getDesignDisplayName(task)}`,
+  pid: getPid(task),
+  progress: getProgressPct(task),
   started_at: DateTime
-    .unsafeMake(Number.multiply(started_on, 1000))
+    .unsafeMake(Number.multiply(task.started_on, 1000))
     .pipe(DateTime.formatLocal({ hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })),
 });
 
-const getTasksDisplayData = (tasks: readonly CouchActiveTask[]) => pipe(
-  Array.map(tasks, getTaskDisplayData),
-  Array.reduce({}, (data, task) => Record.set(task.pid, Record.remove('pid')(task))(data)),
+const getPrintableTasks = (tasks: CouchActiveTask[]) => pipe(
+  tasks,
+  Option.liftPredicate(Array.isNonEmptyArray),
+  Option.map(Array.map(getTaskDisplayData)),
+  Option.map(getDisplayDictByPid),
+  Option.getOrElse(() => 'No active tasks.'),
 );
 
-const orderByStartedOn = Order.make(
-  (a: CouchActiveTask, b: CouchActiveTask) => Number.Order(a.started_on, b.started_on)
-);
-
-const couchActiveTasks = CouchActiveTasksService.pipe(
+const printCurrentTasks = CouchActiveTasksService.pipe(
   Effect.flatMap(service => service.get()),
-  Effect.map(Array.sort(orderByStartedOn)),
-  Effect.map(Option.liftPredicate(Array.isNonEmptyArray)),
-  Effect.map(Option.map(getTasksDisplayData)),
-  Effect.map(Option.getOrElse(() => 'No active tasks.')),
+  Effect.map(getPrintableTasks),
+  Effect.tap(Console.table),
 );
 
-const followActiveTasks = Effect.repeat(
-  couchActiveTasks.pipe(
-    Effect.flatMap(tasks => Console.clear.pipe(
-      Effect.tap(Console.table(tasks)),
-    )),
-  ),
-  Schedule.spaced(5000)
+const followActiveTasks = CouchActiveTasksService.pipe(
+  Effect.map(svc => svc.stream()),
+  Effect.flatMap(Stream.runForEach(tasks => Effect
+    .succeed(getPrintableTasks(tasks))
+    .pipe(
+      Effect.tap(Console.clear),
+      Effect.tap(Console.table),
+    ))),
 );
 
 const follow = Options
@@ -66,6 +63,6 @@ export const activeTasks = Command
   .make('active-tasks', { follow }, ({ follow }) => initializeUrl.pipe(
     Effect.andThen(followActiveTasks),
     Option.liftPredicate(() => follow),
-    Option.getOrElse(() => couchActiveTasks.pipe(Effect.tap(Console.table))),
+    Option.getOrElse(() => printCurrentTasks),
   ))
   .pipe(Command.withDescription(`Force compaction on databases and views.`));
