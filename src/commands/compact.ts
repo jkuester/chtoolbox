@@ -23,7 +23,7 @@ const getTaskDisplayData = (task: CouchActiveTask) => ({
   progress: getProgressPct(task),
 });
 
-const streamActiveTasks = (taskStream: Stream.Stream<CouchActiveTask[], Error>) => taskStream.pipe(
+export const streamActiveTasks = (taskStream: Stream.Stream<CouchActiveTask[], Error>) => taskStream.pipe(
   Stream.map(Array.map(getTaskDisplayData)),
   Stream.map(getDisplayDictByPid),
   Stream.runForEach(taskDict => Console.clear.pipe(

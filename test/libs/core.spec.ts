@@ -1,12 +1,12 @@
 import { describe, it } from 'mocha';
-import { Effect, TestContext } from 'effect';
+import { Chunk, Effect, Stream, TestContext } from 'effect';
 import { expect } from 'chai';
-import { pouchDB, untilEmptyCount } from '../../src/libs/core';
+import { mergeArrayStreams, pouchDB, untilEmptyCount } from '../../src/libs/core';
 import PouchDB from 'pouchdb-core';
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
 
 describe('Core libs', () => {
-  const run = (test:  Effect.Effect<void>) => async () => {
+  const run = (test:  Effect.Effect<void, Error>) => async () => {
     await Effect.runPromise(test.pipe(Effect.provide(TestContext.TestContext)));
   };
 
@@ -28,4 +28,21 @@ describe('Core libs', () => {
 
     expect(db).to.be.an.instanceOf(PouchDB);
   });
+
+  it('mergeArrayStreams', run(Effect.gen(function* () {
+    const mergedStream = mergeArrayStreams([
+      Stream.make([1, 2, 3], [4, 5, 6], [7, 8, 9]),
+      Stream.make([1], [2], [3]),
+      Stream.make([1]),
+      Stream.empty,
+    ]);
+
+    const data = Chunk.toReadonlyArray(yield* Stream.runCollect(mergedStream));
+
+    expect(data).to.deep.equal([
+      [1, 2, 3, 1, 1],
+      [4, 5, 6, 2],
+      [7, 8, 9, 3],
+    ]);
+  })));
 });

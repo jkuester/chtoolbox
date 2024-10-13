@@ -6,7 +6,7 @@ import { CouchDbsInfoService } from './couch/dbs-info';
 import { CouchDesignDocsService } from './couch/design-docs';
 import { CouchCompactService } from './couch/compact';
 import { CouchDesignInfoService } from './couch/design-info';
-import { CouchActiveTask, CouchActiveTasksService, filterStreamByType } from './couch/active-tasks';
+import { CouchActiveTask, CouchActiveTasksService, filterStreamByType, getDbName } from './couch/active-tasks';
 import { untilEmptyCount } from '../libs/core';
 
 const TYPE_DB_COMPACT = 'database_compaction';
@@ -14,7 +14,7 @@ const TYPE_VIEW_COMPACT = 'view_compaction';
 
 export interface CompactService {
   readonly compactAll: () => Effect.Effect<Stream.Stream<CouchActiveTask[], Error>, Error>
-  // readonly compactDb: (dbName: string) => Effect.Effect<void, Error> // TODO This not being used yet
+  readonly compactDb: (dbName: string) => Effect.Effect<Stream.Stream<CouchActiveTask[], Error>, Error>
 }
 
 export const CompactService = Context.GenericTag<CompactService>('chtoolbox/CompactService');
@@ -79,13 +79,23 @@ const streamAll = () => CouchActiveTasksService.pipe(
   Effect.map(Stream.takeUntilEffect(untilEmptyCount(5))),
 );
 
+const streamDb = (dbName: string) => CouchActiveTasksService.pipe(
+  Effect.map(service => service.stream()),
+  Effect.map(filterStreamByType(TYPE_DB_COMPACT)),
+  Effect.map(Stream.map(Array.filter(task => getDbName(task) === dbName))),
+  Effect.map(Stream.takeUntilEffect(untilEmptyCount(5))),
+);
+
 export const CompactServiceLive = Layer.effect(CompactService, ServiceContext.pipe(Effect.map(
   context => CompactService.of({
     compactAll: () => compactAll.pipe(
       Effect.andThen(streamAll()),
       Effect.provide(context)
     ),
-    // compactDb: (dbName: string) => compactDb(dbName)
-    //   .pipe(Effect.provide(context)),
+    compactDb: (dbName: string) => compactDb(dbName)
+      .pipe(
+        Effect.andThen(streamDb(dbName)),
+        Effect.provide(context),
+      ),
   })
 )));

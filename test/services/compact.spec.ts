@@ -134,4 +134,27 @@ describe('Compact service', () => {
       expect(untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
     })));
   });
+
+  it('compactDb', run(Effect.gen(function* () {
+    compactSvcCompactDb.returns(Effect.void);
+    const expectedTasks = [{ database: 'shards/aaaaaaa8-bffffffc/medic.1727212895' }];
+    activeTasksStream.returns(Stream.succeed(expectedTasks));
+    untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
+    const dbName = 'medic';
+
+    const service = yield* CompactService;
+    const taskStream = yield* service.compactDb(dbName);
+    const tasks = Chunk.toReadonlyArray(yield* Stream.runCollect(taskStream));
+
+    expect(tasks).to.deep.equal([expectedTasks]);
+    expect(dbsInfoSvcGetDbNames.notCalled).to.be.true;
+    expect(dbInfoSvcGet.notCalled).to.be.true;
+    expect(compactSvcCompactDb.calledOnceWithExactly(dbName)).to.be.true;
+    expect(compactSvcCompactDesign.notCalled).to.be.true;
+    expect(designDocsSvcGetNames.notCalled).to.be.true;
+    expect(designInfoSvcGet.notCalled).to.be.true;
+    expect(activeTasksStream.calledOnceWithExactly()).to.be.true;
+    expect(filterStreamByType.calledOnceWithExactly('database_compaction')).to.be.true;
+    expect(untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
+  })));
 });

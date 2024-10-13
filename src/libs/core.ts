@@ -1,4 +1,4 @@
-import { Array, Effect, Number, Option, Ref } from 'effect';
+import { Array, Effect, Function, Number, Option, Ref, Stream } from 'effect';
 import PouchDB from 'pouchdb-core';
 
 /**
@@ -27,3 +27,16 @@ export const pouchDB = (
   name?: string,
   options?: PouchDB.Configuration.DatabaseConfiguration
 ) => new PouchDB(name, options);
+
+const zipArrayStreams = <T>(
+  self: Stream.Stream<T[], Error>,
+  other: Stream.Stream<T[], Error>
+) => Stream.zipAllWith(self, {
+    other,
+    onSelf: Function.identity,
+    onOther: Function.identity,
+    onBoth: (s, o) => [...s, ...o],
+  });
+
+export const mergeArrayStreams = <T>(streams: Stream.Stream<T[], Error>[]) => Array
+  .reduce(streams.slice(1), streams[0], zipArrayStreams);
