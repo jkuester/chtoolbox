@@ -6,13 +6,13 @@ import { CouchDesignInfoService } from '../../services/couch/design-info';
 const database = Args
   .text({ name: 'database' })
   .pipe(
-    Args.withDescription('The database to inspect'),
+    Args.withDescription('The database with the design to inspect'),
   );
 
 const designs = Args
   .text({ name: 'design' })
   .pipe(
-    Args.withDescription('The designs to inspect'),
+    Args.withDescription('The design to inspect'),
     Args.atLeast(1),
   );
 

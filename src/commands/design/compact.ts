@@ -5,12 +5,18 @@ import { CompactService } from '../../services/compact';
 import { streamActiveTasks } from '../compact';
 import { mergeArrayStreams } from '../../libs/core';
 
-const compactDb = (dbName: string) => Effect.flatMap(CompactService, svc => svc.compactDb(dbName));
+const compactDesignForDb = (dbName: string) => Effect.map(CompactService, svc => svc.compactDesign(dbName));
 
-const databases = Args
+const database = Args
   .text({ name: 'database' })
   .pipe(
-    Args.withDescription('The database to compact'),
+    Args.withDescription('The database with the design to compact'),
+  );
+
+const designs = Args
+  .text({ name: 'design' })
+  .pipe(
+    Args.withDescription('The design to compact'),
     Args.atLeast(1),
   );
 
@@ -23,8 +29,9 @@ const follow = Options
   );
 
 export const compact = Command
-  .make('compact', { follow, databases }, ({ follow, databases }) => initializeUrl.pipe(
-    Effect.andThen(() => Array.map(databases, compactDb)),
+  .make('compact', { follow, database, designs }, ({ follow, database, designs }) => initializeUrl.pipe(
+    Effect.andThen(compactDesignForDb(database)),
+    Effect.map(compactDesign => Array.map(designs, compactDesign)),
     Effect.flatMap(Effect.all),
     Effect.map(Option.liftPredicate(() => follow)),
     Effect.map(Option.map(mergeArrayStreams)),
@@ -33,4 +40,4 @@ export const compact = Command
       'Compaction started. Watch the active tasks for progress: chtx active-tasks'
     ))),
   ))
-  .pipe(Command.withDescription(`Run compaction on one or more Couch databases`));
+  .pipe(Command.withDescription(`Run compaction on one or more Couch designs`));

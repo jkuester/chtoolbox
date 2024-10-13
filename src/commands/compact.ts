@@ -54,4 +54,4 @@ export const compact = Command
       'Compaction started. Watch the active tasks for progress: chtx active-tasks'
     ))),
   ))
-  .pipe(Command.withDescription(`Force compaction on databases and views.`));
+  .pipe(Command.withDescription(`Run compaction on all databases and views.`));
