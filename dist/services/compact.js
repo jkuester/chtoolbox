@@ -54,11 +54,19 @@ const ServiceContext = Effect
     .pipe(Effect.map(([activeTasks, dbsInfo, designDocs, compact, designInfo]) => Context
     .make(dbs_info_1.CouchDbsInfoService, dbsInfo)
     .pipe(Context.add(active_tasks_1.CouchActiveTasksService, activeTasks), Context.add(design_docs_1.CouchDesignDocsService, designDocs), Context.add(compact_1.CouchCompactService, compact), Context.add(design_info_1.CouchDesignInfoService, designInfo))));
-const streamAll = () => active_tasks_1.CouchActiveTasksService.pipe(Effect.map(service => service.stream()), Effect.map((0, active_tasks_1.filterStreamByType)(TYPE_DB_COMPACT, TYPE_VIEW_COMPACT)), Effect.map(effect_1.Stream.takeUntilEffect((0, core_1.untilEmptyCount)(5))));
-const streamDb = (dbName) => active_tasks_1.CouchActiveTasksService.pipe(Effect.map(service => service.stream()), Effect.map((0, active_tasks_1.filterStreamByType)(TYPE_DB_COMPACT)), Effect.map(effect_1.Stream.map(effect_1.Array.filter(task => (0, active_tasks_1.getDbName)(task) === dbName))), Effect.map(effect_1.Stream.takeUntilEffect((0, core_1.untilEmptyCount)(5))));
+const streamActiveTasks = () => active_tasks_1.CouchActiveTasksService.pipe(Effect.map(service => service.stream()), Effect.map(effect_1.Stream.takeUntilEffect((0, core_1.untilEmptyCount)(5))));
+const streamAll = () => streamActiveTasks()
+    .pipe(Effect.map((0, active_tasks_1.filterStreamByType)(TYPE_DB_COMPACT, TYPE_VIEW_COMPACT)));
+const streamDb = (dbName) => streamActiveTasks()
+    .pipe(Effect.map((0, active_tasks_1.filterStreamByType)(TYPE_DB_COMPACT)), Effect.map(effect_1.Stream.map(effect_1.Array.filter(task => (0, active_tasks_1.getDbName)(task) === dbName))));
+const streamDesign = (dbName, designName) => streamActiveTasks()
+    .pipe(Effect.map((0, active_tasks_1.filterStreamByType)(TYPE_VIEW_COMPACT)), Effect.map(effect_1.Stream.map(effect_1.Array.filter(task => (0, active_tasks_1.getDbName)(task) === dbName))), Effect.map(effect_1.Stream.map(effect_1.Array.filter(task => (0, active_tasks_1.getDesignName)(task)
+    .pipe(effect_1.Option.map(name => name === designName), effect_1.Option.getOrElse(() => false))))));
 exports.CompactServiceLive = Layer.effect(exports.CompactService, ServiceContext.pipe(Effect.map(context => exports.CompactService.of({
     compactAll: () => compactAll.pipe(Effect.andThen(streamAll()), Effect.provide(context)),
     compactDb: (dbName) => compactDb(dbName)
         .pipe(Effect.andThen(streamDb(dbName)), Effect.provide(context)),
+    compactDesign: (dbName) => (designName) => compactDesign(dbName)(designName)
+        .pipe(Effect.andThen(streamDesign(dbName, designName)), Effect.provide(context)),
 }))));
 //# sourceMappingURL=compact.js.map

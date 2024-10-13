@@ -10,6 +10,7 @@ import { CouchActiveTask, CouchActiveTasksService } from './couch/active-tasks';
 export interface CompactService {
     readonly compactAll: () => Effect.Effect<Stream.Stream<CouchActiveTask[], Error>, Error>;
     readonly compactDb: (dbName: string) => Effect.Effect<Stream.Stream<CouchActiveTask[], Error>, Error>;
+    readonly compactDesign: (dbName: string) => (designName: string) => Effect.Effect<Stream.Stream<CouchActiveTask[], Error>, Error>;
 }
 export declare const CompactService: Context.Tag<CompactService, CompactService>;
 export declare const CompactServiceLive: Layer.Layer<CompactService, never, CouchDbsInfoService | CouchDesignInfoService | CouchDesignDocsService | CouchCompactService | CouchActiveTasksService>;
