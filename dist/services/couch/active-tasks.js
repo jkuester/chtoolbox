@@ -42,7 +42,7 @@ class CouchActiveTask extends Schema.Class('CouchActiveTask')({
     started_on: Schema.Number,
     type: Schema.String,
 }) {
-    static decodeResponse = platform_1.HttpClientResponse.schemaBodyJsonScoped(Schema.Array(CouchActiveTask));
+    static decodeResponse = platform_1.HttpClientResponse.schemaBodyJson(Schema.Array(CouchActiveTask));
 }
 exports.CouchActiveTask = CouchActiveTask;
 const getDesignName = (task) => effect_1.Option
@@ -66,7 +66,7 @@ const taskHasType = (types) => (task) => (0, effect_1.pipe)(types, effect_1.Arra
 const filterStreamByType = (...types) => (taskStream) => taskStream.pipe(effect_1.Stream.map(effect_1.Array.filter(taskHasType(types))));
 exports.filterStreamByType = filterStreamByType;
 const orderByStartedOn = effect_1.Order.make((a, b) => effect_1.Number.Order(a.started_on, b.started_on));
-const activeTasks = couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(ENDPOINT))), CouchActiveTask.decodeResponse, Effect.map(effect_1.Array.sort(orderByStartedOn)));
+const activeTasks = couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(ENDPOINT))), Effect.flatMap(CouchActiveTask.decodeResponse), Effect.scoped, Effect.map(effect_1.Array.sort(orderByStartedOn)));
 exports.CouchActiveTasksService = Context.GenericTag('chtoolbox/CouchActiveTasksService');
 const ServiceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
 exports.CouchActiveTasksServiceLive = Layer.effect(exports.CouchActiveTasksService, ServiceContext.pipe(Effect.map(context => exports.CouchActiveTasksService.of({

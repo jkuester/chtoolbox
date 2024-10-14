@@ -72,7 +72,7 @@ declare const CouchDesignInfo_base: Schema.Class<CouchDesignInfo, {
     };
 }, {}, {}>;
 export declare class CouchDesignInfo extends CouchDesignInfo_base {
-    static readonly decodeResponse: <E, E2, R2>(effect: Effect.Effect<import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>, E2, R2>) => Effect.Effect<CouchDesignInfo, import("@effect/schema/ParseResult").ParseError | E | E2, Exclude<R2, import("effect/Scope").Scope>>;
+    static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<CouchDesignInfo, import("@effect/schema/ParseResult").ParseError | E, never>;
 }
 export interface CouchDesignInfoService {
     readonly get: (dbName: string, designName: string) => Effect.Effect<CouchDesignInfo, Error>;

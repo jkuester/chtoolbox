@@ -39,7 +39,7 @@ export const CouchServiceLive = Layer.effect(CouchService, ServiceContext.pipe(E
   context => CouchService.of({
     request: (request: HttpClientRequest.HttpClientRequest) => pipe(
       clientWithUrl,
-      Effect.flatMap(client => client(request)),
+      Effect.flatMap(client => client.execute(request)),
       Effect.mapError(x => x as Error),
       Effect.provide(context),
     )

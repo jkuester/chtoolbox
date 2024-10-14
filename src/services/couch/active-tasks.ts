@@ -4,7 +4,7 @@ import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import * as Layer from 'effect/Layer';
 import { CouchService } from './couch';
-import { Array, Number, Order, pipe, Schedule, Stream, Option, String, Record } from 'effect';
+import { Array, Number, Option, Order, pipe, Record, Schedule, Stream, String } from 'effect';
 import { DurationInput } from 'effect/Duration';
 
 const ENDPOINT = '/_active_tasks';
@@ -19,7 +19,7 @@ export class CouchActiveTask extends Schema.Class<CouchActiveTask>('CouchActiveT
   started_on: Schema.Number,
   type: Schema.String,
 }) {
-  static readonly decodeResponse = HttpClientResponse.schemaBodyJsonScoped(Schema.Array(CouchActiveTask));
+  static readonly decodeResponse = HttpClientResponse.schemaBodyJson(Schema.Array(CouchActiveTask));
 }
 
 export interface CouchActiveTasksService {
@@ -75,7 +75,8 @@ const orderByStartedOn = Order.make(
 
 const activeTasks = CouchService.pipe(
   Effect.flatMap(couch => couch.request(HttpClientRequest.get(ENDPOINT))),
-  CouchActiveTask.decodeResponse,
+  Effect.flatMap(CouchActiveTask.decodeResponse),
+  Effect.scoped,
   Effect.map(Array.sort(orderByStartedOn)),
 );
 

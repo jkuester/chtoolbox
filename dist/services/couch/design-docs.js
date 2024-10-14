@@ -36,12 +36,12 @@ class CouchDesignDocs extends Schema.Class('CouchDesignDocs')({
         id: Schema.String,
     })),
 }) {
-    static decodeResponse = platform_1.HttpClientResponse.schemaBodyJsonScoped(CouchDesignDocs);
+    static decodeResponse = platform_1.HttpClientResponse.schemaBodyJson(CouchDesignDocs);
 }
 exports.CouchDesignDocs = CouchDesignDocs;
 exports.CouchDesignDocsService = Context.GenericTag('chtoolbox/CouchDesignDocsService');
 const ServiceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
 exports.CouchDesignDocsServiceLive = Layer.effect(exports.CouchDesignDocsService, ServiceContext.pipe(Effect.map(context => exports.CouchDesignDocsService.of({
-    getNames: (dbName) => couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(`/${dbName}/_design_docs`))), CouchDesignDocs.decodeResponse, Effect.map(designDocs => designDocs.rows), Effect.map(effect_1.Array.map(({ id }) => id)), Effect.map(effect_1.Array.map(id => id.split('/')[1])), Effect.provide(context)),
+    getNames: (dbName) => couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(`/${dbName}/_design_docs`))), Effect.flatMap(CouchDesignDocs.decodeResponse), Effect.scoped, Effect.map(designDocs => designDocs.rows), Effect.map(effect_1.Array.map(({ id }) => id)), Effect.map(effect_1.Array.map(id => id.split('/')[1])), Effect.provide(context)),
 }))));
 //# sourceMappingURL=design-docs.js.map

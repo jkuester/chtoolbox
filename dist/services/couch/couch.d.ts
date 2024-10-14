@@ -7,5 +7,5 @@ export interface CouchService {
     readonly request: (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<HttpClientResponse.HttpClientResponse, Error, Scope.Scope>;
 }
 export declare const CouchService: Context.Tag<CouchService, CouchService>;
-export declare const CouchServiceLive: Layer.Layer<CouchService, never, EnvironmentService | HttpClient.HttpClient.Default>;
+export declare const CouchServiceLive: Layer.Layer<CouchService, never, EnvironmentService | HttpClient.HttpClient<import("@effect/platform/HttpClientError").HttpClientError, Scope.Scope>>;
 //# sourceMappingURL=couch.d.ts.map

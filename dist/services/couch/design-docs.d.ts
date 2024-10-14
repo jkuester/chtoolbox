@@ -17,7 +17,7 @@ declare const CouchDesignDocs_base: Schema.Class<CouchDesignDocs, {
     }[];
 }, {}, {}>;
 export declare class CouchDesignDocs extends CouchDesignDocs_base {
-    static readonly decodeResponse: <E, E2, R2>(effect: Effect.Effect<import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>, E2, R2>) => Effect.Effect<CouchDesignDocs, import("@effect/schema/ParseResult").ParseError | E | E2, Exclude<R2, import("effect/Scope").Scope>>;
+    static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<CouchDesignDocs, import("@effect/schema/ParseResult").ParseError | E, never>;
 }
 export interface CouchDesignDocsService {
     readonly getNames: (dbName: string) => Effect.Effect<readonly string[], Error>;

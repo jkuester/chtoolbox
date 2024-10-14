@@ -13,7 +13,7 @@ export class CouchNodeSystem extends Schema.Class<CouchNodeSystem>('CouchNodeSys
     binary: Schema.Number,
   }),
 }) {
-  static readonly decodeResponse = HttpClientResponse.schemaBodyJsonScoped(CouchNodeSystem);
+  static readonly decodeResponse = HttpClientResponse.schemaBodyJson(CouchNodeSystem);
 }
 
 export interface CouchNodeSystemService {
@@ -28,7 +28,8 @@ export const CouchNodeSystemServiceLive = Layer.effect(CouchNodeSystemService, S
   context => CouchNodeSystemService.of({
     get: () => CouchService.pipe(
       Effect.flatMap(couch => couch.request(HttpClientRequest.get(ENDPOINT))),
-      CouchNodeSystem.decodeResponse,
+      Effect.flatMap(CouchNodeSystem.decodeResponse),
+      Effect.scoped,
       Effect.provide(context),
     ),
   }),

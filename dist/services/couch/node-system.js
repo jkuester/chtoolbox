@@ -37,12 +37,12 @@ class CouchNodeSystem extends Schema.Class('CouchNodeSystem')({
         binary: Schema.Number,
     }),
 }) {
-    static decodeResponse = platform_1.HttpClientResponse.schemaBodyJsonScoped(CouchNodeSystem);
+    static decodeResponse = platform_1.HttpClientResponse.schemaBodyJson(CouchNodeSystem);
 }
 exports.CouchNodeSystem = CouchNodeSystem;
 exports.CouchNodeSystemService = Context.GenericTag('chtoolbox/CouchNodeSystemService');
 const ServiceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
 exports.CouchNodeSystemServiceLive = Layer.effect(exports.CouchNodeSystemService, ServiceContext.pipe(Effect.map(context => exports.CouchNodeSystemService.of({
-    get: () => couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(ENDPOINT))), CouchNodeSystem.decodeResponse, Effect.provide(context)),
+    get: () => couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(ENDPOINT))), Effect.flatMap(CouchNodeSystem.decodeResponse), Effect.scoped, Effect.provide(context)),
 }))));
 //# sourceMappingURL=node-system.js.map

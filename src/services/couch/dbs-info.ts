@@ -11,7 +11,7 @@ const ENDPOINT = '/_dbs_info';
 
 const DbsInfoBody = Schema.Struct({ keys: Schema.Array(Schema.String) });
 const getPostRequest = (keys: NonEmptyArray<string>) => DbsInfoBody.pipe(
-  HttpClientRequest.schemaBody,
+  HttpClientRequest.schemaBodyJson,
   build => build(
     HttpClientRequest.post(ENDPOINT),
     { keys }
@@ -43,7 +43,7 @@ export class CouchDbInfo extends Schema.Class<CouchDbInfo>('CouchDbInfo')({
     instance_start_time: Schema.String,
   }),
 }) {
-  static readonly decodeResponse = HttpClientResponse.schemaBodyJsonScoped(Schema.Array(CouchDbInfo));
+  static readonly decodeResponse = HttpClientResponse.schemaBodyJson(Schema.Array(CouchDbInfo));
 }
 
 export interface CouchDbsInfoService {
@@ -56,7 +56,8 @@ export const CouchDbsInfoService = Context.GenericTag<CouchDbsInfoService>('chto
 
 const dbsInfo = CouchService.pipe(
   Effect.flatMap(couch => couch.request(HttpClientRequest.get(ENDPOINT))),
-  CouchDbInfo.decodeResponse,
+  Effect.flatMap(CouchDbInfo.decodeResponse),
+  Effect.scoped,
 );
 
 const ServiceContext = CouchService.pipe(Effect.map(couch => Context.make(CouchService, couch)));
@@ -67,7 +68,8 @@ export const CouchDbsInfoServiceLive = Layer.effect(CouchDbsInfoService, Service
       .all([CouchService, getPostRequest(dbNames)])
       .pipe(
         Effect.flatMap(([couch, request]) => couch.request(request)),
-        CouchDbInfo.decodeResponse,
+        Effect.flatMap(CouchDbInfo.decodeResponse),
+        Effect.scoped,
         Effect.provide(context),
       ),
     get: () => dbsInfo.pipe(Effect.provide(context)),

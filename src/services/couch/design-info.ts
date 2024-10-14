@@ -28,7 +28,7 @@ export class CouchDesignInfo extends Schema.Class<CouchDesignInfo>('CouchDesignI
     waiting_clients: Schema.Number,
   }),
 }) {
-  static readonly decodeResponse = HttpClientResponse.schemaBodyJsonScoped(CouchDesignInfo);
+  static readonly decodeResponse = HttpClientResponse.schemaBodyJson(CouchDesignInfo);
 }
 
 export interface CouchDesignInfoService {
@@ -43,7 +43,8 @@ export const CouchDesignInfoServiceLive = Layer.effect(CouchDesignInfoService, S
   context => CouchDesignInfoService.of({
     get: (dbName: string, designName: string) => CouchService.pipe(
       Effect.flatMap(couch => couch.request(HttpClientRequest.get(`/${dbName}/_design/${designName}/_info`))),
-      CouchDesignInfo.decodeResponse,
+      Effect.flatMap(CouchDesignInfo.decodeResponse),
+      Effect.scoped,
       Effect.provide(context),
     )
   })

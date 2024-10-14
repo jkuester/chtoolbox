@@ -17,7 +17,7 @@ describe('Couch Compact Service', () => {
   beforeEach(() => {
     couchRequest = sinon.stub();
     requestBuild = sinon.stub();
-    requestSchemaBody = sinon.stub(HttpClientRequest, 'schemaBody').returns(requestBuild);
+    requestSchemaBody = sinon.stub(HttpClientRequest, 'schemaBodyJson').returns(requestBuild);
     requestPost = sinon.stub(HttpClientRequest, 'post');
   });
 

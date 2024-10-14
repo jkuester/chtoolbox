@@ -3,7 +3,7 @@ import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import * as Layer from 'effect/Layer';
 import { CouchService } from './couch';
-import { Stream, Option } from 'effect';
+import { Option, Stream } from 'effect';
 import { DurationInput } from 'effect/Duration';
 declare const CouchActiveTask_base: Schema.Class<CouchActiveTask, {
     database: typeof Schema.String;
@@ -41,7 +41,7 @@ declare const CouchActiveTask_base: Schema.Class<CouchActiveTask, {
     readonly progress: number | undefined;
 }, {}, {}>;
 export declare class CouchActiveTask extends CouchActiveTask_base {
-    static readonly decodeResponse: <E, E2, R2>(effect: Effect.Effect<import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>, E2, R2>) => Effect.Effect<readonly CouchActiveTask[], import("@effect/schema/ParseResult").ParseError | E | E2, Exclude<R2, import("effect/Scope").Scope>>;
+    static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<readonly CouchActiveTask[], import("@effect/schema/ParseResult").ParseError | E, never>;
 }
 export interface CouchActiveTasksService {
     readonly get: () => Effect.Effect<CouchActiveTask[], Error>;

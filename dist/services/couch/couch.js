@@ -41,6 +41,6 @@ const ServiceContext = Effect
     .make(environment_1.EnvironmentService, env)
     .pipe(Context.add(platform_1.HttpClient.HttpClient, client))));
 exports.CouchServiceLive = effect_1.Layer.effect(exports.CouchService, ServiceContext.pipe(Effect.map(context => exports.CouchService.of({
-    request: (request) => (0, effect_1.pipe)(clientWithUrl, Effect.flatMap(client => client(request)), Effect.mapError(x => x), Effect.provide(context))
+    request: (request) => (0, effect_1.pipe)(clientWithUrl, Effect.flatMap(client => client.execute(request)), Effect.mapError(x => x), Effect.provide(context))
 }))));
 //# sourceMappingURL=couch.js.map

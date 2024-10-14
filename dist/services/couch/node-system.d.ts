@@ -20,7 +20,7 @@ declare const CouchNodeSystem_base: Schema.Class<CouchNodeSystem, {
     };
 }, {}, {}>;
 export declare class CouchNodeSystem extends CouchNodeSystem_base {
-    static readonly decodeResponse: <E, E2, R2>(effect: Effect.Effect<import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>, E2, R2>) => Effect.Effect<CouchNodeSystem, import("@effect/schema/ParseResult").ParseError | E | E2, Exclude<R2, import("effect/Scope").Scope>>;
+    static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<CouchNodeSystem, import("@effect/schema/ParseResult").ParseError | E, never>;
 }
 export interface CouchNodeSystemService {
     readonly get: () => Effect.Effect<CouchNodeSystem, Error>;

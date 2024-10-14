@@ -44,8 +44,8 @@ describe('Couch Service', () => {
     const innerPrependUrl = sinon.stub().returns(fakeHttpRequest);
     prependUrl.returns(innerPrependUrl);
     const fakeHttpResponse = { fake: 'response' };
-    const client = sinon.stub().returns(Effect.succeed(fakeHttpResponse));
-    const innerMapRequest = sinon.stub().returns(client);
+    const execute = sinon.stub().returns(Effect.succeed(fakeHttpResponse));
+    const innerMapRequest = sinon.stub().returns({ execute });
     mapRequest.returns(innerMapRequest);
     const request = HttpClientRequest.get('/test');
 
@@ -59,7 +59,7 @@ describe('Couch Service', () => {
     expect(innerPrependUrl.notCalled).to.be.true;
     expect(mapRequest.calledOnceWithExactly(innerPrependUrl)).to.be.true;
     expect(innerMapRequest.calledOnceWithExactly(fakeHttpClientEffect)).to.be.true;
-    expect(client.calledOnceWithExactly(request)).to.be.true;
+    expect(execute.calledOnceWithExactly(request)).to.be.true;
   })));
 
   it('returns error when request fails', run(Effect.gen(function* () {
@@ -72,8 +72,8 @@ describe('Couch Service', () => {
     const innerPrependUrl = sinon.stub().returns(fakeHttpRequest);
     prependUrl.returns(innerPrependUrl);
     const expectedError = new Error('Request failed');
-    const client = sinon.stub().returns(Effect.fail(expectedError));
-    const innerMapRequest = sinon.stub().returns(client);
+    const execute = sinon.stub().returns(Effect.fail(expectedError));
+    const innerMapRequest = sinon.stub().returns({ execute });
     mapRequest.returns(innerMapRequest);
     const request = HttpClientRequest.get('/test');
 
@@ -88,7 +88,7 @@ describe('Couch Service', () => {
       expect(innerPrependUrl.notCalled).to.be.true;
       expect(mapRequest.calledOnceWithExactly(innerPrependUrl)).to.be.true;
       expect(innerMapRequest.calledOnceWithExactly(fakeHttpClientEffect)).to.be.true;
-      expect(client.calledOnceWithExactly(request)).to.be.true;
+      expect(execute.calledOnceWithExactly(request)).to.be.true;
     } else {
       expect.fail('Expected error to be thrown.');
     }
