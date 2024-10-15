@@ -5,8 +5,7 @@ const cli_1 = require("@effect/cli");
 const effect_1 = require("effect");
 const index_1 = require("../../index");
 const pouchdb_1 = require("../../services/pouchdb");
-const getPouchDB = (dbName) => effect_1.Effect.flatMap(pouchdb_1.PouchDBService, svc => svc.get(dbName));
-const destroyDbs = (dbs) => (0, effect_1.pipe)(dbs, effect_1.Array.map(getPouchDB), effect_1.Array.map(effect_1.Effect.flatMap(db => effect_1.Effect.promise(() => db.destroy()))), effect_1.Effect.all);
+const destroyDbs = (dbs) => (0, effect_1.pipe)(dbs, effect_1.Array.map(pouchdb_1.PouchDBService.get), effect_1.Array.map(effect_1.Effect.flatMap(db => effect_1.Effect.promise(() => db.destroy()))), effect_1.Effect.all);
 const getConfirmationPrompt = (dbNames) => cli_1.Prompt.confirm({
     message: `Are you sure you want to permanently remove ${effect_1.Array.join(dbNames, ', ')}?`,
     initial: false,

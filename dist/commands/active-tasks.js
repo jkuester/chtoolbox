@@ -17,8 +17,12 @@ const getTaskDisplayData = (task) => ({
         .pipe(effect_1.DateTime.formatLocal({ hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })),
 });
 const getPrintableTasks = (tasks) => (0, effect_1.pipe)(tasks, effect_1.Option.liftPredicate(effect_1.Array.isNonEmptyArray), effect_1.Option.map(effect_1.Array.map(getTaskDisplayData)), effect_1.Option.map(active_tasks_1.getDisplayDictByPid), effect_1.Option.getOrElse(() => 'No active tasks.'));
-const printCurrentTasks = active_tasks_1.CouchActiveTasksService.pipe(effect_1.Effect.flatMap(service => service.get()), effect_1.Effect.map(getPrintableTasks), effect_1.Effect.tap(effect_1.Console.table));
-const followActiveTasks = active_tasks_1.CouchActiveTasksService.pipe(effect_1.Effect.map(svc => svc.stream()), effect_1.Effect.flatMap(effect_1.Stream.runForEach(tasks => effect_1.Effect
+const printCurrentTasks = active_tasks_1.CouchActiveTasksService
+    .get()
+    .pipe(effect_1.Effect.map(getPrintableTasks), effect_1.Effect.tap(effect_1.Console.table));
+const followActiveTasks = active_tasks_1.CouchActiveTasksService
+    .stream()
+    .pipe(effect_1.Effect.flatMap(effect_1.Stream.runForEach(tasks => effect_1.Effect
     .succeed(getPrintableTasks(tasks))
     .pipe(effect_1.Effect.tap(effect_1.Console.clear), effect_1.Effect.tap(effect_1.Console.table)))));
 const follow = cli_1.Options

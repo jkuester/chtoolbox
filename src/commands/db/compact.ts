@@ -5,8 +5,6 @@ import { CompactService } from '../../services/compact';
 import { streamActiveTasks } from '../compact';
 import { mergeArrayStreams } from '../../libs/core';
 
-const compactDb = (dbName: string) => Effect.flatMap(CompactService, svc => svc.compactDb(dbName));
-
 const databases = Args
   .text({ name: 'database' })
   .pipe(
@@ -24,7 +22,7 @@ const follow = Options
 
 export const compact = Command
   .make('compact', { follow, databases }, ({ follow, databases }) => initializeUrl.pipe(
-    Effect.andThen(() => Array.map(databases, compactDb)),
+    Effect.andThen(() => Array.map(databases, CompactService.compactDb)),
     Effect.flatMap(Effect.all),
     Effect.map(Option.liftPredicate(() => follow)),
     Effect.map(Option.map(mergeArrayStreams)),

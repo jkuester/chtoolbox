@@ -46,7 +46,7 @@ const follow = Options
 export const compact = Command
   .make('compact', { follow }, ({ follow }) => initializeUrl.pipe(
     Effect.tap(Console.log('Compacting all dbs and views...')),
-    Effect.andThen(Effect.flatMap(CompactService, svc => svc.compactAll())),
+    Effect.andThen(CompactService.compactAll()),
     Effect.map(Option.liftPredicate(() => follow)),
     Effect.map(Option.map(streamActiveTasks)),
     Effect.flatMap(Option.getOrElse(() => Console.log(

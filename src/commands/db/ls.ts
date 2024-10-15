@@ -11,7 +11,7 @@ const getDbDisplay = ({ info: { db_name, doc_count } }: CouchDbInfo) => ({
 
 export const ls = Command
   .make('ls', {}, () => initializeUrl.pipe(
-    Effect.andThen(Effect.flatMap(CouchDbsInfoService, service => service.get())),
+    Effect.andThen(CouchDbsInfoService.get()),
     Effect.map(Array.map(getDbDisplay)),
     Effect.map(getDisplayDictByPid),
     Effect.tap(Console.table),

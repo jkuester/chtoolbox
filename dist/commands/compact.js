@@ -19,6 +19,6 @@ const follow = cli_1.Options
     .boolean('follow')
     .pipe(cli_1.Options.withAlias('f'), cli_1.Options.withDescription('After triggering compaction, wait for all compacting jobs to complete.'), cli_1.Options.withDefault(false));
 exports.compact = cli_1.Command
-    .make('compact', { follow }, ({ follow }) => index_1.initializeUrl.pipe(effect_1.Effect.tap(effect_1.Console.log('Compacting all dbs and views...')), effect_1.Effect.andThen(effect_1.Effect.flatMap(compact_1.CompactService, svc => svc.compactAll())), effect_1.Effect.map(effect_1.Option.liftPredicate(() => follow)), effect_1.Effect.map(effect_1.Option.map(exports.streamActiveTasks)), effect_1.Effect.flatMap(effect_1.Option.getOrElse(() => effect_1.Console.log('Compaction started. Watch the active tasks for progress: chtx active-tasks')))))
+    .make('compact', { follow }, ({ follow }) => index_1.initializeUrl.pipe(effect_1.Effect.tap(effect_1.Console.log('Compacting all dbs and views...')), effect_1.Effect.andThen(compact_1.CompactService.compactAll()), effect_1.Effect.map(effect_1.Option.liftPredicate(() => follow)), effect_1.Effect.map(effect_1.Option.map(exports.streamActiveTasks)), effect_1.Effect.flatMap(effect_1.Option.getOrElse(() => effect_1.Console.log('Compaction started. Watch the active tasks for progress: chtx active-tasks')))))
     .pipe(cli_1.Command.withDescription(`Run compaction on all databases and views.`));
 //# sourceMappingURL=compact.js.map

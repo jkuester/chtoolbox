@@ -3,11 +3,9 @@ import { Array, Console, Effect, Either, Function, pipe } from 'effect';
 import { initializeUrl } from '../../index';
 import { PouchDBService } from '../../services/pouchdb';
 
-const getPouchDB = (dbName: string) => Effect.flatMap(PouchDBService, svc => svc.get(dbName));
-
 const destroyDbs = (dbs: string[]) => pipe(
   dbs,
-  Array.map(getPouchDB),
+  Array.map(PouchDBService.get),
   Array.map(Effect.flatMap(db => Effect.promise(() => db.destroy()))),
   Effect.all,
 );
