@@ -11,36 +11,27 @@ import { untilEmptyCount } from '../libs/core';
 const TYPE_DB_COMPACT = 'database_compaction';
 const TYPE_VIEW_COMPACT = 'view_compaction';
 
-const dbNames = CouchDbsInfoService.pipe(
-  Effect.flatMap(infoService => infoService.getDbNames()),
-);
+const compactDb = (dbName: string) => CouchCompactService.compactDb(dbName);
 
-const getDesignDocNames = (dbName: string) => CouchDesignDocsService.pipe(
-  Effect.flatMap(designDocsService => designDocsService.getNames(dbName)),
-);
+const compactDesign = (dbName: string) => (designName: string) => CouchCompactService.compactDesign(dbName, designName);
 
-const compactDb = (dbName: string) => CouchCompactService.pipe(
-  Effect.flatMap(compactService => compactService.compactDb(dbName)),
-);
-
-const compactDesign = (dbName: string) => (designName: string) => CouchCompactService.pipe(
-  Effect.flatMap(compactService => compactService.compactDesign(dbName, designName)),
-);
-
-const compactAll = dbNames.pipe(
-  Effect.tap(names => pipe(
-    names,
-    Array.map(compactDb),
-    Effect.all,
-  )),
-  Effect.map(Array.map(dbName => getDesignDocNames(dbName)
-    .pipe(
-      Effect.map(Array.map(compactDesign(dbName))),
-      Effect.flatMap(Effect.all),
-    ))),
-  Effect.flatMap(Effect.all),
-  Effect.andThen(Effect.void),
-);
+const compactAll = CouchDbsInfoService
+  .getDbNames()
+  .pipe(
+    Effect.tap(names => pipe(
+      names,
+      Array.map(compactDb),
+      Effect.all,
+    )),
+    Effect.map(Array.map(dbName => CouchDesignDocsService
+      .getNames(dbName)
+      .pipe(
+        Effect.map(Array.map(compactDesign(dbName))),
+        Effect.flatMap(Effect.all),
+      ))),
+    Effect.flatMap(Effect.all),
+    Effect.andThen(Effect.void),
+  );
 
 const ServiceContext = Effect
   .all([

@@ -41,7 +41,9 @@ pouchdb_core_1.default.plugin(pouchdb_session_authentication_1.default);
 const isPouchResponse = (value) => 'ok' in value && value.ok;
 const assertPouchResponse = (value) => (0, effect_1.pipe)(effect_1.Option.liftPredicate(value, isPouchResponse), effect_1.Option.getOrThrowWith(() => value));
 exports.assertPouchResponse = assertPouchResponse;
-const couchUrl = environment_1.EnvironmentService.pipe(Effect.flatMap(service => service.get()), Effect.map(({ url }) => url));
+const couchUrl = environment_1.EnvironmentService
+    .get()
+    .pipe(Effect.map(({ url }) => url));
 const getPouchDB = (dbName) => couchUrl.pipe(Effect.map(url => (0, core_1.pouchDB)(`${effect_1.Redacted.value(url)}${dbName}`)));
 const serviceContext = environment_1.EnvironmentService.pipe(Effect.map(env => Context.make(environment_1.EnvironmentService, env)));
 class PouchDBService extends Effect.Service()('chtoolbox/PouchDBService', {

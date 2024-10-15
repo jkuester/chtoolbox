@@ -43,8 +43,7 @@ describe('Couch Design Service', () => {
       json: Effect.succeed(designData),
     }));
 
-    const service = yield* CouchDesignService;
-    const dbInfos = yield* service.getViewNames('medic', designData._id);
+    const dbInfos = yield* CouchDesignService.getViewNames('medic', designData._id);
 
     expect(dbInfos).to.deep.equal(Object.keys(designData.views));
     expect(requestGet.calledOnceWithExactly(`/medic/_design/${designData._id}`)).to.be.true;
@@ -60,8 +59,7 @@ describe('Couch Design Service', () => {
       json: Effect.succeed(designData),
     }));
 
-    const service = yield* CouchDesignService;
-    const dbInfos = yield* service.getViewNames('medic', designData._id);
+    const dbInfos = yield* CouchDesignService.getViewNames('medic', designData._id);
 
     expect(dbInfos).to.deep.equal([]);
     expect(requestGet.calledOnceWithExactly(`/medic/_design/${designData._id}`)).to.be.true;

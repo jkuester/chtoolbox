@@ -38,8 +38,7 @@ describe('Couch View Service', () => {
     requestSetUrlParam.returns(sinon.stub().returns(FAKE_CLIENT_REQUEST));
     couchRequest.returns(Effect.void);
 
-    const service = yield* CouchViewService;
-    yield* service.warm(dbName, designName, viewName);
+    yield* CouchViewService.warm(dbName, designName, viewName);
 
     expect(requestGet.calledOnceWithExactly(`/${dbName}/_design/${designName}/_view/${viewName}`)).to.be.true;
     expect(requestSetUrlParam.calledOnceWithExactly('limit', '0')).to.be.true;

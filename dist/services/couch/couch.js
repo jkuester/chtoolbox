@@ -29,7 +29,9 @@ const Effect = __importStar(require("effect/Effect"));
 const platform_1 = require("@effect/platform");
 const Context = __importStar(require("effect/Context"));
 const effect_1 = require("effect");
-const couchUrl = environment_1.EnvironmentService.pipe(Effect.flatMap(service => service.get()), Effect.map(({ url }) => url));
+const couchUrl = environment_1.EnvironmentService
+    .get()
+    .pipe(Effect.map(({ url }) => url));
 const clientWithUrl = couchUrl.pipe(Effect.flatMap(url => platform_1.HttpClient.HttpClient.pipe(Effect.map(platform_1.HttpClient.filterStatusOk), Effect.map(platform_1.HttpClient.mapRequest(platform_1.HttpClientRequest.prependUrl(effect_1.Redacted.value(url)))))));
 const serviceContext = Effect
     .all([

@@ -33,9 +33,8 @@ const getDesignPath = (designName) => designName ? `/${designName}` : '';
 const getCompactRequest = (dbName, designName) => Schema
     .Struct({})
     .pipe(platform_1.HttpClientRequest.schemaBodyJson, build => build(platform_1.HttpClientRequest.post(`/${dbName}/_compact${getDesignPath(designName)}`), {}), Effect.mapError(x => x));
-const compact = (context) => (dbName, designName) => Effect
-    .all([couch_1.CouchService, getCompactRequest(dbName, designName)])
-    .pipe(Effect.flatMap(([couch, request]) => couch.request(request)), Effect.andThen(Effect.void), Effect.scoped, Effect.provide(context));
+const compact = (context) => (dbName, designName) => getCompactRequest(dbName, designName)
+    .pipe(Effect.flatMap(request => couch_1.CouchService.request(request)), Effect.andThen(Effect.void), Effect.scoped, Effect.provide(context));
 const serviceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
 class CouchCompactService extends Effect.Service()('chtoolbox/CouchCompactService', {
     effect: serviceContext.pipe(Effect.map(context => ({

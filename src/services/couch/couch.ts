@@ -4,10 +4,9 @@ import { HttpClient, HttpClientRequest } from '@effect/platform';
 import * as Context from 'effect/Context';
 import { pipe, Redacted } from 'effect';
 
-const couchUrl = EnvironmentService.pipe(
-  Effect.flatMap(service => service.get()),
-  Effect.map(({ url }) => url),
-);
+const couchUrl = EnvironmentService
+  .get()
+  .pipe(Effect.map(({ url }) => url));
 
 const clientWithUrl = couchUrl.pipe(
   Effect.flatMap(url => HttpClient.HttpClient.pipe(

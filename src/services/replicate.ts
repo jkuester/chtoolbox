@@ -5,23 +5,22 @@ import { EnvironmentService } from './environment';
 import { Schema } from '@effect/schema';
 import { Redacted } from 'effect';
 
-const getPouchDb = (dbName: string) => Effect.flatMap(PouchDBService, pouch => pouch.get(dbName));
 
-const environment = Effect.flatMap(EnvironmentService, envSvc => envSvc.get());
-
-const createReplicationDoc = (source: string, target: string) => environment.pipe(
-  Effect.map(env => ({
-    user_ctx: {
-      name: env.user,
-      roles: ['_admin', '_reader', '_writer'],
-    },
-    source: { url: `${Redacted.value(env.url)}${source}` },
-    target: { url: `${Redacted.value(env.url)}${target}` },
-    create_target: false,
-    continuous: false,
-    owner: env.user,
-  })),
-);
+const createReplicationDoc = (source: string, target: string) => EnvironmentService
+  .get()
+  .pipe(
+    Effect.map(env => ({
+      user_ctx: {
+        name: env.user,
+        roles: ['_admin', '_reader', '_writer'],
+      },
+      source: { url: `${Redacted.value(env.url)}${source}` },
+      target: { url: `${Redacted.value(env.url)}${target}` },
+      create_target: false,
+      continuous: false,
+      owner: env.user,
+    })),
+  );
 
 export class ReplicationDoc extends Schema.Class<ReplicationDoc>('ReplicationDoc')({
   _replication_state: Schema.String,
@@ -46,14 +45,15 @@ const serviceContext = Effect
 export class ReplicateService extends Effect.Service<ReplicateService>()('chtoolbox/ReplicateService', {
   effect: serviceContext.pipe(Effect.map(context => ({
     replicate: (source: string, target: string) => Effect
-      .all([getPouchDb('_replicator'), createReplicationDoc(source, target)])
+      .all([PouchDBService.get('_replicator'), createReplicationDoc(source, target)])
       .pipe(
         Effect.flatMap(([db, doc]) => Effect.promise(() => db.bulkDocs([doc]))),
         Effect.map(([resp]) => resp),
         Effect.map(assertPouchResponse),
         Effect.provide(context),
       ),
-    watch: (repDocId: string) => getPouchDb('_replicator')
+    watch: (repDocId: string) => PouchDBService
+      .get('_replicator')
       .pipe(
         Effect.map(db => (db as PouchDB.Database<ReplicationDoc>).changes({
           since: 'now',

@@ -73,8 +73,7 @@ describe('Compact service', () => {
       activeTasksStream.returns(Stream.succeed(expectedTasks));
       untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
 
-      const service = yield* CompactService;
-      const taskStream = yield* service.compactAll();
+      const taskStream = yield* CompactService.compactAll();
       const tasks = Chunk.toReadonlyArray(yield* Stream.runCollect(taskStream));
 
       expect(tasks).to.deep.equal([expectedTasks]);
@@ -101,8 +100,7 @@ describe('Compact service', () => {
       activeTasksStream.returns(Stream.succeed([]));
       untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
 
-      const service = yield* CompactService;
-      yield* service.compactAll();
+      yield* CompactService.compactAll();
 
       expect(dbsInfoSvcGetDbNames.calledOnceWithExactly()).to.be.true;
       expect(dbInfoSvcGet.notCalled).to.be.true;
@@ -120,8 +118,7 @@ describe('Compact service', () => {
       activeTasksStream.returns(Stream.succeed([]));
       untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
 
-      const service = yield* CompactService;
-      yield* service.compactAll();
+      yield* CompactService.compactAll();
 
       expect(dbsInfoSvcGetDbNames.calledOnceWithExactly()).to.be.true;
       expect(dbInfoSvcGet.notCalled).to.be.true;
@@ -142,8 +139,7 @@ describe('Compact service', () => {
     untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
     const dbName = 'medic';
 
-    const service = yield* CompactService;
-    const taskStream = yield* service.compactDb(dbName);
+    const taskStream = yield* CompactService.compactDb(dbName);
     const tasks = Chunk.toReadonlyArray(yield* Stream.runCollect(taskStream));
 
     expect(tasks).to.deep.equal([expectedTasks]);

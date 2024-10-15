@@ -60,8 +60,7 @@ describe('Warm Views Service', () => {
       designSvcGetViewNames.withArgs('test', 'test-client').returns(Effect.succeed(['view4']));
       viewSvcWarm.returns(Effect.void);
 
-      const service = yield* WarmViewsService;
-      yield* service.warmAll();
+      yield* WarmViewsService.warmAll();
 
       expect(dbsInfoSvcGetDbNames.calledOnceWithExactly()).to.be.true;
       expect(designDocsSvcGetNames.args).to.deep.equal([['medic'], ['test'], ['sentinel']]);
@@ -82,8 +81,7 @@ describe('Warm Views Service', () => {
     it('does not warm anything if no databases are found', run(Effect.gen(function* () {
       dbsInfoSvcGetDbNames.returns(Effect.succeed([]));
 
-      const service = yield* WarmViewsService;
-      yield* service.warmAll();
+      yield* WarmViewsService.warmAll();
 
       expect(dbsInfoSvcGetDbNames.calledOnceWithExactly()).to.be.true;
       expect(designDocsSvcGetNames.notCalled).to.be.true;
@@ -112,8 +110,7 @@ describe('Warm Views Service', () => {
         .withArgs('test', 'test-client')
         .returns(Effect.succeed(createDesignInfo({ name: 'test-client', updater_running: true })));
 
-      const service = yield* WarmViewsService;
-      const designs = yield* service.designsCurrentlyUpdating();
+      const designs = yield* WarmViewsService.designsCurrentlyUpdating();
 
       expect(designs).to.deep.equal([
         { dbName: 'medic', designId: 'medic-client' },
@@ -150,8 +147,7 @@ describe('Warm Views Service', () => {
         .withArgs('test', 'test-client')
         .returns(Effect.succeed(createDesignInfo({ name: 'test-client', updater_running: false })));
 
-      const service = yield* WarmViewsService;
-      const designs = yield* service.designsCurrentlyUpdating();
+      const designs = yield* WarmViewsService.designsCurrentlyUpdating();
 
       expect(designs).to.deep.equal([]);
       expect(dbsInfoSvcGetDbNames.calledOnceWithExactly()).to.be.true;
@@ -169,8 +165,7 @@ describe('Warm Views Service', () => {
     it('returns an empty array when no databases are found', run(Effect.gen(function* () {
       dbsInfoSvcGetDbNames.returns(Effect.succeed([]));
 
-      const service = yield* WarmViewsService;
-      const designs = yield* service.designsCurrentlyUpdating();
+      const designs = yield* WarmViewsService.designsCurrentlyUpdating();
 
       expect(designs).to.deep.equal([]);
       expect(dbsInfoSvcGetDbNames.calledOnceWithExactly()).to.be.true;

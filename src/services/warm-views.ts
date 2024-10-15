@@ -7,52 +7,43 @@ import { CouchDesignService } from './couch/design';
 import { CouchViewService } from './couch/view';
 import { CouchDesignInfoService } from './couch/design-info';
 
-const dbNames = CouchDbsInfoService.pipe(
-  Effect.flatMap(infoService => infoService.getDbNames()),
-);
+const warmView = (dbName: string, designId: string) => (
+  viewName: string
+) => CouchViewService.warm(dbName, designId, viewName);
 
-const getDesignDocNames = (dbName: string) => CouchDesignDocsService.pipe(
-  Effect.flatMap(designDocsService => designDocsService.getNames(dbName)),
-);
+const warmAll = CouchDbsInfoService
+  .getDbNames()
+  .pipe(
+    Effect.map(Array.map(dbName => CouchDesignDocsService
+      .getNames(dbName)
+      .pipe(
+        Effect.map(Array.map(designName => CouchDesignService
+          .getViewNames(dbName, designName)
+          .pipe(
+            Effect.map(Array.map(warmView(dbName, designName))),
+            Effect.flatMap(Effect.all),
+          ))),
+        Effect.flatMap(Effect.all),
+        Effect.map(Array.flatten),
+      ))),
+    Effect.flatMap(Effect.all),
+    Effect.map(Array.flatten),
+  );
 
-const getViewNames = (dbName: string, designId: string) => CouchDesignService.pipe(
-  Effect.flatMap(designService => designService.getViewNames(dbName, designId)),
-);
-
-const warmView = (dbName: string, designId: string) => (viewName: string) => CouchViewService.pipe(
-  Effect.flatMap(viewService => viewService.warm(dbName, designId, viewName)),
-);
-
-const getDesignInfo = (dbName: string, designId: string) => CouchDesignInfoService.pipe(
-  Effect.flatMap(designInfoService => designInfoService.get(dbName, designId)),
-);
-
-const warmAll = dbNames.pipe(
-  Effect.map(Array.map(dbName => getDesignDocNames(dbName)
-    .pipe(
-      Effect.map(Array.map(designName => getViewNames(dbName, designName)
-        .pipe(
-          Effect.map(Array.map(warmView(dbName, designName))),
-          Effect.flatMap(Effect.all),
-        ))),
-      Effect.flatMap(Effect.all),
-      Effect.map(Array.flatten),
-    ))),
-  Effect.flatMap(Effect.all),
-  Effect.map(Array.flatten),
-);
-
-const designsCurrentlyUpdating = dbNames.pipe(
-  Effect.map(Array.map(dbName => getDesignDocNames(dbName)
-    .pipe(
-      Effect.map(Array.map(designId => getDesignInfo(dbName, designId))),
-      Effect.flatMap(Effect.all),
-      Effect.map(Array.filter(designInfo => designInfo.view_index.updater_running)),
-      Effect.map(Array.map(designInfo => ({ dbName, designId: designInfo.name }))),
-    ))),
-  Effect.flatMap(Effect.all),
-  Effect.map(Array.flatten),
-);
+const designsCurrentlyUpdating = CouchDbsInfoService
+  .getDbNames()
+  .pipe(
+    Effect.map(Array.map(dbName => CouchDesignDocsService
+      .getNames(dbName)
+      .pipe(
+        Effect.map(Array.map(designId => CouchDesignInfoService.get(dbName, designId))),
+        Effect.flatMap(Effect.all),
+        Effect.map(Array.filter(designInfo => designInfo.view_index.updater_running)),
+        Effect.map(Array.map(designInfo => ({ dbName, designId: designInfo.name }))),
+      ))),
+    Effect.flatMap(Effect.all),
+    Effect.map(Array.flatten),
+  );
 
 const serviceContext = Effect
   .all([

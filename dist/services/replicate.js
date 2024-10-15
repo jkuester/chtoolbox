@@ -30,9 +30,9 @@ const pouchdb_1 = require("./pouchdb");
 const environment_1 = require("./environment");
 const schema_1 = require("@effect/schema");
 const effect_1 = require("effect");
-const getPouchDb = (dbName) => Effect.flatMap(pouchdb_1.PouchDBService, pouch => pouch.get(dbName));
-const environment = Effect.flatMap(environment_1.EnvironmentService, envSvc => envSvc.get());
-const createReplicationDoc = (source, target) => environment.pipe(Effect.map(env => ({
+const createReplicationDoc = (source, target) => environment_1.EnvironmentService
+    .get()
+    .pipe(Effect.map(env => ({
     user_ctx: {
         name: env.user,
         roles: ['_admin', '_reader', '_writer'],
@@ -62,9 +62,10 @@ const serviceContext = Effect
 class ReplicateService extends Effect.Service()('chtoolbox/ReplicateService', {
     effect: serviceContext.pipe(Effect.map(context => ({
         replicate: (source, target) => Effect
-            .all([getPouchDb('_replicator'), createReplicationDoc(source, target)])
+            .all([pouchdb_1.PouchDBService.get('_replicator'), createReplicationDoc(source, target)])
             .pipe(Effect.flatMap(([db, doc]) => Effect.promise(() => db.bulkDocs([doc]))), Effect.map(([resp]) => resp), Effect.map(pouchdb_1.assertPouchResponse), Effect.provide(context)),
-        watch: (repDocId) => getPouchDb('_replicator')
+        watch: (repDocId) => pouchdb_1.PouchDBService
+            .get('_replicator')
             .pipe(Effect.map(db => db.changes({
             since: 'now',
             live: true,

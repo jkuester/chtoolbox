@@ -40,8 +40,7 @@ describe('Couch Compact Service', () => {
     couchRequest.returns(Effect.void);
     requestBuild.returns(Effect.succeed(fakeBuiltClientRequest));
 
-    const service = yield* CouchCompactService;
-    yield* service.compactDb(dbName);
+    yield* CouchCompactService.compactDb(dbName);
 
     expect(requestSchemaBody.calledOnce).to.be.true;
     expect(requestSchemaBody.args[0][0]).to.deep.include({ fields: {} });
@@ -58,8 +57,7 @@ describe('Couch Compact Service', () => {
     couchRequest.returns(Effect.void);
     requestBuild.returns(Effect.succeed(fakeBuiltClientRequest));
 
-    const service = yield* CouchCompactService;
-    yield* service.compactDesign(dbName, designName);
+    yield* CouchCompactService.compactDesign(dbName, designName);
 
     expect(requestSchemaBody.calledOnce).to.be.true;
     expect(requestSchemaBody.args[0][0]).to.deep.include({ fields: {} });
@@ -75,8 +73,7 @@ describe('Couch Compact Service', () => {
     couchRequest.returns(Effect.void);
     requestBuild.returns(Effect.fail(expectedError));
 
-    const service = yield* CouchCompactService;
-    const either = yield* Effect.either(service.compactDb(dbName));
+    const either = yield* Effect.either(CouchCompactService.compactDb(dbName));
 
     if (Either.isLeft(either)) {
       expect(either.left).to.equal(expectedError);

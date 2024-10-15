@@ -34,7 +34,9 @@ const getWarmRequest = (dbName, designName, viewName) => platform_1.HttpClientRe
 const serviceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
 class CouchViewService extends Effect.Service()('chtoolbox/CouchViewService', {
     effect: serviceContext.pipe(Effect.map(context => ({
-        warm: (dbName, designName, viewName) => couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(getWarmRequest(dbName, designName, viewName))), Effect.andThen(Effect.void), Effect.scoped, Effect.provide(context)),
+        warm: (dbName, designName, viewName) => couch_1.CouchService
+            .request(getWarmRequest(dbName, designName, viewName))
+            .pipe(Effect.andThen(Effect.void), Effect.scoped, Effect.provide(context)),
     }))),
     accessors: true,
 }) {

@@ -32,16 +32,19 @@ const design_docs_1 = require("./couch/design-docs");
 const design_1 = require("./couch/design");
 const view_1 = require("./couch/view");
 const design_info_1 = require("./couch/design-info");
-const dbNames = dbs_info_1.CouchDbsInfoService.pipe(Effect.flatMap(infoService => infoService.getDbNames()));
-const getDesignDocNames = (dbName) => design_docs_1.CouchDesignDocsService.pipe(Effect.flatMap(designDocsService => designDocsService.getNames(dbName)));
-const getViewNames = (dbName, designId) => design_1.CouchDesignService.pipe(Effect.flatMap(designService => designService.getViewNames(dbName, designId)));
-const warmView = (dbName, designId) => (viewName) => view_1.CouchViewService.pipe(Effect.flatMap(viewService => viewService.warm(dbName, designId, viewName)));
-const getDesignInfo = (dbName, designId) => design_info_1.CouchDesignInfoService.pipe(Effect.flatMap(designInfoService => designInfoService.get(dbName, designId)));
-const warmAll = dbNames.pipe(Effect.map(effect_1.Array.map(dbName => getDesignDocNames(dbName)
-    .pipe(Effect.map(effect_1.Array.map(designName => getViewNames(dbName, designName)
+const warmView = (dbName, designId) => (viewName) => view_1.CouchViewService.warm(dbName, designId, viewName);
+const warmAll = dbs_info_1.CouchDbsInfoService
+    .getDbNames()
+    .pipe(Effect.map(effect_1.Array.map(dbName => design_docs_1.CouchDesignDocsService
+    .getNames(dbName)
+    .pipe(Effect.map(effect_1.Array.map(designName => design_1.CouchDesignService
+    .getViewNames(dbName, designName)
     .pipe(Effect.map(effect_1.Array.map(warmView(dbName, designName))), Effect.flatMap(Effect.all)))), Effect.flatMap(Effect.all), Effect.map(effect_1.Array.flatten)))), Effect.flatMap(Effect.all), Effect.map(effect_1.Array.flatten));
-const designsCurrentlyUpdating = dbNames.pipe(Effect.map(effect_1.Array.map(dbName => getDesignDocNames(dbName)
-    .pipe(Effect.map(effect_1.Array.map(designId => getDesignInfo(dbName, designId))), Effect.flatMap(Effect.all), Effect.map(effect_1.Array.filter(designInfo => designInfo.view_index.updater_running)), Effect.map(effect_1.Array.map(designInfo => ({ dbName, designId: designInfo.name })))))), Effect.flatMap(Effect.all), Effect.map(effect_1.Array.flatten));
+const designsCurrentlyUpdating = dbs_info_1.CouchDbsInfoService
+    .getDbNames()
+    .pipe(Effect.map(effect_1.Array.map(dbName => design_docs_1.CouchDesignDocsService
+    .getNames(dbName)
+    .pipe(Effect.map(effect_1.Array.map(designId => design_info_1.CouchDesignInfoService.get(dbName, designId))), Effect.flatMap(Effect.all), Effect.map(effect_1.Array.filter(designInfo => designInfo.view_index.updater_running)), Effect.map(effect_1.Array.map(designInfo => ({ dbName, designId: designInfo.name })))))), Effect.flatMap(Effect.all), Effect.map(effect_1.Array.flatten));
 const serviceContext = Effect
     .all([
     dbs_info_1.CouchDbsInfoService,

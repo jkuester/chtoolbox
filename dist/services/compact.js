@@ -35,11 +35,12 @@ const active_tasks_1 = require("./couch/active-tasks");
 const core_1 = require("../libs/core");
 const TYPE_DB_COMPACT = 'database_compaction';
 const TYPE_VIEW_COMPACT = 'view_compaction';
-const dbNames = dbs_info_1.CouchDbsInfoService.pipe(Effect.flatMap(infoService => infoService.getDbNames()));
-const getDesignDocNames = (dbName) => design_docs_1.CouchDesignDocsService.pipe(Effect.flatMap(designDocsService => designDocsService.getNames(dbName)));
-const compactDb = (dbName) => compact_1.CouchCompactService.pipe(Effect.flatMap(compactService => compactService.compactDb(dbName)));
-const compactDesign = (dbName) => (designName) => compact_1.CouchCompactService.pipe(Effect.flatMap(compactService => compactService.compactDesign(dbName, designName)));
-const compactAll = dbNames.pipe(Effect.tap(names => (0, effect_1.pipe)(names, effect_1.Array.map(compactDb), Effect.all)), Effect.map(effect_1.Array.map(dbName => getDesignDocNames(dbName)
+const compactDb = (dbName) => compact_1.CouchCompactService.compactDb(dbName);
+const compactDesign = (dbName) => (designName) => compact_1.CouchCompactService.compactDesign(dbName, designName);
+const compactAll = dbs_info_1.CouchDbsInfoService
+    .getDbNames()
+    .pipe(Effect.tap(names => (0, effect_1.pipe)(names, effect_1.Array.map(compactDb), Effect.all)), Effect.map(effect_1.Array.map(dbName => design_docs_1.CouchDesignDocsService
+    .getNames(dbName)
     .pipe(Effect.map(effect_1.Array.map(compactDesign(dbName))), Effect.flatMap(Effect.all)))), Effect.flatMap(Effect.all), Effect.andThen(Effect.void));
 const ServiceContext = Effect
     .all([

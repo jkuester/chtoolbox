@@ -62,8 +62,6 @@ const VIEW_INDEXES_BY_DB = {
         ':staged:users',
     ],
 };
-const getCouchNodeSystem = Effect.flatMap(node_system_1.CouchNodeSystemService, (couchSystem) => couchSystem.get());
-const getCouchDbsInfo = Effect.flatMap(dbs_info_1.CouchDbsInfoService, (couchSystem) => couchSystem.post(DB_NAMES));
 const emptyDesignInfo = {
     name: '',
     view_index: {
@@ -80,8 +78,8 @@ const getCouchDesignInfos = (0, effect_1.pipe)(DB_NAMES, effect_1.Array.map(getC
 const getDirectorySize = (directory) => local_disk_usage_1.LocalDiskUsageService.pipe(Effect.flatMap(service => directory.pipe(effect_1.Option.map(dir => service.getSize(dir)), effect_1.Option.getOrElse(() => Effect.succeed(null)))), Effect.map(effect_1.Option.fromNullable));
 const getMonitoringData = (directory) => (0, effect_1.pipe)(Effect.all([
     currentTimeSec,
-    getCouchNodeSystem,
-    getCouchDbsInfo,
+    node_system_1.CouchNodeSystemService.get(),
+    dbs_info_1.CouchDbsInfoService.post(DB_NAMES),
     getCouchDesignInfos,
     getDirectorySize(directory),
 ]), Effect.map(([unixTime, nodeSystem, dbsInfo, designInfos, directory_size]) => ({

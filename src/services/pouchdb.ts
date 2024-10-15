@@ -22,10 +22,9 @@ export const assertPouchResponse = (
   Option.getOrThrowWith(() => value),
 );
 
-const couchUrl = EnvironmentService.pipe(
-  Effect.flatMap(service => service.get()),
-  Effect.map(({ url }) => url),
-);
+const couchUrl = EnvironmentService
+  .get()
+  .pipe(Effect.map(({ url }) => url));
 
 const getPouchDB = (dbName: string) => couchUrl.pipe(Effect.map(url => pouchDB(`${Redacted.value(url)}${dbName}`)));
 

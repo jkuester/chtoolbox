@@ -58,8 +58,7 @@ describe('Couch Dbs Info Service', () => {
       json: Effect.succeed([testDbInfo, emptyDbInfo]),
     }));
 
-    const service = yield* CouchDbsInfoService;
-    const dbInfos = yield* service.get();
+    const dbInfos = yield* CouchDbsInfoService.get();
 
     expect(dbInfos).to.deep.equal([testDbInfo, emptyDbInfo]);
     expect(requestGet.calledOnceWithExactly('/_dbs_info')).to.be.true;
@@ -77,8 +76,7 @@ describe('Couch Dbs Info Service', () => {
       json: Effect.succeed([testDbInfo, emptyDbInfo]),
     }));
 
-    const service = yield* CouchDbsInfoService;
-    const dbNames = yield* service.getDbNames();
+    const dbNames = yield* CouchDbsInfoService.getDbNames();
 
     expect(dbNames).to.deep.equal([testDbInfo.key, emptyDbInfo.key]);
     expect(requestGet.calledOnceWithExactly('/_dbs_info')).to.be.true;
@@ -102,8 +100,7 @@ describe('Couch Dbs Info Service', () => {
       }));
       const dbNames: NonEmptyArray<string> = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 
-      const service = yield* CouchDbsInfoService;
-      const dbInfos = yield* service.post(dbNames);
+      const dbInfos = yield* CouchDbsInfoService.post(dbNames);
 
       expect(dbInfos).to.deep.equal([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]);
       expect(requestGet.notCalled).to.be.true;
@@ -122,8 +119,7 @@ describe('Couch Dbs Info Service', () => {
       requestBuild.returns(Effect.fail(expectedError));
       const dbNames: NonEmptyArray<string> = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 
-      const service = yield* CouchDbsInfoService;
-      const either = yield* Effect.either(service.post(dbNames));
+      const either = yield* Effect.either(CouchDbsInfoService.post(dbNames));
 
       if (Either.isLeft(either)) {
         expect(either.left).to.equal(expectedError);

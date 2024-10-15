@@ -16,16 +16,17 @@ const serviceContext = CouchService.pipe(Effect.map(couch => Context.make(CouchS
 
 export class CouchDesignService extends Effect.Service<CouchDesignService>()('chtoolbox/CouchDesignService', {
   effect: serviceContext.pipe(Effect.map(context => ({
-    getViewNames: (dbName: string, designName: string): Effect.Effect<string[], Error> => CouchService.pipe(
-      Effect.flatMap(couch => couch.request(HttpClientRequest.get(`/${dbName}/_design/${designName}`))),
-      Effect.flatMap(CouchDesign.decodeResponse),
-      Effect.scoped,
-      Effect.map(design => design.views),
-      Effect.map(Option.fromNullable),
-      Effect.map(Option.map(Object.keys)),
-      Effect.map(Option.getOrElse(() => [])),
-      Effect.provide(context)
-    ),
+    getViewNames: (dbName: string, designName: string): Effect.Effect<string[], Error> => CouchService
+      .request(HttpClientRequest.get(`/${dbName}/_design/${designName}`))
+      .pipe(
+        Effect.flatMap(CouchDesign.decodeResponse),
+        Effect.scoped,
+        Effect.map(design => design.views),
+        Effect.map(Option.fromNullable),
+        Effect.map(Option.map(Object.keys)),
+        Effect.map(Option.getOrElse(() => [])),
+        Effect.provide(context)
+      ),
   }))),
   accessors: true,
 }) {

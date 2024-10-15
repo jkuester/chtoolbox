@@ -39,7 +39,9 @@ class CouchDesign extends Schema.Class('CouchDesign')({
 const serviceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
 class CouchDesignService extends Effect.Service()('chtoolbox/CouchDesignService', {
     effect: serviceContext.pipe(Effect.map(context => ({
-        getViewNames: (dbName, designName) => couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(`/${dbName}/_design/${designName}`))), Effect.flatMap(CouchDesign.decodeResponse), Effect.scoped, Effect.map(design => design.views), Effect.map(effect_1.Option.fromNullable), Effect.map(effect_1.Option.map(Object.keys)), Effect.map(effect_1.Option.getOrElse(() => [])), Effect.provide(context)),
+        getViewNames: (dbName, designName) => couch_1.CouchService
+            .request(platform_1.HttpClientRequest.get(`/${dbName}/_design/${designName}`))
+            .pipe(Effect.flatMap(CouchDesign.decodeResponse), Effect.scoped, Effect.map(design => design.views), Effect.map(effect_1.Option.fromNullable), Effect.map(effect_1.Option.map(Object.keys)), Effect.map(effect_1.Option.getOrElse(() => [])), Effect.provide(context)),
     }))),
     accessors: true,
 }) {

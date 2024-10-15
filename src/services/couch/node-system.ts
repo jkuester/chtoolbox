@@ -21,12 +21,13 @@ export class CouchNodeSystemService extends Effect.Service<CouchNodeSystemServic
   'chtoolbox/CouchNodeSystemService',
   {
     effect: serviceContext.pipe(Effect.map(context => ({
-      get: () => CouchService.pipe(
-        Effect.flatMap(couch => couch.request(HttpClientRequest.get(ENDPOINT))),
-        Effect.flatMap(CouchNodeSystem.decodeResponse),
-        Effect.scoped,
-        Effect.provide(context),
-      ),
+      get: () => CouchService
+        .request(HttpClientRequest.get(ENDPOINT))
+        .pipe(
+          Effect.flatMap(CouchNodeSystem.decodeResponse),
+          Effect.scoped,
+          Effect.provide(context),
+        ),
     }))),
     accessors: true,
   }

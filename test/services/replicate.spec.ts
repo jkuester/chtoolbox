@@ -53,8 +53,7 @@ describe('Replicate Service', () => {
       bulkDocs.resolves([FAKE_RESPONSE]);
       assertPouchResponse.returns(FAKE_RESPONSE);
 
-      const replicateSvc = yield* ReplicateService;
-      const response = yield* replicateSvc.replicate(source, target);
+      const response = yield* ReplicateService.replicate(source, target);
 
       expect(response).to.deep.equal(FAKE_RESPONSE);
       expect(pouchGet.calledOnceWithExactly('_replicator')).to.be.true;
@@ -86,8 +85,7 @@ describe('Replicate Service', () => {
       const docId = 'repDocId';
       changes.returns(FAKE_RESPONSE);
 
-      const replicateSvc = yield* ReplicateService;
-      const changesFeed = yield* replicateSvc.watch(docId);
+      const changesFeed = yield* ReplicateService.watch(docId);
 
       expect(changesFeed).to.equal(FAKE_RESPONSE);
       expect(pouchGet.calledOnceWithExactly('_replicator')).to.be.true;

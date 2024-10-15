@@ -11,12 +11,13 @@ const serviceContext = CouchService.pipe(Effect.map(couch => Context.make(CouchS
 
 export class CouchViewService extends Effect.Service<CouchViewService>()('chtoolbox/CouchViewService', {
   effect: serviceContext.pipe(Effect.map(context => ({
-    warm: (dbName: string, designName: string, viewName: string) => CouchService.pipe(
-      Effect.flatMap(couch => couch.request(getWarmRequest(dbName, designName, viewName))),
-      Effect.andThen(Effect.void),
-      Effect.scoped,
-      Effect.provide(context),
-    ),
+    warm: (dbName: string, designName: string, viewName: string) => CouchService
+      .request(getWarmRequest(dbName, designName, viewName))
+      .pipe(
+        Effect.andThen(Effect.void),
+        Effect.scoped,
+        Effect.provide(context),
+      ),
   }))),
   accessors: true,
 }) {

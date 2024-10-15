@@ -64,9 +64,8 @@ const dbsInfo = couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(
 const serviceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
 class CouchDbsInfoService extends Effect.Service()('chtoolbox/CouchDbsInfoService', {
     effect: serviceContext.pipe(Effect.map(context => ({
-        post: (dbNames) => Effect
-            .all([couch_1.CouchService, getPostRequest(dbNames)])
-            .pipe(Effect.flatMap(([couch, request]) => couch.request(request)), Effect.flatMap(CouchDbInfo.decodeResponse), Effect.scoped, Effect.provide(context)),
+        post: (dbNames) => getPostRequest(dbNames)
+            .pipe(Effect.flatMap(request => couch_1.CouchService.request(request)), Effect.flatMap(CouchDbInfo.decodeResponse), Effect.scoped, Effect.provide(context)),
         get: () => dbsInfo.pipe(Effect.provide(context)),
         getDbNames: () => dbsInfo.pipe(Effect.map(effect_1.Array.map(x => x.key)), Effect.provide(context))
     }))),

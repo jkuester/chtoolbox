@@ -57,8 +57,7 @@ describe('Couch Design Info Service', () => {
         json: Effect.succeed(expectedDesignInfo),
       }));
 
-      const service = yield* CouchDesignInfoService;
-      const designInfo = yield* service.get(db, expectedDesignInfo.name);
+      const designInfo = yield* CouchDesignInfoService.get(db, expectedDesignInfo.name);
 
       expect(designInfo).to.deep.equal(expectedDesignInfo);
       expect(requestGet.calledOnceWithExactly(`/${db}/_design/${expectedDesignInfo.name}/_info`)).to.be.true;

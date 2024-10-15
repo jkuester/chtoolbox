@@ -58,7 +58,9 @@ exports.CouchDesignInfo = CouchDesignInfo;
 const serviceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
 class CouchDesignInfoService extends Effect.Service()('chtoolbox/CouchDesignInfoService', {
     effect: serviceContext.pipe(Effect.map(context => ({
-        get: (dbName, designName) => couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(`/${dbName}/_design/${designName}/_info`))), Effect.flatMap(CouchDesignInfo.decodeResponse), Effect.scoped, Effect.provide(context))
+        get: (dbName, designName) => couch_1.CouchService
+            .request(platform_1.HttpClientRequest.get(`/${dbName}/_design/${designName}/_info`))
+            .pipe(Effect.flatMap(CouchDesignInfo.decodeResponse), Effect.scoped, Effect.provide(context))
     }))),
     accessors: true,
 }) {

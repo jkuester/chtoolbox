@@ -14,10 +14,12 @@ const getCompactRequest = (dbName: string, designName?: string) => Schema
     Effect.mapError(x => x as unknown as Error),
   );
 
-const compact = (context: Context.Context<CouchService>) => (dbName: string, designName?: string) => Effect
-  .all([CouchService, getCompactRequest(dbName, designName)])
+const compact = (context: Context.Context<CouchService>) => (
+  dbName: string,
+  designName?: string
+) => getCompactRequest(dbName, designName)
   .pipe(
-    Effect.flatMap(([couch, request]) => couch.request(request)),
+    Effect.flatMap(request => CouchService.request(request)),
     Effect.andThen(Effect.void),
     Effect.scoped,
     Effect.provide(context),

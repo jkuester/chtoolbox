@@ -36,12 +36,13 @@ export class CouchDesignInfoService extends Effect.Service<CouchDesignInfoServic
   'chtoolbox/CouchDesignInfoService',
   {
     effect: serviceContext.pipe(Effect.map(context => ({
-      get: (dbName: string, designName: string) => CouchService.pipe(
-        Effect.flatMap(couch => couch.request(HttpClientRequest.get(`/${dbName}/_design/${designName}/_info`))),
-        Effect.flatMap(CouchDesignInfo.decodeResponse),
-        Effect.scoped,
-        Effect.provide(context),
-      )
+      get: (dbName: string, designName: string) => CouchService
+        .request(HttpClientRequest.get(`/${dbName}/_design/${designName}/_info`))
+        .pipe(
+          Effect.flatMap(CouchDesignInfo.decodeResponse),
+          Effect.scoped,
+          Effect.provide(context),
+        )
     }))),
     accessors: true,
   }

@@ -40,8 +40,7 @@ describe('Couch Node System Service', () => {
       json: Effect.succeed(expectedNodeSystem),
     }));
 
-    const service = yield* CouchNodeSystemService;
-    const nodeSystem = yield* service.get();
+    const nodeSystem = yield* CouchNodeSystemService.get();
 
     expect(nodeSystem).to.deep.equal(expectedNodeSystem);
     expect(requestGet.calledOnceWithExactly('/_node/_local/_system')).to.be.true;

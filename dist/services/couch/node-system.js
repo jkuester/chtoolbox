@@ -42,7 +42,9 @@ exports.CouchNodeSystem = CouchNodeSystem;
 const serviceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
 class CouchNodeSystemService extends Effect.Service()('chtoolbox/CouchNodeSystemService', {
     effect: serviceContext.pipe(Effect.map(context => ({
-        get: () => couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(ENDPOINT))), Effect.flatMap(CouchNodeSystem.decodeResponse), Effect.scoped, Effect.provide(context)),
+        get: () => couch_1.CouchService
+            .request(platform_1.HttpClientRequest.get(ENDPOINT))
+            .pipe(Effect.flatMap(CouchNodeSystem.decodeResponse), Effect.scoped, Effect.provide(context)),
     }))),
     accessors: true,
 }) {

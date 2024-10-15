@@ -49,8 +49,7 @@ describe('Couch Service', () => {
     mapRequest.returns(innerMapRequest);
     const request = HttpClientRequest.get('/test');
 
-    const service = yield* CouchService;
-    const response = yield* service.request(request);
+    const response = yield* CouchService.request(request);
 
     expect(response).to.deep.equal(fakeHttpResponse);
     expect(environmentGet.calledOnceWithExactly()).to.be.true;
@@ -77,8 +76,7 @@ describe('Couch Service', () => {
     mapRequest.returns(innerMapRequest);
     const request = HttpClientRequest.get('/test');
 
-    const service = yield* CouchService;
-    const either = yield* Effect.either(service.request(request));
+    const either = yield* Effect.either(CouchService.request(request));
 
     if (Either.isLeft(either)) {
       expect(either.left).to.equal(expectedError);

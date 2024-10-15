@@ -61,8 +61,7 @@ describe('Couch Active Tasks Service', () => {
         json: Effect.succeed([TASK_LATER, TASK_ALL_DATA, TASK_MIN_DATA]),
       }));
 
-      const service = yield* CouchActiveTasksService;
-      const tasks = yield* service.get();
+      const tasks = yield* CouchActiveTasksService.get();
 
       expect(tasks).to.deep.equal([TASK_MIN_DATA, TASK_ALL_DATA, TASK_LATER]);
       expect(requestGet.calledOnceWithExactly('/_active_tasks')).to.be.true;
@@ -75,8 +74,7 @@ describe('Couch Active Tasks Service', () => {
         json: Effect.succeed([]),
       }));
 
-      const service = yield* CouchActiveTasksService;
-      const tasks = yield* service.get();
+      const tasks = yield* CouchActiveTasksService.get();
 
       expect(tasks).to.deep.equal([]);
       expect(requestGet.calledOnceWithExactly('/_active_tasks')).to.be.true;

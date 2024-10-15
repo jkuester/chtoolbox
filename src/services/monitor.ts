@@ -53,8 +53,6 @@ const VIEW_INDEXES_BY_DB: Record<typeof DB_NAMES[number], string[]> = {
   ],
 };
 
-const getCouchNodeSystem = Effect.flatMap(CouchNodeSystemService, (couchSystem) => couchSystem.get());
-const getCouchDbsInfo = Effect.flatMap(CouchDbsInfoService, (couchSystem) => couchSystem.post(DB_NAMES));
 const emptyDesignInfo: CouchDesignInfo = {
   name: '',
   view_index: {
@@ -94,8 +92,8 @@ const getDirectorySize = (directory: Option.Option<string>) => LocalDiskUsageSer
 const getMonitoringData = (directory: Option.Option<string>) => pipe(
   Effect.all([
     currentTimeSec,
-    getCouchNodeSystem,
-    getCouchDbsInfo,
+    CouchNodeSystemService.get(),
+    CouchDbsInfoService.post(DB_NAMES),
     getCouchDesignInfos,
     getDirectorySize(directory),
   ]),

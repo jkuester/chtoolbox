@@ -33,8 +33,7 @@ describe('Local Disk Usage Service', () => {
     commandMake.returns(FAKE_COMMAND);
     commandString.returns(Effect.succeed(`${size.toString()}  ${directory}`));
 
-    const service = yield* LocalDiskUsageService;
-    const actualSize = yield* service.getSize(directory);
+    const actualSize = yield* LocalDiskUsageService.getSize(directory);
 
     expect(actualSize).to.equal(size);
     expect(commandMake.calledOnceWithExactly('du', '-s', directory)).to.be.true;

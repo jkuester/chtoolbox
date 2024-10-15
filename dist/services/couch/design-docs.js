@@ -41,7 +41,9 @@ exports.CouchDesignDocs = CouchDesignDocs;
 const serviceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
 class CouchDesignDocsService extends Effect.Service()('chtoolbox/CouchDesignDocsService', {
     effect: serviceContext.pipe(Effect.map(context => ({
-        getNames: (dbName) => couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(`/${dbName}/_design_docs`))), Effect.flatMap(CouchDesignDocs.decodeResponse), Effect.scoped, Effect.map(designDocs => designDocs.rows), Effect.map(effect_1.Array.map(({ id }) => id)), Effect.map(effect_1.Array.map(id => id.split('/')[1])), Effect.provide(context)),
+        getNames: (dbName) => couch_1.CouchService
+            .request(platform_1.HttpClientRequest.get(`/${dbName}/_design_docs`))
+            .pipe(Effect.flatMap(CouchDesignDocs.decodeResponse), Effect.scoped, Effect.map(designDocs => designDocs.rows), Effect.map(effect_1.Array.map(({ id }) => id)), Effect.map(effect_1.Array.map(id => id.split('/')[1])), Effect.provide(context)),
     }))),
     accessors: true,
 }) {
