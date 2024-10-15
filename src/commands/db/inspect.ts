@@ -12,8 +12,7 @@ const databases = Args
 
 export const inspect = Command
   .make('inspect', { databases }, ({ databases }) => initializeUrl.pipe(
-    Effect.andThen(CouchDbsInfoService),
-    Effect.flatMap(service => service.post(databases)),
+    Effect.andThen(CouchDbsInfoService.post(databases)),
     Effect.map(d => JSON.stringify(d, null, 2)),
     Effect.tap(Console.log),
   ))

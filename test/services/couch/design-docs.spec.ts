@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
 import { CouchService } from '../../../src/services/couch/couch';
 import { HttpClientRequest } from '@effect/platform';
-import { CouchDesignDocsService, CouchDesignDocsServiceLive } from '../../../src/services/couch/design-docs';
+import { CouchDesignDocsService } from '../../../src/services/couch/design-docs';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
 
@@ -21,11 +21,11 @@ describe('Couch Design Docs Service', () => {
 
   const run = (test:  Effect.Effect<unknown, unknown, CouchDesignDocsService>) => async () => {
     await Effect.runPromise(test.pipe(
-      Effect.provide(CouchDesignDocsServiceLive),
+      Effect.provide(CouchDesignDocsService.Default),
       Effect.provide(TestContext.TestContext),
-      Effect.provide(Layer.succeed(CouchService, CouchService.of({
+      Effect.provide(Layer.succeed(CouchService, {
         request: couchRequest,
-      }))),
+      } as unknown as CouchService)),
     ));
   };
 

@@ -6,7 +6,7 @@ import { CouchDbsInfoService } from '../../src/services/couch/dbs-info';
 import { CouchDesignInfoService } from '../../src/services/couch/design-info';
 import { CouchDesignDocsService } from '../../src/services/couch/design-docs';
 import { createDesignInfo } from '../utils/data-models';
-import { WarmViewsService, WarmViewsServiceLive } from '../../src/services/warm-views';
+import { WarmViewsService } from '../../src/services/warm-views';
 import { CouchDesignService } from '../../src/services/couch/design';
 import { CouchViewService } from '../../src/services/couch/view';
 
@@ -29,23 +29,23 @@ describe('Warm Views Service', () => {
 
   const run = (test:  Effect.Effect<unknown, unknown, WarmViewsService>) => async () => {
     await Effect.runPromise(test.pipe(
-      Effect.provide(WarmViewsServiceLive),
+      Effect.provide(WarmViewsService.Default),
       Effect.provide(TestContext.TestContext),
-      Effect.provide(Layer.succeed(CouchDbsInfoService, CouchDbsInfoService.of({
+      Effect.provide(Layer.succeed(CouchDbsInfoService, {
         getDbNames: dbsInfoSvcGetDbNames,
-      } as unknown as CouchDbsInfoService))),
-      Effect.provide(Layer.succeed(CouchDesignDocsService, CouchDesignDocsService.of({
+      } as unknown as CouchDbsInfoService)),
+      Effect.provide(Layer.succeed(CouchDesignDocsService, {
         getNames: designDocsSvcGetNames,
-      }))),
-      Effect.provide(Layer.succeed(CouchDesignService, CouchDesignService.of({
+      } as unknown as CouchDesignDocsService)),
+      Effect.provide(Layer.succeed(CouchDesignService, {
         getViewNames: designSvcGetViewNames,
-      }))),
-      Effect.provide(Layer.succeed(CouchViewService, CouchViewService.of({
+      } as unknown as CouchDesignService)),
+      Effect.provide(Layer.succeed(CouchViewService, {
         warm: viewSvcWarm,
-      }))),
-      Effect.provide(Layer.succeed(CouchDesignInfoService, CouchDesignInfoService.of({
+      } as unknown as CouchViewService)),
+      Effect.provide(Layer.succeed(CouchDesignInfoService, {
         get: designInfoSvcGet,
-      }))),
+      } as unknown as CouchDesignInfoService)),
     ));
   };
 

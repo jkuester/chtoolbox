@@ -1,11 +1,13 @@
 import * as Effect from 'effect/Effect';
-import * as Context from 'effect/Context';
-import * as Layer from 'effect/Layer';
 import { CouchService } from './couch';
-export interface CouchCompactService {
-    readonly compactDb: (dbName: string) => Effect.Effect<void, Error>;
-    readonly compactDesign: (dbName: string, viewName: string) => Effect.Effect<void, Error>;
+declare const CouchCompactService_base: Effect.Service.Class<CouchCompactService, "chtoolbox/CouchCompactService", {
+    readonly effect: Effect.Effect<{
+        compactDb: (dbName: string, designName?: string) => Effect.Effect<void, Error, never>;
+        compactDesign: (dbName: string, designName?: string) => Effect.Effect<void, Error, never>;
+    }, never, CouchService>;
+    readonly accessors: true;
+}>;
+export declare class CouchCompactService extends CouchCompactService_base {
 }
-export declare const CouchCompactService: Context.Tag<CouchCompactService, CouchCompactService>;
-export declare const CouchCompactServiceLive: Layer.Layer<CouchCompactService, never, CouchService>;
+export {};
 //# sourceMappingURL=compact.d.ts.map

@@ -1,6 +1,6 @@
 import { describe, it } from 'mocha';
 import { ConfigProvider, Effect, Either, Layer, pipe, Redacted, String, TestContext } from 'effect';
-import { EnvironmentService, EnvironmentServiceLive } from '../../src/services/environment';
+import { EnvironmentService } from '../../src/services/environment';
 import { expect } from 'chai';
 
 const BASE_URL = 'http://medic:password@hostlocal:5984/';
@@ -12,7 +12,7 @@ describe('Environment service', () => {
     config: [[string, string]]
   ) => (test:  Effect.Effect<unknown, unknown, EnvironmentService>) => async () => {
     await Effect.runPromise(test.pipe(
-      Effect.provide(EnvironmentServiceLive),
+      Effect.provide(EnvironmentService.Default),
       Effect.provide(TestContext.TestContext),
       Effect.provide(Layer.setConfigProvider(
         ConfigProvider.fromMap(new Map(config))

@@ -23,14 +23,12 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CouchCompactServiceLive = exports.CouchCompactService = void 0;
+exports.CouchCompactService = void 0;
 const Schema = __importStar(require("@effect/schema/Schema"));
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
-const Layer = __importStar(require("effect/Layer"));
 const couch_1 = require("./couch");
-exports.CouchCompactService = Context.GenericTag('chtoolbox/CouchCompactService');
 const getDesignPath = (designName) => designName ? `/${designName}` : '';
 const getCompactRequest = (dbName, designName) => Schema
     .Struct({})
@@ -38,9 +36,14 @@ const getCompactRequest = (dbName, designName) => Schema
 const compact = (context) => (dbName, designName) => Effect
     .all([couch_1.CouchService, getCompactRequest(dbName, designName)])
     .pipe(Effect.flatMap(([couch, request]) => couch.request(request)), Effect.andThen(Effect.void), Effect.scoped, Effect.provide(context));
-const ServiceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
-exports.CouchCompactServiceLive = Layer.effect(exports.CouchCompactService, ServiceContext.pipe(Effect.map(context => exports.CouchCompactService.of({
-    compactDb: compact(context),
-    compactDesign: compact(context),
-}))));
+const serviceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
+class CouchCompactService extends Effect.Service()('chtoolbox/CouchCompactService', {
+    effect: serviceContext.pipe(Effect.map(context => ({
+        compactDb: compact(context),
+        compactDesign: compact(context),
+    }))),
+    accessors: true,
+}) {
+}
+exports.CouchCompactService = CouchCompactService;
 //# sourceMappingURL=compact.js.map

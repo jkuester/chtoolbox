@@ -1,19 +1,11 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import * as Layer from 'effect/Layer';
 import { Array } from 'effect';
 import { CouchDbsInfoService } from './couch/dbs-info';
 import { CouchDesignDocsService } from './couch/design-docs';
 import { CouchDesignService } from './couch/design';
 import { CouchViewService } from './couch/view';
 import { CouchDesignInfoService } from './couch/design-info';
-
-export interface WarmViewsService {
-  readonly warmAll: () => Effect.Effect<void, Error>,
-  readonly designsCurrentlyUpdating: () => Effect.Effect<{ dbName: string, designId: string }[], Error>
-}
-
-export const WarmViewsService = Context.GenericTag<WarmViewsService>('chtoolbox/WarmViewsService');
 
 const dbNames = CouchDbsInfoService.pipe(
   Effect.flatMap(infoService => infoService.getDbNames()),
@@ -62,7 +54,7 @@ const designsCurrentlyUpdating = dbNames.pipe(
   Effect.map(Array.flatten),
 );
 
-const ServiceContext = Effect
+const serviceContext = Effect
   .all([
     CouchDbsInfoService,
     CouchDesignDocsService,
@@ -85,9 +77,11 @@ const ServiceContext = Effect
       Context.add(CouchDesignInfoService, couchDesignInfo),
     )));
 
-export const WarmViewsServiceLive = Layer.effect(WarmViewsService, ServiceContext.pipe(Effect.map(
-  contect => WarmViewsService.of({
-    warmAll: () => warmAll.pipe(Effect.provide(contect)),
-    designsCurrentlyUpdating: () => designsCurrentlyUpdating.pipe(Effect.provide(contect)),
-  })
-)));
+export class WarmViewsService extends Effect.Service<WarmViewsService>()('chtoolbox/WarmViewsService', {
+  effect: serviceContext.pipe(Effect.map(context => ({
+    warmAll: () => warmAll.pipe(Effect.provide(context)),
+    designsCurrentlyUpdating: () => designsCurrentlyUpdating.pipe(Effect.provide(context)),
+  }))),
+  accessors: true,
+}) {
+}

@@ -2,7 +2,7 @@ import { describe, it } from 'mocha';
 import { Effect, Either, Layer, Redacted, Scope, TestContext } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
-import { CouchService, CouchServiceLive } from '../../../src/services/couch/couch';
+import { CouchService } from '../../../src/services/couch/couch';
 import { HttpClient, HttpClientRequest } from '@effect/platform';
 import { EnvironmentService } from '../../../src/services/environment';
 import { NodeHttpClient } from '@effect/platform-node';
@@ -24,7 +24,7 @@ describe('Couch Service', () => {
 
   const run = (test: Effect.Effect<unknown, unknown, CouchService | Scope.Scope>) => async () => {
     await Effect.runPromise(test.pipe(
-      Effect.provide(CouchServiceLive),
+      Effect.provide(CouchService.Default),
       Effect.provide(TestContext.TestContext),
       Effect.provide(Layer.succeed(EnvironmentService, {
         get: environmentGet,

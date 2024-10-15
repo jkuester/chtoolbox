@@ -5,7 +5,7 @@ import * as PouchSvc from '../../src/services/pouchdb';
 import { PouchDBService } from '../../src/services/pouchdb';
 import { EnvironmentService } from '../../src/services/environment';
 import { expect } from 'chai';
-import { ReplicateService, ReplicateServiceLive } from '../../src/services/replicate';
+import { ReplicateService } from '../../src/services/replicate';
 
 const FAKE_RESPONSE = { hello: 'world' } as const;
 
@@ -22,11 +22,11 @@ describe('Replicate Service', () => {
 
   const run = (test: Effect.Effect<unknown, unknown, ReplicateService>) => async () => {
     await Effect.runPromise(test.pipe(
-      Effect.provide(ReplicateServiceLive),
+      Effect.provide(ReplicateService.Default),
       Effect.provide(TestContext.TestContext),
-      Effect.provide(Layer.succeed(PouchDBService, PouchDBService.of({
+      Effect.provide(Layer.succeed(PouchDBService, {
         get: pouchGet,
-      }))),
+      } as unknown as PouchDBService),),
       Effect.provide(Layer.succeed(EnvironmentService, {
         get: environmentGet,
       } as unknown as EnvironmentService)),

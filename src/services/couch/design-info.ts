@@ -2,7 +2,6 @@ import * as Schema from '@effect/schema/Schema';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import * as Layer from 'effect/Layer';
 import { CouchService } from './couch';
 
 export class CouchDesignInfo extends Schema.Class<CouchDesignInfo>('CouchDesignInfo')({
@@ -31,21 +30,20 @@ export class CouchDesignInfo extends Schema.Class<CouchDesignInfo>('CouchDesignI
   static readonly decodeResponse = HttpClientResponse.schemaBodyJson(CouchDesignInfo);
 }
 
-export interface CouchDesignInfoService {
-  readonly get: (dbName: string, designName: string) => Effect.Effect<CouchDesignInfo, Error>
+const serviceContext = CouchService.pipe(Effect.map(couch => Context.make(CouchService, couch)));
+
+export class CouchDesignInfoService extends Effect.Service<CouchDesignInfoService>()(
+  'chtoolbox/CouchDesignInfoService',
+  {
+    effect: serviceContext.pipe(Effect.map(context => ({
+      get: (dbName: string, designName: string) => CouchService.pipe(
+        Effect.flatMap(couch => couch.request(HttpClientRequest.get(`/${dbName}/_design/${designName}/_info`))),
+        Effect.flatMap(CouchDesignInfo.decodeResponse),
+        Effect.scoped,
+        Effect.provide(context),
+      )
+    }))),
+    accessors: true,
+  }
+) {
 }
-
-export const CouchDesignInfoService = Context.GenericTag<CouchDesignInfoService>('chtoolbox/CouchDesignInfoService');
-
-const ServiceContext = CouchService.pipe(Effect.map(couch => Context.make(CouchService, couch)));
-
-export const CouchDesignInfoServiceLive = Layer.effect(CouchDesignInfoService, ServiceContext.pipe(Effect.map(
-  context => CouchDesignInfoService.of({
-    get: (dbName: string, designName: string) => CouchService.pipe(
-      Effect.flatMap(couch => couch.request(HttpClientRequest.get(`/${dbName}/_design/${designName}/_info`))),
-      Effect.flatMap(CouchDesignInfo.decodeResponse),
-      Effect.scoped,
-      Effect.provide(context),
-    )
-  })
-)));

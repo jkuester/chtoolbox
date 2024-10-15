@@ -26,7 +26,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PouchDBServiceLive = exports.assertPouchResponse = exports.PouchDBService = void 0;
+exports.PouchDBService = exports.assertPouchResponse = void 0;
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
 const effect_1 = require("effect");
@@ -38,20 +38,24 @@ const pouchdb_session_authentication_1 = __importDefault(require("pouchdb-sessio
 const environment_1 = require("./environment");
 pouchdb_core_1.default.plugin(pouchdb_adapter_http_1.default);
 pouchdb_core_1.default.plugin(pouchdb_session_authentication_1.default);
-exports.PouchDBService = Context.GenericTag('chtoolbox/PouchDBService');
 const isPouchResponse = (value) => 'ok' in value && value.ok;
 const assertPouchResponse = (value) => (0, effect_1.pipe)(effect_1.Option.liftPredicate(value, isPouchResponse), effect_1.Option.getOrThrowWith(() => value));
 exports.assertPouchResponse = assertPouchResponse;
 const couchUrl = environment_1.EnvironmentService.pipe(Effect.flatMap(service => service.get()), Effect.map(({ url }) => url));
 const getPouchDB = (dbName) => couchUrl.pipe(Effect.map(url => (0, core_1.pouchDB)(`${effect_1.Redacted.value(url)}${dbName}`)));
-const ServiceContext = environment_1.EnvironmentService.pipe(Effect.map(env => Context.make(environment_1.EnvironmentService, env)));
-exports.PouchDBServiceLive = effect_1.Layer.effect(exports.PouchDBService, Effect
-    .all([
-    ServiceContext,
-    Effect.cachedFunction(getPouchDB),
-])
-    .pipe(Effect.map(([context, memoizedGetPouchDb]) => exports.PouchDBService.of({
-    get: (dbName) => memoizedGetPouchDb(dbName)
-        .pipe(Effect.provide(context)),
-}))));
+const serviceContext = environment_1.EnvironmentService.pipe(Effect.map(env => Context.make(environment_1.EnvironmentService, env)));
+class PouchDBService extends Effect.Service()('chtoolbox/PouchDBService', {
+    effect: Effect
+        .all([
+        serviceContext,
+        Effect.cachedFunction(getPouchDB),
+    ])
+        .pipe(Effect.map(([context, memoizedGetPouchDb]) => ({
+        get: (dbName) => memoizedGetPouchDb(dbName)
+            .pipe(Effect.provide(context)),
+    }))),
+    accessors: true,
+}) {
+}
+exports.PouchDBService = PouchDBService;
 //# sourceMappingURL=pouchdb.js.map

@@ -2,10 +2,8 @@ import * as Schema from '@effect/schema/Schema';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import * as Layer from 'effect/Layer';
 import { CouchService } from './couch';
 import { Array, Number, Option, Order, pipe, Record, Schedule, Stream, String } from 'effect';
-import { DurationInput } from 'effect/Duration';
 
 const ENDPOINT = '/_active_tasks';
 
@@ -20,11 +18,6 @@ export class CouchActiveTask extends Schema.Class<CouchActiveTask>('CouchActiveT
   type: Schema.String,
 }) {
   static readonly decodeResponse = HttpClientResponse.schemaBodyJson(Schema.Array(CouchActiveTask));
-}
-
-export interface CouchActiveTasksService {
-  readonly get: () => Effect.Effect<CouchActiveTask[], Error>
-  readonly stream: (interval?: DurationInput) => Stream.Stream<CouchActiveTask[], Error>
 }
 
 export const getDesignName = (task: CouchActiveTask) => Option
@@ -80,16 +73,20 @@ const activeTasks = CouchService.pipe(
   Effect.map(Array.sort(orderByStartedOn)),
 );
 
-export const CouchActiveTasksService = Context.GenericTag<CouchActiveTasksService>('chtoolbox/CouchActiveTasksService');
+const serviceContext = CouchService.pipe(Effect.map(couch => Context.make(CouchService, couch)));
 
-const ServiceContext = CouchService.pipe(Effect.map(couch => Context.make(CouchService, couch)));
+export class CouchActiveTasksService extends Effect.Service<CouchActiveTasksService>()(
+  'chtoolbox/CouchActiveTasksService',
+  {
+    effect: serviceContext.pipe(Effect.map(context => ({
+      get: () => activeTasks.pipe(Effect.provide(context)),
+      stream: (interval = 1000) => Stream.repeat(
+        activeTasks.pipe(Effect.provide(context)),
+        Schedule.spaced(interval)
+      ),
+    }))),
+    accessors: true,
+  }
+) {
+}
 
-export const CouchActiveTasksServiceLive = Layer.effect(CouchActiveTasksService, ServiceContext.pipe(Effect.map(
-  context => CouchActiveTasksService.of({
-    get: () => activeTasks.pipe(Effect.provide(context)),
-    stream: (interval = 1000) => Stream.repeat(
-      activeTasks.pipe(Effect.provide(context)),
-      Schedule.spaced(interval)
-    ),
-  }),
-)));

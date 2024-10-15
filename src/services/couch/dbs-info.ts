@@ -2,7 +2,6 @@ import * as Schema from '@effect/schema/Schema';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import * as Layer from 'effect/Layer';
 import { Array } from 'effect';
 import { CouchService } from './couch';
 import { NonEmptyArray } from 'effect/Array';
@@ -46,24 +45,16 @@ export class CouchDbInfo extends Schema.Class<CouchDbInfo>('CouchDbInfo')({
   static readonly decodeResponse = HttpClientResponse.schemaBodyJson(Schema.Array(CouchDbInfo));
 }
 
-export interface CouchDbsInfoService {
-  readonly post: (dbNames: NonEmptyArray<string>) => Effect.Effect<readonly CouchDbInfo[], Error>
-  readonly get: () => Effect.Effect<readonly CouchDbInfo[], Error>
-  readonly getDbNames: () => Effect.Effect<readonly string[], Error>
-}
-
-export const CouchDbsInfoService = Context.GenericTag<CouchDbsInfoService>('chtoolbox/CouchDbsInfoService');
-
 const dbsInfo = CouchService.pipe(
   Effect.flatMap(couch => couch.request(HttpClientRequest.get(ENDPOINT))),
   Effect.flatMap(CouchDbInfo.decodeResponse),
   Effect.scoped,
 );
 
-const ServiceContext = CouchService.pipe(Effect.map(couch => Context.make(CouchService, couch)));
+const serviceContext = CouchService.pipe(Effect.map(couch => Context.make(CouchService, couch)));
 
-export const CouchDbsInfoServiceLive = Layer.effect(CouchDbsInfoService, ServiceContext.pipe(Effect.map(
-  context => CouchDbsInfoService.of({
+export class CouchDbsInfoService extends Effect.Service<CouchDbsInfoService>()('chtoolbox/CouchDbsInfoService', {
+  effect: serviceContext.pipe(Effect.map(context => ({
     post: (dbNames: NonEmptyArray<string>) => Effect
       .all([CouchService, getPostRequest(dbNames)])
       .pipe(
@@ -77,5 +68,7 @@ export const CouchDbsInfoServiceLive = Layer.effect(CouchDbsInfoService, Service
       Effect.map(Array.map(x => x.key)),
       Effect.provide(context),
     )
-  })
-)));
+  }))),
+  accessors: true,
+}) {
+}

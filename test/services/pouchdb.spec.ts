@@ -2,7 +2,7 @@ import { describe, it } from 'mocha';
 import { Effect, Either, Layer, Redacted, TestContext } from 'effect';
 import sinon, { SinonStub } from 'sinon';
 import * as core from '../../src/libs/core';
-import { assertPouchResponse, PouchDBService, PouchDBServiceLive } from '../../src/services/pouchdb';
+import { assertPouchResponse, PouchDBService } from '../../src/services/pouchdb';
 import { EnvironmentService } from '../../src/services/environment';
 import { expect } from 'chai';
 
@@ -21,7 +21,7 @@ describe('PouchDB Service', () => {
 
   const run = (test: Effect.Effect<unknown, unknown, PouchDBService>) => async () => {
     await Effect.runPromise(test.pipe(
-      Effect.provide(PouchDBServiceLive),
+      Effect.provide(PouchDBService.Default),
       Effect.provide(TestContext.TestContext),
       Effect.provide(Layer.succeed(EnvironmentService, {
         get: environmentGet,

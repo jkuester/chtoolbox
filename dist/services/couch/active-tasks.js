@@ -23,12 +23,11 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CouchActiveTasksServiceLive = exports.CouchActiveTasksService = exports.filterStreamByType = exports.getDisplayDictByPid = exports.getProgressPct = exports.getPid = exports.getDbName = exports.getDesignName = exports.CouchActiveTask = void 0;
+exports.CouchActiveTasksService = exports.filterStreamByType = exports.getDisplayDictByPid = exports.getProgressPct = exports.getPid = exports.getDbName = exports.getDesignName = exports.CouchActiveTask = void 0;
 const Schema = __importStar(require("@effect/schema/Schema"));
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
-const Layer = __importStar(require("effect/Layer"));
 const couch_1 = require("./couch");
 const effect_1 = require("effect");
 const ENDPOINT = '/_active_tasks';
@@ -67,10 +66,14 @@ const filterStreamByType = (...types) => (taskStream) => taskStream.pipe(effect_
 exports.filterStreamByType = filterStreamByType;
 const orderByStartedOn = effect_1.Order.make((a, b) => effect_1.Number.Order(a.started_on, b.started_on));
 const activeTasks = couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(ENDPOINT))), Effect.flatMap(CouchActiveTask.decodeResponse), Effect.scoped, Effect.map(effect_1.Array.sort(orderByStartedOn)));
-exports.CouchActiveTasksService = Context.GenericTag('chtoolbox/CouchActiveTasksService');
-const ServiceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
-exports.CouchActiveTasksServiceLive = Layer.effect(exports.CouchActiveTasksService, ServiceContext.pipe(Effect.map(context => exports.CouchActiveTasksService.of({
-    get: () => activeTasks.pipe(Effect.provide(context)),
-    stream: (interval = 1000) => effect_1.Stream.repeat(activeTasks.pipe(Effect.provide(context)), effect_1.Schedule.spaced(interval)),
-}))));
+const serviceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
+class CouchActiveTasksService extends Effect.Service()('chtoolbox/CouchActiveTasksService', {
+    effect: serviceContext.pipe(Effect.map(context => ({
+        get: () => activeTasks.pipe(Effect.provide(context)),
+        stream: (interval = 1000) => effect_1.Stream.repeat(activeTasks.pipe(Effect.provide(context)), effect_1.Schedule.spaced(interval)),
+    }))),
+    accessors: true,
+}) {
+}
+exports.CouchActiveTasksService = CouchActiveTasksService;
 //# sourceMappingURL=active-tasks.js.map

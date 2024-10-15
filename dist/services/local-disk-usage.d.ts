@@ -1,10 +1,12 @@
-import { Effect, Layer } from 'effect';
-import * as Context from 'effect/Context';
-import { PlatformError } from '@effect/platform/Error';
+import { Effect } from 'effect';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
-export interface LocalDiskUsageService {
-    readonly getSize: (path: string) => Effect.Effect<number, PlatformError>;
+declare const LocalDiskUsageService_base: Effect.Service.Class<LocalDiskUsageService, "chtoolbox/LocalDiskUsageService", {
+    readonly effect: Effect.Effect<{
+        getSize: (path: string) => Effect.Effect<number, import("@effect/platform/Error").PlatformError, never>;
+    }, never, CommandExecutor>;
+    readonly accessors: true;
+}>;
+export declare class LocalDiskUsageService extends LocalDiskUsageService_base {
 }
-export declare const LocalDiskUsageService: Context.Tag<LocalDiskUsageService, LocalDiskUsageService>;
-export declare const LocalDiskUsageServiceLive: Layer.Layer<LocalDiskUsageService, never, CommandExecutor>;
+export {};
 //# sourceMappingURL=local-disk-usage.d.ts.map

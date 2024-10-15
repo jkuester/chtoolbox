@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
 import { CouchService } from '../../../src/services/couch/couch';
 import { HttpClientRequest } from '@effect/platform';
-import { CouchDbsInfoService, CouchDbsInfoServiceLive } from '../../../src/services/couch/dbs-info';
+import { CouchDbsInfoService } from '../../../src/services/couch/dbs-info';
 import { createDbInfo } from '../../utils/data-models';
 import { NonEmptyArray } from 'effect/Array';
 
@@ -29,11 +29,11 @@ describe('Couch Dbs Info Service', () => {
 
   const run = (test:  Effect.Effect<unknown, unknown, CouchDbsInfoService>) => async () => {
     await Effect.runPromise(test.pipe(
-      Effect.provide(CouchDbsInfoServiceLive),
+      Effect.provide(CouchDbsInfoService.Default),
       Effect.provide(TestContext.TestContext),
-      Effect.provide(Layer.succeed(CouchService, CouchService.of({
+      Effect.provide(Layer.succeed(CouchService, {
         request: couchRequest,
-      }))),
+      } as unknown as CouchService)),
     ));
   };
 

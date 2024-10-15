@@ -40,8 +40,7 @@ export const warmViews = Command
   .make('warm-views', { follow }, ({ follow }) => pipe(
     initializeUrl,
     Effect.tap(Console.log('Warming views...')),
-    Effect.andThen(WarmViewsService),
-    Effect.flatMap(warmViewsService => warmViewsService.warmAll()),
+    Effect.andThen(Effect.flatMap(WarmViewsService, warmViewsService => warmViewsService.warmAll())),
     Effect.andThen(() => followIndexing.pipe(
       Option.liftPredicate(() => follow),
       Option.getOrElse(() => Console.log(

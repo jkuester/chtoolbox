@@ -23,12 +23,11 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CouchNodeSystemServiceLive = exports.CouchNodeSystemService = exports.CouchNodeSystem = void 0;
+exports.CouchNodeSystemService = exports.CouchNodeSystem = void 0;
 const Schema = __importStar(require("@effect/schema/Schema"));
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
-const Layer = __importStar(require("effect/Layer"));
 const couch_1 = require("./couch");
 const ENDPOINT = '/_node/_local/_system';
 class CouchNodeSystem extends Schema.Class('CouchNodeSystem')({
@@ -40,9 +39,13 @@ class CouchNodeSystem extends Schema.Class('CouchNodeSystem')({
     static decodeResponse = platform_1.HttpClientResponse.schemaBodyJson(CouchNodeSystem);
 }
 exports.CouchNodeSystem = CouchNodeSystem;
-exports.CouchNodeSystemService = Context.GenericTag('chtoolbox/CouchNodeSystemService');
-const ServiceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
-exports.CouchNodeSystemServiceLive = Layer.effect(exports.CouchNodeSystemService, ServiceContext.pipe(Effect.map(context => exports.CouchNodeSystemService.of({
-    get: () => couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(ENDPOINT))), Effect.flatMap(CouchNodeSystem.decodeResponse), Effect.scoped, Effect.provide(context)),
-}))));
+const serviceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
+class CouchNodeSystemService extends Effect.Service()('chtoolbox/CouchNodeSystemService', {
+    effect: serviceContext.pipe(Effect.map(context => ({
+        get: () => couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(ENDPOINT))), Effect.flatMap(CouchNodeSystem.decodeResponse), Effect.scoped, Effect.provide(context)),
+    }))),
+    accessors: true,
+}) {
+}
+exports.CouchNodeSystemService = CouchNodeSystemService;
 //# sourceMappingURL=node-system.js.map

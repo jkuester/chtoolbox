@@ -2,27 +2,27 @@
 import { Command, Options } from '@effect/cli';
 import { NodeContext, NodeHttpClient, NodeRuntime } from '@effect/platform-node';
 import { Effect, Layer, Option, Redacted, String } from 'effect';
-import { CouchNodeSystemServiceLive } from './services/couch/node-system';
-import { CouchServiceLive } from './services/couch/couch';
-import { CouchDbsInfoServiceLive } from './services/couch/dbs-info';
+import { CouchNodeSystemService } from './services/couch/node-system';
+import { CouchService } from './services/couch/couch';
+import { CouchDbsInfoService } from './services/couch/dbs-info';
 import { monitor } from './commands/monitor';
 import packageJson from '../package.json';
-import { EnvironmentService, EnvironmentServiceLive, } from './services/environment';
-import { CouchDesignInfoServiceLive } from './services/couch/design-info';
-import { MonitorServiceLive } from './services/monitor';
-import { LocalDiskUsageServiceLive } from './services/local-disk-usage';
-import { CouchDesignServiceLive } from './services/couch/design';
-import { CouchViewServiceLive } from './services/couch/view';
-import { CouchDesignDocsServiceLive } from './services/couch/design-docs';
-import { WarmViewsServiceLive } from './services/warm-views';
+import { EnvironmentService, } from './services/environment';
+import { CouchDesignInfoService } from './services/couch/design-info';
+import { MonitorService } from './services/monitor';
+import { LocalDiskUsageService } from './services/local-disk-usage';
+import { CouchDesignService } from './services/couch/design';
+import { CouchViewService } from './services/couch/view';
+import { CouchDesignDocsService } from './services/couch/design-docs';
+import { WarmViewsService } from './services/warm-views';
 import { warmViews } from './commands/warm-views';
-import { CouchCompactServiceLive } from './services/couch/compact';
-import { CompactServiceLive } from './services/compact';
+import { CouchCompactService } from './services/couch/compact';
+import { CompactService } from './services/compact';
 import { compact } from './commands/compact';
 import { activeTasks } from './commands/active-tasks';
-import { CouchActiveTasksServiceLive } from './services/couch/active-tasks';
-import { PouchDBServiceLive } from './services/pouchdb';
-import { ReplicateServiceLive } from './services/replicate';
+import { CouchActiveTasksService } from './services/couch/active-tasks';
+import { PouchDBService } from './services/pouchdb';
+import { ReplicateService } from './services/replicate';
 import { db } from './commands/db';
 import { design } from './commands/design';
 
@@ -60,27 +60,26 @@ const cli = Command.run(command, {
 
 cli(process.argv)
   .pipe(
-    Effect.provide(CouchActiveTasksServiceLive),
-    Effect.provide(CompactServiceLive),
-    Effect.provide(MonitorServiceLive),
-    Effect.provide(LocalDiskUsageServiceLive),
-    Effect.provide(WarmViewsServiceLive),
-    Effect.provide(ReplicateServiceLive),
-    Effect.provide(CouchActiveTasksServiceLive),
-    Effect.provide(CouchCompactServiceLive),
-    Effect.provide(CouchNodeSystemServiceLive),
-    Effect.provide(CouchDbsInfoServiceLive),
-    Effect.provide(CouchDesignDocsServiceLive),
-    Effect.provide(CouchDesignInfoServiceLive),
-    Effect.provide(CouchDesignServiceLive),
-    Effect.provide(CouchViewServiceLive),
-    Effect.provide(PouchDBServiceLive),
-    Effect.provide(CouchServiceLive.pipe(
+    Effect.provide(CompactService.Default),
+    Effect.provide(MonitorService.Default),
+    Effect.provide(LocalDiskUsageService.Default),
+    Effect.provide(WarmViewsService.Default),
+    Effect.provide(ReplicateService.Default),
+    Effect.provide(CouchActiveTasksService.Default),
+    Effect.provide(CouchCompactService.Default),
+    Effect.provide(CouchNodeSystemService.Default),
+    Effect.provide(CouchDbsInfoService.Default),
+    Effect.provide(CouchDesignDocsService.Default),
+    Effect.provide(CouchDesignInfoService.Default),
+    Effect.provide(CouchDesignService.Default),
+    Effect.provide(CouchViewService.Default),
+    Effect.provide(PouchDBService.Default),
+    Effect.provide(CouchService.Default.pipe(
       Layer.provide(NodeHttpClient.layerWithoutAgent.pipe(
         Layer.provide(NodeHttpClient.makeAgentLayer({ rejectUnauthorized: false }))
       )),
     )),
-    Effect.provide(EnvironmentServiceLive),
+    Effect.provide(EnvironmentService.Default),
     Effect.provide(NodeContext.layer),
     NodeRuntime.runMain
   );

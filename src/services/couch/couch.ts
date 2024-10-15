@@ -1,18 +1,8 @@
 import { EnvironmentService } from '../environment';
 import * as Effect from 'effect/Effect';
-import { HttpClient, HttpClientRequest, HttpClientResponse } from '@effect/platform';
+import { HttpClient, HttpClientRequest } from '@effect/platform';
 import * as Context from 'effect/Context';
-import { Layer, pipe, Redacted, Scope } from 'effect';
-
-export interface CouchService {
-  readonly request: (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<
-    HttpClientResponse.HttpClientResponse,
-    Error,
-    Scope.Scope
-  >
-}
-
-export const CouchService = Context.GenericTag<CouchService>('chtoolbox/CouchService');
+import { pipe, Redacted } from 'effect';
 
 const couchUrl = EnvironmentService.pipe(
   Effect.flatMap(service => service.get()),
@@ -26,7 +16,7 @@ const clientWithUrl = couchUrl.pipe(
   )),
 );
 
-const ServiceContext = Effect
+const serviceContext = Effect
   .all([
     EnvironmentService,
     HttpClient.HttpClient,
@@ -35,13 +25,16 @@ const ServiceContext = Effect
     .make(EnvironmentService, env)
     .pipe(Context.add(HttpClient.HttpClient, client))));
 
-export const CouchServiceLive = Layer.effect(CouchService, ServiceContext.pipe(Effect.map(
-  context => CouchService.of({
+export class CouchService extends Effect.Service<CouchService>()('chtoolbox/CouchService', {
+  effect: serviceContext.pipe(Effect.map(context => ({
     request: (request: HttpClientRequest.HttpClientRequest) => pipe(
       clientWithUrl,
       Effect.flatMap(client => client.execute(request)),
       Effect.mapError(x => x as Error),
       Effect.provide(context),
     )
-  })
-)));
+  }))),
+  accessors: true,
+}) {
+}
+

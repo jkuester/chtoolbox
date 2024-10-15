@@ -1,7 +1,5 @@
 import * as Schema from '@effect/schema/Schema';
 import * as Effect from 'effect/Effect';
-import * as Context from 'effect/Context';
-import * as Layer from 'effect/Layer';
 import { CouchService } from './couch';
 import { NonEmptyArray } from 'effect/Array';
 declare const CouchDbInfo_base: Schema.Class<CouchDbInfo, {
@@ -78,12 +76,15 @@ declare const CouchDbInfo_base: Schema.Class<CouchDbInfo, {
 export declare class CouchDbInfo extends CouchDbInfo_base {
     static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<readonly CouchDbInfo[], import("@effect/schema/ParseResult").ParseError | E, never>;
 }
-export interface CouchDbsInfoService {
-    readonly post: (dbNames: NonEmptyArray<string>) => Effect.Effect<readonly CouchDbInfo[], Error>;
-    readonly get: () => Effect.Effect<readonly CouchDbInfo[], Error>;
-    readonly getDbNames: () => Effect.Effect<readonly string[], Error>;
+declare const CouchDbsInfoService_base: Effect.Service.Class<CouchDbsInfoService, "chtoolbox/CouchDbsInfoService", {
+    readonly effect: Effect.Effect<{
+        post: (dbNames: NonEmptyArray<string>) => Effect.Effect<readonly CouchDbInfo[], Error | import("@effect/platform/HttpClientError").ResponseError | import("@effect/schema/ParseResult").ParseError, never>;
+        get: () => Effect.Effect<readonly CouchDbInfo[], Error | import("@effect/platform/HttpClientError").ResponseError | import("@effect/schema/ParseResult").ParseError, never>;
+        getDbNames: () => Effect.Effect<string[], Error | import("@effect/platform/HttpClientError").ResponseError | import("@effect/schema/ParseResult").ParseError, never>;
+    }, never, CouchService>;
+    readonly accessors: true;
+}>;
+export declare class CouchDbsInfoService extends CouchDbsInfoService_base {
 }
-export declare const CouchDbsInfoService: Context.Tag<CouchDbsInfoService, CouchDbsInfoService>;
-export declare const CouchDbsInfoServiceLive: Layer.Layer<CouchDbsInfoService, never, CouchService>;
 export {};
 //# sourceMappingURL=dbs-info.d.ts.map

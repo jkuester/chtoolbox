@@ -1,17 +1,9 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import * as Layer from 'effect/Layer';
 import { assertPouchResponse, PouchDBService } from './pouchdb';
 import { EnvironmentService } from './environment';
 import { Schema } from '@effect/schema';
 import { Redacted } from 'effect';
-
-export interface ReplicateService {
-  readonly replicate: (source: string, target: string) => Effect.Effect<PouchDB.Core.Response, Error>,
-  readonly watch: (repDocId: string) => Effect.Effect<PouchDB.Core.Changes<ReplicationDoc>, Error>
-}
-
-export const ReplicateService = Context.GenericTag<ReplicateService>('chtoolbox/ReplicateService');
 
 const getPouchDb = (dbName: string) => Effect.flatMap(PouchDBService, pouch => pouch.get(dbName));
 
@@ -31,7 +23,15 @@ const createReplicationDoc = (source: string, target: string) => environment.pip
   })),
 );
 
-const ServiceContext = Effect
+export class ReplicationDoc extends Schema.Class<ReplicationDoc>('ReplicationDoc')({
+  _replication_state: Schema.String,
+  _replication_stats: Schema.Struct({
+    docs_written: Schema.Number,
+  }),
+}) {
+}
+
+const serviceContext = Effect
   .all([
     EnvironmentService,
     PouchDBService,
@@ -43,16 +43,8 @@ const ServiceContext = Effect
     .make(PouchDBService, pouch)
     .pipe(Context.add(EnvironmentService, env))));
 
-export class ReplicationDoc extends Schema.Class<ReplicationDoc>('ReplicationDoc')({
-  _replication_state: Schema.String,
-  _replication_stats: Schema.Struct({
-    docs_written: Schema.Number,
-  }),
-}) {
-}
-
-export const ReplicateServiceLive = Layer.effect(ReplicateService, ServiceContext.pipe(Effect.map(
-  context => ReplicateService.of({
+export class ReplicateService extends Effect.Service<ReplicateService>()('chtoolbox/ReplicateService', {
+  effect: serviceContext.pipe(Effect.map(context => ({
     replicate: (source: string, target: string) => Effect
       .all([getPouchDb('_replicator'), createReplicationDoc(source, target)])
       .pipe(
@@ -71,5 +63,7 @@ export const ReplicateServiceLive = Layer.effect(ReplicateService, ServiceContex
         })),
         Effect.provide(context),
       ),
-  }),
-)));
+  }))),
+  accessors: true,
+}) {
+}

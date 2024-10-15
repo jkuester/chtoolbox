@@ -6,7 +6,6 @@ import { CouchService } from '../../../src/services/couch/couch';
 import { HttpClientRequest } from '@effect/platform';
 import {
   CouchActiveTasksService,
-  CouchActiveTasksServiceLive,
   filterStreamByType,
   getDbName,
   getDesignName,
@@ -47,11 +46,11 @@ describe('Couch Active Tasks Service', () => {
 
   const run = (test:  Effect.Effect<unknown, unknown, CouchActiveTasksService>) => async () => {
     await Effect.runPromise(test.pipe(
-      Effect.provide(CouchActiveTasksServiceLive),
+      Effect.provide(CouchActiveTasksService.Default),
       Effect.provide(TestContext.TestContext),
-      Effect.provide(Layer.succeed(CouchService, CouchService.of({
+      Effect.provide(Layer.succeed(CouchService, {
         request: couchRequest,
-      }))),
+      } as unknown as CouchService)),
     ));
   };
 

@@ -1,7 +1,5 @@
 import * as Schema from '@effect/schema/Schema';
 import * as Effect from 'effect/Effect';
-import * as Context from 'effect/Context';
-import * as Layer from 'effect/Layer';
 import { CouchService } from './couch';
 declare const CouchNodeSystem_base: Schema.Class<CouchNodeSystem, {
     memory: Schema.Struct<{
@@ -22,10 +20,13 @@ declare const CouchNodeSystem_base: Schema.Class<CouchNodeSystem, {
 export declare class CouchNodeSystem extends CouchNodeSystem_base {
     static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<CouchNodeSystem, import("@effect/schema/ParseResult").ParseError | E, never>;
 }
-export interface CouchNodeSystemService {
-    readonly get: () => Effect.Effect<CouchNodeSystem, Error>;
+declare const CouchNodeSystemService_base: Effect.Service.Class<CouchNodeSystemService, "chtoolbox/CouchNodeSystemService", {
+    readonly effect: Effect.Effect<{
+        get: () => Effect.Effect<CouchNodeSystem, Error | import("@effect/platform/HttpClientError").ResponseError | import("@effect/schema/ParseResult").ParseError, never>;
+    }, never, CouchService>;
+    readonly accessors: true;
+}>;
+export declare class CouchNodeSystemService extends CouchNodeSystemService_base {
 }
-export declare const CouchNodeSystemService: Context.Tag<CouchNodeSystemService, CouchNodeSystemService>;
-export declare const CouchNodeSystemServiceLive: Layer.Layer<CouchNodeSystemService, never, CouchService>;
 export {};
 //# sourceMappingURL=node-system.d.ts.map
