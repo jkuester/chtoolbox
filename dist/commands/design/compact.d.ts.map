@@ -1,1 +1,1 @@
-{"version":3,"file":"compact.d.ts","sourceRoot":"","sources":["../../../src/commands/design/compact.ts"],"names":[],"mappings":"AAAA,OAAO,EAAQ,OAAO,EAAW,MAAM,aAAa,CAAC;AAGrD,OAAO,EAAE,cAAc,EAAE,MAAM,wBAAwB,CAAC;AA2BxD,eAAO,MAAM,OAAO;;;;EAY2D,CAAC"}
+{"version":3,"file":"compact.d.ts","sourceRoot":"","sources":["../../../src/commands/design/compact.ts"],"names":[],"mappings":"AAAA,OAAO,EAAQ,OAAO,EAAW,MAAM,aAAa,CAAC;AAGrD,OAAO,EAAE,cAAc,EAAE,MAAM,wBAAwB,CAAC;AAyBxD,eAAO,MAAM,OAAO;;;;EAY2D,CAAC"}

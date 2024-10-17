@@ -23,18 +23,23 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CouchViewServiceLive = exports.CouchViewService = void 0;
+exports.CouchViewService = void 0;
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
-const Layer = __importStar(require("effect/Layer"));
 const couch_1 = require("./couch");
-exports.CouchViewService = Context.GenericTag('chtoolbox/CouchViewService');
 const getWarmRequest = (dbName, designName, viewName) => platform_1.HttpClientRequest
     .get(`/${dbName}/_design/${designName}/_view/${viewName}`)
     .pipe(platform_1.HttpClientRequest.setUrlParam('limit', '0'));
-const ServiceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
-exports.CouchViewServiceLive = Layer.effect(exports.CouchViewService, ServiceContext.pipe(Effect.map(context => exports.CouchViewService.of({
-    warm: (dbName, designName, viewName) => couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(getWarmRequest(dbName, designName, viewName))), Effect.andThen(Effect.void), Effect.scoped, Effect.provide(context)),
-}))));
+const serviceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
+class CouchViewService extends Effect.Service()('chtoolbox/CouchViewService', {
+    effect: serviceContext.pipe(Effect.map(context => ({
+        warm: (dbName, designName, viewName) => couch_1.CouchService
+            .request(getWarmRequest(dbName, designName, viewName))
+            .pipe(Effect.andThen(Effect.void), Effect.scoped, Effect.provide(context)),
+    }))),
+    accessors: true,
+}) {
+}
+exports.CouchViewService = CouchViewService;
 //# sourceMappingURL=view.js.map

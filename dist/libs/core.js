@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.mergeArrayStreams = exports.pouchDB = exports.untilEmptyCount = void 0;
+exports.clearThenLog = exports.mergeArrayStreams = exports.pouchDB = exports.untilEmptyCount = void 0;
 const effect_1 = require("effect");
 const pouchdb_core_1 = __importDefault(require("pouchdb-core"));
 /**
@@ -30,4 +30,6 @@ const zipArrayStreams = (self, other) => effect_1.Stream.zipAllWith(self, {
 const mergeArrayStreams = (streams) => effect_1.Array
     .reduce(streams.slice(1), streams[0], zipArrayStreams);
 exports.mergeArrayStreams = mergeArrayStreams;
+const clearThenLog = (...args) => effect_1.Console.clear.pipe(effect_1.Effect.tap(effect_1.Console.log(...args)));
+exports.clearThenLog = clearThenLog;
 //# sourceMappingURL=core.js.map

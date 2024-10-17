@@ -10,8 +10,8 @@ const printCsvRow = (row: readonly (string | number | boolean)[]) => pipe(
   Console.log
 );
 
-const monitorData = (monitor: MonitorService, trackDirSize: Option.Option<string>) => pipe(
-  monitor.getAsCsv(trackDirSize),
+const monitorData = (trackDirSize: Option.Option<string>) => pipe(
+  MonitorService.getAsCsv(trackDirSize),
   Effect.tap(printCsvRow),
   Effect.catchAll(Console.error),
 );
@@ -36,11 +36,8 @@ const trackDirSize = Options
 export const monitor = Command
   .make('monitor', { interval, trackDirSize }, ({ interval, trackDirSize }) => pipe(
     initializeUrl,
-    Effect.andThen(MonitorService),
-    Effect.tap(monitor => pipe(
-      monitor.getCsvHeader(trackDirSize),
-      printCsvRow,
-      Effect.andThen(Effect.repeat(monitorData(monitor, trackDirSize), Schedule.spaced(interval * 1000)))
-    )),
+    Effect.andThen(MonitorService.getCsvHeader(trackDirSize)),
+    Effect.tap(printCsvRow),
+    Effect.andThen(Effect.repeat(monitorData(trackDirSize), Schedule.spaced(interval * 1000))),
   ))
   .pipe(Command.withDescription(`Poll CHT metrics.`));

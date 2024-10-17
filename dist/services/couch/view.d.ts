@@ -1,10 +1,12 @@
 import * as Effect from 'effect/Effect';
-import * as Context from 'effect/Context';
-import * as Layer from 'effect/Layer';
 import { CouchService } from './couch';
-export interface CouchViewService {
-    readonly warm: (dbName: string, designName: string, viewName: string) => Effect.Effect<void, Error>;
+declare const CouchViewService_base: Effect.Service.Class<CouchViewService, "chtoolbox/CouchViewService", {
+    readonly effect: Effect.Effect<{
+        warm: (dbName: string, designName: string, viewName: string) => Effect.Effect<void, Error, never>;
+    }, never, CouchService>;
+    readonly accessors: true;
+}>;
+export declare class CouchViewService extends CouchViewService_base {
 }
-export declare const CouchViewService: Context.Tag<CouchViewService, CouchViewService>;
-export declare const CouchViewServiceLive: Layer.Layer<CouchViewService, never, CouchService>;
+export {};
 //# sourceMappingURL=view.d.ts.map

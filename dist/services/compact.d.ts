@@ -1,17 +1,19 @@
 import * as Effect from 'effect/Effect';
-import * as Context from 'effect/Context';
-import * as Layer from 'effect/Layer';
 import { Stream } from 'effect';
 import { CouchDbsInfoService } from './couch/dbs-info';
 import { CouchDesignDocsService } from './couch/design-docs';
 import { CouchCompactService } from './couch/compact';
 import { CouchDesignInfoService } from './couch/design-info';
-import { CouchActiveTask, CouchActiveTasksService } from './couch/active-tasks';
-export interface CompactService {
-    readonly compactAll: () => Effect.Effect<Stream.Stream<CouchActiveTask[], Error>, Error>;
-    readonly compactDb: (dbName: string) => Effect.Effect<Stream.Stream<CouchActiveTask[], Error>, Error>;
-    readonly compactDesign: (dbName: string) => (designName: string) => Effect.Effect<Stream.Stream<CouchActiveTask[], Error>, Error>;
+import { CouchActiveTasksService } from './couch/active-tasks';
+declare const CompactService_base: Effect.Service.Class<CompactService, "chtoolbox/CompactService", {
+    readonly effect: Effect.Effect<{
+        compactAll: () => Effect.Effect<Stream.Stream<import("./couch/active-tasks").CouchActiveTask[], Error, never>, Error | import("@effect/platform/HttpClientError").ResponseError | import("@effect/schema/ParseResult").ParseError, never>;
+        compactDb: (dbName: string) => Effect.Effect<Stream.Stream<import("./couch/active-tasks").CouchActiveTask[], Error, never>, Error, never>;
+        compactDesign: (dbName: string) => (designName: string) => Effect.Effect<Stream.Stream<import("./couch/active-tasks").CouchActiveTask[], Error, never>, Error, never>;
+    }, never, CouchDbsInfoService | CouchDesignInfoService | CouchDesignDocsService | CouchCompactService | CouchActiveTasksService>;
+    readonly accessors: true;
+}>;
+export declare class CompactService extends CompactService_base {
 }
-export declare const CompactService: Context.Tag<CompactService, CompactService>;
-export declare const CompactServiceLive: Layer.Layer<CompactService, never, CouchDbsInfoService | CouchDesignInfoService | CouchDesignDocsService | CouchCompactService | CouchActiveTasksService>;
+export {};
 //# sourceMappingURL=compact.d.ts.map

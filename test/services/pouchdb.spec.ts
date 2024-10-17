@@ -2,7 +2,7 @@ import { describe, it } from 'mocha';
 import { Effect, Either, Layer, Redacted, TestContext } from 'effect';
 import sinon, { SinonStub } from 'sinon';
 import * as core from '../../src/libs/core';
-import { assertPouchResponse, PouchDBService, PouchDBServiceLive } from '../../src/services/pouchdb';
+import { assertPouchResponse, PouchDBService } from '../../src/services/pouchdb';
 import { EnvironmentService } from '../../src/services/environment';
 import { expect } from 'chai';
 
@@ -21,7 +21,7 @@ describe('PouchDB Service', () => {
 
   const run = (test: Effect.Effect<unknown, unknown, PouchDBService>) => async () => {
     await Effect.runPromise(test.pipe(
-      Effect.provide(PouchDBServiceLive),
+      Effect.provide(PouchDBService.Default),
       Effect.provide(TestContext.TestContext),
       Effect.provide(Layer.succeed(EnvironmentService, {
         get: environmentGet,
@@ -37,8 +37,7 @@ describe('PouchDB Service', () => {
       environmentGet.returns(Effect.succeed(env));
       pouchDB.returns(FAKE_POUCHDB);
 
-      const pouchSvc = yield* PouchDBService;
-      const testDb = yield* pouchSvc.get(dbName);
+      const testDb = yield* PouchDBService.get(dbName);
 
       expect(testDb).to.equal(FAKE_POUCHDB);
       expect(environmentGet.calledOnceWithExactly()).to.be.true;
@@ -55,9 +54,8 @@ describe('PouchDB Service', () => {
       const fakeMedicDb = { medic: 'db' };
       pouchDB.onSecondCall().returns(fakeMedicDb);
 
-      const pouchSvc = yield* PouchDBService;
-      const testDb = yield* pouchSvc.get(testDbName);
-      const medicDb = yield* pouchSvc.get(medicDbName);
+      const testDb = yield* PouchDBService.get(testDbName);
+      const medicDb = yield* PouchDBService.get(medicDbName);
 
       expect(testDb).to.equal(FAKE_POUCHDB);
       expect(medicDb).to.equal(fakeMedicDb);
@@ -77,9 +75,8 @@ describe('PouchDB Service', () => {
       const fakeMedicDb = { medic: 'db' };
       pouchDB.onSecondCall().returns(fakeMedicDb);
 
-      const pouchSvc = yield* PouchDBService;
-      const testDb = yield* pouchSvc.get(dbName);
-      const testDb1 = yield* pouchSvc.get(dbName);
+      const testDb = yield* PouchDBService.get(dbName);
+      const testDb1 = yield* PouchDBService.get(dbName);
 
       expect(testDb).to.equal(FAKE_POUCHDB);
       expect(testDb1).to.equal(FAKE_POUCHDB);

@@ -6,14 +6,15 @@ const effect_1 = require("effect");
 const index_1 = require("../../index");
 const design_info_1 = require("../../services/couch/design-info");
 const design_1 = require("../../services/couch/design");
-const getDesignInfo = (database, design) => effect_1.Effect
-    .flatMap(design_info_1.CouchDesignInfoService, svc => svc.get(database, design));
-const getViewNames = (database, design) => effect_1.Effect
-    .flatMap(design_1.CouchDesignService, svc => svc.getViewNames(database, design));
-const getViewData = (database) => (design) => effect_1.Effect.all([
-    getDesignInfo(database, design),
-    getViewNames(database, design),
-]).pipe(effect_1.Effect.map(([designInfo, views]) => ({ ...designInfo, views })));
+const getViewData = (database) => (design) => effect_1.Effect
+    .all([
+    design_info_1.CouchDesignInfoService.get(database, design),
+    design_1.CouchDesignService.getViewNames(database, design),
+])
+    .pipe(effect_1.Effect.map(([designInfo, views]) => ({
+    ...designInfo,
+    views
+})));
 const database = cli_1.Args
     .text({ name: 'database' })
     .pipe(cli_1.Args.withDescription('The database with the design to inspect'));

@@ -1,11 +1,13 @@
 import { EnvironmentService } from '../environment';
 import * as Effect from 'effect/Effect';
-import { HttpClient, HttpClientRequest, HttpClientResponse } from '@effect/platform';
-import * as Context from 'effect/Context';
-import { Layer, Scope } from 'effect';
-export interface CouchService {
-    readonly request: (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<HttpClientResponse.HttpClientResponse, Error, Scope.Scope>;
+import { HttpClient, HttpClientRequest } from '@effect/platform';
+declare const CouchService_base: Effect.Service.Class<CouchService, "chtoolbox/CouchService", {
+    readonly effect: Effect.Effect<{
+        request: (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<import("@effect/platform/HttpClientResponse").HttpClientResponse, Error, import("effect/Scope").Scope>;
+    }, never, EnvironmentService | HttpClient.HttpClient<import("@effect/platform/HttpClientError").HttpClientError, import("effect/Scope").Scope>>;
+    readonly accessors: true;
+}>;
+export declare class CouchService extends CouchService_base {
 }
-export declare const CouchService: Context.Tag<CouchService, CouchService>;
-export declare const CouchServiceLive: Layer.Layer<CouchService, never, EnvironmentService | HttpClient.HttpClient.Default>;
+export {};
 //# sourceMappingURL=couch.d.ts.map

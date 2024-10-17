@@ -1,14 +1,7 @@
 import * as Effect from 'effect/Effect';
-import * as Context from 'effect/Context';
-import * as Layer from 'effect/Layer';
 import { PouchDBService } from './pouchdb';
 import { EnvironmentService } from './environment';
 import { Schema } from '@effect/schema';
-export interface ReplicateService {
-    readonly replicate: (source: string, target: string) => Effect.Effect<PouchDB.Core.Response, Error>;
-    readonly watch: (repDocId: string) => Effect.Effect<PouchDB.Core.Changes<ReplicationDoc>, Error>;
-}
-export declare const ReplicateService: Context.Tag<ReplicateService, ReplicateService>;
 declare const ReplicationDoc_base: Schema.Class<ReplicationDoc, {
     _replication_state: typeof Schema.String;
     _replication_stats: Schema.Struct<{
@@ -28,6 +21,14 @@ declare const ReplicationDoc_base: Schema.Class<ReplicationDoc, {
 }, {}, {}>;
 export declare class ReplicationDoc extends ReplicationDoc_base {
 }
-export declare const ReplicateServiceLive: Layer.Layer<ReplicateService, never, EnvironmentService | PouchDBService>;
+declare const ReplicateService_base: Effect.Service.Class<ReplicateService, "chtoolbox/ReplicateService", {
+    readonly effect: Effect.Effect<{
+        replicate: (source: string, target: string) => Effect.Effect<PouchDB.Core.Response, never, never>;
+        watch: (repDocId: string) => Effect.Effect<PouchDB.Core.Changes<ReplicationDoc>, never, never>;
+    }, never, EnvironmentService | PouchDBService>;
+    readonly accessors: true;
+}>;
+export declare class ReplicateService extends ReplicateService_base {
+}
 export {};
 //# sourceMappingURL=replicate.d.ts.map

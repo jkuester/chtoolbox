@@ -5,7 +5,7 @@ import sinon, { SinonStub } from 'sinon';
 import { CouchService } from '../../../src/services/couch/couch';
 import { HttpClientRequest } from '@effect/platform';
 import { createNodeSystem } from '../../utils/data-models';
-import { CouchNodeSystemService, CouchNodeSystemServiceLive } from '../../../src/services/couch/node-system';
+import { CouchNodeSystemService } from '../../../src/services/couch/node-system';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
 
@@ -22,11 +22,11 @@ describe('Couch Node System Service', () => {
 
   const run = (test: Effect.Effect<unknown, unknown, CouchNodeSystemService>) => async () => {
     await Effect.runPromise(test.pipe(
-      Effect.provide(CouchNodeSystemServiceLive),
+      Effect.provide(CouchNodeSystemService.Default),
       Effect.provide(TestContext.TestContext),
-      Effect.provide(Layer.succeed(CouchService, CouchService.of({
+      Effect.provide(Layer.succeed(CouchService, {
         request: couchRequest,
-      }))),
+      } as unknown as CouchService)),
     ));
   };
 
@@ -40,8 +40,7 @@ describe('Couch Node System Service', () => {
       json: Effect.succeed(expectedNodeSystem),
     }));
 
-    const service = yield* CouchNodeSystemService;
-    const nodeSystem = yield* service.get();
+    const nodeSystem = yield* CouchNodeSystemService.get();
 
     expect(nodeSystem).to.deep.equal(expectedNodeSystem);
     expect(requestGet.calledOnceWithExactly('/_node/_local/_system')).to.be.true;

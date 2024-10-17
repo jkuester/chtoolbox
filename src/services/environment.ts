@@ -1,5 +1,3 @@
-import * as Context from 'effect/Context';
-import * as Layer from 'effect/Layer';
 import { Config, Effect, Option, Redacted, Ref, String } from 'effect';
 
 const COUCH_URL_PATTERN = /^(https?:\/\/([^:]+):[^/]+).*$/;
@@ -8,13 +6,6 @@ export interface Environment {
   readonly url: Redacted.Redacted;
   readonly user: string;
 }
-
-export interface EnvironmentService {
-  readonly get: () => Effect.Effect<Environment>;
-  readonly setUrl: (url: Redacted.Redacted) => Effect.Effect<Environment, Error>;
-}
-
-export const EnvironmentService = Context.GenericTag<EnvironmentService>('chtoolbox/EnvironmentService');
 
 const parseCouchUrl = (url: Redacted.Redacted): Effect.Effect<Environment, Error> => url.pipe(
   Redacted.value,
@@ -40,9 +31,10 @@ const createEnvironmentService = Ref
     user: String.empty as string,
   })
   .pipe(
-    Effect.map(env => EnvironmentService.of({
+    Effect.map(env => ({
       get: () => Ref.get(env),
-      setUrl: url => parseCouchUrl(url).pipe(Effect.flatMap(newEnv => Ref.setAndGet(env, newEnv))),
+      setUrl: (url: Redacted.Redacted) => parseCouchUrl(url)
+        .pipe(Effect.flatMap(newEnv => Ref.setAndGet(env, newEnv))),
     })),
     Effect.tap((envService) => COUCH_URL.pipe(
       Config.map(Option.map(envService.setUrl)),
@@ -51,4 +43,8 @@ const createEnvironmentService = Ref
     )),
   );
 
-export const EnvironmentServiceLive = Layer.effect(EnvironmentService, createEnvironmentService);
+export class EnvironmentService extends Effect.Service<EnvironmentService>()(
+  'chtoolbox/EnvironmentService',
+  { effect: createEnvironmentService, accessors: true, }
+) {
+}

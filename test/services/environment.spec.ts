@@ -1,6 +1,6 @@
 import { describe, it } from 'mocha';
 import { ConfigProvider, Effect, Either, Layer, pipe, Redacted, String, TestContext } from 'effect';
-import { EnvironmentService, EnvironmentServiceLive } from '../../src/services/environment';
+import { EnvironmentService } from '../../src/services/environment';
 import { expect } from 'chai';
 
 const BASE_URL = 'http://medic:password@hostlocal:5984/';
@@ -12,7 +12,7 @@ describe('Environment service', () => {
     config: [[string, string]]
   ) => (test:  Effect.Effect<unknown, unknown, EnvironmentService>) => async () => {
     await Effect.runPromise(test.pipe(
-      Effect.provide(EnvironmentServiceLive),
+      Effect.provide(EnvironmentService.Default),
       Effect.provide(TestContext.TestContext),
       Effect.provide(Layer.setConfigProvider(
         ConfigProvider.fromMap(new Map(config))
@@ -45,8 +45,7 @@ describe('Environment service', () => {
   it('trims trailing /medic from url value', run(
     [['COUCH_URL', URL_WITH_MEDIC]]
   )(Effect.gen(function* () {
-    const service = yield* EnvironmentService;
-    const env = yield* service.get();
+    const env = yield* EnvironmentService.get();
 
     expect(env).to.deep.equal({
       url: Redacted.make(BASE_URL),
@@ -57,8 +56,7 @@ describe('Environment service', () => {
   it('trims trailing / from url value', run(
     [['COUCH_URL', URL_WITHOUT_SLASH]]
   )(Effect.gen(function* () {
-    const service = yield* EnvironmentService;
-    const env = yield* service.get();
+    const env = yield* EnvironmentService.get();
 
     expect(env).to.deep.equal({
       url: Redacted.make(BASE_URL),
@@ -69,8 +67,7 @@ describe('Environment service', () => {
   it('initializes with empty values if no COUCH_URL envar exists', run(
     [['NOT_COUCH_URL', BASE_URL]]
   )(Effect.gen(function* () {
-    const service = yield* EnvironmentService;
-    const env = yield* service.get();
+    const env = yield* EnvironmentService.get();
 
     expect(env).to.deep.equal({
       url: Redacted.make(String.empty),
@@ -81,8 +78,7 @@ describe('Environment service', () => {
   it('throws an error when the COUCH_URL cannot be parsed', run(
     [['NOT_COUCH_URL', BASE_URL]]
   )(Effect.gen(function* () {
-    const service = yield* EnvironmentService;
-    const envEither = yield* Effect.either(service.setUrl(Redacted.make('not a url')));
+    const envEither = yield* Effect.either(EnvironmentService.setUrl(Redacted.make('not a url')));
 
     if (Either.isLeft(envEither)) {
       const error = envEither.left;

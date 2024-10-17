@@ -1,18 +1,20 @@
 import * as Effect from 'effect/Effect';
-import * as Context from 'effect/Context';
-import * as Layer from 'effect/Layer';
 import { CouchDbsInfoService } from './couch/dbs-info';
 import { CouchDesignDocsService } from './couch/design-docs';
 import { CouchDesignService } from './couch/design';
 import { CouchViewService } from './couch/view';
 import { CouchDesignInfoService } from './couch/design-info';
-export interface WarmViewsService {
-    readonly warmAll: () => Effect.Effect<void, Error>;
-    readonly designsCurrentlyUpdating: () => Effect.Effect<{
-        dbName: string;
-        designId: string;
-    }[], Error>;
+declare const WarmViewsService_base: Effect.Service.Class<WarmViewsService, "chtoolbox/WarmViewsService", {
+    readonly effect: Effect.Effect<{
+        warmAll: () => Effect.Effect<void[], Error | import("@effect/platform/HttpClientError").ResponseError | import("@effect/schema/ParseResult").ParseError, never>;
+        designsCurrentlyUpdating: () => Effect.Effect<{
+            dbName: string;
+            designId: string;
+        }[], Error | import("@effect/platform/HttpClientError").ResponseError | import("@effect/schema/ParseResult").ParseError, never>;
+    }, never, CouchDbsInfoService | CouchDesignInfoService | CouchDesignService | CouchViewService | CouchDesignDocsService>;
+    readonly accessors: true;
+}>;
+export declare class WarmViewsService extends WarmViewsService_base {
 }
-export declare const WarmViewsService: Context.Tag<WarmViewsService, WarmViewsService>;
-export declare const WarmViewsServiceLive: Layer.Layer<WarmViewsService, never, CouchDbsInfoService | CouchDesignInfoService | CouchDesignService | CouchViewService | CouchDesignDocsService>;
+export {};
 //# sourceMappingURL=warm-views.d.ts.map

@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
 import { CouchDbsInfoService } from '../../src/services/couch/dbs-info';
 import { CouchDesignInfoService } from '../../src/services/couch/design-info';
-import { CompactService, CompactServiceLive } from '../../src/services/compact';
+import { CompactService } from '../../src/services/compact';
 import { CouchDesignDocsService } from '../../src/services/couch/design-docs';
 import { CouchCompactService } from '../../src/services/couch/compact';
 import * as CouchActiveTasksSvc from '../../src/services/couch/active-tasks';
@@ -40,22 +40,22 @@ describe('Compact service', () => {
 
   const run = (test:  Effect.Effect<unknown, unknown, CompactService>) => async () => {
     await Effect.runPromise(test.pipe(
-      Effect.provide(CompactServiceLive),
+      Effect.provide(CompactService.Default),
       Effect.provide(TestContext.TestContext),
       Effect.provide(Layer.succeed(CouchDbsInfoService, {
         getDbNames: dbsInfoSvcGetDbNames,
         get: dbInfoSvcGet,
       } as unknown as CouchDbsInfoService)),
-      Effect.provide(Layer.succeed(CouchDesignDocsService, CouchDesignDocsService.of({
+      Effect.provide(Layer.succeed(CouchDesignDocsService, {
         getNames: designDocsSvcGetNames,
-      }))),
-      Effect.provide(Layer.succeed(CouchCompactService, CouchCompactService.of({
+      } as unknown as CouchDesignDocsService)),
+      Effect.provide(Layer.succeed(CouchCompactService, {
         compactDb: compactSvcCompactDb,
         compactDesign: compactSvcCompactDesign,
-      }))),
-      Effect.provide(Layer.succeed(CouchDesignInfoService, CouchDesignInfoService.of({
+      } as unknown as CouchCompactService)),
+      Effect.provide(Layer.succeed(CouchDesignInfoService, {
         get: designInfoSvcGet,
-      }))),
+      } as unknown as CouchDesignInfoService)),
       Effect.provide(Layer.succeed(CouchActiveTasksService, {
         stream: activeTasksStream,
       } as unknown as CouchActiveTasksService)),
@@ -73,8 +73,7 @@ describe('Compact service', () => {
       activeTasksStream.returns(Stream.succeed(expectedTasks));
       untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
 
-      const service = yield* CompactService;
-      const taskStream = yield* service.compactAll();
+      const taskStream = yield* CompactService.compactAll();
       const tasks = Chunk.toReadonlyArray(yield* Stream.runCollect(taskStream));
 
       expect(tasks).to.deep.equal([expectedTasks]);
@@ -101,8 +100,7 @@ describe('Compact service', () => {
       activeTasksStream.returns(Stream.succeed([]));
       untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
 
-      const service = yield* CompactService;
-      yield* service.compactAll();
+      yield* CompactService.compactAll();
 
       expect(dbsInfoSvcGetDbNames.calledOnceWithExactly()).to.be.true;
       expect(dbInfoSvcGet.notCalled).to.be.true;
@@ -120,8 +118,7 @@ describe('Compact service', () => {
       activeTasksStream.returns(Stream.succeed([]));
       untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
 
-      const service = yield* CompactService;
-      yield* service.compactAll();
+      yield* CompactService.compactAll();
 
       expect(dbsInfoSvcGetDbNames.calledOnceWithExactly()).to.be.true;
       expect(dbInfoSvcGet.notCalled).to.be.true;
@@ -142,8 +139,7 @@ describe('Compact service', () => {
     untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
     const dbName = 'medic';
 
-    const service = yield* CompactService;
-    const taskStream = yield* service.compactDb(dbName);
+    const taskStream = yield* CompactService.compactDb(dbName);
     const tasks = Chunk.toReadonlyArray(yield* Stream.runCollect(taskStream));
 
     expect(tasks).to.deep.equal([expectedTasks]);
