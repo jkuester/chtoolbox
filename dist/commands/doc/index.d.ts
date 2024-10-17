@@ -3,6 +3,7 @@ export declare const doc: Command.Command<"doc", import("../../services/environm
     readonly subcommand: import("effect/Option").Option<{
         readonly database: string;
         readonly yes: boolean;
+        readonly all: boolean;
     }>;
 }>;
 //# sourceMappingURL=index.d.ts.map

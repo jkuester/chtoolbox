@@ -2,20 +2,19 @@ import { Args, Command, Options, Prompt } from '@effect/cli';
 import { Console, Effect, Either, Function, Option, pipe, Sink, Stream } from 'effect';
 import { initializeUrl } from '../../index';
 import { PurgeService } from '../../services/purge';
+import { clearThenLog } from '../../libs/core';
 
-const clearLog = (...args: readonly unknown[]) => Console.clear.pipe(Effect.tap(Console.log(...args)));
-
-const purgeAllDocs = (dbName: string) => PurgeService
-  .purgeAll(dbName)
+const purgeAllDocs = (dbName: string, purgeDdocs: boolean) => PurgeService
+  .purgeAll(dbName, purgeDdocs)
   .pipe(
     Effect.map(Stream.scan({ current: 0, total: 0 }, (acc, next) => ({
       total: acc.total || next.total_rows,
       current: (acc.total || next.total_rows) - next.total_rows,
     }))),
-    Effect.map(Stream.tap(({ current, total }) => clearLog(`Purging ${current.toString()}/${total.toString()}`))),
+    Effect.map(Stream.tap(({ current, total }) => clearThenLog(`Purging ${current.toString()}/${total.toString()}`))),
     Effect.flatMap(Stream.run(Sink.last())),
     Effect.map(Option.getOrThrow),
-    Effect.tap(({ total }) => clearLog(`Purged ${total.toString()}/${total.toString()}`)),
+    Effect.tap(({ total }) => clearThenLog(`Purged ${total.toString()}/${total.toString()}`)),
   );
 
 const confirmPurge = (dbName: string, yes: boolean) => Prompt
@@ -35,7 +34,15 @@ const yes = Options
   .boolean('yes')
   .pipe(
     Options.withAlias('y'),
-    Options.withDescription('Do not prompt for confirmation.'),
+    Options.withDescription('Do not prompt for confirmation'),
+    Options.withDefault(false),
+  );
+
+const all = Options
+  .boolean('all')
+  .pipe(
+    Options.withAlias('a'),
+    Options.withDescription('Purge everything including design documents'),
     Options.withDefault(false),
   );
 
@@ -46,10 +53,10 @@ const database = Args
   );
 
 export const purge = Command
-  .make('purge', { database, yes }, ({ database, yes }) => initializeUrl.pipe(
+  .make('purge', { database, yes, all }, ({ database, yes, all }) => initializeUrl.pipe(
     Effect.andThen(confirmPurge(database, yes)),
     Effect.flatMap(confirmed => pipe(
-      Option.liftPredicate(purgeAllDocs(database), () => confirmed),
+      Option.liftPredicate(purgeAllDocs(database, all), () => confirmed),
       Option.getOrElse(() => Console.log('Operation cancelled')),
     )),
   ))

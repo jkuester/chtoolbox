@@ -30,6 +30,9 @@ const pouchdb_1 = require("./pouchdb");
 const effect_1 = require("effect");
 const purge_1 = require("./couch/purge");
 const convertAllDocsResponse = (response) => (0, effect_1.pipe)(response.rows, effect_1.Array.map(({ id, value: { rev } }) => ({ _id: id, _rev: rev })));
+const filterDdoc = (purgeDdocs) => (doc) => effect_1.Option
+    .liftPredicate(doc, () => !purgeDdocs)
+    .pipe(effect_1.Option.map(({ _id }) => _id), effect_1.Option.map(effect_1.Predicate.not(effect_1.String.startsWith('_design/'))), effect_1.Option.getOrElse(() => true));
 const serviceContext = Effect
     .all([
     purge_1.CouchPurgeService,
@@ -40,20 +43,12 @@ const serviceContext = Effect
     .pipe(Context.add(purge_1.CouchPurgeService, purge))));
 class PurgeService extends Effect.Service()('chtoolbox/PurgeService', {
     effect: serviceContext.pipe(Effect.map(context => ({
-        purgeAll: (dbName) => pouchdb_1.PouchDBService
+        purgeAll: (dbName, purgeDdocs = false) => pouchdb_1.PouchDBService
             .get(dbName)
             .pipe(
         // _purge endpoint only accepts batches of 100.
         // skip: 0 just keeps getting the next 100 (after the last was purged)
-        Effect.map((0, pouchdb_1.streamAllDocPages)({ limit: 100, skip: 0 })), 
-        // Effect.map(Stream.tap(x => Console.log(x.offset, x.total_rows))),
-        Effect.map(effect_1.Stream.tap(response => (0, effect_1.pipe)(convertAllDocsResponse(response), (0, purge_1.purgeFrom)(dbName)))), 
-        // Effect.map(Stream.map(convertAllDocsResponse)),
-        //
-        //
-        // Effect.map(Stream.mapEffect(purgeFrom(dbName))),
-        // Effect.flatMap(Stream.run(Sink.drain)),
-        Effect.provide(context), x => x),
+        Effect.map((0, pouchdb_1.streamAllDocPages)({ limit: 100, skip: 0 })), Effect.map(effect_1.Stream.tap(response => (0, effect_1.pipe)(convertAllDocsResponse(response), effect_1.Array.filter(filterDdoc(purgeDdocs)), (0, purge_1.purgeFrom)(dbName)))), Effect.provide(context)),
     }))),
     accessors: true,
 }) {
