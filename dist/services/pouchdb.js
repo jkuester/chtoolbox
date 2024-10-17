@@ -26,7 +26,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PouchDBService = exports.assertPouchResponse = void 0;
+exports.PouchDBService = exports.streamAllDocPages = exports.assertPouchResponse = void 0;
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
 const effect_1 = require("effect");
@@ -41,6 +41,14 @@ pouchdb_core_1.default.plugin(pouchdb_session_authentication_1.default);
 const isPouchResponse = (value) => 'ok' in value && value.ok;
 const assertPouchResponse = (value) => (0, effect_1.pipe)(effect_1.Option.liftPredicate(value, isPouchResponse), effect_1.Option.getOrThrowWith(() => value));
 exports.assertPouchResponse = assertPouchResponse;
+const getAllDocsPage = (db, options) => (skip) => Effect
+    .promise(() => db.allDocs({ skip, ...options }))
+    .pipe(Effect.map((response) => [
+    response,
+    (0, effect_1.pipe)(skip + (options.limit ?? 1000), effect_1.Option.liftPredicate(() => response.rows.length === options.limit))
+]));
+const streamAllDocPages = (options = {}) => (db) => (0, effect_1.pipe)(getAllDocsPage(db, { limit: 1000, ...options }), pageFn => effect_1.Stream.paginateEffect(0, pageFn));
+exports.streamAllDocPages = streamAllDocPages;
 const couchUrl = environment_1.EnvironmentService
     .get()
     .pipe(Effect.map(({ url }) => url));

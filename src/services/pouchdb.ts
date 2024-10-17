@@ -1,6 +1,6 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { Option, pipe, Redacted } from 'effect';
+import { Option, pipe, Redacted, Stream } from 'effect';
 import PouchDB from 'pouchdb-core';
 import { pouchDB } from '../libs/core';
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
@@ -20,6 +20,34 @@ export const assertPouchResponse = (
 ): PouchDB.Core.Response => pipe(
   Option.liftPredicate(value, isPouchResponse),
   Option.getOrThrowWith(() => value),
+);
+
+const getAllDocsPage = (
+  db: PouchDB.Database,
+  options: PouchDB.Core.AllDocsWithKeyOptions |
+    PouchDB.Core.AllDocsWithinRangeOptions |
+    PouchDB.Core.AllDocsOptions
+) => (
+  skip: number
+): Effect.Effect<[PouchDB.Core.AllDocsResponse<object>, Option.Option<number>]> => Effect
+  .promise(() => db.allDocs({ skip, ...options }))
+  .pipe(
+    Effect.map((response) => [
+      response,
+      pipe(
+        skip + (options.limit ?? 1000),
+        Option.liftPredicate(() => response.rows.length === options.limit),
+      )
+    ])
+  );
+
+export const streamAllDocPages = (
+  options: PouchDB.Core.AllDocsWithKeyOptions |
+    PouchDB.Core.AllDocsWithinRangeOptions |
+    PouchDB.Core.AllDocsOptions = {}
+) => (db: PouchDB.Database) => pipe(
+  getAllDocsPage(db, { limit: 1000, ...options }),
+  pageFn => Stream.paginateEffect(0, pageFn),
 );
 
 const couchUrl = EnvironmentService
@@ -43,4 +71,3 @@ export class PouchDBService extends Effect.Service<PouchDBService>()('chtoolbox/
   accessors: true,
 }) {
 }
-

@@ -25,6 +25,9 @@ import { PouchDBService } from './services/pouchdb';
 import { ReplicateService } from './services/replicate';
 import { db } from './commands/db';
 import { design } from './commands/design';
+import { doc } from './commands/doc';
+import { CouchPurgeService } from './services/couch/purge';
+import { PurgeService } from './services/purge';
 
 const url = Options
   .text('url')
@@ -50,7 +53,7 @@ export const initializeUrl = chtx.pipe(
   ))),
 );
 
-const command = chtx.pipe(Command.withSubcommands([compact, design, monitor, warmViews, activeTasks, db]));
+const command = chtx.pipe(Command.withSubcommands([compact, design, doc, monitor, warmViews, activeTasks, db]));
 
 const cli = Command.run(command, {
   name: 'CHT Toolbox',
@@ -63,6 +66,7 @@ cli(process.argv)
     Effect.provide(CompactService.Default),
     Effect.provide(MonitorService.Default),
     Effect.provide(LocalDiskUsageService.Default),
+    Effect.provide(PurgeService.Default),
     Effect.provide(WarmViewsService.Default),
     Effect.provide(ReplicateService.Default),
     Effect.provide(CouchActiveTasksService.Default),
@@ -72,6 +76,7 @@ cli(process.argv)
     Effect.provide(CouchDesignDocsService.Default),
     Effect.provide(CouchDesignInfoService.Default),
     Effect.provide(CouchDesignService.Default),
+    Effect.provide(CouchPurgeService.Default),
     Effect.provide(CouchViewService.Default),
     Effect.provide(PouchDBService.Default),
     Effect.provide(CouchService.Default.pipe(
