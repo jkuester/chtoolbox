@@ -4,18 +4,17 @@ import { initializeUrl } from '../../index';
 import { CouchDesignInfoService } from '../../services/couch/design-info';
 import { CouchDesignService } from '../../services/couch/design';
 
-const getDesignInfo = (database: string, design: string) => Effect
-  .flatMap(CouchDesignInfoService, svc => svc.get(database, design));
-
-const getViewNames = (database: string, design: string) => Effect
-  .flatMap(CouchDesignService, svc => svc.getViewNames(database, design));
-
-const getViewData = (database: string) => (design: string) => Effect.all([
-  getDesignInfo(database, design),
-  getViewNames(database, design),
-]).pipe(
-  Effect.map(([designInfo, views]) => ({ ...designInfo, views })),
-);
+const getViewData = (database: string) => (design: string) => Effect
+  .all([
+    CouchDesignInfoService.get(database, design),
+    CouchDesignService.getViewNames(database, design),
+  ])
+  .pipe(
+    Effect.map(([designInfo, views]) => ({
+      ...designInfo,
+      views
+    })),
+  );
 
 const database = Args
   .text({ name: 'database' })

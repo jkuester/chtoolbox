@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import sinon, { SinonSpy, SinonStub } from 'sinon';
 import { CouchService } from '../../../src/services/couch/couch';
 import { HttpClientRequest } from '@effect/platform';
-import { CouchViewService, CouchViewServiceLive } from '../../../src/services/couch/view';
+import { CouchViewService } from '../../../src/services/couch/view';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
 
@@ -23,11 +23,11 @@ describe('Couch View Service', () => {
 
   const run = (test:  Effect.Effect<unknown, unknown, CouchViewService>) => async () => {
     await Effect.runPromise(test.pipe(
-      Effect.provide(CouchViewServiceLive),
+      Effect.provide(CouchViewService.Default),
       Effect.provide(TestContext.TestContext),
-      Effect.provide(Layer.succeed(CouchService, CouchService.of({
+      Effect.provide(Layer.succeed(CouchService, {
         request: couchRequest,
-      }))),
+      } as unknown as CouchService)),
     ));
   };
 
@@ -38,8 +38,7 @@ describe('Couch View Service', () => {
     requestSetUrlParam.returns(sinon.stub().returns(FAKE_CLIENT_REQUEST));
     couchRequest.returns(Effect.void);
 
-    const service = yield* CouchViewService;
-    yield* service.warm(dbName, designName, viewName);
+    yield* CouchViewService.warm(dbName, designName, viewName);
 
     expect(requestGet.calledOnceWithExactly(`/${dbName}/_design/${designName}/_view/${viewName}`)).to.be.true;
     expect(requestSetUrlParam.calledOnceWithExactly('limit', '0')).to.be.true;

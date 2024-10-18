@@ -35,21 +35,23 @@ const getPrintableTasks = (tasks: CouchActiveTask[]) => pipe(
   Option.getOrElse(() => 'No active tasks.'),
 );
 
-const printCurrentTasks = CouchActiveTasksService.pipe(
-  Effect.flatMap(service => service.get()),
-  Effect.map(getPrintableTasks),
-  Effect.tap(Console.table),
-);
+const printCurrentTasks = CouchActiveTasksService
+  .get()
+  .pipe(
+    Effect.map(getPrintableTasks),
+    Effect.tap(Console.table),
+  );
 
-const followActiveTasks = CouchActiveTasksService.pipe(
-  Effect.map(svc => svc.stream()),
-  Effect.flatMap(Stream.runForEach(tasks => Effect
-    .succeed(getPrintableTasks(tasks))
-    .pipe(
-      Effect.tap(Console.clear),
-      Effect.tap(Console.table),
-    ))),
-);
+const followActiveTasks = CouchActiveTasksService
+  .stream()
+  .pipe(
+    Effect.flatMap(Stream.runForEach(tasks => Effect
+      .succeed(getPrintableTasks(tasks))
+      .pipe(
+        Effect.tap(Console.clear),
+        Effect.tap(Console.table),
+      ))),
+  );
 
 const follow = Options
   .boolean('follow')

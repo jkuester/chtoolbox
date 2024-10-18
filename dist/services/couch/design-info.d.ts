@@ -1,7 +1,5 @@
 import * as Schema from '@effect/schema/Schema';
 import * as Effect from 'effect/Effect';
-import * as Context from 'effect/Context';
-import * as Layer from 'effect/Layer';
 import { CouchService } from './couch';
 declare const CouchDesignInfo_base: Schema.Class<CouchDesignInfo, {
     name: typeof Schema.String;
@@ -72,12 +70,15 @@ declare const CouchDesignInfo_base: Schema.Class<CouchDesignInfo, {
     };
 }, {}, {}>;
 export declare class CouchDesignInfo extends CouchDesignInfo_base {
-    static readonly decodeResponse: <E, E2, R2>(effect: Effect.Effect<import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>, E2, R2>) => Effect.Effect<CouchDesignInfo, import("@effect/schema/ParseResult").ParseError | E | E2, Exclude<R2, import("effect/Scope").Scope>>;
+    static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<CouchDesignInfo, import("@effect/schema/ParseResult").ParseError | E, never>;
 }
-export interface CouchDesignInfoService {
-    readonly get: (dbName: string, designName: string) => Effect.Effect<CouchDesignInfo, Error>;
+declare const CouchDesignInfoService_base: Effect.Service.Class<CouchDesignInfoService, "chtoolbox/CouchDesignInfoService", {
+    readonly effect: Effect.Effect<{
+        get: (dbName: string, designName: string) => Effect.Effect<CouchDesignInfo, Error | import("@effect/platform/HttpClientError").ResponseError | import("@effect/schema/ParseResult").ParseError, never>;
+    }, never, CouchService>;
+    readonly accessors: true;
+}>;
+export declare class CouchDesignInfoService extends CouchDesignInfoService_base {
 }
-export declare const CouchDesignInfoService: Context.Tag<CouchDesignInfoService, CouchDesignInfoService>;
-export declare const CouchDesignInfoServiceLive: Layer.Layer<CouchDesignInfoService, never, CouchService>;
 export {};
 //# sourceMappingURL=design-info.d.ts.map

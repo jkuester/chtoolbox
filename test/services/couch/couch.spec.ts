@@ -2,7 +2,7 @@ import { describe, it } from 'mocha';
 import { Effect, Either, Layer, Redacted, Scope, TestContext } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
-import { CouchService, CouchServiceLive } from '../../../src/services/couch/couch';
+import { CouchService } from '../../../src/services/couch/couch';
 import { HttpClient, HttpClientRequest } from '@effect/platform';
 import { EnvironmentService } from '../../../src/services/environment';
 import { NodeHttpClient } from '@effect/platform-node';
@@ -24,7 +24,7 @@ describe('Couch Service', () => {
 
   const run = (test: Effect.Effect<unknown, unknown, CouchService | Scope.Scope>) => async () => {
     await Effect.runPromise(test.pipe(
-      Effect.provide(CouchServiceLive),
+      Effect.provide(CouchService.Default),
       Effect.provide(TestContext.TestContext),
       Effect.provide(Layer.succeed(EnvironmentService, {
         get: environmentGet,
@@ -44,13 +44,12 @@ describe('Couch Service', () => {
     const innerPrependUrl = sinon.stub().returns(fakeHttpRequest);
     prependUrl.returns(innerPrependUrl);
     const fakeHttpResponse = { fake: 'response' };
-    const client = sinon.stub().returns(Effect.succeed(fakeHttpResponse));
-    const innerMapRequest = sinon.stub().returns(client);
+    const execute = sinon.stub().returns(Effect.succeed(fakeHttpResponse));
+    const innerMapRequest = sinon.stub().returns({ execute });
     mapRequest.returns(innerMapRequest);
     const request = HttpClientRequest.get('/test');
 
-    const service = yield* CouchService;
-    const response = yield* service.request(request);
+    const response = yield* CouchService.request(request);
 
     expect(response).to.deep.equal(fakeHttpResponse);
     expect(environmentGet.calledOnceWithExactly()).to.be.true;
@@ -59,7 +58,7 @@ describe('Couch Service', () => {
     expect(innerPrependUrl.notCalled).to.be.true;
     expect(mapRequest.calledOnceWithExactly(innerPrependUrl)).to.be.true;
     expect(innerMapRequest.calledOnceWithExactly(fakeHttpClientEffect)).to.be.true;
-    expect(client.calledOnceWithExactly(request)).to.be.true;
+    expect(execute.calledOnceWithExactly(request)).to.be.true;
   })));
 
   it('returns error when request fails', run(Effect.gen(function* () {
@@ -72,13 +71,12 @@ describe('Couch Service', () => {
     const innerPrependUrl = sinon.stub().returns(fakeHttpRequest);
     prependUrl.returns(innerPrependUrl);
     const expectedError = new Error('Request failed');
-    const client = sinon.stub().returns(Effect.fail(expectedError));
-    const innerMapRequest = sinon.stub().returns(client);
+    const execute = sinon.stub().returns(Effect.fail(expectedError));
+    const innerMapRequest = sinon.stub().returns({ execute });
     mapRequest.returns(innerMapRequest);
     const request = HttpClientRequest.get('/test');
 
-    const service = yield* CouchService;
-    const either = yield* Effect.either(service.request(request));
+    const either = yield* Effect.either(CouchService.request(request));
 
     if (Either.isLeft(either)) {
       expect(either.left).to.equal(expectedError);
@@ -88,7 +86,7 @@ describe('Couch Service', () => {
       expect(innerPrependUrl.notCalled).to.be.true;
       expect(mapRequest.calledOnceWithExactly(innerPrependUrl)).to.be.true;
       expect(innerMapRequest.calledOnceWithExactly(fakeHttpClientEffect)).to.be.true;
-      expect(client.calledOnceWithExactly(request)).to.be.true;
+      expect(execute.calledOnceWithExactly(request)).to.be.true;
     } else {
       expect.fail('Expected error to be thrown.');
     }

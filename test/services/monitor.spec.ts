@@ -1,7 +1,7 @@
 import { afterEach, describe, it } from 'mocha';
 import { Effect, Either, Layer, Option, TestClock, TestContext } from 'effect';
 import { expect } from 'chai';
-import { MonitorService, MonitorServiceLive } from '../../src/services/monitor';
+import { MonitorService } from '../../src/services/monitor';
 import { CouchNodeSystem, CouchNodeSystemService } from '../../src/services/couch/node-system';
 import sinon, { SinonStub } from 'sinon';
 import { CouchDbInfo, CouchDbsInfoService } from '../../src/services/couch/dbs-info';
@@ -144,20 +144,20 @@ describe('Monitor service', () => {
 
   const run = (test:  Effect.Effect<unknown, unknown, MonitorService>) => async () => {
     await Effect.runPromise(test.pipe(
-      Effect.provide(MonitorServiceLive),
+      Effect.provide(MonitorService.Default),
       Effect.provide(TestContext.TestContext),
-      Effect.provide(Layer.succeed(CouchNodeSystemService, CouchNodeSystemService.of({
+      Effect.provide(Layer.succeed(CouchNodeSystemService, {
         get: nodeSystemServiceGet,
-      }))),
-      Effect.provide(Layer.succeed(CouchDbsInfoService, CouchDbsInfoService.of({
+      } as unknown as CouchNodeSystemService)),
+      Effect.provide(Layer.succeed(CouchDbsInfoService, {
         post: dbsInfoServicePost,
-      } as unknown as CouchDbsInfoService)),),
-      Effect.provide(Layer.succeed(CouchDesignInfoService, CouchDesignInfoService.of({
+      } as unknown as CouchDbsInfoService)),
+      Effect.provide(Layer.succeed(CouchDesignInfoService, {
         get: designInfoServiceGet,
-      }))),
-      Effect.provide(Layer.succeed(LocalDiskUsageService, LocalDiskUsageService.of({
+      } as unknown as CouchDesignInfoService)),
+      Effect.provide(Layer.succeed(LocalDiskUsageService, {
         getSize: diskUsageServiceGetSize,
-      }))),
+      } as unknown as LocalDiskUsageService)),
     ));
   };
 
@@ -169,8 +169,7 @@ describe('Monitor service', () => {
       designInfoServiceGet.returns(Effect.void);
       diskUsageServiceGetSize.returns(Effect.succeed(0));
 
-      const service = yield* MonitorService;
-      const data = yield* service.get(Option.none());
+      const data = yield* MonitorService.get(Option.none());
 
       expect(data).to.deep.equal({
         ...nodeSystem,
@@ -194,8 +193,7 @@ describe('Monitor service', () => {
       const directorySize = 444444;
       diskUsageServiceGetSize.returns(Effect.succeed(directorySize));
 
-      const service = yield* MonitorService;
-      const data = yield* service.get(Option.some(directory));
+      const data = yield* MonitorService.get(Option.some(directory));
 
       expect(data).to.deep.equal({
         ...nodeSystem,
@@ -252,8 +250,7 @@ describe('Monitor service', () => {
       const directorySize = 444444;
       diskUsageServiceGetSize.returns(Effect.succeed(directorySize));
 
-      const service = yield* MonitorService;
-      const data = yield* service.get(Option.some(directory));
+      const data = yield* MonitorService.get(Option.some(directory));
 
       expect(data).to.deep.equal({
         ...nodeSystem,
@@ -311,8 +308,7 @@ describe('Monitor service', () => {
       const directorySize = 444444;
       diskUsageServiceGetSize.returns(Effect.succeed(directorySize));
 
-      const service = yield* MonitorService;
-      const failureOrSuccess = yield* Effect.either(service.get(Option.some(directory)));
+      const failureOrSuccess = yield* Effect.either(MonitorService.get(Option.some(directory)));
 
       if (Either.isLeft(failureOrSuccess)) {
         const error = failureOrSuccess.left;
@@ -336,8 +332,7 @@ describe('Monitor service', () => {
       designInfoServiceGet.returns(Effect.void);
       diskUsageServiceGetSize.returns(Effect.succeed(0));
 
-      const service = yield* MonitorService;
-      const data = yield* service.get(Option.none());
+      const data = yield* MonitorService.get(Option.none());
 
       expect(data).to.deep.equal({
         ...nodeSystem,
@@ -407,8 +402,7 @@ describe('Monitor service', () => {
       const directorySize = 444444;
       diskUsageServiceGetSize.returns(Effect.succeed(directorySize));
 
-      const service = yield* MonitorService;
-      const data = yield* service.getAsCsv(Option.some(directory));
+      const data = yield* MonitorService.getAsCsv(Option.some(directory));
 
       expect(data).to.deep.equal([unix_time.toString(), ...expectedCsvData, directorySize.toString()]);
       expect(nodeSystemServiceGet.calledOnceWithExactly()).to.be.true;
@@ -440,8 +434,7 @@ describe('Monitor service', () => {
       const directorySize = 444444;
       diskUsageServiceGetSize.returns(Effect.succeed(directorySize));
 
-      const service = yield* MonitorService;
-      const data = yield* service.getAsCsv(Option.some(directory));
+      const data = yield* MonitorService.getAsCsv(Option.some(directory));
 
       const expectedCsvData = [
         unix_time.toString(),
@@ -484,8 +477,7 @@ describe('Monitor service', () => {
       dbsInfoServicePost.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
       initializeDesignInfoServiceGet(designInfoServiceGet);
 
-      const service = yield* MonitorService;
-      const data = yield* service.getAsCsv(Option.none());
+      const data = yield* MonitorService.getAsCsv(Option.none());
 
       expect(data).to.deep.equal([unix_time.toString(), ...expectedCsvData]);
       expect(nodeSystemServiceGet.calledOnceWithExactly()).to.be.true;

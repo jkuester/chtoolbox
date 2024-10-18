@@ -1,14 +1,19 @@
-import * as Context from 'effect/Context';
-import * as Layer from 'effect/Layer';
 import { Effect, Redacted } from 'effect';
 export interface Environment {
     readonly url: Redacted.Redacted;
     readonly user: string;
 }
-export interface EnvironmentService {
-    readonly get: () => Effect.Effect<Environment>;
-    readonly setUrl: (url: Redacted.Redacted) => Effect.Effect<Environment, Error>;
+declare const EnvironmentService_base: Effect.Service.Class<EnvironmentService, "chtoolbox/EnvironmentService", {
+    readonly effect: Effect.Effect<{
+        get: () => Effect.Effect<{
+            url: Redacted.Redacted;
+            user: string;
+        }, never, never>;
+        setUrl: (url: Redacted.Redacted) => Effect.Effect<Environment, Error, never>;
+    }, Error | import("effect/ConfigError").ConfigError, never>;
+    readonly accessors: true;
+}>;
+export declare class EnvironmentService extends EnvironmentService_base {
 }
-export declare const EnvironmentService: Context.Tag<EnvironmentService, EnvironmentService>;
-export declare const EnvironmentServiceLive: Layer.Layer<EnvironmentService, Error | import("effect/ConfigError").ConfigError, never>;
+export {};
 //# sourceMappingURL=environment.d.ts.map

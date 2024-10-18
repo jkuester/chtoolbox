@@ -5,8 +5,7 @@ const cli_1 = require("@effect/cli");
 const effect_1 = require("effect");
 const index_1 = require("../../index");
 const pouchdb_1 = require("../../services/pouchdb");
-const getPouchDB = (dbName) => effect_1.Effect.flatMap(pouchdb_1.PouchDBService, svc => svc.get(dbName));
-const createDbs = (dbs) => (0, effect_1.pipe)(dbs, effect_1.Array.map(getPouchDB), effect_1.Effect.all);
+const createDbs = (dbs) => (0, effect_1.pipe)(dbs, effect_1.Array.map(pouchdb_1.PouchDBService.get), effect_1.Effect.all);
 const databases = cli_1.Args
     .text({ name: 'database' })
     .pipe(cli_1.Args.withDescription('The name of the database to create'), cli_1.Args.atLeast(1));

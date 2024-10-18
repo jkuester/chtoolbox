@@ -23,17 +23,15 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MonitorServiceLive = exports.MonitorService = void 0;
+exports.MonitorService = void 0;
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
-const Layer = __importStar(require("effect/Layer"));
 const dbs_info_1 = require("./couch/dbs-info");
 const design_info_1 = require("./couch/design-info");
 const node_system_1 = require("./couch/node-system");
 const effect_1 = require("effect");
 const local_disk_usage_1 = require("./local-disk-usage");
 const HttpClientError_1 = require("@effect/platform/HttpClientError");
-exports.MonitorService = Context.GenericTag('chtoolbox/MonitorService');
 const currentTimeSec = effect_1.Clock.currentTimeMillis.pipe(Effect.map(effect_1.Number.unsafeDivide(1000)), Effect.map(Math.floor));
 const DB_NAMES = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 const VIEW_INDEXES_BY_DB = {
@@ -64,8 +62,6 @@ const VIEW_INDEXES_BY_DB = {
         ':staged:users',
     ],
 };
-const getCouchNodeSystem = Effect.flatMap(node_system_1.CouchNodeSystemService, (couchSystem) => couchSystem.get());
-const getCouchDbsInfo = Effect.flatMap(dbs_info_1.CouchDbsInfoService, (couchSystem) => couchSystem.post(DB_NAMES));
 const emptyDesignInfo = {
     name: '',
     view_index: {
@@ -82,8 +78,8 @@ const getCouchDesignInfos = (0, effect_1.pipe)(DB_NAMES, effect_1.Array.map(getC
 const getDirectorySize = (directory) => local_disk_usage_1.LocalDiskUsageService.pipe(Effect.flatMap(service => directory.pipe(effect_1.Option.map(dir => service.getSize(dir)), effect_1.Option.getOrElse(() => Effect.succeed(null)))), Effect.map(effect_1.Option.fromNullable));
 const getMonitoringData = (directory) => (0, effect_1.pipe)(Effect.all([
     currentTimeSec,
-    getCouchNodeSystem,
-    getCouchDbsInfo,
+    node_system_1.CouchNodeSystemService.get(),
+    dbs_info_1.CouchDbsInfoService.post(DB_NAMES),
     getCouchDesignInfos,
     getDirectorySize(directory),
 ]), Effect.map(([unixTime, nodeSystem, dbsInfo, designInfos, directory_size]) => ({
@@ -129,7 +125,7 @@ const getAsCsv = (directory) => (0, effect_1.pipe)(getMonitoringData(directory),
     data.memory.binary.toString(),
     ...(data.directory_size.pipe(effect_1.Option.map(value => value.toString()), effect_1.Option.map(effect_1.Array.of), effect_1.Option.getOrElse(() => []))),
 ]));
-const ServiceContext = Effect
+const serviceContext = Effect
     .all([
     node_system_1.CouchNodeSystemService,
     dbs_info_1.CouchDbsInfoService,
@@ -139,11 +135,16 @@ const ServiceContext = Effect
     .pipe(Effect.map(([couchNodeSystem, couchDbsInfo, couchDesignInfo, localDiskUsage,]) => Context
     .make(node_system_1.CouchNodeSystemService, couchNodeSystem)
     .pipe(Context.add(dbs_info_1.CouchDbsInfoService, couchDbsInfo), Context.add(design_info_1.CouchDesignInfoService, couchDesignInfo), Context.add(local_disk_usage_1.LocalDiskUsageService, localDiskUsage))));
-exports.MonitorServiceLive = Layer.effect(exports.MonitorService, ServiceContext.pipe(Effect.map(context => exports.MonitorService.of({
-    get: (directory) => getMonitoringData(directory)
-        .pipe(Effect.provide(context)),
-    getCsvHeader,
-    getAsCsv: (directory) => getAsCsv(directory)
-        .pipe(Effect.provide(context)),
-}))));
+class MonitorService extends Effect.Service()('chtoolbox/MonitorService', {
+    effect: serviceContext.pipe(Effect.map(context => ({
+        get: (directory) => getMonitoringData(directory)
+            .pipe(Effect.provide(context)),
+        getCsvHeader,
+        getAsCsv: (directory) => getAsCsv(directory)
+            .pipe(Effect.provide(context)),
+    }))),
+    accessors: true,
+}) {
+}
+exports.MonitorService = MonitorService;
 //# sourceMappingURL=monitor.js.map

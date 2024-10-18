@@ -4,11 +4,8 @@ import { initializeUrl } from '../../index';
 import { CouchDesignDocsService } from '../../services/couch/design-docs';
 import { CouchDbsInfoService } from '../../services/couch/dbs-info';
 
-const getDesignDocNames = (dbName: string) => CouchDesignDocsService.pipe(
-  Effect.flatMap(designDocsService => designDocsService.getNames(dbName)),
-);
-
-const printDesignDocNames = (dbName: string) => getDesignDocNames(dbName)
+const printDesignDocNames = (dbName: string) => CouchDesignDocsService
+  .getNames(dbName)
   .pipe(
     Effect.map(d => JSON.stringify(d, null, 2)),
     Effect.flatMap(Console.log)
@@ -20,11 +17,11 @@ const getDisplayDict = (data: [readonly string[], string][]) => Array.reduce(
   (dict, [designNames, dbName]) => Record.set(dbName, designNames)(dict),
 );
 
-const printAllDesignDocNames = Effect
-  .flatMap(CouchDbsInfoService, svc => svc.getDbNames())
+const printAllDesignDocNames = CouchDbsInfoService
+  .getDbNames()
   .pipe(
     Effect.flatMap(dbNames => pipe(
-      Array.map(dbNames, getDesignDocNames),
+      Array.map(dbNames, CouchDesignDocsService.getNames),
       Effect.all,
       Effect.map(Array.zip(dbNames)),
       Effect.map(getDisplayDict),

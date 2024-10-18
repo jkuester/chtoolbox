@@ -1,12 +1,10 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import * as Layer from 'effect/Layer';
 import { CouchDbInfo, CouchDbsInfoService } from './couch/dbs-info';
 import { CouchDesignInfo, CouchDesignInfoService } from './couch/design-info';
 import { CouchNodeSystem, CouchNodeSystemService } from './couch/node-system';
 import { Array, Clock, Number, Option, pipe } from 'effect';
 import { LocalDiskUsageService } from './local-disk-usage';
-import { PlatformError } from '@effect/platform/Error';
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { NonEmptyArray } from 'effect/Array';
 
@@ -19,14 +17,6 @@ export interface MonitoringData extends CouchNodeSystem {
   databases: DatabaseInfo[]
   directory_size: Option.Option<number>
 }
-
-export interface MonitorService {
-  readonly get: (directory: Option.Option<string>) => Effect.Effect<MonitoringData, Error | PlatformError>,
-  readonly getCsvHeader: (directory: Option.Option<string>) => string[],
-  readonly getAsCsv: (directory: Option.Option<string>) => Effect.Effect<string[], Error | PlatformError>,
-}
-
-export const MonitorService = Context.GenericTag<MonitorService>('chtoolbox/MonitorService');
 
 const currentTimeSec = Clock.currentTimeMillis.pipe(
   Effect.map(Number.unsafeDivide(1000)),
@@ -63,8 +53,6 @@ const VIEW_INDEXES_BY_DB: Record<typeof DB_NAMES[number], string[]> = {
   ],
 };
 
-const getCouchNodeSystem = Effect.flatMap(CouchNodeSystemService, (couchSystem) => couchSystem.get());
-const getCouchDbsInfo = Effect.flatMap(CouchDbsInfoService, (couchSystem) => couchSystem.post(DB_NAMES));
 const emptyDesignInfo: CouchDesignInfo = {
   name: '',
   view_index: {
@@ -104,8 +92,8 @@ const getDirectorySize = (directory: Option.Option<string>) => LocalDiskUsageSer
 const getMonitoringData = (directory: Option.Option<string>) => pipe(
   Effect.all([
     currentTimeSec,
-    getCouchNodeSystem,
-    getCouchDbsInfo,
+    CouchNodeSystemService.get(),
+    CouchDbsInfoService.post(DB_NAMES),
     getCouchDesignInfos,
     getDirectorySize(directory),
   ]),
@@ -173,7 +161,7 @@ const getAsCsv = (directory: Option.Option<string>) => pipe(
   ]),
 );
 
-const ServiceContext = Effect
+const serviceContext = Effect
   .all([
     CouchNodeSystemService,
     CouchDbsInfoService,
@@ -193,12 +181,14 @@ const ServiceContext = Effect
       Context.add(LocalDiskUsageService, localDiskUsage),
     )));
 
-export const MonitorServiceLive = Layer.effect(MonitorService, ServiceContext.pipe(Effect.map(
-  context => MonitorService.of({
+export class MonitorService extends Effect.Service<MonitorService>()('chtoolbox/MonitorService', {
+  effect: serviceContext.pipe(Effect.map(context => ({
     get: (directory: Option.Option<string>) => getMonitoringData(directory)
       .pipe(Effect.provide(context)),
     getCsvHeader,
     getAsCsv: (directory: Option.Option<string>) => getAsCsv(directory)
       .pipe(Effect.provide(context)),
-  })
-)));
+  }))),
+  accessors: true,
+}) {
+}

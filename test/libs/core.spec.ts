@@ -1,9 +1,10 @@
 import { describe, it } from 'mocha';
-import { Chunk, Effect, Stream, TestContext } from 'effect';
+import { Chunk, Console, Effect, Stream, TestContext } from 'effect';
 import { expect } from 'chai';
-import { mergeArrayStreams, pouchDB, untilEmptyCount } from '../../src/libs/core';
+import { clearThenLog, mergeArrayStreams, pouchDB, untilEmptyCount } from '../../src/libs/core';
 import PouchDB from 'pouchdb-core';
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
+import sinon from 'sinon';
 
 describe('Core libs', () => {
   const run = (test:  Effect.Effect<void, Error>) => async () => {
@@ -44,5 +45,16 @@ describe('Core libs', () => {
       [4, 5, 6, 2],
       [7, 8, 9, 3],
     ]);
+  })));
+
+  it('clearThenLog', run(Effect.gen(function* () {
+    const log = sinon.stub().returns(Effect.void);
+    const fakeConsole = { clear: Effect.void, log, } as unknown as Console.Console;
+
+    yield* clearThenLog('Hello', 'World').pipe(
+      Console.withConsole(fakeConsole),
+    );
+
+    expect(log.calledOnceWithExactly('Hello', 'World')).to.be.true;
   })));
 });

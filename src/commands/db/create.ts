@@ -1,13 +1,11 @@
 import { Args, Command } from '@effect/cli';
-import { Console, Effect, pipe, Array } from 'effect';
+import { Array, Console, Effect, pipe } from 'effect';
 import { initializeUrl } from '../../index';
 import { PouchDBService } from '../../services/pouchdb';
 
-const getPouchDB = (dbName: string) => Effect.flatMap(PouchDBService, svc => svc.get(dbName));
-
 const createDbs = (dbs: string[]) => pipe(
   dbs,
-  Array.map(getPouchDB),
+  Array.map(PouchDBService.get),
   Effect.all,
 );
 

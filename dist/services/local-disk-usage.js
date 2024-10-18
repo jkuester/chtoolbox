@@ -23,18 +23,23 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.LocalDiskUsageServiceLive = exports.LocalDiskUsageService = void 0;
+exports.LocalDiskUsageService = void 0;
 const platform_1 = require("@effect/platform");
 const effect_1 = require("effect");
 const Context = __importStar(require("effect/Context"));
 const CommandExecutor_1 = require("@effect/platform/CommandExecutor");
-exports.LocalDiskUsageService = Context.GenericTag('chtoolbox/LocalDiskUsageService');
 const parseSize = (output) => (0, effect_1.pipe)(output.split(/\s/)[0], parseInt);
 const duCommand = (path) => platform_1.Command
     .make('du', '-s', path)
     .pipe(platform_1.Command.string, effect_1.Effect.map(parseSize));
-const ServiceContext = CommandExecutor_1.CommandExecutor.pipe(effect_1.Effect.map(executor => Context.make(CommandExecutor_1.CommandExecutor, executor)));
-exports.LocalDiskUsageServiceLive = effect_1.Layer.effect(exports.LocalDiskUsageService, ServiceContext.pipe(effect_1.Effect.map(context => exports.LocalDiskUsageService.of({
-    getSize: path => duCommand(path).pipe(effect_1.Effect.provide(context)),
-}))));
+const serviceContext = CommandExecutor_1.CommandExecutor.pipe(effect_1.Effect.map(executor => Context.make(CommandExecutor_1.CommandExecutor, executor)));
+class LocalDiskUsageService extends effect_1.Effect.Service()('chtoolbox/LocalDiskUsageService', {
+    effect: serviceContext.pipe(effect_1.Effect.map(context => ({
+        getSize: (path) => duCommand(path)
+            .pipe(effect_1.Effect.provide(context)),
+    }))),
+    accessors: true,
+}) {
+}
+exports.LocalDiskUsageService = LocalDiskUsageService;
 //# sourceMappingURL=local-disk-usage.js.map

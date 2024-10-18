@@ -1,7 +1,7 @@
 import { afterEach, describe, it } from 'mocha';
 import { Effect, TestContext } from 'effect';
 import { expect } from 'chai';
-import { LocalDiskUsageService, LocalDiskUsageServiceLive } from '../../src/services/local-disk-usage';
+import { LocalDiskUsageService } from '../../src/services/local-disk-usage';
 import { NodeContext } from '@effect/platform-node';
 import sinon from 'sinon';
 import { Command } from '@effect/platform';
@@ -21,7 +21,7 @@ describe('Local Disk Usage Service', () => {
 
   const run = (test:  Effect.Effect<unknown, unknown, LocalDiskUsageService>) => async () => {
     await Effect.runPromise(test.pipe(
-      Effect.provide(LocalDiskUsageServiceLive),
+      Effect.provide(LocalDiskUsageService.Default),
       Effect.provide(TestContext.TestContext),
       Effect.provide(NodeContext.layer)
     ));
@@ -33,8 +33,7 @@ describe('Local Disk Usage Service', () => {
     commandMake.returns(FAKE_COMMAND);
     commandString.returns(Effect.succeed(`${size.toString()}  ${directory}`));
 
-    const service = yield* LocalDiskUsageService;
-    const actualSize = yield* service.getSize(directory);
+    const actualSize = yield* LocalDiskUsageService.getSize(directory);
 
     expect(actualSize).to.equal(size);
     expect(commandMake.calledOnceWithExactly('du', '-s', directory)).to.be.true;
