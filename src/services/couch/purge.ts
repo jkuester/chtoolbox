@@ -4,6 +4,8 @@ import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { Array, pipe } from 'effect';
 import { CouchService } from './couch';
+import { NonEmptyArray } from 'effect/Array';
+import RemoveDocument = PouchDB.Core.RemoveDocument;
 
 const PurgeBody = Schema.Record({ key: Schema.String, value: Schema.Array(Schema.String) });
 const getPostRequest = (dbName: string, body: typeof PurgeBody.Type) => PurgeBody.pipe(
@@ -25,7 +27,7 @@ const serviceContext = CouchService.pipe(Effect.map(couch => Context.make(CouchS
 
 export class CouchPurgeService extends Effect.Service<CouchPurgeService>()('chtoolbox/CouchPurgeService', {
   effect: serviceContext.pipe(Effect.map(context => ({
-    purge: (dbName: string, docs: { _id: string, _rev: string }[]) => pipe(
+    purge: (dbName: string, docs: NonEmptyArray<RemoveDocument>) => pipe(
       docs,
       Array.reduce({}, (acc, doc) => ({ ...acc, [doc._id]: [doc._rev] })),
       purge(dbName),
@@ -37,5 +39,5 @@ export class CouchPurgeService extends Effect.Service<CouchPurgeService>()('chto
 }
 
 export const purgeFrom = (dbName: string) => (
-  docs: { _id: string, _rev: string }[]
+  docs: NonEmptyArray<RemoveDocument>
 ) => CouchPurgeService.purge(dbName, docs);

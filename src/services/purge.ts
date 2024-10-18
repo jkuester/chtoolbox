@@ -41,7 +41,9 @@ export class PurgeService extends Effect.Service<PurgeService>()('chtoolbox/Purg
         Effect.map(Stream.tap(response => pipe(
           convertAllDocsResponse(response),
           Array.filter(filterDdoc(purgeDdocs)),
-          purgeFrom(dbName),
+          Option.liftPredicate(Array.isNonEmptyArray),
+          Option.map(purgeFrom(dbName)),
+          Option.getOrElse(() => Effect.void),
         ))),
         Effect.provide(context),
       ),

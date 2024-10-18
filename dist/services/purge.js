@@ -48,7 +48,7 @@ class PurgeService extends Effect.Service()('chtoolbox/PurgeService', {
             .pipe(
         // _purge endpoint only accepts batches of 100.
         // skip: 0 just keeps getting the next 100 (after the last was purged)
-        Effect.map((0, pouchdb_1.streamAllDocPages)({ limit: 100, skip: 0 })), Effect.map(effect_1.Stream.tap(response => (0, effect_1.pipe)(convertAllDocsResponse(response), effect_1.Array.filter(filterDdoc(purgeDdocs)), (0, purge_1.purgeFrom)(dbName)))), Effect.provide(context)),
+        Effect.map((0, pouchdb_1.streamAllDocPages)({ limit: 100, skip: 0 })), Effect.map(effect_1.Stream.tap(response => (0, effect_1.pipe)(convertAllDocsResponse(response), effect_1.Array.filter(filterDdoc(purgeDdocs)), effect_1.Option.liftPredicate(effect_1.Array.isNonEmptyArray), effect_1.Option.map((0, purge_1.purgeFrom)(dbName)), effect_1.Option.getOrElse(() => Effect.void)))), Effect.provide(context)),
     }))),
     accessors: true,
 }) {

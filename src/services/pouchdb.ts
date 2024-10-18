@@ -22,11 +22,13 @@ export const assertPouchResponse = (
   Option.getOrThrowWith(() => value),
 );
 
+type AllDocsOptions = PouchDB.Core.AllDocsWithKeyOptions |
+  PouchDB.Core.AllDocsWithinRangeOptions |
+  PouchDB.Core.AllDocsOptions;
+type AllDocsOptionsWithLimit = Omit<AllDocsOptions, 'limit'> & { limit: number };
 const getAllDocsPage = (
   db: PouchDB.Database,
-  options: PouchDB.Core.AllDocsWithKeyOptions |
-    PouchDB.Core.AllDocsWithinRangeOptions |
-    PouchDB.Core.AllDocsOptions
+  options: AllDocsOptionsWithLimit
 ) => (
   skip: number
 ): Effect.Effect<[PouchDB.Core.AllDocsResponse<object>, Option.Option<number>]> => Effect
@@ -35,18 +37,16 @@ const getAllDocsPage = (
     Effect.map((response) => [
       response,
       pipe(
-        skip + (options.limit ?? 1000),
+        skip + options.limit,
         Option.liftPredicate(() => response.rows.length === options.limit),
       )
     ])
   );
 
 export const streamAllDocPages = (
-  options: PouchDB.Core.AllDocsWithKeyOptions |
-    PouchDB.Core.AllDocsWithinRangeOptions |
-    PouchDB.Core.AllDocsOptions = {}
+  options: AllDocsOptions = {}
 ) => (db: PouchDB.Database) => pipe(
-  getAllDocsPage(db, { limit: 1000, ...options }),
+  getAllDocsPage(db, { ...options, limit: options.limit ?? 1000 }),
   pageFn => Stream.paginateEffect(0, pageFn),
 );
 
