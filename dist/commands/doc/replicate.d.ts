@@ -5,5 +5,6 @@ export declare const replicate: Command.Command<"replicate", import("../../servi
     readonly follow: boolean;
     readonly source: string;
     readonly target: string;
+    readonly all: boolean;
 }>;
 //# sourceMappingURL=replicate.d.ts.map

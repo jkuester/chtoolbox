@@ -28,7 +28,7 @@ const Schema = __importStar(require("@effect/schema/Schema"));
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
-const couch_1 = require("./couch");
+const cht_client_1 = require("../cht-client");
 const ENDPOINT = '/_node/_local/_system';
 class CouchNodeSystem extends Schema.Class('CouchNodeSystem')({
     memory: Schema.Struct({
@@ -39,10 +39,10 @@ class CouchNodeSystem extends Schema.Class('CouchNodeSystem')({
     static decodeResponse = platform_1.HttpClientResponse.schemaBodyJson(CouchNodeSystem);
 }
 exports.CouchNodeSystem = CouchNodeSystem;
-const serviceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
+const serviceContext = cht_client_1.ChtClientService.pipe(Effect.map(couch => Context.make(cht_client_1.ChtClientService, couch)));
 class CouchNodeSystemService extends Effect.Service()('chtoolbox/CouchNodeSystemService', {
     effect: serviceContext.pipe(Effect.map(context => ({
-        get: () => couch_1.CouchService
+        get: () => cht_client_1.ChtClientService
             .request(platform_1.HttpClientRequest.get(ENDPOINT))
             .pipe(Effect.flatMap(CouchNodeSystem.decodeResponse), Effect.scoped, Effect.provide(context)),
     }))),

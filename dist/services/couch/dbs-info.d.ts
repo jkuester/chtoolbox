@@ -1,6 +1,6 @@
 import * as Schema from '@effect/schema/Schema';
 import * as Effect from 'effect/Effect';
-import { CouchService } from './couch';
+import { ChtClientService } from '../cht-client';
 import { NonEmptyArray } from 'effect/Array';
 declare const CouchDbInfo_base: Schema.Class<CouchDbInfo, {
     key: typeof Schema.String;
@@ -81,7 +81,7 @@ declare const CouchDbsInfoService_base: Effect.Service.Class<CouchDbsInfoService
         post: (dbNames: NonEmptyArray<string>) => Effect.Effect<readonly CouchDbInfo[], Error | import("@effect/platform/HttpClientError").ResponseError | import("@effect/schema/ParseResult").ParseError, never>;
         get: () => Effect.Effect<readonly CouchDbInfo[], Error | import("@effect/platform/HttpClientError").ResponseError | import("@effect/schema/ParseResult").ParseError, never>;
         getDbNames: () => Effect.Effect<string[], Error | import("@effect/platform/HttpClientError").ResponseError | import("@effect/schema/ParseResult").ParseError, never>;
-    }, never, CouchService>;
+    }, never, ChtClientService>;
     readonly accessors: true;
 }>;
 export declare class CouchDbsInfoService extends CouchDbsInfoService_base {

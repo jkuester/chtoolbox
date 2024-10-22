@@ -2,7 +2,7 @@ import * as Schema from '@effect/schema/Schema';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { CouchService } from './couch';
+import { ChtClientService } from '../cht-client';
 import { Option } from 'effect';
 
 class CouchDesign extends Schema.Class<CouchDesign>('CouchDesign')({
@@ -12,11 +12,11 @@ class CouchDesign extends Schema.Class<CouchDesign>('CouchDesign')({
   static readonly decodeResponse = HttpClientResponse.schemaBodyJson(CouchDesign);
 }
 
-const serviceContext = CouchService.pipe(Effect.map(couch => Context.make(CouchService, couch)));
+const serviceContext = ChtClientService.pipe(Effect.map(couch => Context.make(ChtClientService, couch)));
 
 export class CouchDesignService extends Effect.Service<CouchDesignService>()('chtoolbox/CouchDesignService', {
   effect: serviceContext.pipe(Effect.map(context => ({
-    getViewNames: (dbName: string, designName: string): Effect.Effect<string[], Error> => CouchService
+    getViewNames: (dbName: string, designName: string): Effect.Effect<string[], Error> => ChtClientService
       .request(HttpClientRequest.get(`/${dbName}/_design/${designName}`))
       .pipe(
         Effect.flatMap(CouchDesign.decodeResponse),

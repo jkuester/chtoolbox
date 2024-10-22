@@ -28,14 +28,14 @@ const Schema = __importStar(require("@effect/schema/Schema"));
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
-const couch_1 = require("./couch");
+const cht_client_1 = require("../cht-client");
 const getDesignPath = (designName) => designName ? `/${designName}` : '';
 const getCompactRequest = (dbName, designName) => Schema
     .Struct({})
     .pipe(platform_1.HttpClientRequest.schemaBodyJson, build => build(platform_1.HttpClientRequest.post(`/${dbName}/_compact${getDesignPath(designName)}`), {}), Effect.mapError(x => x));
 const compact = (context) => (dbName, designName) => getCompactRequest(dbName, designName)
-    .pipe(Effect.flatMap(request => couch_1.CouchService.request(request)), Effect.andThen(Effect.void), Effect.scoped, Effect.provide(context));
-const serviceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
+    .pipe(Effect.flatMap(request => cht_client_1.ChtClientService.request(request)), Effect.andThen(Effect.void), Effect.scoped, Effect.provide(context));
+const serviceContext = cht_client_1.ChtClientService.pipe(Effect.map(couch => Context.make(cht_client_1.ChtClientService, couch)));
 class CouchCompactService extends Effect.Service()('chtoolbox/CouchCompactService', {
     effect: serviceContext.pipe(Effect.map(context => ({
         compactDb: compact(context),

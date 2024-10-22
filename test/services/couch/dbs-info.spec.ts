@@ -2,7 +2,7 @@ import { afterEach, describe, it } from 'mocha';
 import { Effect, Either, Layer, TestContext } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
-import { CouchService } from '../../../src/services/couch/couch';
+import { ChtClientService } from '../../../src/services/cht-client';
 import { HttpClientRequest } from '@effect/platform';
 import { CouchDbsInfoService } from '../../../src/services/couch/dbs-info';
 import { createDbInfo } from '../../utils/data-models';
@@ -31,9 +31,9 @@ describe('Couch Dbs Info Service', () => {
     await Effect.runPromise(test.pipe(
       Effect.provide(CouchDbsInfoService.Default),
       Effect.provide(TestContext.TestContext),
-      Effect.provide(Layer.succeed(CouchService, {
+      Effect.provide(Layer.succeed(ChtClientService, {
         request: couchRequest,
-      } as unknown as CouchService)),
+      } as unknown as ChtClientService)),
     ));
   };
 
