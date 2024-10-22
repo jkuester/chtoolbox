@@ -54,6 +54,12 @@ const follow = Options
     Options.withDescription('After triggering replication, wait for job to complete.'),
     Options.withDefault(false),
   );
+const all = Options
+  .boolean('all')
+  .pipe(
+    Options.withDescription('Replicate everything including design documents'),
+    Options.withDefault(false),
+  );
 const source = Args
   .text({ name: 'source' })
   .pipe(Args.withDescription('The source database name.'));
@@ -62,13 +68,15 @@ const target = Args
   .pipe(Args.withDescription('The target database name.'));
 
 export const replicate = Command
-  .make('replicate', { follow, source, target }, ({ follow, source, target }) => initializeUrl.pipe(
+  .make('replicate', { follow, source, target, all }, ({ follow, source, target, all }) => initializeUrl.pipe(
     Effect.tap(logReplicationMessage),
-    Effect.andThen(ReplicateService.replicate(source, target)),
+    Effect.andThen(ReplicateService.replicate(source, target, all)),
     Effect.map(resp => Option.liftPredicate(resp, () => follow)),
     Effect.map(Option.map(watchReplication)),
     Effect.flatMap(Option.getOrElse(() => Console.clear.pipe(
       Effect.andThen(Console.log('Replication started. Watch the active tasks for progress: chtx active-tasks'))
     ))),
   ))
-  .pipe(Command.withDescription(`Triggers a one-time replication from the source to the target database.`));
+  .pipe(Command.withDescription(
+    'Triggers a one-time server-side replication of the docs from the source to the target database.'
+  ));

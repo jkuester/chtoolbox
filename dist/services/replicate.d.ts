@@ -23,7 +23,7 @@ export declare class ReplicationDoc extends ReplicationDoc_base {
 }
 declare const ReplicateService_base: Effect.Service.Class<ReplicateService, "chtoolbox/ReplicateService", {
     readonly effect: Effect.Effect<{
-        replicate: (source: string, target: string) => Effect.Effect<PouchDB.Core.Response, never, never>;
+        replicate: (source: string, target: string, includeDdocs?: boolean) => Effect.Effect<PouchDB.Core.Response, never, never>;
         watch: (repDocId: string) => Effect.Effect<PouchDB.Core.Changes<ReplicationDoc>, never, never>;
     }, never, EnvironmentService | PouchDBService>;
     readonly accessors: true;

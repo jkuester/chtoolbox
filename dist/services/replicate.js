@@ -30,7 +30,10 @@ const pouchdb_1 = require("./pouchdb");
 const environment_1 = require("./environment");
 const schema_1 = require("@effect/schema");
 const effect_1 = require("effect");
-const createReplicationDoc = (source, target) => environment_1.EnvironmentService
+const SKIP_DDOC_SELECTOR = {
+    _id: { '$regex': '^(?!_design/)' },
+};
+const createReplicationDoc = (source, target, includeDdocs) => environment_1.EnvironmentService
     .get()
     .pipe(Effect.map(env => ({
     user_ctx: {
@@ -42,6 +45,7 @@ const createReplicationDoc = (source, target) => environment_1.EnvironmentServic
     create_target: false,
     continuous: false,
     owner: env.user,
+    selector: includeDdocs ? undefined : SKIP_DDOC_SELECTOR,
 })));
 class ReplicationDoc extends schema_1.Schema.Class('ReplicationDoc')({
     _replication_state: schema_1.Schema.String,
@@ -61,8 +65,8 @@ const serviceContext = Effect
     .pipe(Context.add(environment_1.EnvironmentService, env))));
 class ReplicateService extends Effect.Service()('chtoolbox/ReplicateService', {
     effect: serviceContext.pipe(Effect.map(context => ({
-        replicate: (source, target) => Effect
-            .all([pouchdb_1.PouchDBService.get('_replicator'), createReplicationDoc(source, target)])
+        replicate: (source, target, includeDdocs = false) => Effect
+            .all([pouchdb_1.PouchDBService.get('_replicator'), createReplicationDoc(source, target, includeDdocs)])
             .pipe(Effect.flatMap(([db, doc]) => Effect.promise(() => db.bulkDocs([doc]))), Effect.map(([resp]) => resp), Effect.map(pouchdb_1.assertPouchResponse), Effect.provide(context)),
         watch: (repDocId) => pouchdb_1.PouchDBService
             .get('_replicator')

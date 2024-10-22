@@ -5,8 +5,11 @@ import { EnvironmentService } from './environment';
 import { Schema } from '@effect/schema';
 import { Redacted } from 'effect';
 
+const SKIP_DDOC_SELECTOR = {
+  _id: { '$regex': '^(?!_design/)' },
+};
 
-const createReplicationDoc = (source: string, target: string) => EnvironmentService
+const createReplicationDoc = (source: string, target: string, includeDdocs: boolean) => EnvironmentService
   .get()
   .pipe(
     Effect.map(env => ({
@@ -19,6 +22,7 @@ const createReplicationDoc = (source: string, target: string) => EnvironmentServ
       create_target: false,
       continuous: false,
       owner: env.user,
+      selector: includeDdocs ? undefined : SKIP_DDOC_SELECTOR,
     })),
   );
 
@@ -44,8 +48,8 @@ const serviceContext = Effect
 
 export class ReplicateService extends Effect.Service<ReplicateService>()('chtoolbox/ReplicateService', {
   effect: serviceContext.pipe(Effect.map(context => ({
-    replicate: (source: string, target: string) => Effect
-      .all([PouchDBService.get('_replicator'), createReplicationDoc(source, target)])
+    replicate: (source: string, target: string, includeDdocs = false) => Effect
+      .all([PouchDBService.get('_replicator'), createReplicationDoc(source, target, includeDdocs)])
       .pipe(
         Effect.flatMap(([db, doc]) => Effect.promise(() => db.bulkDocs([doc]))),
         Effect.map(([resp]) => resp),

@@ -68,6 +68,39 @@ describe('Replicate Service', () => {
         create_target: false,
         continuous: false,
         owner,
+        selector: {
+          _id: { '$regex': '^(?!_design/)' },
+        },
+      }])).to.be.true;
+      expect(assertPouchResponse.calledOnceWithExactly(FAKE_RESPONSE)).to.be.true;
+    })));
+
+    it('includes ddocs in replication when param is set', run(Effect.gen(function* () {
+      const owner = 'medic';
+      const url = `http://${owner}:password@localhost:5984/`;
+      const env = Redacted.make(url).pipe(url => ({ url, user: owner }));
+      environmentGet.returns(Effect.succeed(env));
+      const source = 'source';
+      const target = 'target';
+      bulkDocs.resolves([FAKE_RESPONSE]);
+      assertPouchResponse.returns(FAKE_RESPONSE);
+
+      const response = yield* ReplicateService.replicate(source, target, true);
+
+      expect(response).to.deep.equal(FAKE_RESPONSE);
+      expect(pouchGet.calledOnceWithExactly('_replicator')).to.be.true;
+      expect(environmentGet.calledOnceWithExactly()).to.be.true;
+      expect(bulkDocs.calledOnceWithExactly([{
+        user_ctx: {
+          name: owner,
+          roles: ['_admin', '_reader', '_writer'],
+        },
+        source: { url: `${url}${source}` },
+        target: { url: `${url}${target}` },
+        create_target: false,
+        continuous: false,
+        owner,
+        selector: undefined,
       }])).to.be.true;
       expect(assertPouchResponse.calledOnceWithExactly(FAKE_RESPONSE)).to.be.true;
     })));

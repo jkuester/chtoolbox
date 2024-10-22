@@ -27,6 +27,9 @@ const watchReplication = ({ id }) => replicate_1.ReplicateService
 const follow = cli_1.Options
     .boolean('follow')
     .pipe(cli_1.Options.withAlias('f'), cli_1.Options.withDescription('After triggering replication, wait for job to complete.'), cli_1.Options.withDefault(false));
+const all = cli_1.Options
+    .boolean('all')
+    .pipe(cli_1.Options.withDescription('Replicate everything including design documents'), cli_1.Options.withDefault(false));
 const source = cli_1.Args
     .text({ name: 'source' })
     .pipe(cli_1.Args.withDescription('The source database name.'));
@@ -34,6 +37,6 @@ const target = cli_1.Args
     .text({ name: 'target' })
     .pipe(cli_1.Args.withDescription('The target database name.'));
 exports.replicate = cli_1.Command
-    .make('replicate', { follow, source, target }, ({ follow, source, target }) => index_1.initializeUrl.pipe(effect_1.Effect.tap(logReplicationMessage), effect_1.Effect.andThen(replicate_1.ReplicateService.replicate(source, target)), effect_1.Effect.map(resp => effect_1.Option.liftPredicate(resp, () => follow)), effect_1.Effect.map(effect_1.Option.map(watchReplication)), effect_1.Effect.flatMap(effect_1.Option.getOrElse(() => effect_1.Console.clear.pipe(effect_1.Effect.andThen(effect_1.Console.log('Replication started. Watch the active tasks for progress: chtx active-tasks')))))))
-    .pipe(cli_1.Command.withDescription(`Triggers a one-time replication from the source to the target database.`));
+    .make('replicate', { follow, source, target, all }, ({ follow, source, target, all }) => index_1.initializeUrl.pipe(effect_1.Effect.tap(logReplicationMessage), effect_1.Effect.andThen(replicate_1.ReplicateService.replicate(source, target, all)), effect_1.Effect.map(resp => effect_1.Option.liftPredicate(resp, () => follow)), effect_1.Effect.map(effect_1.Option.map(watchReplication)), effect_1.Effect.flatMap(effect_1.Option.getOrElse(() => effect_1.Console.clear.pipe(effect_1.Effect.andThen(effect_1.Console.log('Replication started. Watch the active tasks for progress: chtx active-tasks')))))))
+    .pipe(cli_1.Command.withDescription('Triggers a one-time server-side replication of the docs from the source to the target database.'));
 //# sourceMappingURL=replicate.js.map
