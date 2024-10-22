@@ -2,7 +2,7 @@ import { describe, it } from 'mocha';
 import { Array, Chunk, Effect, Either, Layer, Redacted, Stream, TestContext } from 'effect';
 import sinon, { SinonStub } from 'sinon';
 import * as core from '../../src/libs/core';
-import { assertPouchResponse, PouchDBService, streamAllDocPages } from '../../src/services/pouchdb';
+import { assertPouchResponse, PouchDBService, streamAllDocPages, streamQueryPages } from '../../src/services/pouchdb';
 import { EnvironmentService } from '../../src/services/environment';
 import { expect } from 'chai';
 
@@ -160,6 +160,63 @@ describe('PouchDB Service', () => {
 
       expect(pages).to.deep.equal([firstResponse]);
       expect(allDocs.args).to.deep.equal([[{ limit: 1000, skip: 0 }]]);
+    })));
+  });
+
+  describe('streamQueryPages', () => {
+    const indexName = 'test-index';
+    const fakeDdb = { query: () => null } as unknown as PouchDB.Database;
+    let query: SinonStub;
+
+    beforeEach(() => {
+      query = sinon.stub(fakeDdb, 'query');
+    });
+
+    it('streams pages of docs with the default options', run(Effect.gen(function* () {
+      const firstResponse = { rows: Array.replicate({ id: '1' }, 1000) };
+      const secondResponse = { rows: Array.replicate({ id: '3' }, 1000) };
+      const thirdResponse = { rows: Array.replicate({ id: '2' }, 999) };
+      query.onFirstCall().resolves(firstResponse);
+      query.onSecondCall().resolves(secondResponse);
+      query.onThirdCall().resolves(thirdResponse);
+
+      const stream = streamQueryPages(indexName)(fakeDdb);
+      const pages = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
+
+      expect(pages).to.deep.equal([firstResponse, secondResponse, thirdResponse]);
+      expect(query.args).to.deep.equal([
+        [indexName, { limit: 1000, skip: 0 }],
+        [indexName, { limit: 1000, skip: 1000 }],
+        [indexName, { limit: 1000, skip: 2000 }]
+      ]);
+    })));
+
+    it('streams pages of docs with the provided options', run(Effect.gen(function* () {
+      const firstResponse = { rows: [{ id: '1' }, { id: '2' }] };
+      const secondResponse = { rows: [{ id: '3' }] };
+      query.onFirstCall().resolves(firstResponse);
+      query.onSecondCall().resolves(secondResponse);
+      const key = 'hello';
+
+      const stream = streamQueryPages(indexName, { limit: 2, skip: 0, key })(fakeDdb);
+      const pages = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
+
+      expect(pages).to.deep.equal([firstResponse, secondResponse]);
+      expect(query.args).to.deep.equal([
+        [indexName, { limit: 2, skip: 0, key }],
+        [indexName, { limit: 2, skip: 0, key }]
+      ]);
+    })));
+
+    it('streams an empty page when no docs are found', run(Effect.gen(function* () {
+      const firstResponse = { rows: [] };
+      query.onFirstCall().resolves(firstResponse);
+
+      const stream = streamQueryPages(indexName)(fakeDdb);
+      const pages = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
+
+      expect(pages).to.deep.equal([firstResponse]);
+      expect(query.args).to.deep.equal([[indexName, { limit: 1000, skip: 0 }]]);
     })));
   });
 });

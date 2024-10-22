@@ -28,6 +28,7 @@
     "@types/node": "^22.7.5",
     "@types/pouchdb-adapter-http": "^6.1.6",
     "@types/pouchdb-core": "^7.0.15",
+    "@types/pouchdb-mapreduce": "^6.1.10",
     "@types/sinon": "^10.0.20",
     "@typescript-eslint/eslint-plugin": "^8.8.1",
     "@typescript-eslint/parser": "^8.8.1",
@@ -42,13 +43,14 @@
     "typescript": "^5.6.3"
   },
   "dependencies": {
-    "@effect/typeclass": "^0.28.2",
     "@effect/cli": "^0.47.3",
     "@effect/platform": "^0.68.3",
     "@effect/platform-node": "^0.63.3",
+    "@effect/typeclass": "^0.28.2",
     "effect": "^3.9.1",
     "pouchdb-adapter-http": "^9.0.0",
     "pouchdb-core": "^9.0.0",
+    "pouchdb-mapreduce": "^9.0.0",
     "pouchdb-session-authentication": "^1.1.0"
   }
 }

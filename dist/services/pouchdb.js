@@ -26,29 +26,41 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PouchDBService = exports.streamAllDocPages = exports.assertPouchResponse = void 0;
+exports.PouchDBService = exports.streamQueryPages = exports.streamAllDocPages = exports.assertPouchResponse = void 0;
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
 const effect_1 = require("effect");
 const pouchdb_core_1 = __importDefault(require("pouchdb-core"));
 const core_1 = require("../libs/core");
 const pouchdb_adapter_http_1 = __importDefault(require("pouchdb-adapter-http"));
+const pouchdb_mapreduce_1 = __importDefault(require("pouchdb-mapreduce"));
 // @ts-expect-error no types for this package
 const pouchdb_session_authentication_1 = __importDefault(require("pouchdb-session-authentication"));
 const environment_1 = require("./environment");
 pouchdb_core_1.default.plugin(pouchdb_adapter_http_1.default);
 pouchdb_core_1.default.plugin(pouchdb_session_authentication_1.default);
+pouchdb_core_1.default.plugin(pouchdb_mapreduce_1.default);
 const isPouchResponse = (value) => 'ok' in value && value.ok;
 const assertPouchResponse = (value) => (0, effect_1.pipe)(effect_1.Option.liftPredicate(value, isPouchResponse), effect_1.Option.getOrThrowWith(() => value));
 exports.assertPouchResponse = assertPouchResponse;
-const getAllDocsPage = (db, options) => (skip) => Effect
-    .promise(() => db.allDocs({ skip, ...options }))
+const allDocs = (db, options) => Effect
+    .promise(() => db.allDocs(options));
+const getAllDocsPage = (db, options) => (skip) => allDocs(db, { skip, ...options })
     .pipe(Effect.map((response) => [
     response,
-    (0, effect_1.pipe)(skip + (options.limit ?? 1000), effect_1.Option.liftPredicate(() => response.rows.length === options.limit))
+    effect_1.Option.liftPredicate(skip + options.limit, () => response.rows.length === options.limit),
 ]));
-const streamAllDocPages = (options = {}) => (db) => (0, effect_1.pipe)(getAllDocsPage(db, { limit: 1000, ...options }), pageFn => effect_1.Stream.paginateEffect(0, pageFn));
+const streamAllDocPages = (options = {}) => (db) => (0, effect_1.pipe)(getAllDocsPage(db, { ...options, limit: options.limit ?? 1000 }), pageFn => effect_1.Stream.paginateEffect(0, pageFn));
 exports.streamAllDocPages = streamAllDocPages;
+const query = (db, viewIndex, options) => Effect
+    .promise(() => db.query(viewIndex, options));
+const getQueryPage = (db, viewIndex, options) => (skip) => query(db, viewIndex, { skip, ...options })
+    .pipe(Effect.map((response) => [
+    response,
+    effect_1.Option.liftPredicate(skip + options.limit, () => response.rows.length === options.limit),
+]));
+const streamQueryPages = (viewIndex, options = {}) => (db) => (0, effect_1.pipe)(getQueryPage(db, viewIndex, { ...options, limit: options.limit ?? 1000 }), pageFn => effect_1.Stream.paginateEffect(0, pageFn));
+exports.streamQueryPages = streamQueryPages;
 const couchUrl = environment_1.EnvironmentService
     .get()
     .pipe(Effect.map(({ url }) => url));
