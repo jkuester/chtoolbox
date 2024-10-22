@@ -1,9 +1,9 @@
 import * as Effect from 'effect/Effect';
-import { CouchService } from './couch';
+import { ChtClientService } from '../cht-client';
 declare const CouchDesignService_base: Effect.Service.Class<CouchDesignService, "chtoolbox/CouchDesignService", {
     readonly effect: Effect.Effect<{
         getViewNames: (dbName: string, designName: string) => Effect.Effect<string[], Error>;
-    }, never, CouchService>;
+    }, never, ChtClientService>;
     readonly accessors: true;
 }>;
 export declare class CouchDesignService extends CouchDesignService_base {

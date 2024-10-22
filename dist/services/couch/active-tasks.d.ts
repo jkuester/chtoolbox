@@ -1,6 +1,6 @@
 import * as Schema from '@effect/schema/Schema';
 import * as Effect from 'effect/Effect';
-import { CouchService } from './couch';
+import { ChtClientService } from '../cht-client';
 import { Option, Stream } from 'effect';
 declare const CouchActiveTask_base: Schema.Class<CouchActiveTask, {
     database: typeof Schema.String;
@@ -52,7 +52,7 @@ declare const CouchActiveTasksService_base: Effect.Service.Class<CouchActiveTask
     readonly effect: Effect.Effect<{
         get: () => Effect.Effect<CouchActiveTask[], Error | import("@effect/platform/HttpClientError").ResponseError | import("@effect/schema/ParseResult").ParseError, never>;
         stream: (interval?: number) => Stream.Stream<CouchActiveTask[], Error | import("@effect/platform/HttpClientError").ResponseError | import("@effect/schema/ParseResult").ParseError, never>;
-    }, never, CouchService>;
+    }, never, ChtClientService>;
     readonly accessors: true;
 }>;
 export declare class CouchActiveTasksService extends CouchActiveTasksService_base {

@@ -1,1 +1,1 @@
-{"version":3,"file":"compact.d.ts","sourceRoot":"","sources":["../../../src/services/couch/compact.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,MAAM,MAAM,eAAe,CAAC;AAExC,OAAO,EAAE,YAAY,EAAE,MAAM,SAAS,CAAC;;;4BAa7B,MAAM,eACD,MAAM;gCADX,MAAM,eACD,MAAM;;;;AAWrB,qBAAa,mBAAoB,SAAQ,wBAMvC;CACD"}
+{"version":3,"file":"compact.d.ts","sourceRoot":"","sources":["../../../src/services/couch/compact.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,MAAM,MAAM,eAAe,CAAC;AAExC,OAAO,EAAE,gBAAgB,EAAE,MAAM,eAAe,CAAC;;;4BAavC,MAAM,eACD,MAAM;gCADX,MAAM,eACD,MAAM;;;;AAWrB,qBAAa,mBAAoB,SAAQ,wBAMvC;CACD"}

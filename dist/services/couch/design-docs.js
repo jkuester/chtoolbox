@@ -29,7 +29,7 @@ const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
 const effect_1 = require("effect");
-const couch_1 = require("./couch");
+const cht_client_1 = require("../cht-client");
 class CouchDesignDocs extends Schema.Class('CouchDesignDocs')({
     rows: Schema.Array(Schema.Struct({
         id: Schema.String,
@@ -38,10 +38,10 @@ class CouchDesignDocs extends Schema.Class('CouchDesignDocs')({
     static decodeResponse = platform_1.HttpClientResponse.schemaBodyJson(CouchDesignDocs);
 }
 exports.CouchDesignDocs = CouchDesignDocs;
-const serviceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
+const serviceContext = cht_client_1.ChtClientService.pipe(Effect.map(couch => Context.make(cht_client_1.ChtClientService, couch)));
 class CouchDesignDocsService extends Effect.Service()('chtoolbox/CouchDesignDocsService', {
     effect: serviceContext.pipe(Effect.map(context => ({
-        getNames: (dbName) => couch_1.CouchService
+        getNames: (dbName) => cht_client_1.ChtClientService
             .request(platform_1.HttpClientRequest.get(`/${dbName}/_design_docs`))
             .pipe(Effect.flatMap(CouchDesignDocs.decodeResponse), Effect.scoped, Effect.map(designDocs => designDocs.rows), Effect.map(effect_1.Array.map(({ id }) => id)), Effect.map(effect_1.Array.map(id => id.split('/')[1])), Effect.provide(context)),
     }))),

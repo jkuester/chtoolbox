@@ -3,7 +3,7 @@ import { Command, Options } from '@effect/cli';
 import { NodeContext, NodeHttpClient, NodeRuntime } from '@effect/platform-node';
 import { Effect, Layer, Option, Redacted, String } from 'effect';
 import { CouchNodeSystemService } from './services/couch/node-system';
-import { CouchService } from './services/couch/couch';
+import { ChtClientService } from './services/cht-client';
 import { CouchDbsInfoService } from './services/couch/dbs-info';
 import { monitor } from './commands/monitor';
 import packageJson from '../package.json';
@@ -79,7 +79,7 @@ cli(process.argv)
     Effect.provide(CouchPurgeService.Default),
     Effect.provide(CouchViewService.Default),
     Effect.provide(PouchDBService.Default),
-    Effect.provide(CouchService.Default.pipe(
+    Effect.provide(ChtClientService.Default.pipe(
       Layer.provide(NodeHttpClient.layerWithoutAgent.pipe(
         Layer.provide(NodeHttpClient.makeAgentLayer({ rejectUnauthorized: false }))
       )),

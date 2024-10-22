@@ -27,14 +27,14 @@ exports.CouchViewService = void 0;
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
-const couch_1 = require("./couch");
+const cht_client_1 = require("../cht-client");
 const getWarmRequest = (dbName, designName, viewName) => platform_1.HttpClientRequest
     .get(`/${dbName}/_design/${designName}/_view/${viewName}`)
     .pipe(platform_1.HttpClientRequest.setUrlParam('limit', '0'));
-const serviceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
+const serviceContext = cht_client_1.ChtClientService.pipe(Effect.map(couch => Context.make(cht_client_1.ChtClientService, couch)));
 class CouchViewService extends Effect.Service()('chtoolbox/CouchViewService', {
     effect: serviceContext.pipe(Effect.map(context => ({
-        warm: (dbName, designName, viewName) => couch_1.CouchService
+        warm: (dbName, designName, viewName) => cht_client_1.ChtClientService
             .request(getWarmRequest(dbName, designName, viewName))
             .pipe(Effect.andThen(Effect.void), Effect.scoped, Effect.provide(context)),
     }))),

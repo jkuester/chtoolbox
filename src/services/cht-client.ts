@@ -1,4 +1,4 @@
-import { EnvironmentService } from '../environment';
+import { EnvironmentService } from './environment';
 import * as Effect from 'effect/Effect';
 import { HttpClient, HttpClientRequest } from '@effect/platform';
 import * as Context from 'effect/Context';
@@ -24,7 +24,7 @@ const serviceContext = Effect
     .make(EnvironmentService, env)
     .pipe(Context.add(HttpClient.HttpClient, client))));
 
-export class CouchService extends Effect.Service<CouchService>()('chtoolbox/CouchService', {
+export class ChtClientService extends Effect.Service<ChtClientService>()('chtoolbox/ChtClientService', {
   effect: serviceContext.pipe(Effect.map(context => ({
     request: (request: HttpClientRequest.HttpClientRequest) => pipe(
       clientWithUrl,

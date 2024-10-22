@@ -28,7 +28,7 @@ const Schema = __importStar(require("@effect/schema/Schema"));
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
-const couch_1 = require("./couch");
+const cht_client_1 = require("../cht-client");
 const effect_1 = require("effect");
 const ENDPOINT = '/_active_tasks';
 class CouchActiveTask extends Schema.Class('CouchActiveTask')({
@@ -65,8 +65,8 @@ const taskHasType = (types) => (task) => (0, effect_1.pipe)(types, effect_1.Arra
 const filterStreamByType = (...types) => (taskStream) => taskStream.pipe(effect_1.Stream.map(effect_1.Array.filter(taskHasType(types))));
 exports.filterStreamByType = filterStreamByType;
 const orderByStartedOn = effect_1.Order.make((a, b) => effect_1.Number.Order(a.started_on, b.started_on));
-const activeTasks = couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(ENDPOINT))), Effect.flatMap(CouchActiveTask.decodeResponse), Effect.scoped, Effect.map(effect_1.Array.sort(orderByStartedOn)));
-const serviceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
+const activeTasks = cht_client_1.ChtClientService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(ENDPOINT))), Effect.flatMap(CouchActiveTask.decodeResponse), Effect.scoped, Effect.map(effect_1.Array.sort(orderByStartedOn)));
+const serviceContext = cht_client_1.ChtClientService.pipe(Effect.map(couch => Context.make(cht_client_1.ChtClientService, couch)));
 class CouchActiveTasksService extends Effect.Service()('chtoolbox/CouchActiveTasksService', {
     effect: serviceContext.pipe(Effect.map(context => ({
         get: () => activeTasks.pipe(Effect.provide(context)),

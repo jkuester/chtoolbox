@@ -23,8 +23,8 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CouchService = void 0;
-const environment_1 = require("../environment");
+exports.ChtClientService = void 0;
+const environment_1 = require("./environment");
 const Effect = __importStar(require("effect/Effect"));
 const platform_1 = require("@effect/platform");
 const Context = __importStar(require("effect/Context"));
@@ -41,12 +41,12 @@ const serviceContext = Effect
     .pipe(Effect.map(([env, client]) => Context
     .make(environment_1.EnvironmentService, env)
     .pipe(Context.add(platform_1.HttpClient.HttpClient, client))));
-class CouchService extends Effect.Service()('chtoolbox/CouchService', {
+class ChtClientService extends Effect.Service()('chtoolbox/ChtClientService', {
     effect: serviceContext.pipe(Effect.map(context => ({
         request: (request) => (0, effect_1.pipe)(clientWithUrl, Effect.flatMap(client => client.execute(request)), Effect.mapError(x => x), Effect.provide(context))
     }))),
     accessors: true,
 }) {
 }
-exports.CouchService = CouchService;
-//# sourceMappingURL=couch.js.map
+exports.ChtClientService = ChtClientService;
+//# sourceMappingURL=cht-client.js.map

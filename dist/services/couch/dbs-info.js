@@ -29,7 +29,7 @@ const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
 const effect_1 = require("effect");
-const couch_1 = require("./couch");
+const cht_client_1 = require("../cht-client");
 const ENDPOINT = '/_dbs_info';
 const DbsInfoBody = Schema.Struct({ keys: Schema.Array(Schema.String) });
 const getPostRequest = (keys) => DbsInfoBody.pipe(platform_1.HttpClientRequest.schemaBodyJson, build => build(platform_1.HttpClientRequest.post(ENDPOINT), { keys }), Effect.mapError(x => x));
@@ -60,12 +60,12 @@ class CouchDbInfo extends Schema.Class('CouchDbInfo')({
     static decodeResponse = platform_1.HttpClientResponse.schemaBodyJson(Schema.Array(CouchDbInfo));
 }
 exports.CouchDbInfo = CouchDbInfo;
-const dbsInfo = couch_1.CouchService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(ENDPOINT))), Effect.flatMap(CouchDbInfo.decodeResponse), Effect.scoped);
-const serviceContext = couch_1.CouchService.pipe(Effect.map(couch => Context.make(couch_1.CouchService, couch)));
+const dbsInfo = cht_client_1.ChtClientService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(ENDPOINT))), Effect.flatMap(CouchDbInfo.decodeResponse), Effect.scoped);
+const serviceContext = cht_client_1.ChtClientService.pipe(Effect.map(couch => Context.make(cht_client_1.ChtClientService, couch)));
 class CouchDbsInfoService extends Effect.Service()('chtoolbox/CouchDbsInfoService', {
     effect: serviceContext.pipe(Effect.map(context => ({
         post: (dbNames) => getPostRequest(dbNames)
-            .pipe(Effect.flatMap(request => couch_1.CouchService.request(request)), Effect.flatMap(CouchDbInfo.decodeResponse), Effect.scoped, Effect.provide(context)),
+            .pipe(Effect.flatMap(request => cht_client_1.ChtClientService.request(request)), Effect.flatMap(CouchDbInfo.decodeResponse), Effect.scoped, Effect.provide(context)),
         get: () => dbsInfo.pipe(Effect.provide(context)),
         getDbNames: () => dbsInfo.pipe(Effect.map(effect_1.Array.map(x => x.key)), Effect.provide(context))
     }))),

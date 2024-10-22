@@ -2,7 +2,7 @@ import { afterEach, describe, it } from 'mocha';
 import { Effect, Layer, TestContext } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
-import { CouchService } from '../../../src/services/couch/couch';
+import { ChtClientService } from '../../../src/services/cht-client';
 import { HttpClientRequest } from '@effect/platform';
 import { CouchDesignDocsService } from '../../../src/services/couch/design-docs';
 
@@ -23,9 +23,9 @@ describe('Couch Design Docs Service', () => {
     await Effect.runPromise(test.pipe(
       Effect.provide(CouchDesignDocsService.Default),
       Effect.provide(TestContext.TestContext),
-      Effect.provide(Layer.succeed(CouchService, {
+      Effect.provide(Layer.succeed(ChtClientService, {
         request: couchRequest,
-      } as unknown as CouchService)),
+      } as unknown as ChtClientService)),
     ));
   };
 

@@ -3,7 +3,7 @@ import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { Array } from 'effect';
-import { CouchService } from './couch';
+import { ChtClientService } from '../cht-client';
 import { NonEmptyArray } from 'effect/Array';
 
 const ENDPOINT = '/_dbs_info';
@@ -45,19 +45,19 @@ export class CouchDbInfo extends Schema.Class<CouchDbInfo>('CouchDbInfo')({
   static readonly decodeResponse = HttpClientResponse.schemaBodyJson(Schema.Array(CouchDbInfo));
 }
 
-const dbsInfo = CouchService.pipe(
+const dbsInfo = ChtClientService.pipe(
   Effect.flatMap(couch => couch.request(HttpClientRequest.get(ENDPOINT))),
   Effect.flatMap(CouchDbInfo.decodeResponse),
   Effect.scoped,
 );
 
-const serviceContext = CouchService.pipe(Effect.map(couch => Context.make(CouchService, couch)));
+const serviceContext = ChtClientService.pipe(Effect.map(couch => Context.make(ChtClientService, couch)));
 
 export class CouchDbsInfoService extends Effect.Service<CouchDbsInfoService>()('chtoolbox/CouchDbsInfoService', {
   effect: serviceContext.pipe(Effect.map(context => ({
     post: (dbNames: NonEmptyArray<string>) => getPostRequest(dbNames)
       .pipe(
-        Effect.flatMap(request => CouchService.request(request)),
+        Effect.flatMap(request => ChtClientService.request(request)),
         Effect.flatMap(CouchDbInfo.decodeResponse),
         Effect.scoped,
         Effect.provide(context),

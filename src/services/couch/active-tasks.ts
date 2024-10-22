@@ -2,7 +2,7 @@ import * as Schema from '@effect/schema/Schema';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { CouchService } from './couch';
+import { ChtClientService } from '../cht-client';
 import { Array, Number, Option, Order, pipe, Record, Schedule, Stream, String } from 'effect';
 
 const ENDPOINT = '/_active_tasks';
@@ -66,14 +66,14 @@ const orderByStartedOn = Order.make(
   (a: CouchActiveTask, b: CouchActiveTask) => Number.Order(a.started_on, b.started_on)
 );
 
-const activeTasks = CouchService.pipe(
+const activeTasks = ChtClientService.pipe(
   Effect.flatMap(couch => couch.request(HttpClientRequest.get(ENDPOINT))),
   Effect.flatMap(CouchActiveTask.decodeResponse),
   Effect.scoped,
   Effect.map(Array.sort(orderByStartedOn)),
 );
 
-const serviceContext = CouchService.pipe(Effect.map(couch => Context.make(CouchService, couch)));
+const serviceContext = ChtClientService.pipe(Effect.map(couch => Context.make(ChtClientService, couch)));
 
 export class CouchActiveTasksService extends Effect.Service<CouchActiveTasksService>()(
   'chtoolbox/CouchActiveTasksService',

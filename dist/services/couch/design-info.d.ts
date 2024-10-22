@@ -1,6 +1,6 @@
 import * as Schema from '@effect/schema/Schema';
 import * as Effect from 'effect/Effect';
-import { CouchService } from './couch';
+import { ChtClientService } from '../cht-client';
 declare const CouchDesignInfo_base: Schema.Class<CouchDesignInfo, {
     name: typeof Schema.String;
     view_index: Schema.Struct<{
@@ -75,7 +75,7 @@ export declare class CouchDesignInfo extends CouchDesignInfo_base {
 declare const CouchDesignInfoService_base: Effect.Service.Class<CouchDesignInfoService, "chtoolbox/CouchDesignInfoService", {
     readonly effect: Effect.Effect<{
         get: (dbName: string, designName: string) => Effect.Effect<CouchDesignInfo, Error | import("@effect/platform/HttpClientError").ResponseError | import("@effect/schema/ParseResult").ParseError, never>;
-    }, never, CouchService>;
+    }, never, ChtClientService>;
     readonly accessors: true;
 }>;
 export declare class CouchDesignInfoService extends CouchDesignInfoService_base {

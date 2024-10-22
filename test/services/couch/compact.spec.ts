@@ -3,7 +3,7 @@ import { Effect, Either, Layer, TestContext } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
 import { CouchCompactService } from '../../../src/services/couch/compact';
-import { CouchService } from '../../../src/services/couch/couch';
+import { ChtClientService } from '../../../src/services/cht-client';
 import { HttpClientRequest } from '@effect/platform';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
@@ -27,9 +27,9 @@ describe('Couch Compact Service', () => {
     await Effect.runPromise(test.pipe(
       Effect.provide(CouchCompactService.Default),
       Effect.provide(TestContext.TestContext),
-      Effect.provide(Layer.succeed(CouchService, {
+      Effect.provide(Layer.succeed(ChtClientService, {
         request: couchRequest,
-      } as unknown as CouchService)),
+      } as unknown as ChtClientService)),
     ));
   };
 

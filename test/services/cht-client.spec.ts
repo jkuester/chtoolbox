@@ -2,12 +2,12 @@ import { describe, it } from 'mocha';
 import { Effect, Either, Layer, Redacted, Scope, TestContext } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
-import { CouchService } from '../../../src/services/couch/couch';
+import { ChtClientService } from '../../src/services/cht-client';
 import { HttpClient, HttpClientRequest } from '@effect/platform';
-import { EnvironmentService } from '../../../src/services/environment';
+import { EnvironmentService } from '../../src/services/environment';
 import { NodeHttpClient } from '@effect/platform-node';
 
-describe('Couch Service', () => {
+describe('CHT Client Service', () => {
   let environmentGet: SinonStub;
   let filterStatusOkay: SinonStub;
   let prependUrl: SinonStub;
@@ -22,9 +22,9 @@ describe('Couch Service', () => {
 
   afterEach(() => sinon.restore());
 
-  const run = (test: Effect.Effect<unknown, unknown, CouchService | Scope.Scope>) => async () => {
+  const run = (test: Effect.Effect<unknown, unknown, ChtClientService | Scope.Scope>) => async () => {
     await Effect.runPromise(test.pipe(
-      Effect.provide(CouchService.Default),
+      Effect.provide(ChtClientService.Default),
       Effect.provide(TestContext.TestContext),
       Effect.provide(Layer.succeed(EnvironmentService, {
         get: environmentGet,
@@ -49,7 +49,7 @@ describe('Couch Service', () => {
     mapRequest.returns(innerMapRequest);
     const request = HttpClientRequest.get('/test');
 
-    const response = yield* CouchService.request(request);
+    const response = yield* ChtClientService.request(request);
 
     expect(response).to.deep.equal(fakeHttpResponse);
     expect(environmentGet.calledOnceWithExactly()).to.be.true;
@@ -76,7 +76,7 @@ describe('Couch Service', () => {
     mapRequest.returns(innerMapRequest);
     const request = HttpClientRequest.get('/test');
 
-    const either = yield* Effect.either(CouchService.request(request));
+    const either = yield* Effect.either(ChtClientService.request(request));
 
     if (Either.isLeft(either)) {
       expect(either.left).to.equal(expectedError);

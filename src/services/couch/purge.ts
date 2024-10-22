@@ -3,7 +3,7 @@ import { HttpClientRequest } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { Array, pipe } from 'effect';
-import { CouchService } from './couch';
+import { ChtClientService } from '../cht-client';
 import { NonEmptyArray } from 'effect/Array';
 import RemoveDocument = PouchDB.Core.RemoveDocument;
 
@@ -19,11 +19,11 @@ const getPostRequest = (dbName: string, body: typeof PurgeBody.Type) => PurgeBod
 
 const purge = (dbName: string) => (body: typeof PurgeBody.Type) => getPostRequest(dbName, body)
   .pipe(
-    Effect.flatMap(CouchService.request),
+    Effect.flatMap(ChtClientService.request),
     Effect.scoped,
   );
 
-const serviceContext = CouchService.pipe(Effect.map(couch => Context.make(CouchService, couch)));
+const serviceContext = ChtClientService.pipe(Effect.map(couch => Context.make(ChtClientService, couch)));
 
 export class CouchPurgeService extends Effect.Service<CouchPurgeService>()('chtoolbox/CouchPurgeService', {
   effect: serviceContext.pipe(Effect.map(context => ({
