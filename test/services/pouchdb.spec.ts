@@ -1,8 +1,14 @@
 import { describe, it } from 'mocha';
-import { Array, Chunk, Effect, Either, Layer, Redacted, Stream, TestContext } from 'effect';
+import { Array, Chunk, Effect, Either, Layer, Option, Redacted, Stream, TestContext } from 'effect';
 import sinon, { SinonStub } from 'sinon';
 import * as core from '../../src/libs/core';
-import { assertPouchResponse, PouchDBService, streamAllDocPages, streamQueryPages } from '../../src/services/pouchdb';
+import {
+  assertPouchResponse,
+  PouchDBService,
+  streamAllDocPages,
+  streamChanges,
+  streamQueryPages
+} from '../../src/services/pouchdb';
 import { EnvironmentService } from '../../src/services/environment';
 import { expect } from 'chai';
 
@@ -28,6 +34,91 @@ describe('PouchDB Service', () => {
       } as unknown as EnvironmentService)),
     ));
   };
+
+  describe('streamChanges', () => {
+    class FakeChangeEmitter {
+      public on = sinon.stub().returns(this);
+      public cancel = sinon.stub();
+    }
+    const fakeDdb = { changes: () => null } as unknown as PouchDB.Database;
+
+    let streamAsync: SinonStub;
+    let dbChanges: SinonStub;
+    let fakeChangeEmitter: FakeChangeEmitter;
+
+    beforeEach(() => {
+      fakeChangeEmitter = new FakeChangeEmitter();
+      streamAsync = sinon.stub(Stream, 'async');
+      dbChanges = sinon
+        .stub(fakeDdb, 'changes')
+        .returns(fakeChangeEmitter as unknown as PouchDB.Core.Changes<object>);
+    });
+
+    it('builds stream from changes feed event emitter', run(Effect.gen(function* () {
+      streamChanges()(fakeDdb);
+
+      expect(streamAsync.calledOnce).to.be.true;
+      const emit = sinon.stub();
+      expect(streamAsync.calledOnce).to.be.true;
+      const buildStreamFn = streamAsync.args[0][0] as (emit: unknown) => Effect.Effect<void>;
+      const cancelStreamEffect = buildStreamFn(emit);
+
+      expect(emit.notCalled).to.be.true;
+      expect(dbChanges.calledOnceWithExactly({ since: 0, live: true })).to.be.true;
+      expect(fakeChangeEmitter.on.calledThrice).to.be.true;
+      const [errorArgs, completeArgs, changeArgs] = fakeChangeEmitter.on.args;
+
+      expect(errorArgs[0]).to.equal('error');
+      const expectedError = new Error('Error streaming changes feed');
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      errorArgs[1](expectedError);
+      expect(emit.calledOnceWithExactly(Effect.fail(Option.some(expectedError)))).to.be.true;
+      emit.reset();
+
+      expect(completeArgs[0]).to.equal('complete');
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      completeArgs[1]();
+      expect(emit.calledOnceWithExactly(Effect.fail(Option.none()))).to.be.true;
+      emit.reset();
+
+      expect(changeArgs[0]).to.equal('change');
+      const expectedChange = { hello: 'world' };
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      changeArgs[1](expectedChange);
+      expect(emit.calledOnce).to.be.true;
+      expect(emit.args[0][0]).to.deep.equal(Effect.succeed(Chunk.of(expectedChange)));
+
+      yield* cancelStreamEffect;
+      expect(fakeChangeEmitter.cancel.calledOnceWithExactly()).to.be.true;
+    })));
+
+    it('caches the changes since index and reuses it if the stream is retried', () => {
+      streamChanges({ since: 100 })(fakeDdb);
+
+      const emit = sinon.stub();
+      expect(streamAsync.calledOnce).to.be.true;
+      const buildStreamFn = streamAsync.args[0][0] as (emit: unknown) => Effect.Effect<void>;
+      buildStreamFn(emit);
+
+      // First call to changes has since value from options
+      expect(dbChanges.calledOnceWithExactly({ since: 100, live: true })).to.be.true;
+      dbChanges.resetHistory();
+      expect(fakeChangeEmitter.on.calledThrice).to.be.true;
+      const [,, changeArgs] = fakeChangeEmitter.on.args;
+
+      // Change event returns new since value
+      expect(changeArgs[0]).to.equal('change');
+      const expectedChange = { seq: 101 };
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      changeArgs[1](expectedChange);
+      expect(emit.calledOnce).to.be.true;
+      expect(emit.args[0][0]).to.deep.equal(Effect.succeed(Chunk.of(expectedChange)));
+
+      // Subsequent call to changes uses the new since value
+      buildStreamFn(emit);
+      expect(dbChanges.calledOnceWithExactly({ since: 101, live: true })).to.be.true;
+    });
+  });
 
   describe('get', () => {
     it('prepends the url to the request', run(Effect.gen(function* () {

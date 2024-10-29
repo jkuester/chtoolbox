@@ -1,6 +1,6 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { Option, pipe, Redacted, Stream } from 'effect';
+import { Chunk, Option, pipe, Redacted, Stream, StreamEmit } from 'effect';
 import PouchDB from 'pouchdb-core';
 import { pouchDB } from '../libs/core';
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
@@ -66,6 +66,44 @@ export const streamQueryPages = (
   getQueryPage(db, viewIndex, { ...options, limit: options.limit ?? 1000 }),
   pageFn => Stream.paginateEffect(0, pageFn),
 );
+
+type ChangeEmit = StreamEmit.Emit<never, Error, PouchDB.Core.ChangesResponseChange<object>, void>;
+const failStreamForError = (emit: ChangeEmit) => (err: unknown) => Effect
+  .logDebug('Error streaming changes feed:', err)
+  .pipe(
+    Effect.andThen(Effect.fail(Option.some(err as Error))),
+    emit,
+  );
+const endStream = (emit: ChangeEmit) => () => Effect
+  .logDebug('Changes feed stream completed')
+  .pipe(
+    Effect.andThen(Effect.fail(Option.none())),
+    emit,
+  );
+const cancelChangesFeedIfInterrupted = (feed: PouchDB.Core.Changes<object>) => Effect
+  .succeed(() => feed.cancel())
+  .pipe(
+    Effect.map(fn => fn()),
+    Effect.andThen(Effect.logDebug('Changes feed canceled because the stream was interrupted')),
+  );
+export const streamChanges = (options?: PouchDB.Core.ChangesOptions) => (db: PouchDB.Database) => pipe(
+  { since: options?.since ?? 0 }, // Caching the since value in case the Stream is retried
+  cache => Stream.async((emit: ChangeEmit) => pipe(
+    db.changes({ ...options, since: cache.since, live: true }),
+    feed => feed
+      .on('error', failStreamForError(emit))
+      .on('complete', endStream(emit))
+      .on('change', (change) => Effect
+        .logDebug('Emitting change:', change)
+        .pipe(
+          Effect.andThen(Effect.succeed(Chunk.of(change))),
+          emit,
+          () => cache.since = change.seq,
+        )),
+    cancelChangesFeedIfInterrupted,
+  )),
+);
+
 
 const couchUrl = EnvironmentService
   .get()

@@ -2,7 +2,7 @@ import { Args, Command, Options, Prompt } from '@effect/cli';
 import { Console, Effect, Either, Function, Match, Option, pipe, Sink, Stream } from 'effect';
 import { initializeUrl } from '../../index';
 import { PurgeService } from '../../services/purge';
-import { clearThenLog } from '../../libs/core';
+import { clearThen } from '../../libs/core';
 
 const assertOpts = (opts: PurgeOptions) => Match
   .value(opts)
@@ -40,10 +40,10 @@ const purgeAction = (opts: PurgeOptions) => Match
 const purgeDocs = (opts: PurgeOptions) => purgeAction(opts)
   .pipe(
     Effect.map(Stream.scan(0, (acc, next) => acc + next.rows.length)),
-    Effect.map(Stream.tap((count) => clearThenLog(`Purging docs: ${count.toString()}`))),
+    Effect.map(Stream.tap((count) => clearThen(Console.log(`Purging docs: ${count.toString()}`)))),
     Effect.flatMap(Stream.run(Sink.last())),
     Effect.map(Option.getOrThrow),
-    Effect.tap((count) => clearThenLog(`Purged docs: ${count.toString()}`)),
+    Effect.tap((count) => clearThen(Console.log(`Purged docs: ${count.toString()}`))),
   );
 
 const confirmPurge = ({ database, yes }: PurgeOptions) => Prompt

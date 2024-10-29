@@ -41,4 +41,4 @@ const zipArrayStreams = <T>(
 export const mergeArrayStreams = <T>(streams: Stream.Stream<T[], Error>[]) => Array
   .reduce(streams.slice(1), streams[0], zipArrayStreams);
 
-export const clearThenLog = (...args: readonly unknown[]) => Console.clear.pipe(Effect.tap(Console.log(...args)));
+export const clearThen = (printEffect: Effect.Effect<void>) => Console.clear.pipe(Effect.tap(printEffect));
