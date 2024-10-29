@@ -5,6 +5,7 @@ export declare const assertPouchResponse: (value: PouchDB.Core.Response | PouchD
 type AllDocsOptions = PouchDB.Core.AllDocsWithKeyOptions | PouchDB.Core.AllDocsWithinRangeOptions | PouchDB.Core.AllDocsOptions;
 export declare const streamAllDocPages: (options?: AllDocsOptions) => (db: PouchDB.Database) => Stream.Stream<PouchDB.Core.AllDocsResponse<object>, never, never>;
 export declare const streamQueryPages: (viewIndex: string, options?: PouchDB.Query.Options<object, object>) => (db: PouchDB.Database) => Stream.Stream<PouchDB.Query.Response<object>, never, never>;
+export declare const streamChanges: (options?: PouchDB.Core.ChangesOptions) => (db: PouchDB.Database) => Stream.Stream<PouchDB.Core.ChangesResponseChange<object>, Error, never>;
 declare const PouchDBService_base: Effect.Service.Class<PouchDBService, "chtoolbox/PouchDBService", {
     readonly effect: Effect.Effect<{
         get: (dbName: string) => Effect.Effect<PouchDB.Database<{}>, never, never>;

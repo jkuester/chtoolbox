@@ -26,7 +26,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PouchDBService = exports.streamQueryPages = exports.streamAllDocPages = exports.assertPouchResponse = void 0;
+exports.PouchDBService = exports.streamChanges = exports.streamQueryPages = exports.streamAllDocPages = exports.assertPouchResponse = void 0;
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
 const effect_1 = require("effect");
@@ -61,6 +61,24 @@ const getQueryPage = (db, viewIndex, options) => (skip) => query(db, viewIndex, 
 ]));
 const streamQueryPages = (viewIndex, options = {}) => (db) => (0, effect_1.pipe)(getQueryPage(db, viewIndex, { ...options, limit: options.limit ?? 1000 }), pageFn => effect_1.Stream.paginateEffect(0, pageFn));
 exports.streamQueryPages = streamQueryPages;
+const failStreamForError = (emit) => (err) => Effect
+    .logDebug('Error streaming changes feed:', err)
+    .pipe(Effect.andThen(Effect.fail(effect_1.Option.some(err))), emit);
+const endStream = (emit) => () => Effect
+    .logDebug('Changes feed stream completed')
+    .pipe(Effect.andThen(Effect.fail(effect_1.Option.none())), emit);
+const cancelChangesFeedIfInterrupted = (feed) => Effect
+    .succeed(() => feed.cancel())
+    .pipe(Effect.map(fn => fn()), Effect.andThen(Effect.logDebug('Changes feed canceled because the stream was interrupted')));
+const streamChanges = (options) => (db) => (0, effect_1.pipe)({ since: options?.since ?? 0 }, // Caching the since value in case the Stream is retried
+// Caching the since value in case the Stream is retried
+cache => effect_1.Stream.async((emit) => (0, effect_1.pipe)(db.changes({ ...options, since: cache.since, live: true }), feed => feed
+    .on('error', failStreamForError(emit))
+    .on('complete', endStream(emit))
+    .on('change', (change) => Effect
+    .logDebug('Emitting change:', change)
+    .pipe(Effect.andThen(Effect.succeed(effect_1.Chunk.of(change))), emit, () => cache.since = change.seq)), cancelChangesFeedIfInterrupted)));
+exports.streamChanges = streamChanges;
 const couchUrl = environment_1.EnvironmentService
     .get()
     .pipe(Effect.map(({ url }) => url));

@@ -1,0 +1,60 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ChtUpgradeService = void 0;
+const Schema = __importStar(require("@effect/schema/Schema"));
+const platform_1 = require("@effect/platform");
+const Effect = __importStar(require("effect/Effect"));
+const Context = __importStar(require("effect/Context"));
+const cht_client_1 = require("../cht-client");
+const HttpClientError_1 = require("@effect/platform/HttpClientError");
+const ENDPOINT_UPGRADE = '/api/v1/upgrade';
+const ENDPOINT_STAGE = `${ENDPOINT_UPGRADE}/stage`;
+const ENDPOINT_COMPLETE = `${ENDPOINT_UPGRADE}/complete`;
+const UpgradeBody = Schema.Struct({
+    build: Schema.Struct({
+        namespace: Schema.Literal('medic'),
+        application: Schema.Literal('medic'),
+        version: Schema.String,
+    })
+});
+const getPostRequest = (endpoint, version) => UpgradeBody.pipe(platform_1.HttpClientRequest.schemaBodyJson, build => build(platform_1.HttpClientRequest.post(endpoint), { build: { version, namespace: 'medic', application: 'medic' } }), Effect.mapError(x => x));
+const postUpgrade = (endpoint, version) => getPostRequest(endpoint, version)
+    .pipe(Effect.flatMap(cht_client_1.ChtClientService.request), Effect.scoped);
+const serviceContext = cht_client_1.ChtClientService.pipe(Effect.map(cht => Context.make(cht_client_1.ChtClientService, cht)));
+class ChtUpgradeService extends Effect.Service()('chtoolbox/ChtUpgradeService', {
+    effect: serviceContext.pipe(Effect.map(context => ({
+        upgrade: (version) => postUpgrade(ENDPOINT_UPGRADE, version)
+            .pipe(Effect.provide(context)),
+        stage: (version) => postUpgrade(ENDPOINT_STAGE, version)
+            .pipe(Effect.provide(context)),
+        complete: (version) => postUpgrade(ENDPOINT_COMPLETE, version)
+            .pipe(Effect.catchIf((err) => err instanceof HttpClientError_1.ResponseError && err.response.status === 502, () => Effect.void), Effect.scoped, Effect.provide(context)),
+    }))),
+    accessors: true,
+}) {
+}
+exports.ChtUpgradeService = ChtUpgradeService;
+//# sourceMappingURL=upgrade.js.map

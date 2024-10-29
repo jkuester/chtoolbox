@@ -1,7 +1,7 @@
 import { describe, it } from 'mocha';
 import { Chunk, Console, Effect, Stream, TestContext } from 'effect';
 import { expect } from 'chai';
-import { clearThenLog, mergeArrayStreams, pouchDB, untilEmptyCount } from '../../src/libs/core';
+import { clearThen, mergeArrayStreams, pouchDB, untilEmptyCount } from '../../src/libs/core';
 import PouchDB from 'pouchdb-core';
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
 import sinon from 'sinon';
@@ -47,11 +47,11 @@ describe('Core libs', () => {
     ]);
   })));
 
-  it('clearThenLog', run(Effect.gen(function* () {
+  it('clearThen', run(Effect.gen(function* () {
     const log = sinon.stub().returns(Effect.void);
     const fakeConsole = { clear: Effect.void, log, } as unknown as Console.Console;
 
-    yield* clearThenLog('Hello', 'World').pipe(
+    yield* clearThen(Console.log('Hello', 'World')).pipe(
       Console.withConsole(fakeConsole),
     );
 

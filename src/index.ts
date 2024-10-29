@@ -28,6 +28,9 @@ import { design } from './commands/design';
 import { doc } from './commands/doc';
 import { CouchPurgeService } from './services/couch/purge';
 import { PurgeService } from './services/purge';
+import { upgrade } from './commands/upgrade';
+import { ChtUpgradeService } from './services/cht/upgrade';
+import { UpgradeService } from './services/upgrade';
 
 const url = Options
   .text('url')
@@ -53,7 +56,9 @@ export const initializeUrl = chtx.pipe(
   ))),
 );
 
-const command = chtx.pipe(Command.withSubcommands([compact, design, doc, monitor, warmViews, activeTasks, db]));
+const command = chtx.pipe(Command.withSubcommands([
+  compact, design, doc, monitor, warmViews, activeTasks, db, upgrade
+]));
 
 const cli = Command.run(command, {
   name: 'CHT Toolbox',
@@ -61,23 +66,30 @@ const cli = Command.run(command, {
   version: packageJson.version
 });
 
+const couchServices = CouchActiveTasksService
+  .Default
+  .pipe(
+    Layer.provideMerge(CouchCompactService.Default),
+    Layer.provideMerge(CouchNodeSystemService.Default),
+    Layer.provideMerge(CouchDbsInfoService.Default),
+    Layer.provideMerge(CouchDesignDocsService.Default),
+    Layer.provideMerge(CouchDesignInfoService.Default),
+    Layer.provideMerge(CouchDesignService.Default),
+    Layer.provideMerge(CouchPurgeService.Default),
+    Layer.provideMerge(CouchViewService.Default),
+  );
+
 cli(process.argv)
   .pipe(
     Effect.provide(CompactService.Default),
     Effect.provide(MonitorService.Default),
     Effect.provide(LocalDiskUsageService.Default),
     Effect.provide(PurgeService.Default),
+    Effect.provide(UpgradeService.Default),
     Effect.provide(WarmViewsService.Default),
     Effect.provide(ReplicateService.Default),
-    Effect.provide(CouchActiveTasksService.Default),
-    Effect.provide(CouchCompactService.Default),
-    Effect.provide(CouchNodeSystemService.Default),
-    Effect.provide(CouchDbsInfoService.Default),
-    Effect.provide(CouchDesignDocsService.Default),
-    Effect.provide(CouchDesignInfoService.Default),
-    Effect.provide(CouchDesignService.Default),
-    Effect.provide(CouchPurgeService.Default),
-    Effect.provide(CouchViewService.Default),
+    Effect.provide(ChtUpgradeService.Default),
+    Effect.provide(couchServices),
     Effect.provide(PouchDBService.Default),
     Effect.provide(ChtClientService.Default.pipe(
       Layer.provide(NodeHttpClient.layerWithoutAgent.pipe(

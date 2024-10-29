@@ -16,7 +16,7 @@ const purgeAction = (opts) => effect_1.Match
     .pipe(effect_1.Match.when(({ reports }) => reports, ({ database, since, before }) => purge_1.PurgeService.purgeReports(database, { since, before })), effect_1.Match.when(({ contacts }) => effect_1.Option.isSome(contacts), ({ database, contacts, }) => purge_1.PurgeService
     .purgeContacts(database, contacts.pipe(effect_1.Option.getOrThrow))), effect_1.Match.orElse(({ database, all }) => purge_1.PurgeService.purgeAll(database, all)));
 const purgeDocs = (opts) => purgeAction(opts)
-    .pipe(effect_1.Effect.map(effect_1.Stream.scan(0, (acc, next) => acc + next.rows.length)), effect_1.Effect.map(effect_1.Stream.tap((count) => (0, core_1.clearThenLog)(`Purging docs: ${count.toString()}`))), effect_1.Effect.flatMap(effect_1.Stream.run(effect_1.Sink.last())), effect_1.Effect.map(effect_1.Option.getOrThrow), effect_1.Effect.tap((count) => (0, core_1.clearThenLog)(`Purged docs: ${count.toString()}`)));
+    .pipe(effect_1.Effect.map(effect_1.Stream.scan(0, (acc, next) => acc + next.rows.length)), effect_1.Effect.map(effect_1.Stream.tap((count) => (0, core_1.clearThen)(effect_1.Console.log(`Purging docs: ${count.toString()}`)))), effect_1.Effect.flatMap(effect_1.Stream.run(effect_1.Sink.last())), effect_1.Effect.map(effect_1.Option.getOrThrow), effect_1.Effect.tap((count) => (0, core_1.clearThen)(effect_1.Console.log(`Purged docs: ${count.toString()}`))));
 const confirmPurge = ({ database, yes }) => cli_1.Prompt
     .confirm({
     message: `Are you sure you want to permanently purge docs from ${database}?`,
