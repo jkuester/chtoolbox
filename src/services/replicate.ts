@@ -71,17 +71,6 @@ export class ReplicateService extends Effect.Service<ReplicateService>()('chtool
         Effect.flatMap(streamReplicationDocChanges),
         Effect.provide(context),
       ),
-    watch: (repDocId: string) => PouchDBService
-      .get('_replicator')
-      .pipe(
-        Effect.map(db => (db as PouchDB.Database<ReplicationDoc>).changes({
-          since: 'now',
-          live: true,
-          include_docs: true,
-          doc_ids: [repDocId],
-        })),
-        Effect.provide(context),
-      ),
   }))),
   accessors: true,
 }) {

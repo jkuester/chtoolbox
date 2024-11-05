@@ -75,14 +75,6 @@ class ReplicateService extends Effect.Service()('chtoolbox/ReplicateService', {
         replicate: (source, target, includeDdocs = false) => Effect
             .all([pouchdb_1.PouchDBService.get('_replicator'), createReplicationDoc(source, target, includeDdocs)])
             .pipe(Effect.flatMap(([db, doc]) => Effect.promise(() => db.bulkDocs([doc]))), Effect.map(([resp]) => resp), Effect.map(pouchdb_1.assertPouchResponse), Effect.map(({ id }) => id), Effect.flatMap(streamReplicationDocChanges), Effect.provide(context)),
-        watch: (repDocId) => pouchdb_1.PouchDBService
-            .get('_replicator')
-            .pipe(Effect.map(db => db.changes({
-            since: 'now',
-            live: true,
-            include_docs: true,
-            doc_ids: [repDocId],
-        })), Effect.provide(context)),
     }))),
     accessors: true,
 }) {

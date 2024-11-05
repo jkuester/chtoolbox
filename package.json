@@ -13,10 +13,10 @@
     "/dist"
   ],
   "scripts": {
-    "build-app": "rm -rf dist && tsc -p tsconfig.build.json && chmod +x dist/index.js && knip --production",
-    "lint": "eslint --color --cache .",
+    "build-app": "rm -rf dist && tsc -p tsconfig.build.json && chmod +x dist/index.js",
+    "lint": "eslint --color --cache . && knip --production",
     "local": "ts-node src/index.ts",
-    "test": "nyc --nycrcPath='nyc.config.js' mocha \"test/**/*\"",
+    "test": "nyc --nycrcPath='nyc.config.js' mocha \"test/**/*\""
   },
   "license": "AGPL-3.0-only",
   "devDependencies": {

@@ -8,7 +8,7 @@ import { ResponseError } from '@effect/platform/HttpClientError';
 interface DatabaseInfo extends CouchDbInfo {
     designs: CouchDesignInfo[];
 }
-export interface MonitoringData extends CouchNodeSystem {
+interface MonitoringData extends CouchNodeSystem {
     unix_time: number;
     databases: DatabaseInfo[];
     directory_size: Option.Option<number>;
