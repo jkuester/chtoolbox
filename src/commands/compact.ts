@@ -50,7 +50,7 @@ export const compact = Command
     Effect.map(Option.liftPredicate(() => follow)),
     Effect.map(Option.map(streamActiveTasks)),
     Effect.flatMap(Option.getOrElse(() => Console.log(
-      'Compaction started. Watch the active tasks for progress: chtx active-tasks'
+      'Compaction started. Watch the active tasks for progress: chtx active-tasks -f'
     ))),
   ))
   .pipe(Command.withDescription(`Run compaction on all databases and views.`));

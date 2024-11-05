@@ -1,8 +1,9 @@
 import { Args, Command } from '@effect/cli';
-import { Array, Console, Effect, pipe } from 'effect';
+import { Array, Effect, pipe } from 'effect';
 import { initializeUrl } from '../../index';
 import { CouchDesignInfoService } from '../../services/couch/design-info';
 import { CouchDesignService } from '../../services/couch/design';
+import { logJson } from '../../libs/core';
 
 const getViewData = (database: string) => (design: string) => Effect
   .all([
@@ -36,7 +37,6 @@ export const inspect = Command
       Array.map(getViewData(database)),
       Effect.all,
     )),
-    Effect.map(d => JSON.stringify(d, null, 2)),
-    Effect.tap(Console.log),
+    Effect.tap(logJson),
   ))
   .pipe(Command.withDescription(`Display detailed information on one or more designs for a Couch database`));

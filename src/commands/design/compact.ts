@@ -35,7 +35,7 @@ export const compact = Command
     Effect.map(Option.map(mergeArrayStreams)),
     Effect.map(Option.map(streamActiveTasks)),
     Effect.flatMap(Option.getOrElse(() => Console.log(
-      'Compaction started. Watch the active tasks for progress: chtx active-tasks'
+      'Compaction started. Watch the active tasks for progress: chtx active-tasks -f'
     ))),
   ))
   .pipe(Command.withDescription(`Run compaction on one or more Couch designs`));

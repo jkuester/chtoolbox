@@ -1,4 +1,4 @@
-import { Array, Console, Effect, Function, Number, Option, Ref, Stream } from 'effect';
+import { Array, Console, Effect, Function, Number, Option, pipe, Ref, Stream } from 'effect';
 import PouchDB from 'pouchdb-core';
 
 /**
@@ -42,3 +42,8 @@ export const mergeArrayStreams = <T>(streams: Stream.Stream<T[], Error>[]) => Ar
   .reduce(streams.slice(1), streams[0], zipArrayStreams);
 
 export const clearThen = (printEffect: Effect.Effect<void>) => Console.clear.pipe(Effect.tap(printEffect));
+
+export const logJson = (data: unknown) => pipe(
+  JSON.stringify(data, null, 2),
+  Console.log
+);

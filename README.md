@@ -4,12 +4,17 @@
 
 CHToolbox is a command-line utility for development and testing of the Community Health Toolkit. The goal is to provide a platform that makes it easy to create and share utility scripts.
 
-Features include:
+Features include (but are not limited to):
 
-- Add, remove, replicate Couch databases
+- Couch:
+  - Add/remove dbs
+  - Replicate docs between databases
+  - Follow active tasks
+  - Purge docs from database (including filtering based on contact/report/reported_date)
+  - Compact databases and view indexes
+- Upgrade CHT instance to new version
+  - Also supports staging/completing upgrades
 - Monitor storage metrics for CHT databases and view indexes
-- View and follow active tasks on the Couch server
-- And more!
 
 ## Installation
 
@@ -25,6 +30,14 @@ A particular branch can be installed by running:
 
 ```shell
 npm i -g git+https://github.com/jkuester/chtoolbox.git#<branch>
+```
+
+### Run without installing
+
+The `npx` command can be used to run one-off chtx commands without installing anything locally:
+
+```shell
+npx -y git+https://github.com/jkuester/chtoolbox.git --help
 ```
 
 ## Usage
