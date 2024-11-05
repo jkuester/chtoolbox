@@ -28,7 +28,6 @@ const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
 const pouchdb_1 = require("./pouchdb");
 const environment_1 = require("./environment");
-const schema_1 = require("@effect/schema");
 const effect_1 = require("effect");
 const SKIP_DDOC_SELECTOR = {
     _id: { '$regex': '^(?!_design/)' },
@@ -47,11 +46,11 @@ const createReplicationDoc = (source, target, includeDdocs) => environment_1.Env
     owner: env.user,
     selector: includeDdocs ? undefined : SKIP_DDOC_SELECTOR,
 })));
-class ReplicationDoc extends schema_1.Schema.Class('ReplicationDoc')({
-    _id: schema_1.Schema.String,
-    _replication_state: schema_1.Schema.optional(schema_1.Schema.String),
-    _replication_stats: schema_1.Schema.optional(schema_1.Schema.Struct({
-        docs_written: schema_1.Schema.Number,
+class ReplicationDoc extends effect_1.Schema.Class('ReplicationDoc')({
+    _id: effect_1.Schema.String,
+    _replication_state: effect_1.Schema.optional(effect_1.Schema.String),
+    _replication_stats: effect_1.Schema.optional(effect_1.Schema.Struct({
+        docs_written: effect_1.Schema.Number,
     })),
 }) {
 }
@@ -61,7 +60,7 @@ const streamReplicationDocChanges = (repDocId) => pouchdb_1.PouchDBService
     .pipe(Effect.map((0, pouchdb_1.streamChanges)({
     include_docs: true,
     doc_ids: [repDocId],
-})), Effect.map(effect_1.Stream.map(({ doc }) => doc)), Effect.map(effect_1.Stream.mapEffect(schema_1.Schema.decodeUnknown(ReplicationDoc))), Effect.map(effect_1.Stream.takeUntil(({ _replication_state }) => _replication_state === 'completed')));
+})), Effect.map(effect_1.Stream.map(({ doc }) => doc)), Effect.map(effect_1.Stream.mapEffect(effect_1.Schema.decodeUnknown(ReplicationDoc))), Effect.map(effect_1.Stream.takeUntil(({ _replication_state }) => _replication_state === 'completed')));
 const serviceContext = Effect
     .all([
     environment_1.EnvironmentService,

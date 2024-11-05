@@ -1,4 +1,4 @@
-import * as Schema from '@effect/schema/Schema';
+import { Schema } from 'effect';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';

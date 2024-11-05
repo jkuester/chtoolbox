@@ -6,11 +6,11 @@ import { CouchViewService } from './couch/view';
 import { CouchDesignInfoService } from './couch/design-info';
 declare const WarmViewsService_base: Effect.Service.Class<WarmViewsService, "chtoolbox/WarmViewsService", {
     readonly effect: Effect.Effect<{
-        warmAll: () => Effect.Effect<void[], Error | import("@effect/platform/HttpClientError").ResponseError | import("@effect/schema/ParseResult").ParseError, never>;
+        warmAll: () => Effect.Effect<void[], Error | import("@effect/platform/HttpClientError").ResponseError | import("effect/ParseResult").ParseError, never>;
         designsCurrentlyUpdating: () => Effect.Effect<{
             dbName: string;
             designId: string;
-        }[], Error | import("@effect/platform/HttpClientError").ResponseError | import("@effect/schema/ParseResult").ParseError, never>;
+        }[], Error | import("@effect/platform/HttpClientError").ResponseError | import("effect/ParseResult").ParseError, never>;
     }, never, CouchDbsInfoService | CouchDesignInfoService | CouchDesignService | CouchViewService | CouchDesignDocsService>;
     readonly accessors: true;
 }>;

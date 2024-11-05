@@ -2,8 +2,7 @@ import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { assertPouchResponse, PouchDBService, streamChanges } from './pouchdb';
 import { EnvironmentService } from './environment';
-import { Schema } from '@effect/schema';
-import { Redacted, Stream } from 'effect';
+import { Redacted, Schema, Stream } from 'effect';
 
 const SKIP_DDOC_SELECTOR = {
   _id: { '$regex': '^(?!_design/)' },

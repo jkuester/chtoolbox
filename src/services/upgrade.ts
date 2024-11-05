@@ -1,8 +1,7 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { PouchDBService, streamChanges } from './pouchdb';
-import { Schema } from '@effect/schema';
-import { Array, DateTime, Match, Option, Schedule, Stream } from 'effect';
+import { Array, DateTime, Match, Option, Schedule, Schema, Stream } from 'effect';
 import { ChtUpgradeService } from './cht/upgrade';
 
 const UPGRADE_LOG_NAME = 'upgrade_log';
@@ -106,9 +105,10 @@ export class UpgradeService extends Effect.Service<UpgradeService>()('chtoolbox/
     ),
     complete: (version: string) => assertReadyForComplete.pipe(
       Effect.andThen(ChtUpgradeService.complete(version)),
-      Effect.andThen(streamUpgradeLogChanges(COMPLETED_STATES).pipe(
-        Effect.retry(Schedule.spaced(1000)), // Getting the upgrade log may fail while the server is still restarting
-      )),
+      Effect.andThen(streamUpgradeLogChanges(COMPLETED_STATES)
+        .pipe(
+          Effect.retry(Schedule.spaced(1000)), // Getting the upgrade log may fail while the server is still restarting
+        )),
       Effect.provide(context),
     ),
   }))),

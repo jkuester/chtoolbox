@@ -24,32 +24,32 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CouchDesignInfoService = exports.CouchDesignInfo = void 0;
-const Schema = __importStar(require("@effect/schema/Schema"));
+const effect_1 = require("effect");
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
 const cht_client_1 = require("../cht-client");
-class CouchDesignInfo extends Schema.Class('CouchDesignInfo')({
-    name: Schema.String,
-    view_index: Schema.Struct({
-        collator_versions: Schema.Array(Schema.String),
-        compact_running: Schema.Boolean,
-        language: Schema.String,
-        purge_seq: Schema.Number,
-        signature: Schema.String,
-        sizes: Schema.Struct({
-            active: Schema.Number,
-            external: Schema.Number,
-            file: Schema.Number,
+class CouchDesignInfo extends effect_1.Schema.Class('CouchDesignInfo')({
+    name: effect_1.Schema.String,
+    view_index: effect_1.Schema.Struct({
+        collator_versions: effect_1.Schema.Array(effect_1.Schema.String),
+        compact_running: effect_1.Schema.Boolean,
+        language: effect_1.Schema.String,
+        purge_seq: effect_1.Schema.Number,
+        signature: effect_1.Schema.String,
+        sizes: effect_1.Schema.Struct({
+            active: effect_1.Schema.Number,
+            external: effect_1.Schema.Number,
+            file: effect_1.Schema.Number,
         }),
-        updater_running: Schema.Boolean,
-        updates_pending: Schema.Struct({
-            minimum: Schema.Number,
-            preferred: Schema.Number,
-            total: Schema.Number,
+        updater_running: effect_1.Schema.Boolean,
+        updates_pending: effect_1.Schema.Struct({
+            minimum: effect_1.Schema.Number,
+            preferred: effect_1.Schema.Number,
+            total: effect_1.Schema.Number,
         }),
-        waiting_commit: Schema.Boolean,
-        waiting_clients: Schema.Number,
+        waiting_commit: effect_1.Schema.Boolean,
+        waiting_clients: effect_1.Schema.Number,
     }),
 }) {
     static decodeResponse = platform_1.HttpClientResponse.schemaBodyJson(CouchDesignInfo);

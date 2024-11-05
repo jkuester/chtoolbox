@@ -1,9 +1,9 @@
-import * as Schema from '@effect/schema/Schema';
 import { HttpClientRequest } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { ChtClientService } from '../cht-client';
 import { ResponseError } from '@effect/platform/HttpClientError';
+import { Schema } from 'effect';
 
 const ENDPOINT_UPGRADE = '/api/v1/upgrade';
 const ENDPOINT_STAGE = `${ENDPOINT_UPGRADE}/stage`;

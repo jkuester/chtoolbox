@@ -1,9 +1,8 @@
-import * as Schema from '@effect/schema/Schema';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { ChtClientService } from '../cht-client';
-import { Array, Number, Option, Order, pipe, Record, Schedule, Stream, String } from 'effect';
+import { Array, Number, Option, Order, pipe, Record, Schedule, Schema, Stream, String } from 'effect';
 
 const ENDPOINT = '/_active_tasks';
 

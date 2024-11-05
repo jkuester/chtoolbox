@@ -15,9 +15,9 @@ interface MonitoringData extends CouchNodeSystem {
 }
 declare const MonitorService_base: Effect.Service.Class<MonitorService, "chtoolbox/MonitorService", {
     readonly effect: Effect.Effect<{
-        get: (directory: Option.Option<string>) => Effect.Effect<MonitoringData, Error | ResponseError | import("@effect/schema/ParseResult").ParseError | import("@effect/platform/Error").PlatformError, never>;
+        get: (directory: Option.Option<string>) => Effect.Effect<MonitoringData, Error | ResponseError | import("effect/ParseResult").ParseError | import("@effect/platform/Error").PlatformError, never>;
         getCsvHeader: (directory: Option.Option<string>) => string[];
-        getAsCsv: (directory: Option.Option<string>) => Effect.Effect<string[], Error | ResponseError | import("@effect/schema/ParseResult").ParseError | import("@effect/platform/Error").PlatformError, never>;
+        getAsCsv: (directory: Option.Option<string>) => Effect.Effect<string[], Error | ResponseError | import("effect/ParseResult").ParseError | import("@effect/platform/Error").PlatformError, never>;
     }, never, CouchNodeSystemService | CouchDbsInfoService | CouchDesignInfoService | LocalDiskUsageService>;
     readonly accessors: true;
 }>;

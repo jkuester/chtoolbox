@@ -1,8 +1,7 @@
 import * as Effect from 'effect/Effect';
 import { PouchDBService } from './pouchdb';
 import { EnvironmentService } from './environment';
-import { Schema } from '@effect/schema';
-import { Stream } from 'effect';
+import { Schema, Stream } from 'effect';
 declare const ReplicationDoc_base: Schema.Class<ReplicationDoc, {
     _id: typeof Schema.String;
     _replication_state: Schema.optional<typeof Schema.String>;
@@ -28,7 +27,7 @@ export declare class ReplicationDoc extends ReplicationDoc_base {
 }
 declare const ReplicateService_base: Effect.Service.Class<ReplicateService, "chtoolbox/ReplicateService", {
     readonly effect: Effect.Effect<{
-        replicate: (source: string, target: string, includeDdocs?: boolean) => Effect.Effect<Stream.Stream<ReplicationDoc, Error | import("@effect/schema/ParseResult").ParseError, never>, never, never>;
+        replicate: (source: string, target: string, includeDdocs?: boolean) => Effect.Effect<Stream.Stream<ReplicationDoc, Error | import("effect/ParseResult").ParseError, never>, never, never>;
     }, never, EnvironmentService | PouchDBService>;
     readonly accessors: true;
 }>;

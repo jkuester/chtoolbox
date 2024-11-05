@@ -7,7 +7,7 @@ import { CouchDesignInfoService } from './couch/design-info';
 import { CouchActiveTasksService } from './couch/active-tasks';
 declare const CompactService_base: Effect.Service.Class<CompactService, "chtoolbox/CompactService", {
     readonly effect: Effect.Effect<{
-        compactAll: () => Effect.Effect<Stream.Stream<import("./couch/active-tasks").CouchActiveTask[], Error, never>, Error | import("@effect/platform/HttpClientError").ResponseError | import("@effect/schema/ParseResult").ParseError, never>;
+        compactAll: () => Effect.Effect<Stream.Stream<import("./couch/active-tasks").CouchActiveTask[], Error, never>, Error | import("@effect/platform/HttpClientError").ResponseError | import("effect/ParseResult").ParseError, never>;
         compactDb: (dbName: string) => Effect.Effect<Stream.Stream<import("./couch/active-tasks").CouchActiveTask[], Error, never>, Error, never>;
         compactDesign: (dbName: string) => (designName: string) => Effect.Effect<Stream.Stream<import("./couch/active-tasks").CouchActiveTask[], Error, never>, Error, never>;
     }, never, CouchDbsInfoService | CouchDesignInfoService | CouchDesignDocsService | CouchCompactService | CouchActiveTasksService>;

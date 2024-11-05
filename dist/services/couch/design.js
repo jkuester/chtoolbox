@@ -24,15 +24,14 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CouchDesignService = void 0;
-const Schema = __importStar(require("@effect/schema/Schema"));
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
 const cht_client_1 = require("../cht-client");
 const effect_1 = require("effect");
-class CouchDesign extends Schema.Class('CouchDesign')({
-    _id: Schema.String,
-    views: Schema.UndefinedOr(Schema.Object),
+class CouchDesign extends effect_1.Schema.Class('CouchDesign')({
+    _id: effect_1.Schema.String,
+    views: effect_1.Schema.UndefinedOr(effect_1.Schema.Object),
 }) {
     static decodeResponse = platform_1.HttpClientResponse.schemaBodyJson(CouchDesign);
 }

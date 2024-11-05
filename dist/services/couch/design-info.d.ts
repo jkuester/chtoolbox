@@ -1,4 +1,4 @@
-import * as Schema from '@effect/schema/Schema';
+import { Schema } from 'effect';
 import * as Effect from 'effect/Effect';
 import { ChtClientService } from '../cht-client';
 declare const CouchDesignInfo_base: Schema.Class<CouchDesignInfo, {
@@ -70,11 +70,11 @@ declare const CouchDesignInfo_base: Schema.Class<CouchDesignInfo, {
     };
 }, {}, {}>;
 export declare class CouchDesignInfo extends CouchDesignInfo_base {
-    static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<CouchDesignInfo, import("@effect/schema/ParseResult").ParseError | E, never>;
+    static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<CouchDesignInfo, import("effect/ParseResult").ParseError | E, never>;
 }
 declare const CouchDesignInfoService_base: Effect.Service.Class<CouchDesignInfoService, "chtoolbox/CouchDesignInfoService", {
     readonly effect: Effect.Effect<{
-        get: (dbName: string, designName: string) => Effect.Effect<CouchDesignInfo, Error | import("@effect/platform/HttpClientError").ResponseError | import("@effect/schema/ParseResult").ParseError, never>;
+        get: (dbName: string, designName: string) => Effect.Effect<CouchDesignInfo, Error | import("@effect/platform/HttpClientError").ResponseError | import("effect/ParseResult").ParseError, never>;
     }, never, ChtClientService>;
     readonly accessors: true;
 }>;
