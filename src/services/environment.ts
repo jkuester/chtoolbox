@@ -2,7 +2,7 @@ import { Config, Effect, Option, Redacted, Ref, String } from 'effect';
 
 const COUCH_URL_PATTERN = /^(https?:\/\/([^:]+):[^/]+).*$/;
 
-export interface Environment {
+interface Environment {
   readonly url: Redacted.Redacted;
   readonly user: string;
 }

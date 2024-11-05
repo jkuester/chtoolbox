@@ -48,13 +48,20 @@ const createReplicationDoc = (source, target, includeDdocs) => environment_1.Env
     selector: includeDdocs ? undefined : SKIP_DDOC_SELECTOR,
 })));
 class ReplicationDoc extends schema_1.Schema.Class('ReplicationDoc')({
-    _replication_state: schema_1.Schema.String,
-    _replication_stats: schema_1.Schema.Struct({
+    _id: schema_1.Schema.String,
+    _replication_state: schema_1.Schema.optional(schema_1.Schema.String),
+    _replication_stats: schema_1.Schema.optional(schema_1.Schema.Struct({
         docs_written: schema_1.Schema.Number,
-    }),
+    })),
 }) {
 }
 exports.ReplicationDoc = ReplicationDoc;
+const streamReplicationDocChanges = (repDocId) => pouchdb_1.PouchDBService
+    .get('_replicator')
+    .pipe(Effect.map((0, pouchdb_1.streamChanges)({
+    include_docs: true,
+    doc_ids: [repDocId],
+})), Effect.map(effect_1.Stream.map(({ doc }) => doc)), Effect.map(effect_1.Stream.mapEffect(schema_1.Schema.decodeUnknown(ReplicationDoc))), Effect.map(effect_1.Stream.takeUntil(({ _replication_state }) => _replication_state === 'completed')));
 const serviceContext = Effect
     .all([
     environment_1.EnvironmentService,
@@ -67,7 +74,7 @@ class ReplicateService extends Effect.Service()('chtoolbox/ReplicateService', {
     effect: serviceContext.pipe(Effect.map(context => ({
         replicate: (source, target, includeDdocs = false) => Effect
             .all([pouchdb_1.PouchDBService.get('_replicator'), createReplicationDoc(source, target, includeDdocs)])
-            .pipe(Effect.flatMap(([db, doc]) => Effect.promise(() => db.bulkDocs([doc]))), Effect.map(([resp]) => resp), Effect.map(pouchdb_1.assertPouchResponse), Effect.provide(context)),
+            .pipe(Effect.flatMap(([db, doc]) => Effect.promise(() => db.bulkDocs([doc]))), Effect.map(([resp]) => resp), Effect.map(pouchdb_1.assertPouchResponse), Effect.map(({ id }) => id), Effect.flatMap(streamReplicationDocChanges), Effect.provide(context)),
         watch: (repDocId) => pouchdb_1.PouchDBService
             .get('_replicator')
             .pipe(Effect.map(db => db.changes({

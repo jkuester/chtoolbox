@@ -5,7 +5,7 @@ import * as Context from 'effect/Context';
 import { Array } from 'effect';
 import { ChtClientService } from '../cht-client';
 
-export class CouchDesignDocs extends Schema.Class<CouchDesignDocs>('CouchDesignDocs')({
+class CouchDesignDocs extends Schema.Class<CouchDesignDocs>('CouchDesignDocs')({
   rows: Schema.Array(Schema.Struct({
     id: Schema.String,
   })),

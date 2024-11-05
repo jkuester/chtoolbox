@@ -12,4 +12,5 @@ export declare const untilEmptyCount: (target: number) => (data: unknown[]) => E
 export declare const pouchDB: (name?: string, options?: PouchDB.Configuration.DatabaseConfiguration) => PouchDB.Database<{}>;
 export declare const mergeArrayStreams: <T>(streams: Stream.Stream<T[], Error>[]) => Stream.Stream<T[], Error, never>;
 export declare const clearThen: (printEffect: Effect.Effect<void>) => Effect.Effect<void, never, never>;
+export declare const logJson: (data: unknown) => Effect.Effect<void, never, never>;
 //# sourceMappingURL=core.d.ts.map

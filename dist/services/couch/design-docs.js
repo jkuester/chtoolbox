@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CouchDesignDocsService = exports.CouchDesignDocs = void 0;
+exports.CouchDesignDocsService = void 0;
 const Schema = __importStar(require("@effect/schema/Schema"));
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
@@ -37,7 +37,6 @@ class CouchDesignDocs extends Schema.Class('CouchDesignDocs')({
 }) {
     static decodeResponse = platform_1.HttpClientResponse.schemaBodyJson(CouchDesignDocs);
 }
-exports.CouchDesignDocs = CouchDesignDocs;
 const serviceContext = cht_client_1.ChtClientService.pipe(Effect.map(couch => Context.make(cht_client_1.ChtClientService, couch)));
 class CouchDesignDocsService extends Effect.Service()('chtoolbox/CouchDesignDocsService', {
     effect: serviceContext.pipe(Effect.map(context => ({
