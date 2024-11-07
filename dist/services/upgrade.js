@@ -55,9 +55,7 @@ exports.UpgradeLog = UpgradeLog;
 const latestUpgradeLog = pouchdb_1.PouchDBService
     .get('medic-logs')
     .pipe(Effect.flatMap(db => Effect.tryPromise(() => db.allDocs({
-    startkey: `${UPGRADE_LOG_NAME}:${effect_1.DateTime.unsafeNow()
-        .epochMillis
-        .toString()}:`,
+    startkey: `${UPGRADE_LOG_NAME}:${effect_1.DateTime.unsafeNow().epochMillis.toString()}:`,
     endkey: `${UPGRADE_LOG_NAME}:0:`,
     descending: true,
     limit: 1,

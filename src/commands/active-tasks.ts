@@ -10,6 +10,7 @@ import {
   getPid,
   getProgressPct
 } from '../services/couch/active-tasks';
+import { clearThen } from '../libs/core';
 
 const getDesignDisplayName = (task: CouchActiveTask) => getDesignName(task)
   .pipe(
@@ -47,10 +48,7 @@ const followActiveTasks = CouchActiveTasksService
   .pipe(
     Effect.flatMap(Stream.runForEach(tasks => Effect
       .succeed(getPrintableTasks(tasks))
-      .pipe(
-        Effect.tap(Console.clear),
-        Effect.tap(Console.table),
-      ))),
+      .pipe(Effect.tap(tasks => clearThen(Console.table(tasks)))))),
   );
 
 const follow = Options

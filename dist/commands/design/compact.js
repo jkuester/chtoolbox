@@ -5,8 +5,8 @@ const cli_1 = require("@effect/cli");
 const effect_1 = require("effect");
 const index_1 = require("../../index");
 const compact_1 = require("../../services/compact");
-const compact_2 = require("../compact");
 const core_1 = require("../../libs/core");
+const compact_2 = require("../db/compact");
 const database = cli_1.Args
     .text({ name: 'database' })
     .pipe(cli_1.Args.withDescription('The database with the design to compact'));

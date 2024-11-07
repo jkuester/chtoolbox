@@ -24,7 +24,6 @@ const warm_views_1 = require("./services/warm-views");
 const warm_views_2 = require("./commands/warm-views");
 const compact_1 = require("./services/couch/compact");
 const compact_2 = require("./services/compact");
-const compact_3 = require("./commands/compact");
 const active_tasks_1 = require("./commands/active-tasks");
 const active_tasks_2 = require("./services/couch/active-tasks");
 const pouchdb_1 = require("./services/pouchdb");
@@ -45,7 +44,7 @@ const setEnv = (url) => effect_1.Effect.flatMap(environment_1.EnvironmentService
 const getEnv = effect_1.Effect.flatMap(environment_1.EnvironmentService, envSvc => envSvc.get());
 exports.initializeUrl = chtx.pipe(effect_1.Effect.map(({ url }) => url), effect_1.Effect.map(effect_1.Option.map(effect_1.Redacted.make)), effect_1.Effect.map(effect_1.Option.map(setEnv)), effect_1.Effect.flatMap(effect_1.Option.getOrElse(() => getEnv)), effect_1.Effect.map(({ url }) => effect_1.Redacted.value(url)), effect_1.Effect.map(effect_1.Option.liftPredicate(effect_1.String.isNonEmpty)), effect_1.Effect.map(effect_1.Option.getOrThrowWith(() => new Error('A value must be set for the COUCH_URL envar or the --url option.'))));
 const command = chtx.pipe(cli_1.Command.withSubcommands([
-    compact_3.compact, design_2.design, doc_1.doc, monitor_1.monitor, warm_views_2.warmViews, active_tasks_1.activeTasks, db_1.db, upgrade_1.upgrade
+    design_2.design, doc_1.doc, monitor_1.monitor, warm_views_2.warmViews, active_tasks_1.activeTasks, db_1.db, upgrade_1.upgrade
 ]));
 const cli = cli_1.Command.run(command, {
     name: 'CHT Toolbox',

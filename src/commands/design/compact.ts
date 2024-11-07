@@ -2,8 +2,8 @@ import { Args, Command, Options } from '@effect/cli';
 import { Array, Console, Effect, Option } from 'effect';
 import { initializeUrl } from '../../index';
 import { CompactService } from '../../services/compact';
-import { streamActiveTasks } from '../compact';
 import { mergeArrayStreams } from '../../libs/core';
+import { streamActiveTasks } from '../db/compact';
 
 const database = Args
   .text({ name: 'database' })

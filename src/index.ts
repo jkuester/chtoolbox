@@ -18,7 +18,6 @@ import { WarmViewsService } from './services/warm-views';
 import { warmViews } from './commands/warm-views';
 import { CouchCompactService } from './services/couch/compact';
 import { CompactService } from './services/compact';
-import { compact } from './commands/compact';
 import { activeTasks } from './commands/active-tasks';
 import { CouchActiveTasksService } from './services/couch/active-tasks';
 import { PouchDBService } from './services/pouchdb';
@@ -57,7 +56,7 @@ export const initializeUrl = chtx.pipe(
 );
 
 const command = chtx.pipe(Command.withSubcommands([
-  compact, design, doc, monitor, warmViews, activeTasks, db, upgrade
+  design, doc, monitor, warmViews, activeTasks, db, upgrade
 ]));
 
 const cli = Command.run(command, {
