@@ -22,6 +22,7 @@ module.exports = {
     tsconfigRootDir: __dirname
   },
   rules: {
+    '@typescript-eslint/explicit-module-boundary-types': ['error'],
     '@typescript-eslint/no-confusing-void-expression': ['error', { ignoreArrowShorthand: true }],
     '@typescript-eslint/no-empty-interface': ['error', { allowSingleExtends: true }],
     '@typescript-eslint/no-empty-object-type': ['error', { allowInterfaces: 'with-single-extends' }],

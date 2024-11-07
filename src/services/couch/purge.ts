@@ -1,9 +1,11 @@
 import { HttpClientRequest } from '@effect/platform';
+import { HttpClientResponse } from '@effect/platform/HttpClientResponse';
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { Array, pipe, Schema } from 'effect';
 import { ChtClientService } from '../cht-client';
 import { NonEmptyArray } from 'effect/Array';
+import { HttpClientResponseEffect } from '../../libs/core';
 import RemoveDocument = PouchDB.Core.RemoveDocument;
 
 const PurgeBody = Schema.Record({ key: Schema.String, value: Schema.Array(Schema.String) });
@@ -26,7 +28,7 @@ const serviceContext = ChtClientService.pipe(Effect.map(couch => Context.make(Ch
 
 export class CouchPurgeService extends Effect.Service<CouchPurgeService>()('chtoolbox/CouchPurgeService', {
   effect: serviceContext.pipe(Effect.map(context => ({
-    purge: (dbName: string, docs: NonEmptyArray<RemoveDocument>) => pipe(
+    purge: (dbName: string, docs: NonEmptyArray<RemoveDocument>): HttpClientResponseEffect => pipe(
       docs,
       Array.reduce({}, (acc, doc) => ({ ...acc, [doc._id]: [doc._rev] })),
       purge(dbName),
@@ -39,4 +41,4 @@ export class CouchPurgeService extends Effect.Service<CouchPurgeService>()('chto
 
 export const purgeFrom = (dbName: string) => (
   docs: NonEmptyArray<RemoveDocument>
-) => CouchPurgeService.purge(dbName, docs);
+): Effect.Effect<HttpClientResponse, Error, CouchPurgeService> => CouchPurgeService.purge(dbName, docs);

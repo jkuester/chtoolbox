@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 export const createDbInfo = ({
   key = '',
   update_seq = '',

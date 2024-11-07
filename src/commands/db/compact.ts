@@ -1,5 +1,5 @@
 import { Args, Command, Options } from '@effect/cli';
-import { Array, Console, Effect, Option, pipe, String, Stream } from 'effect';
+import { Array, Console, Effect, Option, pipe, Stream, String } from 'effect';
 import { initializeUrl } from '../../index';
 import { CompactService } from '../../services/compact';
 import { mergeArrayStreams } from '../../libs/core';
@@ -24,7 +24,9 @@ const getTaskDisplayData = (task: CouchActiveTask) => ({
   progress: getProgressPct(task),
 });
 
-export const streamActiveTasks = (taskStream: Stream.Stream<CouchActiveTask[], Error>) => taskStream.pipe(
+export const streamActiveTasks = (
+  taskStream: Stream.Stream<CouchActiveTask[], Error>
+): Effect.Effect<void, Error> => taskStream.pipe(
   Stream.map(Array.map(getTaskDisplayData)),
   Stream.map(getDisplayDictByPid),
   Stream.runForEach(taskDict => Console.clear.pipe(
@@ -82,4 +84,7 @@ export const compact = Command
       'Compaction started. Watch the active tasks for progress: chtx active-tasks -f'
     ))),
   ))
-  .pipe(Command.withDescription(`Run compaction on one or more Couch databases`));
+  .pipe(Command.withDescription(
+    `Run compaction on one or more Couch databases. `
+    + `The \`design compact\` command can be used to compact individual designs.`
+  ));

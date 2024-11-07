@@ -11,7 +11,7 @@ const serviceContext = ChtClientService.pipe(Effect.map(couch => Context.make(Ch
 
 export class CouchViewService extends Effect.Service<CouchViewService>()('chtoolbox/CouchViewService', {
   effect: serviceContext.pipe(Effect.map(context => ({
-    warm: (dbName: string, designName: string, viewName: string) => ChtClientService
+    warm: (dbName: string, designName: string, viewName: string): Effect.Effect<void, Error> => ChtClientService
       .request(getWarmRequest(dbName, designName, viewName))
       .pipe(
         Effect.andThen(Effect.void),

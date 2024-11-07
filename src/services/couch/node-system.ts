@@ -21,7 +21,7 @@ export class CouchNodeSystemService extends Effect.Service<CouchNodeSystemServic
   'chtoolbox/CouchNodeSystemService',
   {
     effect: serviceContext.pipe(Effect.map(context => ({
-      get: () => ChtClientService
+      get: (): Effect.Effect<CouchNodeSystem, Error> => ChtClientService
         .request(HttpClientRequest.get(ENDPOINT))
         .pipe(
           Effect.flatMap(CouchNodeSystem.decodeResponse),

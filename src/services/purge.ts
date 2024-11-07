@@ -1,6 +1,6 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { PouchDBService, streamAllDocPages, streamQueryPages } from './pouchdb';
+import { AllDocsResponseStream, PouchDBService, streamAllDocPages, streamQueryPages } from './pouchdb';
 import { Array, Option, pipe, Predicate, Schema, Stream, String } from 'effect';
 import { CouchPurgeService, purgeFrom } from './couch/purge';
 import AllDocsResponse = PouchDB.Core.AllDocsResponse;
@@ -30,6 +30,7 @@ const purgeRows = (dbName: string) => (rows: { _id: string, _rev: string }[]) =>
   .liftPredicate(rows, Array.isNonEmptyArray)
   .pipe(
     Option.map(purgeFrom(dbName)),
+    Option.map(Effect.andThen(Effect.void)),
     Option.getOrElse(() => Effect.void),
   );
 
@@ -82,7 +83,7 @@ const serviceContext = Effect
 
 export class PurgeService extends Effect.Service<PurgeService>()('chtoolbox/PurgeService', {
   effect: serviceContext.pipe(Effect.map(context => ({
-    purgeAll: (dbName: string, purgeDdocs = false) => PouchDBService
+    purgeAll: (dbName: string, purgeDdocs = false): Effect.Effect<AllDocsResponseStream, Error> => PouchDBService
       .get(dbName)
       .pipe(
         Effect.map(streamAllDocPages(PAGE_OPTIONS)),
@@ -94,7 +95,10 @@ export class PurgeService extends Effect.Service<PurgeService>()('chtoolbox/Purg
         Effect.map(Stream.provideContext(context)),
         Effect.provide(context),
       ),
-    purgeReports: (dbName: string, opts: { since: Option.Option<Date>, before: Option.Option<Date> }) => pipe(
+    purgeReports: (
+      dbName: string,
+      opts: { since: Option.Option<Date>, before: Option.Option<Date> }
+    ): Effect.Effect<AllDocsResponseStream, Error> => pipe(
       getReportQueryOptions(opts),
       purgeByViewQuery(dbName, 'medic-client/reports_by_date'),
       Effect.map(Stream.provideContext(context)),
@@ -103,7 +107,7 @@ export class PurgeService extends Effect.Service<PurgeService>()('chtoolbox/Purg
     purgeContacts: (
       dbName: string,
       type: string,
-    ) => pipe(
+    ): Effect.Effect<AllDocsResponseStream, Error> => pipe(
       { ...PAGE_OPTIONS, key: [type] },
       purgeByViewQuery(dbName, 'medic-client/contacts_by_type'),
       Effect.map(Stream.provideContext(context)),

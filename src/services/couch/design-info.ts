@@ -36,7 +36,7 @@ export class CouchDesignInfoService extends Effect.Service<CouchDesignInfoServic
   'chtoolbox/CouchDesignInfoService',
   {
     effect: serviceContext.pipe(Effect.map(context => ({
-      get: (dbName: string, designName: string) => ChtClientService
+      get: (dbName: string, designName: string): Effect.Effect<CouchDesignInfo, Error> => ChtClientService
         .request(HttpClientRequest.get(`/${dbName}/_design/${designName}/_info`))
         .pipe(
           Effect.flatMap(CouchDesignInfo.decodeResponse),

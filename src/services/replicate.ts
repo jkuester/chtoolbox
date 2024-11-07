@@ -60,7 +60,11 @@ const serviceContext = Effect
 
 export class ReplicateService extends Effect.Service<ReplicateService>()('chtoolbox/ReplicateService', {
   effect: serviceContext.pipe(Effect.map(context => ({
-    replicate: (source: string, target: string, includeDdocs = false) => Effect
+    replicate: (
+      source: string,
+      target: string,
+      includeDdocs = false
+    ): Effect.Effect<Stream.Stream<ReplicationDoc, Error>, Error> => Effect
       .all([PouchDBService.get('_replicator'), createReplicationDoc(source, target, includeDdocs)])
       .pipe(
         Effect.flatMap(([db, doc]) => Effect.promise(() => db.bulkDocs([doc]))),

@@ -54,15 +54,15 @@ const serviceContext = ChtClientService.pipe(Effect.map(couch => Context.make(Ch
 
 export class CouchDbsInfoService extends Effect.Service<CouchDbsInfoService>()('chtoolbox/CouchDbsInfoService', {
   effect: serviceContext.pipe(Effect.map(context => ({
-    post: (dbNames: NonEmptyArray<string>) => getPostRequest(dbNames)
+    post: (dbNames: NonEmptyArray<string>): Effect.Effect<readonly CouchDbInfo[], Error> => getPostRequest(dbNames)
       .pipe(
         Effect.flatMap(request => ChtClientService.request(request)),
         Effect.flatMap(CouchDbInfo.decodeResponse),
         Effect.scoped,
         Effect.provide(context),
       ),
-    get: () => dbsInfo.pipe(Effect.provide(context)),
-    getDbNames: () => dbsInfo.pipe(
+    get: (): Effect.Effect<readonly CouchDbInfo[], Error> => dbsInfo.pipe(Effect.provide(context)),
+    getDbNames: (): Effect.Effect<string[], Error> => dbsInfo.pipe(
       Effect.map(Array.map(x => x.key)),
       Effect.provide(context),
     )

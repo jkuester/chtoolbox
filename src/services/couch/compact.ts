@@ -17,7 +17,7 @@ const getCompactRequest = (dbName: string, designName?: string) => Schema
 const compact = (context: Context.Context<ChtClientService>) => (
   dbName: string,
   designName?: string
-) => getCompactRequest(dbName, designName)
+): Effect.Effect<void, Error> => getCompactRequest(dbName, designName)
   .pipe(
     Effect.flatMap(request => ChtClientService.request(request)),
     Effect.andThen(Effect.void),

@@ -40,7 +40,10 @@ const getAllDocsPage = (
     response,
     Option.liftPredicate(skip + options.limit, () => response.rows.length === options.limit),
   ]));
-export const streamAllDocPages = (options: AllDocsOptions = {}) => (db: PouchDB.Database) => pipe(
+export type AllDocsResponseStream = Stream.Stream<PouchDB.Core.AllDocsResponse<object>, Error>;
+export const streamAllDocPages = (options: AllDocsOptions = {}) => (
+  db: PouchDB.Database
+): AllDocsResponseStream => pipe(
   getAllDocsPage(db, { ...options, limit: options.limit ?? 1000 }),
   pageFn => Stream.paginateEffect(0, pageFn),
 );
@@ -62,7 +65,7 @@ const getQueryPage = (
 export const streamQueryPages = (
   viewIndex: string,
   options: PouchDB.Query.Options<object, object> = {}
-) => (db: PouchDB.Database) => pipe(
+) => (db: PouchDB.Database): Stream.Stream<PouchDB.Query.Response<object>> => pipe(
   getQueryPage(db, viewIndex, { ...options, limit: options.limit ?? 1000 }),
   pageFn => Stream.paginateEffect(0, pageFn),
 );
@@ -86,7 +89,9 @@ const cancelChangesFeedIfInterrupted = (feed: PouchDB.Core.Changes<object>) => E
     Effect.map(fn => fn()),
     Effect.andThen(Effect.logDebug('Changes feed canceled because the stream was interrupted')),
   );
-export const streamChanges = (options?: PouchDB.Core.ChangesOptions) => (db: PouchDB.Database) => pipe(
+export const streamChanges = (options?: PouchDB.Core.ChangesOptions) => (
+  db: PouchDB.Database
+): Stream.Stream<PouchDB.Core.ChangesResponseChange<object>, Error> => pipe(
   { since: options?.since ?? 0 }, // Caching the since value in case the Stream is retried
   cache => Stream.async((emit: ChangeEmit) => pipe(
     db.changes({ ...options, since: cache.since, live: true }),

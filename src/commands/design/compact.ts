@@ -14,7 +14,7 @@ const database = Args
 const designs = Args
   .text({ name: 'design' })
   .pipe(
-    Args.withDescription('The design to compact'),
+    Args.withDescription('The design(s) to compact'),
     Args.atLeast(1),
   );
 
@@ -38,4 +38,7 @@ export const compact = Command
       'Compaction started. Watch the active tasks for progress: chtx active-tasks -f'
     ))),
   ))
-  .pipe(Command.withDescription(`Run compaction on one or more Couch designs`));
+  .pipe(Command.withDescription(
+    `Run compaction on one or more Couch designs. `
+    + `The \`db compact\` command can be used to compact entire databases.`
+  ));

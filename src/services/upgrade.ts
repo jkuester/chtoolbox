@@ -91,19 +91,21 @@ const assertReadyForComplete = latestUpgradeLog.pipe(
   Effect.flatMap(Match.orElse(() => Effect.fail(new Error('No upgrade ready for completion.')))),
 );
 
+type UpgradeLogStreamEffect = Effect.Effect<Stream.Stream<UpgradeLog, Error>, Error>;
+
 export class UpgradeService extends Effect.Service<UpgradeService>()('chtoolbox/UpgradeService', {
   effect: serviceContext.pipe(Effect.map(context => ({
-    upgrade: (version: string) => assertReadyForUpgrade.pipe(
+    upgrade: (version: string): UpgradeLogStreamEffect => assertReadyForUpgrade.pipe(
       Effect.andThen(ChtUpgradeService.upgrade(version)),
       Effect.andThen(streamUpgradeLogChanges(COMPLETED_STATES)),
       Effect.provide(context),
     ),
-    stage: (version: string) => assertReadyForUpgrade.pipe(
+    stage: (version: string): UpgradeLogStreamEffect => assertReadyForUpgrade.pipe(
       Effect.andThen(ChtUpgradeService.stage(version)),
       Effect.andThen(streamUpgradeLogChanges(STAGING_COMPLETE_STATES)),
       Effect.provide(context),
     ),
-    complete: (version: string) => assertReadyForComplete.pipe(
+    complete: (version: string): UpgradeLogStreamEffect => assertReadyForComplete.pipe(
       Effect.andThen(ChtUpgradeService.complete(version)),
       Effect.andThen(streamUpgradeLogChanges(COMPLETED_STATES)
         .pipe(
