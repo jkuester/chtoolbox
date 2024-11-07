@@ -39,7 +39,7 @@ const filterDdoc = (purgeDdocs) => (doc) => effect_1.Option
     .pipe(effect_1.Option.map(({ _id }) => _id), effect_1.Option.map(effect_1.Predicate.not(effect_1.String.startsWith('_design/'))), effect_1.Option.getOrElse(() => true));
 const purgeRows = (dbName) => (rows) => effect_1.Option
     .liftPredicate(rows, effect_1.Array.isNonEmptyArray)
-    .pipe(effect_1.Option.map((0, purge_1.purgeFrom)(dbName)), effect_1.Option.getOrElse(() => Effect.void));
+    .pipe(effect_1.Option.map((0, purge_1.purgeFrom)(dbName)), effect_1.Option.map(Effect.andThen(Effect.void)), effect_1.Option.getOrElse(() => Effect.void));
 const getReportQueryOptions = ({ since, before }) => ({
     ...PAGE_OPTIONS,
     startkey: since.pipe(effect_1.Option.map(date => [date.getTime()]), effect_1.Option.getOrUndefined),

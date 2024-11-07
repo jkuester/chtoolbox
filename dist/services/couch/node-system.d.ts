@@ -22,7 +22,7 @@ export declare class CouchNodeSystem extends CouchNodeSystem_base {
 }
 declare const CouchNodeSystemService_base: Effect.Service.Class<CouchNodeSystemService, "chtoolbox/CouchNodeSystemService", {
     readonly effect: Effect.Effect<{
-        get: () => Effect.Effect<CouchNodeSystem, Error | import("@effect/platform/HttpClientError").ResponseError | import("effect/ParseResult").ParseError, never>;
+        get: () => Effect.Effect<CouchNodeSystem, Error>;
     }, never, ChtClientService>;
     readonly accessors: true;
 }>;

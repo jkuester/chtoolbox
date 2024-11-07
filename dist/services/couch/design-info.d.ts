@@ -74,7 +74,7 @@ export declare class CouchDesignInfo extends CouchDesignInfo_base {
 }
 declare const CouchDesignInfoService_base: Effect.Service.Class<CouchDesignInfoService, "chtoolbox/CouchDesignInfoService", {
     readonly effect: Effect.Effect<{
-        get: (dbName: string, designName: string) => Effect.Effect<CouchDesignInfo, Error | import("@effect/platform/HttpClientError").ResponseError | import("effect/ParseResult").ParseError, never>;
+        get: (dbName: string, designName: string) => Effect.Effect<CouchDesignInfo, Error>;
     }, never, ChtClientService>;
     readonly accessors: true;
 }>;

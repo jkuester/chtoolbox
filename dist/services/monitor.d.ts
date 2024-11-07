@@ -4,7 +4,7 @@ import { CouchDesignInfo, CouchDesignInfoService } from './couch/design-info';
 import { CouchNodeSystem, CouchNodeSystemService } from './couch/node-system';
 import { Option } from 'effect';
 import { LocalDiskUsageService } from './local-disk-usage';
-import { ResponseError } from '@effect/platform/HttpClientError';
+import { PlatformError } from '@effect/platform/Error';
 interface DatabaseInfo extends CouchDbInfo {
     designs: CouchDesignInfo[];
 }
@@ -15,9 +15,9 @@ interface MonitoringData extends CouchNodeSystem {
 }
 declare const MonitorService_base: Effect.Service.Class<MonitorService, "chtoolbox/MonitorService", {
     readonly effect: Effect.Effect<{
-        get: (directory: Option.Option<string>) => Effect.Effect<MonitoringData, Error | ResponseError | import("effect/ParseResult").ParseError | import("@effect/platform/Error").PlatformError, never>;
+        get: (directory: Option.Option<string>) => Effect.Effect<MonitoringData, Error | PlatformError>;
         getCsvHeader: (directory: Option.Option<string>) => string[];
-        getAsCsv: (directory: Option.Option<string>) => Effect.Effect<string[], Error | ResponseError | import("effect/ParseResult").ParseError | import("@effect/platform/Error").PlatformError, never>;
+        getAsCsv: (directory: Option.Option<string>) => Effect.Effect<string[], Error | PlatformError>;
     }, never, CouchNodeSystemService | CouchDbsInfoService | CouchDesignInfoService | LocalDiskUsageService>;
     readonly accessors: true;
 }>;

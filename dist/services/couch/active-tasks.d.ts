@@ -1,6 +1,5 @@
-import * as Effect from 'effect/Effect';
 import { ChtClientService } from '../cht-client';
-import { Option, Schema, Stream } from 'effect';
+import { Option, Schema, Stream, Effect } from 'effect';
 declare const CouchActiveTask_base: Schema.Class<CouchActiveTask, {
     database: typeof Schema.String;
     design_document: Schema.UndefinedOr<typeof Schema.String>;
@@ -45,12 +44,13 @@ export declare const getPid: (task: CouchActiveTask) => string;
 export declare const getProgressPct: (task: CouchActiveTask) => string;
 export declare const getDisplayDictByPid: (tasks: {
     pid: string;
-}[]) => Record<string | symbol, Record<string, string> | Record<string | symbol, string>>;
-export declare const filterStreamByType: (...types: string[]) => (taskStream: Stream.Stream<CouchActiveTask[], Error>) => Stream.Stream<CouchActiveTask[], Error, never>;
+}[]) => Record<string, Record<string, string>>;
+export declare const filterStreamByType: (...types: string[]) => (taskStream: Stream.Stream<CouchActiveTask[], Error>) => Stream.Stream<CouchActiveTask[], Error>;
+export type CouchActiveTaskStream = Stream.Stream<CouchActiveTask[], Error>;
 declare const CouchActiveTasksService_base: Effect.Service.Class<CouchActiveTasksService, "chtoolbox/CouchActiveTasksService", {
     readonly effect: Effect.Effect<{
-        get: () => Effect.Effect<CouchActiveTask[], Error | import("@effect/platform/HttpClientError").ResponseError | import("effect/ParseResult").ParseError, never>;
-        stream: (interval?: number) => Stream.Stream<CouchActiveTask[], Error | import("@effect/platform/HttpClientError").ResponseError | import("effect/ParseResult").ParseError, never>;
+        get: () => Effect.Effect<CouchActiveTask[], Error>;
+        stream: (interval?: number) => CouchActiveTaskStream;
     }, never, ChtClientService>;
     readonly accessors: true;
 }>;

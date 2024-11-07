@@ -27,7 +27,7 @@ export declare class ReplicationDoc extends ReplicationDoc_base {
 }
 declare const ReplicateService_base: Effect.Service.Class<ReplicateService, "chtoolbox/ReplicateService", {
     readonly effect: Effect.Effect<{
-        replicate: (source: string, target: string, includeDdocs?: boolean) => Effect.Effect<Stream.Stream<ReplicationDoc, Error | import("effect/ParseResult").ParseError, never>, never, never>;
+        replicate: (source: string, target: string, includeDdocs?: boolean) => Effect.Effect<Stream.Stream<ReplicationDoc, Error>, Error>;
     }, never, EnvironmentService | PouchDBService>;
     readonly accessors: true;
 }>;

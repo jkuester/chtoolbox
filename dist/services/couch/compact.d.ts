@@ -2,8 +2,8 @@ import * as Effect from 'effect/Effect';
 import { ChtClientService } from '../cht-client';
 declare const CouchCompactService_base: Effect.Service.Class<CouchCompactService, "chtoolbox/CouchCompactService", {
     readonly effect: Effect.Effect<{
-        compactDb: (dbName: string, designName?: string) => Effect.Effect<void, Error, never>;
-        compactDesign: (dbName: string, designName?: string) => Effect.Effect<void, Error, never>;
+        compactDb: (dbName: string, designName?: string) => Effect.Effect<void, Error>;
+        compactDesign: (dbName: string, designName?: string) => Effect.Effect<void, Error>;
     }, never, ChtClientService>;
     readonly accessors: true;
 }>;

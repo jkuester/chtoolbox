@@ -31,5 +31,6 @@ const follow = cli_1.Options
     .pipe(cli_1.Options.withAlias('f'), cli_1.Options.withDescription('After triggering compaction, wait for all compacting jobs to complete.'), cli_1.Options.withDefault(false));
 exports.compact = cli_1.Command
     .make('compact', { follow, databases, all }, ({ follow, databases, all }) => index_1.initializeUrl.pipe(effect_1.Effect.andThen(() => doCompaction(databases, all)), effect_1.Effect.map(effect_1.Option.liftPredicate(() => follow)), effect_1.Effect.map(effect_1.Option.map(core_1.mergeArrayStreams)), effect_1.Effect.map(effect_1.Option.map(exports.streamActiveTasks)), effect_1.Effect.flatMap(effect_1.Option.getOrElse(() => effect_1.Console.log('Compaction started. Watch the active tasks for progress: chtx active-tasks -f')))))
-    .pipe(cli_1.Command.withDescription(`Run compaction on one or more Couch databases`));
+    .pipe(cli_1.Command.withDescription(`Run compaction on one or more Couch databases. `
+    + `The \`design compact\` command can be used to compact individual designs.`));
 //# sourceMappingURL=compact.js.map

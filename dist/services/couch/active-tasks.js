@@ -25,7 +25,6 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CouchActiveTasksService = exports.filterStreamByType = exports.getDisplayDictByPid = exports.getProgressPct = exports.getPid = exports.getDbName = exports.getDesignName = exports.CouchActiveTask = void 0;
 const platform_1 = require("@effect/platform");
-const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
 const cht_client_1 = require("../cht-client");
 const effect_1 = require("effect");
@@ -64,12 +63,12 @@ const taskHasType = (types) => (task) => (0, effect_1.pipe)(types, effect_1.Arra
 const filterStreamByType = (...types) => (taskStream) => taskStream.pipe(effect_1.Stream.map(effect_1.Array.filter(taskHasType(types))));
 exports.filterStreamByType = filterStreamByType;
 const orderByStartedOn = effect_1.Order.make((a, b) => effect_1.Number.Order(a.started_on, b.started_on));
-const activeTasks = cht_client_1.ChtClientService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(ENDPOINT))), Effect.flatMap(CouchActiveTask.decodeResponse), Effect.scoped, Effect.map(effect_1.Array.sort(orderByStartedOn)));
-const serviceContext = cht_client_1.ChtClientService.pipe(Effect.map(couch => Context.make(cht_client_1.ChtClientService, couch)));
-class CouchActiveTasksService extends Effect.Service()('chtoolbox/CouchActiveTasksService', {
-    effect: serviceContext.pipe(Effect.map(context => ({
-        get: () => activeTasks.pipe(Effect.provide(context)),
-        stream: (interval = 1000) => effect_1.Stream.repeat(activeTasks.pipe(Effect.provide(context)), effect_1.Schedule.spaced(interval)),
+const activeTasks = cht_client_1.ChtClientService.pipe(effect_1.Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(ENDPOINT))), effect_1.Effect.flatMap(CouchActiveTask.decodeResponse), effect_1.Effect.scoped, effect_1.Effect.map(effect_1.Array.sort(orderByStartedOn)));
+const serviceContext = cht_client_1.ChtClientService.pipe(effect_1.Effect.map(couch => Context.make(cht_client_1.ChtClientService, couch)));
+class CouchActiveTasksService extends effect_1.Effect.Service()('chtoolbox/CouchActiveTasksService', {
+    effect: serviceContext.pipe(effect_1.Effect.map(context => ({
+        get: () => activeTasks.pipe(effect_1.Effect.provide(context)),
+        stream: (interval = 1000) => effect_1.Stream.repeat(activeTasks.pipe(effect_1.Effect.provide(context)), effect_1.Schedule.spaced(interval)),
     }))),
     accessors: true,
 }) {

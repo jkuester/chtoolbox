@@ -12,8 +12,8 @@ const getUpgradeLogDisplay = ({ state_history }) => (0, effect_1.pipe)(state_his
         .unsafeMake(date)
         .pipe(effect_1.DateTime.formatLocal({ hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })),
 })), effect_1.Array.reduce({}, (acc, { state, time }) => ({ ...acc, [state]: { time } })));
-const streamUpgradeLog = (stream) => stream.pipe(effect_1.Stream.map(getUpgradeLogDisplay), effect_1.Stream.tap(log => (0, core_1.clearThen)(effect_1.Console.table(log))), effect_1.Stream.run(effect_1.Sink.drain));
-const printUpgradeLogId = (stream) => stream.pipe(effect_1.Stream.take(1), effect_1.Stream.tap(log => (0, core_1.clearThen)(effect_1.Console.log(`Upgrade started. Check the medic-logs doc for progress: ${log._id}`))), effect_1.Stream.run(effect_1.Sink.drain));
+const streamUpgradeLog = (stream) => stream.pipe(effect_1.Stream.map(getUpgradeLogDisplay), effect_1.Stream.tap(log => (0, core_1.clearThen)(effect_1.Console.table(log))), effect_1.Stream.runDrain);
+const printUpgradeLogId = (stream) => stream.pipe(effect_1.Stream.take(1), effect_1.Stream.tap(log => (0, core_1.clearThen)(effect_1.Console.log(`Upgrade started. Check the medic-logs doc for progress: ${log._id}`))), effect_1.Stream.runDrain);
 const getUpgradeAction = (opts) => effect_1.Match
     .value(opts)
     .pipe(effect_1.Match.when({ stage: true }, ({ version }) => upgrade_1.UpgradeService.stage(version)), effect_1.Match.when({ complete: true }, ({ version }) => upgrade_1.UpgradeService.complete(version)), effect_1.Match.orElse(({ version }) => upgrade_1.UpgradeService.upgrade(version)));
