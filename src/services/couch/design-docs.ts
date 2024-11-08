@@ -1,11 +1,10 @@
-import * as Schema from '@effect/schema/Schema';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { Array } from 'effect';
+import { Array, Schema } from 'effect';
 import { ChtClientService } from '../cht-client';
 
-export class CouchDesignDocs extends Schema.Class<CouchDesignDocs>('CouchDesignDocs')({
+class CouchDesignDocs extends Schema.Class<CouchDesignDocs>('CouchDesignDocs')({
   rows: Schema.Array(Schema.Struct({
     id: Schema.String,
   })),
@@ -19,7 +18,7 @@ export class CouchDesignDocsService extends Effect.Service<CouchDesignDocsServic
   'chtoolbox/CouchDesignDocsService',
   {
     effect: serviceContext.pipe(Effect.map(context => ({
-      getNames: (dbName: string) => ChtClientService
+      getNames: (dbName: string): Effect.Effect<string[], Error> => ChtClientService
         .request(HttpClientRequest.get(`/${dbName}/_design_docs`))
         .pipe(
           Effect.flatMap(CouchDesignDocs.decodeResponse),

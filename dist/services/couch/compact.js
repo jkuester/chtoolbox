@@ -24,13 +24,13 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CouchCompactService = void 0;
-const Schema = __importStar(require("@effect/schema/Schema"));
+const effect_1 = require("effect");
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
 const cht_client_1 = require("../cht-client");
 const getDesignPath = (designName) => designName ? `/${designName}` : '';
-const getCompactRequest = (dbName, designName) => Schema
+const getCompactRequest = (dbName, designName) => effect_1.Schema
     .Struct({})
     .pipe(platform_1.HttpClientRequest.schemaBodyJson, build => build(platform_1.HttpClientRequest.post(`/${dbName}/_compact${getDesignPath(designName)}`), {}), Effect.mapError(x => x));
 const compact = (context) => (dbName, designName) => getCompactRequest(dbName, designName)

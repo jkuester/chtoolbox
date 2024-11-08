@@ -1,9 +1,8 @@
-import * as Schema from '@effect/schema/Schema';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { ChtClientService } from '../cht-client';
-import { Option } from 'effect';
+import { Option, Schema } from 'effect';
 
 class CouchDesign extends Schema.Class<CouchDesign>('CouchDesign')({
   _id: Schema.String,

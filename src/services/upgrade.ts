@@ -1,8 +1,7 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { PouchDBService, streamChanges } from './pouchdb';
-import { Schema } from '@effect/schema';
-import { Array, DateTime, Match, Option, Schedule, Stream } from 'effect';
+import { Array, DateTime, Match, Option, Schedule, Schema, Stream } from 'effect';
 import { ChtUpgradeService } from './cht/upgrade';
 
 const UPGRADE_LOG_NAME = 'upgrade_log';
@@ -92,23 +91,26 @@ const assertReadyForComplete = latestUpgradeLog.pipe(
   Effect.flatMap(Match.orElse(() => Effect.fail(new Error('No upgrade ready for completion.')))),
 );
 
+type UpgradeLogStreamEffect = Effect.Effect<Stream.Stream<UpgradeLog, Error>, Error>;
+
 export class UpgradeService extends Effect.Service<UpgradeService>()('chtoolbox/UpgradeService', {
   effect: serviceContext.pipe(Effect.map(context => ({
-    upgrade: (version: string) => assertReadyForUpgrade.pipe(
+    upgrade: (version: string): UpgradeLogStreamEffect => assertReadyForUpgrade.pipe(
       Effect.andThen(ChtUpgradeService.upgrade(version)),
       Effect.andThen(streamUpgradeLogChanges(COMPLETED_STATES)),
       Effect.provide(context),
     ),
-    stage: (version: string) => assertReadyForUpgrade.pipe(
+    stage: (version: string): UpgradeLogStreamEffect => assertReadyForUpgrade.pipe(
       Effect.andThen(ChtUpgradeService.stage(version)),
       Effect.andThen(streamUpgradeLogChanges(STAGING_COMPLETE_STATES)),
       Effect.provide(context),
     ),
-    complete: (version: string) => assertReadyForComplete.pipe(
+    complete: (version: string): UpgradeLogStreamEffect => assertReadyForComplete.pipe(
       Effect.andThen(ChtUpgradeService.complete(version)),
-      Effect.andThen(streamUpgradeLogChanges(COMPLETED_STATES).pipe(
-        Effect.retry(Schedule.spaced(1000)), // Getting the upgrade log may fail while the server is still restarting
-      )),
+      Effect.andThen(streamUpgradeLogChanges(COMPLETED_STATES)
+        .pipe(
+          Effect.retry(Schedule.spaced(1000)), // Getting the upgrade log may fail while the server is still restarting
+        )),
       Effect.provide(context),
     ),
   }))),

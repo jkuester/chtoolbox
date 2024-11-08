@@ -24,16 +24,16 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CouchNodeSystemService = exports.CouchNodeSystem = void 0;
-const Schema = __importStar(require("@effect/schema/Schema"));
+const effect_1 = require("effect");
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
 const cht_client_1 = require("../cht-client");
 const ENDPOINT = '/_node/_local/_system';
-class CouchNodeSystem extends Schema.Class('CouchNodeSystem')({
-    memory: Schema.Struct({
-        processes_used: Schema.Number,
-        binary: Schema.Number,
+class CouchNodeSystem extends effect_1.Schema.Class('CouchNodeSystem')({
+    memory: effect_1.Schema.Struct({
+        processes_used: effect_1.Schema.Number,
+        binary: effect_1.Schema.Number,
     }),
 }) {
     static decodeResponse = platform_1.HttpClientResponse.schemaBodyJson(CouchNodeSystem);

@@ -29,18 +29,17 @@ const Context = __importStar(require("effect/Context"));
 const pouchdb_1 = require("./pouchdb");
 const effect_1 = require("effect");
 const purge_1 = require("./couch/purge");
-const schema_1 = require("@effect/schema");
 // _purge endpoint only accepts batches of 100.
 // skip: 0 just keeps getting the next 100 (after the last was purged)
 const PAGE_OPTIONS = { limit: 100, skip: 0 };
-const AllDocsRow = schema_1.Schema.Struct({ id: schema_1.Schema.String, value: schema_1.Schema.Struct({ rev: schema_1.Schema.String }) });
-const convertAllDocsResponse = (response) => (0, effect_1.pipe)(response.rows, effect_1.Array.filter(schema_1.Schema.is(AllDocsRow)), x => x, effect_1.Array.map(({ id, value: { rev } }) => ({ _id: id, _rev: rev })));
+const AllDocsRow = effect_1.Schema.Struct({ id: effect_1.Schema.String, value: effect_1.Schema.Struct({ rev: effect_1.Schema.String }) });
+const convertAllDocsResponse = (response) => (0, effect_1.pipe)(response.rows, effect_1.Array.filter(effect_1.Schema.is(AllDocsRow)), x => x, effect_1.Array.map(({ id, value: { rev } }) => ({ _id: id, _rev: rev })));
 const filterDdoc = (purgeDdocs) => (doc) => effect_1.Option
     .liftPredicate(doc, () => !purgeDdocs)
     .pipe(effect_1.Option.map(({ _id }) => _id), effect_1.Option.map(effect_1.Predicate.not(effect_1.String.startsWith('_design/'))), effect_1.Option.getOrElse(() => true));
 const purgeRows = (dbName) => (rows) => effect_1.Option
     .liftPredicate(rows, effect_1.Array.isNonEmptyArray)
-    .pipe(effect_1.Option.map((0, purge_1.purgeFrom)(dbName)), effect_1.Option.getOrElse(() => Effect.void));
+    .pipe(effect_1.Option.map((0, purge_1.purgeFrom)(dbName)), effect_1.Option.map(Effect.andThen(Effect.void)), effect_1.Option.getOrElse(() => Effect.void));
 const getReportQueryOptions = ({ since, before }) => ({
     ...PAGE_OPTIONS,
     startkey: since.pipe(effect_1.Option.map(date => [date.getTime()]), effect_1.Option.getOrUndefined),

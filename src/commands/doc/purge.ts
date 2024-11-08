@@ -1,22 +1,31 @@
 import { Args, Command, Options, Prompt } from '@effect/cli';
-import { Console, Effect, Either, Function, Match, Option, pipe, Sink, Stream } from 'effect';
+import { Array, Console, Effect, Match, Option, pipe, Predicate, Sink, Stream } from 'effect';
 import { initializeUrl } from '../../index';
 import { PurgeService } from '../../services/purge';
 import { clearThen } from '../../libs/core';
+
+const contradictoryTypeQualifiersProvided = (opts: PurgeOptions) => pipe(
+  [opts.all, opts.reports, Option.isSome(opts.contacts)],
+  Array.filter(Boolean),
+  Array.length,
+  length => length > 1
+);
+
+const dateQualifiersProvidedWithoutReports: Predicate.Predicate<PurgeOptions> = pipe(
+  ({ before }: PurgeOptions) => Option.isSome(before),
+  Predicate.or(({ since }) => Option.isSome(since)),
+  Predicate.and(({ reports }) => !reports),
+);
 
 const assertOpts = (opts: PurgeOptions) => Match
   .value(opts)
   .pipe(
     Match.when(
-      ({ all, contacts, reports }) => [all, reports, Option.isSome(contacts)]
-        .filter(Boolean)
-        .length > 1,
-      () => Effect.fail(new Error('Cannot specify one of --all --contacts, and --reports'))
+      contradictoryTypeQualifiersProvided,
+      () => Effect.fail(new Error('Can only specify one of --all, --contacts, and --reports'))
     ),
     Match.when(
-      ({
-        before, since, reports
-      }) => !reports && (Option.isSome(before) || Option.isSome(since)),
+      dateQualifiersProvidedWithoutReports,
       () => Effect.fail(new Error('Can only specify --before or --since when using --reports'))
     ),
     Match.orElse(() => Effect.void),
@@ -31,8 +40,7 @@ const purgeAction = (opts: PurgeOptions) => Match
     ),
     Match.when(
       ({ contacts }) => Option.isSome(contacts),
-      ({ database, contacts, }) => PurgeService
-        .purgeContacts(database, contacts.pipe(Option.getOrThrow))
+      ({ database, contacts, }) => PurgeService.purgeContacts(database, contacts.pipe(Option.getOrThrow))
     ),
     Match.orElse(({ database, all }) => PurgeService.purgeAll(database, all)),
   );
@@ -46,17 +54,17 @@ const purgeDocs = (opts: PurgeOptions) => purgeAction(opts)
     Effect.tap((count) => clearThen(Console.log(`Purged docs: ${count.toString()}`))),
   );
 
-const confirmPurge = ({ database, yes }: PurgeOptions) => Prompt
+const getConfirmationPrompt = ({ database }: PurgeOptions) => Prompt
   .confirm({
     message: `Are you sure you want to permanently purge docs from ${database}?`,
     initial: false,
-  })
+  });
+
+const isPurgeConfirmed = (opts: PurgeOptions) => Match
+  .value(opts.yes)
   .pipe(
-    Either.liftPredicate(
-      () => !yes,
-      () => Effect.succeed(true)
-    ),
-    Either.getOrElse(Function.identity),
+    Match.when(true, () => Effect.succeed(true)),
+    Match.orElse(() => getConfirmationPrompt(opts)),
   );
 
 const yes = Options
@@ -124,11 +132,9 @@ interface PurgeOptions {
 export const purge = Command
   .make('purge', { contacts, database, yes, all, reports, before, since }, (opts: PurgeOptions) => initializeUrl.pipe(
     Effect.andThen(assertOpts(opts)),
-    Effect.andThen(confirmPurge(opts)),
-    Effect.flatMap(confirmed => pipe(
-      Option.liftPredicate(purgeDocs(opts), () => confirmed),
-      Option.getOrElse(() => Console.log('Operation cancelled')),
-    )),
+    Effect.andThen(isPurgeConfirmed(opts)),
+    Effect.map(confirmed => Option.liftPredicate(purgeDocs(opts), () => confirmed)),
+    Effect.flatMap(Option.getOrElse(() => Console.log('Operation cancelled'))),
   ))
   .pipe(Command.withDescription(
     'Purge docs from a database. This operation is inefficient with large numbers of docs. When possible, simply ' +

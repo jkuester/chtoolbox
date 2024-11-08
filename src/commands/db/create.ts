@@ -1,7 +1,8 @@
 import { Args, Command } from '@effect/cli';
-import { Array, Console, Effect, pipe } from 'effect';
+import { Array, Effect, pipe } from 'effect';
 import { initializeUrl } from '../../index';
 import { PouchDBService } from '../../services/pouchdb';
+import { logJson } from '../../libs/core';
 
 const createDbs = (dbs: string[]) => pipe(
   dbs,
@@ -21,6 +22,6 @@ export const create = Command
     Effect.andThen(createDbs(databases)),
     Effect.map(Array.map(db => Effect.promise(() => db.info()))),
     Effect.flatMap(Effect.all),
-    Effect.tap(Console.log),
+    Effect.tap(logJson),
   ))
   .pipe(Command.withDescription(`Create new Couch database. Nothing happens if the database already exists.`));

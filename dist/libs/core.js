@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.clearThen = exports.mergeArrayStreams = exports.pouchDB = exports.untilEmptyCount = void 0;
+exports.logJson = exports.clearThen = exports.mergeArrayStreams = exports.pouchDB = exports.untilEmptyCount = void 0;
 const effect_1 = require("effect");
 const pouchdb_core_1 = __importDefault(require("pouchdb-core"));
 /**
@@ -32,4 +32,6 @@ const mergeArrayStreams = (streams) => effect_1.Array
 exports.mergeArrayStreams = mergeArrayStreams;
 const clearThen = (printEffect) => effect_1.Console.clear.pipe(effect_1.Effect.tap(printEffect));
 exports.clearThen = clearThen;
+const logJson = (data) => (0, effect_1.pipe)(JSON.stringify(data, null, 2), effect_1.Console.log);
+exports.logJson = logJson;
 //# sourceMappingURL=core.js.map

@@ -1,9 +1,7 @@
-import * as Schema from '@effect/schema/Schema';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
-import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { ChtClientService } from '../cht-client';
-import { Array, Number, Option, Order, pipe, Record, Schedule, Stream, String } from 'effect';
+import { Array, Number, Option, Order, pipe, Record, Schedule, Schema, Stream, String, Effect } from 'effect';
 
 const ENDPOINT = '/_active_tasks';
 
@@ -20,26 +18,26 @@ export class CouchActiveTask extends Schema.Class<CouchActiveTask>('CouchActiveT
   static readonly decodeResponse = HttpClientResponse.schemaBodyJson(Schema.Array(CouchActiveTask));
 }
 
-export const getDesignName = (task: CouchActiveTask) => Option
+export const getDesignName = (task: CouchActiveTask): Option.Option<string> => Option
   .fromNullable(task.design_document)
   .pipe(
     Option.flatMap(String.match(/^_design\/(.*)$/)),
     Option.flatMap(Array.get(1)),
   );
 
-export const getDbName = (task: CouchActiveTask) => pipe(
+export const getDbName = (task: CouchActiveTask): string => pipe(
   task.database,
   String.match(/^.+\/.+\/([^.]+)\..+/),
   Option.flatMap(Array.get(1)),
   Option.getOrThrow,
 );
 
-export const getPid = (task: CouchActiveTask) => pipe(
+export const getPid = (task: CouchActiveTask): string => pipe(
   task.pid,
   String.slice(1, -1),
 );
 
-export const getProgressPct = (task: CouchActiveTask) => Option
+export const getProgressPct = (task: CouchActiveTask): string => Option
   .fromNullable(task.progress)
   .pipe(
     Option.map(progress => `${progress.toString()}%`),
@@ -52,7 +50,9 @@ const buildDictByPid = (dict: Record<string, Record<string, string>>, task: { pi
   dict,
   addByPid(task),
 );
-export const getDisplayDictByPid = (tasks: { pid: string }[]) => Array.reduce(tasks, {}, buildDictByPid);
+export const getDisplayDictByPid = (
+  tasks: { pid: string }[]
+): Record<string, Record<string, string>> => Array.reduce(tasks, {}, buildDictByPid);
 
 const taskHasType = (types: string[]) => (task: CouchActiveTask) => pipe(
   types,
@@ -60,7 +60,7 @@ const taskHasType = (types: string[]) => (task: CouchActiveTask) => pipe(
 );
 export const filterStreamByType = (...types: string[]) => (
   taskStream: Stream.Stream<CouchActiveTask[], Error>
-) => taskStream.pipe(Stream.map(Array.filter(taskHasType(types))));
+): Stream.Stream<CouchActiveTask[], Error> => taskStream.pipe(Stream.map(Array.filter(taskHasType(types))));
 
 const orderByStartedOn = Order.make(
   (a: CouchActiveTask, b: CouchActiveTask) => Number.Order(a.started_on, b.started_on)
@@ -75,12 +75,14 @@ const activeTasks = ChtClientService.pipe(
 
 const serviceContext = ChtClientService.pipe(Effect.map(couch => Context.make(ChtClientService, couch)));
 
+export type CouchActiveTaskStream = Stream.Stream<CouchActiveTask[], Error>;
+
 export class CouchActiveTasksService extends Effect.Service<CouchActiveTasksService>()(
   'chtoolbox/CouchActiveTasksService',
   {
     effect: serviceContext.pipe(Effect.map(context => ({
-      get: () => activeTasks.pipe(Effect.provide(context)),
-      stream: (interval = 1000) => Stream.repeat(
+      get: (): Effect.Effect<CouchActiveTask[], Error> => activeTasks.pipe(Effect.provide(context)),
+      stream: (interval = 1000): CouchActiveTaskStream => Stream.repeat(
         activeTasks.pipe(Effect.provide(context)),
         Schedule.spaced(interval)
       ),

@@ -1,15 +1,12 @@
 import { Effect, Redacted } from 'effect';
-export interface Environment {
+interface Environment {
     readonly url: Redacted.Redacted;
     readonly user: string;
 }
 declare const EnvironmentService_base: Effect.Service.Class<EnvironmentService, "chtoolbox/EnvironmentService", {
     readonly effect: Effect.Effect<{
-        get: () => Effect.Effect<{
-            url: Redacted.Redacted;
-            user: string;
-        }, never, never>;
-        setUrl: (url: Redacted.Redacted) => Effect.Effect<Environment, Error, never>;
+        get: () => Effect.Effect<Environment>;
+        setUrl: (url: Redacted.Redacted) => Effect.Effect<Environment, Error>;
     }, Error | import("effect/ConfigError").ConfigError, never>;
     readonly accessors: true;
 }>;

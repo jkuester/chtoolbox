@@ -24,40 +24,39 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CouchDbsInfoService = exports.CouchDbInfo = void 0;
-const Schema = __importStar(require("@effect/schema/Schema"));
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
 const effect_1 = require("effect");
 const cht_client_1 = require("../cht-client");
 const ENDPOINT = '/_dbs_info';
-const DbsInfoBody = Schema.Struct({ keys: Schema.Array(Schema.String) });
+const DbsInfoBody = effect_1.Schema.Struct({ keys: effect_1.Schema.Array(effect_1.Schema.String) });
 const getPostRequest = (keys) => DbsInfoBody.pipe(platform_1.HttpClientRequest.schemaBodyJson, build => build(platform_1.HttpClientRequest.post(ENDPOINT), { keys }), Effect.mapError(x => x));
-class CouchDbInfo extends Schema.Class('CouchDbInfo')({
-    key: Schema.String,
-    info: Schema.Struct({
-        db_name: Schema.String,
-        update_seq: Schema.String,
-        sizes: Schema.Struct({
-            file: Schema.Number,
-            external: Schema.Number,
-            active: Schema.Number,
+class CouchDbInfo extends effect_1.Schema.Class('CouchDbInfo')({
+    key: effect_1.Schema.String,
+    info: effect_1.Schema.Struct({
+        db_name: effect_1.Schema.String,
+        update_seq: effect_1.Schema.String,
+        sizes: effect_1.Schema.Struct({
+            file: effect_1.Schema.Number,
+            external: effect_1.Schema.Number,
+            active: effect_1.Schema.Number,
         }),
-        purge_seq: Schema.String,
-        doc_del_count: Schema.Number,
-        doc_count: Schema.Number,
-        disk_format_version: Schema.Number,
-        compact_running: Schema.Boolean,
-        cluster: Schema.Struct({
-            q: Schema.Number,
-            n: Schema.Number,
-            w: Schema.Number,
-            r: Schema.Number,
+        purge_seq: effect_1.Schema.String,
+        doc_del_count: effect_1.Schema.Number,
+        doc_count: effect_1.Schema.Number,
+        disk_format_version: effect_1.Schema.Number,
+        compact_running: effect_1.Schema.Boolean,
+        cluster: effect_1.Schema.Struct({
+            q: effect_1.Schema.Number,
+            n: effect_1.Schema.Number,
+            w: effect_1.Schema.Number,
+            r: effect_1.Schema.Number,
         }),
-        instance_start_time: Schema.String,
+        instance_start_time: effect_1.Schema.String,
     }),
 }) {
-    static decodeResponse = platform_1.HttpClientResponse.schemaBodyJson(Schema.Array(CouchDbInfo));
+    static decodeResponse = platform_1.HttpClientResponse.schemaBodyJson(effect_1.Schema.Array(CouchDbInfo));
 }
 exports.CouchDbInfo = CouchDbInfo;
 const dbsInfo = cht_client_1.ChtClientService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(ENDPOINT))), Effect.flatMap(CouchDbInfo.decodeResponse), Effect.scoped);

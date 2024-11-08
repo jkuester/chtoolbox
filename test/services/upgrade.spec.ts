@@ -125,7 +125,6 @@ describe('Upgrade Service', () => {
       streamChanges.returns(sinon.stub().returns(changesStream));
 
       const stream = yield* UpgradeService.upgrade(version);
-      Stream.runCollect(stream);
       const results = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
       expect(results).to.deep.equal(expectedUpgradeLogs);
@@ -167,7 +166,6 @@ describe('Upgrade Service', () => {
         streamChanges.returns(sinon.stub().returns(changesStream));
 
         const stream = yield* UpgradeService.upgrade(version);
-        Stream.runCollect(stream);
         const results = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
         expect(results).to.deep.equal([initUpgradeLog]);
@@ -298,7 +296,6 @@ describe('Upgrade Service', () => {
       streamChanges.returns(sinon.stub().returns(changesStream));
 
       const stream = yield* UpgradeService.stage(version);
-      Stream.runCollect(stream);
       const results = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
       expect(results).to.deep.equal(expectedUpgradeLogs);
@@ -340,7 +337,6 @@ describe('Upgrade Service', () => {
         streamChanges.returns(sinon.stub().returns(changesStream));
 
         const stream = yield* UpgradeService.stage(version);
-        Stream.runCollect(stream);
         const results = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
         expect(results).to.deep.equal([initUpgradeLog]);
@@ -433,7 +429,6 @@ describe('Upgrade Service', () => {
       streamChanges.returns(sinon.stub().returns(changesStream));
 
       const stream = yield* UpgradeService.complete(version);
-      Stream.runCollect(stream);
       const results = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
       expect(results).to.deep.equal(expectedUpgradeLogs);
@@ -474,7 +469,6 @@ describe('Upgrade Service', () => {
         streamChanges.returns(sinon.stub().returns(changesStream));
 
         const stream = yield* UpgradeService.complete(version);
-        Stream.runCollect(stream);
         const results = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
         expect(results).to.deep.equal([{ ...initUpgradeLog, state }]);

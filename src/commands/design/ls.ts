@@ -1,15 +1,13 @@
 import { Args, Command } from '@effect/cli';
-import { Array, Console, Effect, Option, pipe, Record } from 'effect';
+import { Array, Effect, Option, pipe, Record } from 'effect';
 import { initializeUrl } from '../../index';
 import { CouchDesignDocsService } from '../../services/couch/design-docs';
 import { CouchDbsInfoService } from '../../services/couch/dbs-info';
+import { logJson } from '../../libs/core';
 
 const printDesignDocNames = (dbName: string) => CouchDesignDocsService
   .getNames(dbName)
-  .pipe(
-    Effect.map(d => JSON.stringify(d, null, 2)),
-    Effect.flatMap(Console.log)
-  );
+  .pipe(Effect.flatMap(logJson));
 
 const getDisplayDict = (data: [readonly string[], string][]) => Array.reduce(
   data,
@@ -26,8 +24,7 @@ const printAllDesignDocNames = CouchDbsInfoService
       Effect.map(Array.zip(dbNames)),
       Effect.map(getDisplayDict),
     )),
-    Effect.map(d => JSON.stringify(d, null, 2)),
-    Effect.flatMap(Console.log),
+    Effect.flatMap(logJson),
   );
 
 const database = Args

@@ -24,20 +24,20 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ChtUpgradeService = void 0;
-const Schema = __importStar(require("@effect/schema/Schema"));
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
 const cht_client_1 = require("../cht-client");
 const HttpClientError_1 = require("@effect/platform/HttpClientError");
+const effect_1 = require("effect");
 const ENDPOINT_UPGRADE = '/api/v1/upgrade';
 const ENDPOINT_STAGE = `${ENDPOINT_UPGRADE}/stage`;
 const ENDPOINT_COMPLETE = `${ENDPOINT_UPGRADE}/complete`;
-const UpgradeBody = Schema.Struct({
-    build: Schema.Struct({
-        namespace: Schema.Literal('medic'),
-        application: Schema.Literal('medic'),
-        version: Schema.String,
+const UpgradeBody = effect_1.Schema.Struct({
+    build: effect_1.Schema.Struct({
+        namespace: effect_1.Schema.Literal('medic'),
+        application: effect_1.Schema.Literal('medic'),
+        version: effect_1.Schema.String,
     })
 });
 const getPostRequest = (endpoint, version) => UpgradeBody.pipe(platform_1.HttpClientRequest.schemaBodyJson, build => build(platform_1.HttpClientRequest.post(endpoint), { build: { version, namespace: 'medic', application: 'medic' } }), Effect.mapError(x => x));

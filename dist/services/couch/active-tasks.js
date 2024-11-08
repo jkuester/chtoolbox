@@ -24,24 +24,22 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CouchActiveTasksService = exports.filterStreamByType = exports.getDisplayDictByPid = exports.getProgressPct = exports.getPid = exports.getDbName = exports.getDesignName = exports.CouchActiveTask = void 0;
-const Schema = __importStar(require("@effect/schema/Schema"));
 const platform_1 = require("@effect/platform");
-const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
 const cht_client_1 = require("../cht-client");
 const effect_1 = require("effect");
 const ENDPOINT = '/_active_tasks';
-class CouchActiveTask extends Schema.Class('CouchActiveTask')({
-    database: Schema.String,
-    design_document: Schema.UndefinedOr(Schema.String),
-    doc_id: Schema.UndefinedOr(Schema.String),
-    docs_written: Schema.UndefinedOr(Schema.Number),
-    pid: Schema.String,
-    progress: Schema.UndefinedOr(Schema.Number),
-    started_on: Schema.Number,
-    type: Schema.String,
+class CouchActiveTask extends effect_1.Schema.Class('CouchActiveTask')({
+    database: effect_1.Schema.String,
+    design_document: effect_1.Schema.UndefinedOr(effect_1.Schema.String),
+    doc_id: effect_1.Schema.UndefinedOr(effect_1.Schema.String),
+    docs_written: effect_1.Schema.UndefinedOr(effect_1.Schema.Number),
+    pid: effect_1.Schema.String,
+    progress: effect_1.Schema.UndefinedOr(effect_1.Schema.Number),
+    started_on: effect_1.Schema.Number,
+    type: effect_1.Schema.String,
 }) {
-    static decodeResponse = platform_1.HttpClientResponse.schemaBodyJson(Schema.Array(CouchActiveTask));
+    static decodeResponse = platform_1.HttpClientResponse.schemaBodyJson(effect_1.Schema.Array(CouchActiveTask));
 }
 exports.CouchActiveTask = CouchActiveTask;
 const getDesignName = (task) => effect_1.Option
@@ -65,12 +63,12 @@ const taskHasType = (types) => (task) => (0, effect_1.pipe)(types, effect_1.Arra
 const filterStreamByType = (...types) => (taskStream) => taskStream.pipe(effect_1.Stream.map(effect_1.Array.filter(taskHasType(types))));
 exports.filterStreamByType = filterStreamByType;
 const orderByStartedOn = effect_1.Order.make((a, b) => effect_1.Number.Order(a.started_on, b.started_on));
-const activeTasks = cht_client_1.ChtClientService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(ENDPOINT))), Effect.flatMap(CouchActiveTask.decodeResponse), Effect.scoped, Effect.map(effect_1.Array.sort(orderByStartedOn)));
-const serviceContext = cht_client_1.ChtClientService.pipe(Effect.map(couch => Context.make(cht_client_1.ChtClientService, couch)));
-class CouchActiveTasksService extends Effect.Service()('chtoolbox/CouchActiveTasksService', {
-    effect: serviceContext.pipe(Effect.map(context => ({
-        get: () => activeTasks.pipe(Effect.provide(context)),
-        stream: (interval = 1000) => effect_1.Stream.repeat(activeTasks.pipe(Effect.provide(context)), effect_1.Schedule.spaced(interval)),
+const activeTasks = cht_client_1.ChtClientService.pipe(effect_1.Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(ENDPOINT))), effect_1.Effect.flatMap(CouchActiveTask.decodeResponse), effect_1.Effect.scoped, effect_1.Effect.map(effect_1.Array.sort(orderByStartedOn)));
+const serviceContext = cht_client_1.ChtClientService.pipe(effect_1.Effect.map(couch => Context.make(cht_client_1.ChtClientService, couch)));
+class CouchActiveTasksService extends effect_1.Effect.Service()('chtoolbox/CouchActiveTasksService', {
+    effect: serviceContext.pipe(effect_1.Effect.map(context => ({
+        get: () => activeTasks.pipe(effect_1.Effect.provide(context)),
+        stream: (interval = 1000) => effect_1.Stream.repeat(activeTasks.pipe(effect_1.Effect.provide(context)), effect_1.Schedule.spaced(interval)),
     }))),
     accessors: true,
 }) {

@@ -24,13 +24,12 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.purgeFrom = exports.CouchPurgeService = void 0;
-const Schema = __importStar(require("@effect/schema/Schema"));
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
 const effect_1 = require("effect");
 const cht_client_1 = require("../cht-client");
-const PurgeBody = Schema.Record({ key: Schema.String, value: Schema.Array(Schema.String) });
+const PurgeBody = effect_1.Schema.Record({ key: effect_1.Schema.String, value: effect_1.Schema.Array(effect_1.Schema.String) });
 const getPostRequest = (dbName, body) => PurgeBody.pipe(platform_1.HttpClientRequest.schemaBodyJson, build => build(platform_1.HttpClientRequest.post(`/${dbName}/_purge`), body), Effect.mapError(x => x));
 const purge = (dbName) => (body) => getPostRequest(dbName, body)
     .pipe(Effect.flatMap(cht_client_1.ChtClientService.request), Effect.scoped);

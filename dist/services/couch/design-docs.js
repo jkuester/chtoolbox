@@ -23,21 +23,19 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CouchDesignDocsService = exports.CouchDesignDocs = void 0;
-const Schema = __importStar(require("@effect/schema/Schema"));
+exports.CouchDesignDocsService = void 0;
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
 const effect_1 = require("effect");
 const cht_client_1 = require("../cht-client");
-class CouchDesignDocs extends Schema.Class('CouchDesignDocs')({
-    rows: Schema.Array(Schema.Struct({
-        id: Schema.String,
+class CouchDesignDocs extends effect_1.Schema.Class('CouchDesignDocs')({
+    rows: effect_1.Schema.Array(effect_1.Schema.Struct({
+        id: effect_1.Schema.String,
     })),
 }) {
     static decodeResponse = platform_1.HttpClientResponse.schemaBodyJson(CouchDesignDocs);
 }
-exports.CouchDesignDocs = CouchDesignDocs;
 const serviceContext = cht_client_1.ChtClientService.pipe(Effect.map(couch => Context.make(cht_client_1.ChtClientService, couch)));
 class CouchDesignDocsService extends Effect.Service()('chtoolbox/CouchDesignDocsService', {
     effect: serviceContext.pipe(Effect.map(context => ({

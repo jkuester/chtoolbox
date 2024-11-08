@@ -1,4 +1,4 @@
-import * as Schema from '@effect/schema/Schema';
+import { Schema } from 'effect';
 import * as Effect from 'effect/Effect';
 import { ChtClientService } from '../cht-client';
 declare const CouchNodeSystem_base: Schema.Class<CouchNodeSystem, {
@@ -18,11 +18,11 @@ declare const CouchNodeSystem_base: Schema.Class<CouchNodeSystem, {
     };
 }, {}, {}>;
 export declare class CouchNodeSystem extends CouchNodeSystem_base {
-    static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<CouchNodeSystem, import("@effect/schema/ParseResult").ParseError | E, never>;
+    static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<CouchNodeSystem, import("effect/ParseResult").ParseError | E, never>;
 }
 declare const CouchNodeSystemService_base: Effect.Service.Class<CouchNodeSystemService, "chtoolbox/CouchNodeSystemService", {
     readonly effect: Effect.Effect<{
-        get: () => Effect.Effect<CouchNodeSystem, Error | import("@effect/platform/HttpClientError").ResponseError | import("@effect/schema/ParseResult").ParseError, never>;
+        get: () => Effect.Effect<CouchNodeSystem, Error>;
     }, never, ChtClientService>;
     readonly accessors: true;
 }>;

@@ -73,7 +73,7 @@ describe('Compact service', () => {
       activeTasksStream.returns(Stream.succeed(expectedTasks));
       untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
 
-      const taskStream = yield* CompactService.compactAll();
+      const taskStream = yield* CompactService.compactAll(true);
       const tasks = Chunk.toReadonlyArray(yield* Stream.runCollect(taskStream));
 
       expect(tasks).to.deep.equal([expectedTasks]);
@@ -100,7 +100,7 @@ describe('Compact service', () => {
       activeTasksStream.returns(Stream.succeed([]));
       untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
 
-      yield* CompactService.compactAll();
+      yield* CompactService.compactAll(true);
 
       expect(dbsInfoSvcGetDbNames.calledOnceWithExactly()).to.be.true;
       expect(dbInfoSvcGet.notCalled).to.be.true;
@@ -118,7 +118,7 @@ describe('Compact service', () => {
       activeTasksStream.returns(Stream.succeed([]));
       untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
 
-      yield* CompactService.compactAll();
+      yield* CompactService.compactAll(true);
 
       expect(dbsInfoSvcGetDbNames.calledOnceWithExactly()).to.be.true;
       expect(dbInfoSvcGet.notCalled).to.be.true;
@@ -130,29 +130,84 @@ describe('Compact service', () => {
       expect(filterStreamByType.calledOnceWithExactly('database_compaction', 'view_compaction')).to.be.true;
       expect(untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
     })));
+
+    it('compacts databases but not designs when indicated', run(Effect.gen(function* () {
+      dbsInfoSvcGetDbNames.returns(Effect.succeed(['medic', 'test']));
+      compactSvcCompactDb.returns(Effect.void);
+      const expectedTasks = [{ hello: 'world' }];
+      activeTasksStream.returns(Stream.succeed(expectedTasks));
+      untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
+
+      const taskStream = yield* CompactService.compactAll(false);
+      const tasks = Chunk.toReadonlyArray(yield* Stream.runCollect(taskStream));
+
+      expect(tasks).to.deep.equal([expectedTasks]);
+      expect(dbsInfoSvcGetDbNames.calledOnceWithExactly()).to.be.true;
+      expect(dbInfoSvcGet.notCalled).to.be.true;
+      expect(compactSvcCompactDb.args).to.deep.equal([['medic'], ['test']]);
+      expect(compactSvcCompactDesign.notCalled).to.be.true;
+      expect(designDocsSvcGetNames.notCalled).to.be.true;
+      expect(designInfoSvcGet.notCalled).to.be.true;
+      expect(activeTasksStream.calledOnceWithExactly()).to.be.true;
+      expect(filterStreamByType.calledOnceWithExactly('database_compaction')).to.be.true;
+      expect(untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
+    })));
   });
 
-  it('compactDb', run(Effect.gen(function* () {
-    compactSvcCompactDb.returns(Effect.void);
-    const expectedTasks = [{ database: 'shards/aaaaaaa8-bffffffc/medic.1727212895' }];
-    activeTasksStream.returns(Stream.succeed(expectedTasks));
-    untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
-    const dbName = 'medic';
+  describe('compactDb', () => {
+    it('compacts database but not designs when indicated', run(Effect.gen(function* () {
+      compactSvcCompactDb.returns(Effect.void);
+      const expectedTasks = [{ database: 'shards/aaaaaaa8-bffffffc/medic.1727212895' }];
+      activeTasksStream.returns(Stream.succeed(expectedTasks));
+      untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
+      const dbName = 'medic';
 
-    const taskStream = yield* CompactService.compactDb(dbName);
-    const tasks = Chunk.toReadonlyArray(yield* Stream.runCollect(taskStream));
+      const taskStream = yield* CompactService.compactDb(dbName, false);
+      const tasks = Chunk.toReadonlyArray(yield* Stream.runCollect(taskStream));
 
-    expect(tasks).to.deep.equal([expectedTasks]);
-    expect(dbsInfoSvcGetDbNames.notCalled).to.be.true;
-    expect(dbInfoSvcGet.notCalled).to.be.true;
-    expect(compactSvcCompactDb.calledOnceWithExactly(dbName)).to.be.true;
-    expect(compactSvcCompactDesign.notCalled).to.be.true;
-    expect(designDocsSvcGetNames.notCalled).to.be.true;
-    expect(designInfoSvcGet.notCalled).to.be.true;
-    expect(activeTasksStream.calledOnceWithExactly()).to.be.true;
-    expect(filterStreamByType.calledOnceWithExactly('database_compaction')).to.be.true;
-    expect(untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
-  })));
+      expect(tasks).to.deep.equal([expectedTasks]);
+      expect(dbsInfoSvcGetDbNames.notCalled).to.be.true;
+      expect(dbInfoSvcGet.notCalled).to.be.true;
+      expect(compactSvcCompactDb.calledOnceWithExactly(dbName)).to.be.true;
+      expect(compactSvcCompactDesign.notCalled).to.be.true;
+      expect(designDocsSvcGetNames.notCalled).to.be.true;
+      expect(designInfoSvcGet.notCalled).to.be.true;
+      expect(activeTasksStream.calledOnceWithExactly()).to.be.true;
+      expect(filterStreamByType.calledOnceWithExactly('database_compaction')).to.be.true;
+      expect(untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
+    })));
+
+
+    it('compacts database and all its views when indicated', run(Effect.gen(function* () {
+      compactSvcCompactDb.returns(Effect.void);
+      compactSvcCompactDesign.returns(Effect.void);
+      designDocsSvcGetNames.withArgs('medic').returns(Effect.succeed(['medic-client', 'medic-sms']));
+      const expectedTasks = [{
+        database: 'shards/aaaaaaa8-bffffffc/medic.1727212895',
+        design_document: '_design/medic-client',
+      }];
+      activeTasksStream.returns(Stream.succeed(expectedTasks));
+      untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
+      const dbName = 'medic';
+
+      const taskStream = yield* CompactService.compactDb(dbName, true);
+      const tasks = Chunk.toReadonlyArray(yield* Stream.runCollect(taskStream));
+
+      expect(tasks).to.deep.equal([expectedTasks]);
+      expect(dbsInfoSvcGetDbNames.notCalled).to.be.true;
+      expect(dbInfoSvcGet.notCalled).to.be.true;
+      expect(compactSvcCompactDb.calledOnceWithExactly(dbName)).to.be.true;
+      expect(compactSvcCompactDesign.args).to.deep.equal([
+        ['medic', 'medic-client'],
+        ['medic', 'medic-sms'],
+      ]);
+      expect(designDocsSvcGetNames.args).to.deep.equal([['medic']]);
+      expect(designInfoSvcGet.notCalled).to.be.true;
+      expect(activeTasksStream.calledOnceWithExactly()).to.be.true;
+      expect(filterStreamByType.calledOnceWithExactly('database_compaction', 'view_compaction')).to.be.true;
+      expect(untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
+    })));
+  });
 
   it('compactDesign', run(Effect.gen(function* () {
     compactSvcCompactDesign.returns(Effect.void);

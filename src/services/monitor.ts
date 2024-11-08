@@ -7,12 +7,13 @@ import { Array, Clock, Number, Option, pipe } from 'effect';
 import { LocalDiskUsageService } from './local-disk-usage';
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { NonEmptyArray } from 'effect/Array';
+import { PlatformError } from '@effect/platform/Error';
 
 interface DatabaseInfo extends CouchDbInfo {
   designs: CouchDesignInfo[]
 }
 
-export interface MonitoringData extends CouchNodeSystem {
+interface MonitoringData extends CouchNodeSystem {
   unix_time: number,
   databases: DatabaseInfo[]
   directory_size: Option.Option<number>
@@ -114,7 +115,7 @@ const getMonitoringData = (directory: Option.Option<string>) => pipe(
   })),
 );
 
-const getCsvHeader = (directory: Option.Option<string>) => [
+const getCsvHeader = (directory: Option.Option<string>): string[] => [
   'unix_time',
   ...DB_NAMES.flatMap(dbName => [
     `${dbName}_sizes_file`,
@@ -183,10 +184,12 @@ const serviceContext = Effect
 
 export class MonitorService extends Effect.Service<MonitorService>()('chtoolbox/MonitorService', {
   effect: serviceContext.pipe(Effect.map(context => ({
-    get: (directory: Option.Option<string>) => getMonitoringData(directory)
+    get: (
+      directory: Option.Option<string>
+    ): Effect.Effect<MonitoringData, Error | PlatformError> => getMonitoringData(directory)
       .pipe(Effect.provide(context)),
     getCsvHeader,
-    getAsCsv: (directory: Option.Option<string>) => getAsCsv(directory)
+    getAsCsv: (directory: Option.Option<string>): Effect.Effect<string[], Error | PlatformError> => getAsCsv(directory)
       .pipe(Effect.provide(context)),
   }))),
   accessors: true,

@@ -45,7 +45,7 @@ export const warmViews = Command
     Effect.andThen(() => followIndexing.pipe(
       Option.liftPredicate(() => follow),
       Option.getOrElse(() => Console.log(
-        'View warming started. Watch the active tasks for progress: chtx active-tasks'
+        'View warming started. Watch the active tasks for progress: chtx active-tasks -f'
       )),
     )),
   ))

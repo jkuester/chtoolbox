@@ -70,8 +70,11 @@ const serviceContext = Effect
 
 export class WarmViewsService extends Effect.Service<WarmViewsService>()('chtoolbox/WarmViewsService', {
   effect: serviceContext.pipe(Effect.map(context => ({
-    warmAll: () => warmAll.pipe(Effect.provide(context)),
-    designsCurrentlyUpdating: () => designsCurrentlyUpdating.pipe(Effect.provide(context)),
+    warmAll: (): Effect.Effect<void, Error> => warmAll.pipe(Effect.provide(context)),
+    designsCurrentlyUpdating: (): Effect.Effect<{
+      dbName: string,
+      designId: string
+    }[], Error> => designsCurrentlyUpdating.pipe(Effect.provide(context)),
   }))),
   accessors: true,
 }) {

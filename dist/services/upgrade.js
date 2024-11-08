@@ -27,7 +27,6 @@ exports.UpgradeService = exports.UpgradeLog = void 0;
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
 const pouchdb_1 = require("./pouchdb");
-const schema_1 = require("@effect/schema");
 const effect_1 = require("effect");
 const upgrade_1 = require("./cht/upgrade");
 const UPGRADE_LOG_NAME = 'upgrade_log';
@@ -43,12 +42,12 @@ const UPGRADE_LOG_STATES = [
     'aborting',
     ...STAGING_COMPLETE_STATES,
 ];
-class UpgradeLog extends schema_1.Schema.Class('UpgradeLog')({
-    _id: schema_1.Schema.String,
-    state: schema_1.Schema.Literal(...UPGRADE_LOG_STATES),
-    state_history: schema_1.Schema.Array(schema_1.Schema.Struct({
-        state: schema_1.Schema.Literal(...UPGRADE_LOG_STATES),
-        date: schema_1.Schema.Number,
+class UpgradeLog extends effect_1.Schema.Class('UpgradeLog')({
+    _id: effect_1.Schema.String,
+    state: effect_1.Schema.Literal(...UPGRADE_LOG_STATES),
+    state_history: effect_1.Schema.Array(effect_1.Schema.Struct({
+        state: effect_1.Schema.Literal(...UPGRADE_LOG_STATES),
+        date: effect_1.Schema.Number,
     })),
 }) {
 }
@@ -61,7 +60,7 @@ const latestUpgradeLog = pouchdb_1.PouchDBService
     descending: true,
     limit: 1,
     include_docs: true,
-}))), Effect.map(({ rows }) => rows), Effect.map(effect_1.Option.liftPredicate(effect_1.Array.isNonEmptyArray)), Effect.map(effect_1.Option.map(([{ doc }]) => doc)), Effect.map(effect_1.Option.flatMap(effect_1.Option.fromNullable)), Effect.map(effect_1.Option.flatMap(schema_1.Schema.decodeUnknownOption(UpgradeLog))));
+}))), Effect.map(({ rows }) => rows), Effect.map(effect_1.Option.liftPredicate(effect_1.Array.isNonEmptyArray)), Effect.map(effect_1.Option.map(([{ doc }]) => doc)), Effect.map(effect_1.Option.flatMap(effect_1.Option.fromNullable)), Effect.map(effect_1.Option.flatMap(effect_1.Schema.decodeUnknownOption(UpgradeLog))));
 const streamChangesFeed = (upgradeLogId) => pouchdb_1.PouchDBService
     .get('medic-logs')
     .pipe(Effect.map((0, pouchdb_1.streamChanges)({
@@ -69,7 +68,7 @@ const streamChangesFeed = (upgradeLogId) => pouchdb_1.PouchDBService
     doc_ids: [upgradeLogId]
 })));
 const streamUpgradeLogChanges = (completedStates) => latestUpgradeLog
-    .pipe(Effect.map(effect_1.Option.getOrThrowWith(() => new Error('No upgrade log found'))), Effect.flatMap(({ _id }) => streamChangesFeed(_id)), Effect.map(effect_1.Stream.retry(effect_1.Schedule.spaced(1000))), Effect.map(effect_1.Stream.map(({ doc }) => doc)), Effect.map(effect_1.Stream.map(schema_1.Schema.decodeUnknownSync(UpgradeLog))), Effect.map(effect_1.Stream.takeUntil(({ state }) => completedStates.includes(state))));
+    .pipe(Effect.map(effect_1.Option.getOrThrowWith(() => new Error('No upgrade log found'))), Effect.flatMap(({ _id }) => streamChangesFeed(_id)), Effect.map(effect_1.Stream.retry(effect_1.Schedule.spaced(1000))), Effect.map(effect_1.Stream.map(({ doc }) => doc)), Effect.map(effect_1.Stream.map(effect_1.Schema.decodeUnknownSync(UpgradeLog))), Effect.map(effect_1.Stream.takeUntil(({ state }) => completedStates.includes(state))));
 const serviceContext = Effect
     .all([
     upgrade_1.ChtUpgradeService,
@@ -84,7 +83,8 @@ class UpgradeService extends Effect.Service()('chtoolbox/UpgradeService', {
     effect: serviceContext.pipe(Effect.map(context => ({
         upgrade: (version) => assertReadyForUpgrade.pipe(Effect.andThen(upgrade_1.ChtUpgradeService.upgrade(version)), Effect.andThen(streamUpgradeLogChanges(COMPLETED_STATES)), Effect.provide(context)),
         stage: (version) => assertReadyForUpgrade.pipe(Effect.andThen(upgrade_1.ChtUpgradeService.stage(version)), Effect.andThen(streamUpgradeLogChanges(STAGING_COMPLETE_STATES)), Effect.provide(context)),
-        complete: (version) => assertReadyForComplete.pipe(Effect.andThen(upgrade_1.ChtUpgradeService.complete(version)), Effect.andThen(streamUpgradeLogChanges(COMPLETED_STATES).pipe(Effect.retry(effect_1.Schedule.spaced(1000)))), Effect.provide(context)),
+        complete: (version) => assertReadyForComplete.pipe(Effect.andThen(upgrade_1.ChtUpgradeService.complete(version)), Effect.andThen(streamUpgradeLogChanges(COMPLETED_STATES)
+            .pipe(Effect.retry(effect_1.Schedule.spaced(1000)))), Effect.provide(context)),
     }))),
     accessors: true,
 }) {

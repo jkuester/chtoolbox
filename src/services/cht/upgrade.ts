@@ -1,9 +1,10 @@
-import * as Schema from '@effect/schema/Schema';
 import { HttpClientRequest } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { ChtClientService } from '../cht-client';
 import { ResponseError } from '@effect/platform/HttpClientError';
+import { Schema } from 'effect';
+import { HttpClientResponseEffect } from '../../libs/core';
 
 const ENDPOINT_UPGRADE = '/api/v1/upgrade';
 const ENDPOINT_STAGE = `${ENDPOINT_UPGRADE}/stage`;
@@ -35,11 +36,13 @@ const serviceContext = ChtClientService.pipe(Effect.map(cht => Context.make(ChtC
 
 export class ChtUpgradeService extends Effect.Service<ChtUpgradeService>()('chtoolbox/ChtUpgradeService', {
   effect: serviceContext.pipe(Effect.map(context => ({
-    upgrade: (version: string) => postUpgrade(ENDPOINT_UPGRADE, version)
+    upgrade: (version: string): HttpClientResponseEffect => postUpgrade(ENDPOINT_UPGRADE, version)
       .pipe(Effect.provide(context)),
-    stage: (version: string) => postUpgrade(ENDPOINT_STAGE, version)
+    stage: (version: string): HttpClientResponseEffect => postUpgrade(ENDPOINT_STAGE, version)
       .pipe(Effect.provide(context)),
-    complete: (version: string) => postUpgrade(ENDPOINT_COMPLETE, version)
+    complete: (
+      version: string
+    ): HttpClientResponseEffect | Effect.Effect<void, Error> => postUpgrade(ENDPOINT_COMPLETE, version)
       .pipe(
         Effect.catchIf(
           (err) => err instanceof ResponseError && err.response.status === 502,

@@ -1,50 +1,48 @@
 import { Args, Command, Options } from '@effect/cli';
-import { Array, Console, Effect, Option, Schedule } from 'effect';
+import { Array, Console, Effect, Option, pipe, Predicate, Stream } from 'effect';
 import { initializeUrl } from '../../index';
 import { ReplicateService, ReplicationDoc } from '../../services/replicate';
 import { CouchActiveTask, CouchActiveTasksService } from '../../services/couch/active-tasks';
+import { clearThen } from '../../libs/core';
+import { ParseError } from 'effect/Cron';
 
-const logReplicationMessage = Console.clear.pipe(Effect.andThen(Console.log(`Replicating...`)));
+const isRepTask = (id: string): Predicate.Predicate<CouchActiveTask> => pipe(
+  ({ type }: CouchActiveTask) => type === 'replication',
+  Predicate.and(({ doc_id }) => doc_id === id),
+  Predicate.and(({ docs_written }) => docs_written !== undefined),
+);
 
-const isRepTask = (id: string) => (
-  task: CouchActiveTask
-): task is CouchActiveTask & { docs_written: number } => task.type === 'replication'
-  && task.doc_id === id
-  && task.docs_written !== undefined;
+const printReplicatingDocs = (id: string) => (tasks: CouchActiveTask[]) => pipe(
+  tasks,
+  Array.findFirst(isRepTask(id)),
+  Option.map(({ docs_written }) => docs_written?.toString() ?? ''),
+  Option.map(docs_written => clearThen(Console.log(`Replicating docs: ${docs_written}`))),
+  Option.getOrElse(() => Effect.void),
+  Effect.tap(Effect.logDebug('Printed replication doc task')),
+);
 
-const printActiveTasks = (id: string) => CouchActiveTasksService
-  .get()
+const streamActiveTasks = (id: string) => CouchActiveTasksService
+  .stream()
   .pipe(
-    Effect.map(Array.findFirst(isRepTask(id))),
-    Effect.map(Option.map(task => logReplicationMessage
-      .pipe(Effect.andThen(Console.log(`Replicating docs: ${task.docs_written.toString()}`))))),
-    Effect.flatMap(Option.getOrElse(() => Effect.void)),
+    Effect.map(Stream.tap(printReplicatingDocs(id))),
+    Effect.flatMap(Stream.runDrain),
   );
 
-const pollActiveTasks = (id: string) => Effect.repeat(printActiveTasks(id), Schedule.spaced(1000));
-
-const waitForCompletedRep = (
-  changesFeed: PouchDB.Core.Changes<ReplicationDoc>
-): Effect.Effect<void> => Effect.async((resume) => void changesFeed
-  .on('error', err => resume(Console.log(`Replication failed: ${JSON.stringify(err)}`)))
-  .on('complete', resp => resume(
-    Console.log(`Could not follow replication doc changes feed: ${JSON.stringify(resp)}`)
-  ))
-  .on('change', ({ doc }) => Option
-    .fromNullable(doc)
-    .pipe(
-      Option.flatMap(Option.liftPredicate(doc => doc._replication_state === 'completed')),
-      Option.map(() => Console.clear.pipe(Effect.tap(Console.log('Replication complete')))),
-      Option.getOrElse(() => Console.log(`Replication failed: ${JSON.stringify(doc)}`)),
-      Effect.tap(() => changesFeed.cancel()),
-      resume,
-    )));
-
-const watchReplication = ({ id }: PouchDB.Core.Response) => ReplicateService
-  .watch(id)
+const getReplicationDocId = (completionStream: Stream.Stream<ReplicationDoc, Error | ParseError>) => Stream
+  .take(completionStream, 1)
   .pipe(
-    Effect.flatMap(waitForCompletedRep),
-    Effect.race(pollActiveTasks(id)),
+    Stream.runHead,
+    Effect.map(Option.getOrThrow),
+    Effect.map(({ _id }) => _id),
+  );
+
+const watchReplication = (completionStream: Stream.Stream<ReplicationDoc, Error | ParseError>) => Stream
+  .runDrain(completionStream)
+  .pipe(
+    Effect.race(
+      getReplicationDocId(completionStream)
+        .pipe(Effect.flatMap(streamActiveTasks))
+    ),
   );
 
 const follow = Options
@@ -69,12 +67,11 @@ const target = Args
 
 export const replicate = Command
   .make('replicate', { follow, source, target, all }, ({ follow, source, target, all }) => initializeUrl.pipe(
-    Effect.tap(logReplicationMessage),
     Effect.andThen(ReplicateService.replicate(source, target, all)),
-    Effect.map(resp => Option.liftPredicate(resp, () => follow)),
+    Effect.map(completionStream => Option.liftPredicate(completionStream, () => follow)),
     Effect.map(Option.map(watchReplication)),
     Effect.flatMap(Option.getOrElse(() => Console.clear.pipe(
-      Effect.andThen(Console.log('Replication started. Watch the active tasks for progress: chtx active-tasks'))
+      Effect.andThen(Console.log('Replication started. Watch the active tasks for progress: chtx active-tasks -f'))
     ))),
   ))
   .pipe(Command.withDescription(

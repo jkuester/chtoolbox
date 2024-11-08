@@ -1,5 +1,5 @@
-import * as Schema from '@effect/schema/Schema';
 import * as Effect from 'effect/Effect';
+import { Schema } from 'effect';
 import { ChtClientService } from '../cht-client';
 import { NonEmptyArray } from 'effect/Array';
 declare const CouchDbInfo_base: Schema.Class<CouchDbInfo, {
@@ -74,13 +74,13 @@ declare const CouchDbInfo_base: Schema.Class<CouchDbInfo, {
     };
 }, {}, {}>;
 export declare class CouchDbInfo extends CouchDbInfo_base {
-    static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<readonly CouchDbInfo[], import("@effect/schema/ParseResult").ParseError | E, never>;
+    static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<readonly CouchDbInfo[], import("effect/ParseResult").ParseError | E, never>;
 }
 declare const CouchDbsInfoService_base: Effect.Service.Class<CouchDbsInfoService, "chtoolbox/CouchDbsInfoService", {
     readonly effect: Effect.Effect<{
-        post: (dbNames: NonEmptyArray<string>) => Effect.Effect<readonly CouchDbInfo[], Error | import("@effect/platform/HttpClientError").ResponseError | import("@effect/schema/ParseResult").ParseError, never>;
-        get: () => Effect.Effect<readonly CouchDbInfo[], Error | import("@effect/platform/HttpClientError").ResponseError | import("@effect/schema/ParseResult").ParseError, never>;
-        getDbNames: () => Effect.Effect<string[], Error | import("@effect/platform/HttpClientError").ResponseError | import("@effect/schema/ParseResult").ParseError, never>;
+        post: (dbNames: NonEmptyArray<string>) => Effect.Effect<readonly CouchDbInfo[], Error>;
+        get: () => Effect.Effect<readonly CouchDbInfo[], Error>;
+        getDbNames: () => Effect.Effect<string[], Error>;
     }, never, ChtClientService>;
     readonly accessors: true;
 }>;

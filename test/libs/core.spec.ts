@@ -1,7 +1,7 @@
 import { describe, it } from 'mocha';
 import { Chunk, Console, Effect, Stream, TestContext } from 'effect';
 import { expect } from 'chai';
-import { clearThen, mergeArrayStreams, pouchDB, untilEmptyCount } from '../../src/libs/core';
+import { clearThen, logJson, mergeArrayStreams, pouchDB, untilEmptyCount } from '../../src/libs/core';
 import PouchDB from 'pouchdb-core';
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
 import sinon from 'sinon';
@@ -56,5 +56,21 @@ describe('Core libs', () => {
     );
 
     expect(log.calledOnceWithExactly('Hello', 'World')).to.be.true;
+    // Need to find a clean way to stub effects like Console.clear.
+  })));
+
+  it('logJson', run(Effect.gen(function* () {
+    const expectedDict = { Hello: 'World' };
+    const expectedJson = '{"Hello": "World"}';
+    const stringify = sinon.stub(JSON, 'stringify').returns(expectedJson);
+    const log = sinon.stub().returns(Effect.void);
+    const fakeConsole = { log, } as unknown as Console.Console;
+
+    yield* logJson(expectedDict).pipe(
+      Console.withConsole(fakeConsole),
+    );
+
+    expect(stringify.calledOnceWithExactly(expectedDict, null, 2)).to.be.true;
+    expect(log.calledOnceWithExactly(expectedJson)).to.be.true;
   })));
 });

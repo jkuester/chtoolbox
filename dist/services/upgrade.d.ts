@@ -1,7 +1,6 @@
 import * as Effect from 'effect/Effect';
 import { PouchDBService } from './pouchdb';
-import { Schema } from '@effect/schema';
-import { Stream } from 'effect';
+import { Schema, Stream } from 'effect';
 import { ChtUpgradeService } from './cht/upgrade';
 declare const UpgradeLog_base: Schema.Class<UpgradeLog, {
     _id: typeof Schema.String;
@@ -29,11 +28,12 @@ declare const UpgradeLog_base: Schema.Class<UpgradeLog, {
 }, {}, {}>;
 export declare class UpgradeLog extends UpgradeLog_base {
 }
+type UpgradeLogStreamEffect = Effect.Effect<Stream.Stream<UpgradeLog, Error>, Error>;
 declare const UpgradeService_base: Effect.Service.Class<UpgradeService, "chtoolbox/UpgradeService", {
     readonly effect: Effect.Effect<{
-        upgrade: (version: string) => Effect.Effect<Stream.Stream<UpgradeLog, Error, never>, Error | import("effect/Cause").UnknownException, never>;
-        stage: (version: string) => Effect.Effect<Stream.Stream<UpgradeLog, Error, never>, Error | import("effect/Cause").UnknownException, never>;
-        complete: (version: string) => Effect.Effect<Stream.Stream<UpgradeLog, Error, never>, Error | import("effect/Cause").UnknownException, never>;
+        upgrade: (version: string) => UpgradeLogStreamEffect;
+        stage: (version: string) => UpgradeLogStreamEffect;
+        complete: (version: string) => UpgradeLogStreamEffect;
     }, never, PouchDBService | ChtUpgradeService>;
     readonly accessors: true;
 }>;

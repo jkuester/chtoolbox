@@ -1,5 +1,5 @@
 import { Args, Command, Options } from '@effect/cli';
-import { Array, Console, DateTime, Effect, Match, Option, pipe, Sink, Stream } from 'effect';
+import { Array, Console, DateTime, Effect, Match, Option, pipe, Stream } from 'effect';
 import { initializeUrl } from '../index';
 import { UpgradeLog, UpgradeService } from '../services/upgrade';
 import { clearThen } from '../libs/core';
@@ -18,13 +18,13 @@ const getUpgradeLogDisplay = ({ state_history }: UpgradeLog) => pipe(
 const streamUpgradeLog = (stream: Stream.Stream<UpgradeLog, Error>) => stream.pipe(
   Stream.map(getUpgradeLogDisplay),
   Stream.tap(log => clearThen(Console.table(log))),
-  Stream.run(Sink.drain),
+  Stream.runDrain,
 );
 
 const printUpgradeLogId = (stream: Stream.Stream<UpgradeLog, Error>) => stream.pipe(
   Stream.take(1),
   Stream.tap(log => clearThen(Console.log(`Upgrade started. Check the medic-logs doc for progress: ${log._id}`))),
-  Stream.run(Sink.drain),
+  Stream.runDrain,
 );
 
 const getUpgradeAction = (opts: { stage: boolean, complete: boolean, version: string }) => Match

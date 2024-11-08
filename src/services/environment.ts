@@ -2,7 +2,7 @@ import { Config, Effect, Option, Redacted, Ref, String } from 'effect';
 
 const COUCH_URL_PATTERN = /^(https?:\/\/([^:]+):[^/]+).*$/;
 
-export interface Environment {
+interface Environment {
   readonly url: Redacted.Redacted;
   readonly user: string;
 }
@@ -32,8 +32,8 @@ const createEnvironmentService = Ref
   })
   .pipe(
     Effect.map(env => ({
-      get: () => Ref.get(env),
-      setUrl: (url: Redacted.Redacted) => parseCouchUrl(url)
+      get: (): Effect.Effect<Environment> => Ref.get(env),
+      setUrl: (url: Redacted.Redacted): Effect.Effect<Environment, Error> => parseCouchUrl(url)
         .pipe(Effect.flatMap(newEnv => Ref.setAndGet(env, newEnv))),
     })),
     Effect.tap((envService) => COUCH_URL.pipe(

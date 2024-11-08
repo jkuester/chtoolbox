@@ -1,7 +1,8 @@
 import { Args, Command } from '@effect/cli';
-import { Console, Effect } from 'effect';
+import { Effect } from 'effect';
 import { initializeUrl } from '../../index';
 import { CouchDbsInfoService } from '../../services/couch/dbs-info';
+import { logJson } from '../../libs/core';
 
 const databases = Args
   .text({ name: 'database' })
@@ -13,7 +14,6 @@ const databases = Args
 export const inspect = Command
   .make('inspect', { databases }, ({ databases }) => initializeUrl.pipe(
     Effect.andThen(CouchDbsInfoService.post(databases)),
-    Effect.map(d => JSON.stringify(d, null, 2)),
-    Effect.tap(Console.log),
+    Effect.tap(logJson),
   ))
   .pipe(Command.withDescription(`Display detailed information on one or more Couch databases`));

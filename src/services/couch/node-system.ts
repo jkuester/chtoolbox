@@ -1,4 +1,4 @@
-import * as Schema from '@effect/schema/Schema';
+import { Schema } from 'effect';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
@@ -21,7 +21,7 @@ export class CouchNodeSystemService extends Effect.Service<CouchNodeSystemServic
   'chtoolbox/CouchNodeSystemService',
   {
     effect: serviceContext.pipe(Effect.map(context => ({
-      get: () => ChtClientService
+      get: (): Effect.Effect<CouchNodeSystem, Error> => ChtClientService
         .request(HttpClientRequest.get(ENDPOINT))
         .pipe(
           Effect.flatMap(CouchNodeSystem.decodeResponse),

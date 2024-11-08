@@ -1,4 +1,4 @@
-import * as Schema from '@effect/schema/Schema';
+import { Schema } from 'effect';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
@@ -36,7 +36,7 @@ export class CouchDesignInfoService extends Effect.Service<CouchDesignInfoServic
   'chtoolbox/CouchDesignInfoService',
   {
     effect: serviceContext.pipe(Effect.map(context => ({
-      get: (dbName: string, designName: string) => ChtClientService
+      get: (dbName: string, designName: string): Effect.Effect<CouchDesignInfo, Error> => ChtClientService
         .request(HttpClientRequest.get(`/${dbName}/_design/${designName}/_info`))
         .pipe(
           Effect.flatMap(CouchDesignInfo.decodeResponse),

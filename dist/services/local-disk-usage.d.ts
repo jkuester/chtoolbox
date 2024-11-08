@@ -1,8 +1,9 @@
 import { Effect } from 'effect';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
+import { PlatformError } from '@effect/platform/Error';
 declare const LocalDiskUsageService_base: Effect.Service.Class<LocalDiskUsageService, "chtoolbox/LocalDiskUsageService", {
     readonly effect: Effect.Effect<{
-        getSize: (path: string) => Effect.Effect<number, import("@effect/platform/Error").PlatformError, never>;
+        getSize: (path: string) => Effect.Effect<number, Error | PlatformError>;
     }, never, CommandExecutor>;
     readonly accessors: true;
 }>;
