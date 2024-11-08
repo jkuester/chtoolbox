@@ -4,10 +4,12 @@ import { EnvironmentService } from './environment';
 import { CommandExecutor, ExitCode } from '@effect/platform/CommandExecutor';
 import * as Context from 'effect/Context';
 
+const tdgPath = require.resolve('test-data-generator');
+
 const tdgCommand = (designScriptPath: string) => EnvironmentService
   .get()
   .pipe(Effect.flatMap(env => Command
-    .make('node', `${__dirname}/../../node_modules/test-data-generator/built/.`, designScriptPath)
+    .make('node', tdgPath, designScriptPath)
     .pipe(
       Command.env({ COUCH_URL: Redacted.value(env.url) }),
       Command.stdout('inherit'),
