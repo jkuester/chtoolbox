@@ -29,10 +29,11 @@ const platform_1 = require("@effect/platform");
 const environment_1 = require("./environment");
 const CommandExecutor_1 = require("@effect/platform/CommandExecutor");
 const Context = __importStar(require("effect/Context"));
+const tdgPath = require.resolve('test-data-generator');
 const tdgCommand = (designScriptPath) => environment_1.EnvironmentService
     .get()
     .pipe(effect_1.Effect.flatMap(env => platform_1.Command
-    .make('node', `${__dirname}/../../node_modules/test-data-generator/built/.`, designScriptPath)
+    .make('node', tdgPath, designScriptPath)
     .pipe(platform_1.Command.env({ COUCH_URL: effect_1.Redacted.value(env.url) }), platform_1.Command.stdout('inherit'), platform_1.Command.stderr('inherit'), platform_1.Command.exitCode)));
 const serviceContext = effect_1.Effect
     .all([
