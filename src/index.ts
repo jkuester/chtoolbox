@@ -30,6 +30,7 @@ import { PurgeService } from './services/purge';
 import { upgrade } from './commands/upgrade';
 import { ChtUpgradeService } from './services/cht/upgrade';
 import { UpgradeService } from './services/upgrade';
+import { TestDataGeneratorService } from './services/test-data-generator';
 
 const url = Options
   .text('url')
@@ -88,6 +89,7 @@ cli(process.argv)
     Effect.provide(WarmViewsService.Default),
     Effect.provide(ReplicateService.Default),
     Effect.provide(ChtUpgradeService.Default),
+    Effect.provide(TestDataGeneratorService.Default),
     Effect.provide(couchServices),
     Effect.provide(PouchDBService.Default),
     Effect.provide(ChtClientService.Default.pipe(
