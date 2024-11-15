@@ -35,7 +35,10 @@ import { TestDataGeneratorService } from './services/test-data-generator';
 const url = Options
   .text('url')
   .pipe(
-    Options.withDescription('The URL of the CouchDB server. Defaults to the COUCH_URL environment variable.'),
+    Options.withDescription(
+      'The URL of the CouchDB server. Defaults to the COUCH_URL environment variable. Note that since this tool is ' +
+      'intended for testing/development usage, invalid SSL certificates (e.g. self-signed) are allowed by default.'
+    ),
     Options.optional
   );
 
