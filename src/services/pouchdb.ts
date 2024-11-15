@@ -8,7 +8,11 @@ import PouchDBMapReduce from 'pouchdb-mapreduce';
 // @ts-expect-error no types for this package
 import PouchDBSessionAuthentication from 'pouchdb-session-authentication';
 import { EnvironmentService } from './environment';
+import https from 'https';
 
+const AGENT_ALLOW_INVALID_SSL = new https.Agent({
+  rejectUnauthorized: false,
+});
 PouchDB.plugin(PouchDBAdapterHttp);
 PouchDB.plugin(PouchDBSessionAuthentication);
 PouchDB.plugin(PouchDBMapReduce);
@@ -109,12 +113,15 @@ export const streamChanges = (options?: PouchDB.Core.ChangesOptions) => (
   )),
 );
 
-
 const couchUrl = EnvironmentService
   .get()
   .pipe(Effect.map(({ url }) => url));
 
-const getPouchDB = (dbName: string) => couchUrl.pipe(Effect.map(url => pouchDB(`${Redacted.value(url)}${dbName}`)));
+const getPouchDB = (dbName: string) => couchUrl.pipe(Effect.map(url => pouchDB(
+  `${Redacted.value(url)}${dbName}`,
+  // @ts-expect-error Setting the `agent` option is not in the PouchDB types for some reason
+  { fetch: (url, opts) => PouchDB.fetch(url, { ...opts, agent: AGENT_ALLOW_INVALID_SSL }) }
+)));
 
 const serviceContext = EnvironmentService.pipe(Effect.map(env => Context.make(EnvironmentService, env)));
 

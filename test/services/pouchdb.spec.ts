@@ -2,6 +2,7 @@ import { describe, it } from 'mocha';
 import { Array, Chunk, Effect, Either, Layer, Option, Redacted, Stream, TestContext } from 'effect';
 import sinon, { SinonStub } from 'sinon';
 import * as core from '../../src/libs/core';
+import PouchDB from 'pouchdb-core';
 import {
   assertPouchResponse,
   PouchDBService,
@@ -127,12 +128,26 @@ describe('PouchDB Service', () => {
       const env = Redacted.make(url).pipe(url => ({ url }));
       environmentGet.returns(Effect.succeed(env));
       pouchDB.returns(FAKE_POUCHDB);
+      const fakeRequest = { fake: 'request' };
+      const pouchFetch = sinon.stub(PouchDB, 'fetch').returns(fakeRequest as unknown as Promise<Response>);
 
       const testDb = yield* PouchDBService.get(dbName);
 
       expect(testDb).to.equal(FAKE_POUCHDB);
       expect(environmentGet.calledOnceWithExactly()).to.be.true;
-      expect(pouchDB.calledOnceWithExactly(`${url}${dbName}`)).to.be.true;
+      expect(pouchDB.calledOnce).to.be.true;
+      expect(pouchDB.args[0][0]).to.equal(`${url}${dbName}`);
+      expect(pouchDB.args[0][1]).to.haveOwnProperty('fetch');
+
+      // Verify the fetch is overridden with the agent option
+      const fetch = (pouchDB.args[0][1] as { fetch: (url: string, opts: unknown) => unknown }).fetch;
+      const fakeOptions = { hello: 'world' };
+      const req = fetch(url, fakeOptions);
+      expect(req).to.equal(fakeRequest);
+      expect(pouchFetch.calledOnce).to.be.true;
+      expect(pouchFetch.args[0][0]).to.equal(url);
+      expect(pouchFetch.args[0][1]).to.deep.include(fakeOptions);
+      expect(pouchFetch.args[0][1]).to.haveOwnProperty('agent');
     })));
 
     it('returns different PouchDB instances for each database name', run(Effect.gen(function* () {
@@ -151,10 +166,12 @@ describe('PouchDB Service', () => {
       expect(testDb).to.equal(FAKE_POUCHDB);
       expect(medicDb).to.equal(fakeMedicDb);
       expect(environmentGet.calledTwice).to.be.true;
-      expect(pouchDB.args).to.deep.equal([
-        [`${url}${testDbName}`],
-        [`${url}${medicDbName}`],
-      ]);
+
+      expect(pouchDB.calledTwice).to.be.true;
+      expect(pouchDB.args[0][0]).to.equal(`${url}${testDbName}`);
+      expect(pouchDB.args[0][1]).to.haveOwnProperty('fetch');
+      expect(pouchDB.args[1][0]).to.equal(`${url}${medicDbName}`);
+      expect(pouchDB.args[1][1]).to.haveOwnProperty('fetch');
     })));
 
     it('returns the same PouchDB instance when called multiple times with the same name', run(Effect.gen(function* () {
@@ -172,7 +189,9 @@ describe('PouchDB Service', () => {
       expect(testDb).to.equal(FAKE_POUCHDB);
       expect(testDb1).to.equal(FAKE_POUCHDB);
       expect(environmentGet.calledOnceWithExactly()).to.be.true;
-      expect(pouchDB.calledOnceWithExactly(`${url}${dbName}`)).to.be.true;
+      expect(pouchDB.calledOnce).to.be.true;
+      expect(pouchDB.args[0][0]).to.equal(`${url}${dbName}`);
+      expect(pouchDB.args[0][1]).to.haveOwnProperty('fetch');
     })));
   });
 
