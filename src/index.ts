@@ -9,6 +9,7 @@ import { monitor } from './commands/monitor';
 import packageJson from '../package.json';
 import { EnvironmentService, } from './services/environment';
 import { CouchDesignInfoService } from './services/couch/design-info';
+import { NouveauInfoService } from './services/couch/nouveau-info';
 import { MonitorService } from './services/monitor';
 import { LocalDiskUsageService } from './services/local-disk-usage';
 import { CouchDesignService } from './services/couch/design';
@@ -77,6 +78,7 @@ const couchServices = CouchActiveTasksService
     Layer.provideMerge(CouchDbsInfoService.Default),
     Layer.provideMerge(CouchDesignDocsService.Default),
     Layer.provideMerge(CouchDesignInfoService.Default),
+    Layer.provideMerge(NouveauInfoService.Default),
     Layer.provideMerge(CouchDesignService.Default),
     Layer.provideMerge(CouchPurgeService.Default),
     Layer.provideMerge(CouchViewService.Default),
