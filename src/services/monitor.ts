@@ -17,6 +17,7 @@ interface DatabaseInfo extends CouchDbInfo {
 interface MonitoringData extends CouchNodeSystem {
   unix_time: number,
   databases: DatabaseInfo[]
+  nouveau: NouveauInfo[]
   couchdb_directory_size: Option.Option<number>
   nouveau_directory_size: Option.Option<number>
 }
@@ -82,6 +83,32 @@ const getCouchDesignInfos = () => pipe(
   Effect.all,
 );
 
+const NOUVEAU_INDEXES = [
+  'contacts_by_type_freetext',
+  'contacts_by_freetext',
+  'reports_by_freetext',
+];
+
+const emptyNouveauInfo: NouveauInfo = {
+  name: '',
+  search_index: {
+    purge_seq: 0,
+    update_seq: 0,
+    disk_size: 0,
+    num_docs: 0,
+  },
+};
+
+const getNouveauInfos = pipe(
+  NOUVEAU_INDEXES,
+  Array.map(indexName => NouveauInfoService.get('medic', 'medic-nouveau', indexName)),
+  Array.map(Effect.catchIf(
+    (error) => error instanceof ResponseError && error.response.status === 404,
+    () => Effect.succeed(emptyNouveauInfo),
+  )),
+  Effect.all,
+);
+
 const getDirectorySize = (couchDbDirectory: Option.Option<string>) => LocalDiskUsageService.pipe(
   Effect.flatMap(service => couchDbDirectory.pipe(
     Option.map(dir => service.getSize(dir)),
@@ -96,6 +123,7 @@ const getMonitoringData = (couchDbDirectory: Option.Option<string>, nouveauDirec
     getCouchNodeSystem(),
     getDbsInfoByName(DB_NAMES),
     getCouchDesignInfos(),
+    getNouveauInfos,
     getDirectorySize(couchDbDirectory),
     getDirectorySize(nouveauDirectory),
   ]),
@@ -104,6 +132,7 @@ const getMonitoringData = (couchDbDirectory: Option.Option<string>, nouveauDirec
     nodeSystem,
     dbsInfo,
     designInfos,
+    nouveauInfos,
     couchdb_directory_size,
     nouveau_directory_size,
   ]): MonitoringData => ({
@@ -113,6 +142,7 @@ const getMonitoringData = (couchDbDirectory: Option.Option<string>, nouveauDirec
       ...dbInfo,
       designs: designInfos[i]
     })),
+    nouveau: nouveauInfos,
     couchdb_directory_size,
     nouveau_directory_size,
   })),
@@ -143,6 +173,10 @@ const getCsvHeader = (couchDbDirectory: Option.Option<string>, nouveauDirectory:
     Option.map(Array.of),
     Option.getOrElse(() => []),
   )),
+  ...NOUVEAU_INDEXES.flatMap(indexName => [
+    `medic_medic-nouveau_${indexName}_num_docs`,
+    `medic_medic-nouveau_${indexName}_disk_size`,
+  ]),
 ];
 
 const getAsCsv = (couchDbDirectory: Option.Option<string>, nouveauDirectory: Option.Option<string>) => pipe(
@@ -172,6 +206,10 @@ const getAsCsv = (couchDbDirectory: Option.Option<string>, nouveauDirectory: Opt
       Option.map(Array.of),
       Option.getOrElse(() => []),
     )),
+    ...data.nouveau.flatMap(nouveauInfo => [
+      nouveauInfo.search_index.num_docs,
+      nouveauInfo.search_index.disk_size,
+    ]),
   ]),
 );
 
@@ -198,7 +236,7 @@ export class MonitorService extends Effect.Service<MonitorService>()('chtoolbox/
     getAsCsv: (
       couchDbDirectory: Option.Option<string>,
       nouveauDirectory: Option.Option<string>,
-    ): Effect.Effect<string[], Error | PlatformError> => getAsCsv(couchDbDirectory, nouveauDirectory)
+    ): Effect.Effect<(string | number)[], Error | PlatformError> => getAsCsv(couchDbDirectory, nouveauDirectory)
       .pipe(Effect.provide(context)),
   }))),
   accessors: true,
