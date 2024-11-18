@@ -75,23 +75,25 @@ const emptyDesignInfo = {
 };
 const getCouchDesignInfosForDb = (dbName) => design_info_1.CouchDesignInfoService.pipe(Effect.flatMap(service => Effect.all((0, effect_1.pipe)(VIEW_INDEXES_BY_DB[dbName], effect_1.Array.map(designName => service.get(dbName, designName)), effect_1.Array.map(Effect.catchIf((error) => error instanceof HttpClientError_1.ResponseError && error.response.status === 404, () => Effect.succeed(emptyDesignInfo)))))));
 const getCouchDesignInfos = (0, effect_1.pipe)(DB_NAMES, effect_1.Array.map(getCouchDesignInfosForDb), Effect.all);
-const getDirectorySize = (directory) => local_disk_usage_1.LocalDiskUsageService.pipe(Effect.flatMap(service => directory.pipe(effect_1.Option.map(dir => service.getSize(dir)), effect_1.Option.getOrElse(() => Effect.succeed(null)))), Effect.map(effect_1.Option.fromNullable));
-const getMonitoringData = (directory) => (0, effect_1.pipe)(Effect.all([
+const getDirectorySize = (couchDbDirectory) => local_disk_usage_1.LocalDiskUsageService.pipe(Effect.flatMap(service => couchDbDirectory.pipe(effect_1.Option.map(dir => service.getSize(dir)), effect_1.Option.getOrElse(() => Effect.succeed(null)))), Effect.map(effect_1.Option.fromNullable));
+const getMonitoringData = (couchDbDirectory, nouveauDirectory) => (0, effect_1.pipe)(Effect.all([
     currentTimeSec,
     node_system_1.CouchNodeSystemService.get(),
     dbs_info_1.CouchDbsInfoService.post(DB_NAMES),
     getCouchDesignInfos,
-    getDirectorySize(directory),
-]), Effect.map(([unixTime, nodeSystem, dbsInfo, designInfos, directory_size]) => ({
+    getDirectorySize(couchDbDirectory),
+    getDirectorySize(nouveauDirectory),
+]), Effect.map(([unixTime, nodeSystem, dbsInfo, designInfos, couchdb_directory_size, nouveau_directory_size,]) => ({
     ...nodeSystem,
     unix_time: unixTime,
     databases: dbsInfo.map((dbInfo, i) => ({
         ...dbInfo,
         designs: designInfos[i]
     })),
-    directory_size
+    couchdb_directory_size,
+    nouveau_directory_size,
 })));
-const getCsvHeader = (directory) => [
+const getCsvHeader = (couchDbDirectory, nouveauDirectory) => [
     'unix_time',
     ...DB_NAMES.flatMap(dbName => [
         `${dbName}_sizes_file`,
@@ -106,9 +108,10 @@ const getCsvHeader = (directory) => [
     ]),
     'memory_processes_used',
     'memory_binary',
-    ...(directory.pipe(effect_1.Option.map(() => 'directory_size'), effect_1.Option.map(effect_1.Array.of), effect_1.Option.getOrElse(() => [])))
+    ...(couchDbDirectory.pipe(effect_1.Option.map(() => 'couchdb_directory_size'), effect_1.Option.map(effect_1.Array.of), effect_1.Option.getOrElse(() => []))),
+    ...(nouveauDirectory.pipe(effect_1.Option.map(() => 'nouveau_directory_size'), effect_1.Option.map(effect_1.Array.of), effect_1.Option.getOrElse(() => []))),
 ];
-const getAsCsv = (directory) => (0, effect_1.pipe)(getMonitoringData(directory), Effect.map(data => [
+const getAsCsv = (couchDbDirectory, nouveauDirectory) => (0, effect_1.pipe)(getMonitoringData(couchDbDirectory, nouveauDirectory), Effect.map(data => [
     data.unix_time.toString(),
     ...data.databases.flatMap(db => [
         db.info.sizes.file.toString(),
@@ -123,7 +126,8 @@ const getAsCsv = (directory) => (0, effect_1.pipe)(getMonitoringData(directory),
     ]),
     data.memory.processes_used.toString(),
     data.memory.binary.toString(),
-    ...(data.directory_size.pipe(effect_1.Option.map(value => value.toString()), effect_1.Option.map(effect_1.Array.of), effect_1.Option.getOrElse(() => []))),
+    ...(data.couchdb_directory_size.pipe(effect_1.Option.map(value => value.toString()), effect_1.Option.map(effect_1.Array.of), effect_1.Option.getOrElse(() => []))),
+    ...(data.nouveau_directory_size.pipe(effect_1.Option.map(value => value.toString()), effect_1.Option.map(effect_1.Array.of), effect_1.Option.getOrElse(() => []))),
 ]));
 const serviceContext = Effect
     .all([
@@ -137,10 +141,10 @@ const serviceContext = Effect
     .pipe(Context.add(dbs_info_1.CouchDbsInfoService, couchDbsInfo), Context.add(design_info_1.CouchDesignInfoService, couchDesignInfo), Context.add(local_disk_usage_1.LocalDiskUsageService, localDiskUsage))));
 class MonitorService extends Effect.Service()('chtoolbox/MonitorService', {
     effect: serviceContext.pipe(Effect.map(context => ({
-        get: (directory) => getMonitoringData(directory)
+        get: (couchDbDirectory, nouveauDirectory) => getMonitoringData(couchDbDirectory, nouveauDirectory)
             .pipe(Effect.provide(context)),
         getCsvHeader,
-        getAsCsv: (directory) => getAsCsv(directory)
+        getAsCsv: (couchDbDirectory, nouveauDirectory) => getAsCsv(couchDbDirectory, nouveauDirectory)
             .pipe(Effect.provide(context)),
     }))),
     accessors: true,
