@@ -1,9 +1,9 @@
 import { afterEach, describe, it } from 'mocha';
-import { Effect, Either, Layer, Option, TestClock, TestContext } from 'effect';
+import { Effect, Either, Layer, Option, TestClock } from 'effect';
 import { expect } from 'chai';
 import { MonitorService } from '../../src/services/monitor';
 import { CouchNodeSystem, CouchNodeSystemService } from '../../src/services/couch/node-system';
-import sinon, { SinonStub } from 'sinon';
+import { SinonStub } from 'sinon';
 import { CouchDbInfo, CouchDbsInfoService } from '../../src/services/couch/dbs-info';
 import { CouchDesignInfo, CouchDesignInfoService } from '../../src/services/couch/design-info';
 import { LocalDiskUsageService } from '../../src/services/local-disk-usage';
@@ -11,6 +11,7 @@ import { createDbInfo, createDesignInfo, createNodeSystem } from '../utils/data-
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import { NonEmptyArray } from 'effect/Array';
+import { genWithLayer, sandbox } from '../utils/base';
 
 const DB_NAMES: NonEmptyArray<string> = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 const EXPECTED_DESIGN_INFO_ARGS = [
@@ -127,42 +128,30 @@ const initializeDesignInfoServiceGet = (designInfoServiceGet: SinonStub) => {
   designInfoServiceGet.withArgs('_users', ':staged:users').returns(Effect.succeed(usersStagedDesignInfo));
 };
 
+const nodeSystemServiceGet = sandbox.stub();
+const dbsInfoServicePost = sandbox.stub();
+const designInfoServiceGet = sandbox.stub();
+const diskUsageServiceGetSize = sandbox.stub();
+
+const run = MonitorService.Default.pipe(
+  Layer.provide(Layer.succeed(CouchNodeSystemService, {
+    get: nodeSystemServiceGet,
+  } as unknown as CouchNodeSystemService)),
+  Layer.provide(Layer.succeed(CouchDbsInfoService, {
+    post: dbsInfoServicePost,
+  } as unknown as CouchDbsInfoService)),
+  Layer.provide(Layer.succeed(CouchDesignInfoService, {
+    get: designInfoServiceGet,
+  } as unknown as CouchDesignInfoService)),
+  Layer.provide(Layer.succeed(LocalDiskUsageService, {
+    getSize: diskUsageServiceGetSize,
+  } as unknown as LocalDiskUsageService)),
+  genWithLayer,
+);
+
 describe('Monitor service', () => {
-  let nodeSystemServiceGet: SinonStub;
-  let dbsInfoServicePost: SinonStub;
-  let designInfoServiceGet: SinonStub;
-  let diskUsageServiceGetSize: SinonStub;
-
-  beforeEach(() => {
-    nodeSystemServiceGet = sinon.stub();
-    dbsInfoServicePost = sinon.stub();
-    designInfoServiceGet = sinon.stub();
-    diskUsageServiceGetSize = sinon.stub();
-  });
-
-  afterEach(() => sinon.restore());
-
-  const run = (test:  Effect.Effect<unknown, unknown, MonitorService>) => async () => {
-    await Effect.runPromise(test.pipe(
-      Effect.provide(MonitorService.Default),
-      Effect.provide(TestContext.TestContext),
-      Effect.provide(Layer.succeed(CouchNodeSystemService, {
-        get: nodeSystemServiceGet,
-      } as unknown as CouchNodeSystemService)),
-      Effect.provide(Layer.succeed(CouchDbsInfoService, {
-        post: dbsInfoServicePost,
-      } as unknown as CouchDbsInfoService)),
-      Effect.provide(Layer.succeed(CouchDesignInfoService, {
-        get: designInfoServiceGet,
-      } as unknown as CouchDesignInfoService)),
-      Effect.provide(Layer.succeed(LocalDiskUsageService, {
-        getSize: diskUsageServiceGetSize,
-      } as unknown as LocalDiskUsageService)),
-    ));
-  };
-
   describe('get', () => {
-    it('returns empty monitoring data', run(Effect.gen(function* () {
+    it('returns empty monitoring data', run(function* () {
       const nodeSystem = createNodeSystem();
       nodeSystemServiceGet.returns(Effect.succeed(nodeSystem));
       dbsInfoServicePost.returns(Effect.succeed([]));
@@ -181,9 +170,9 @@ describe('Monitor service', () => {
       expect(dbsInfoServicePost.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(diskUsageServiceGetSize.notCalled).to.be.true;
-    })));
+    }));
 
-    it('returns complete monitoring data', run(Effect.gen(function* () {
+    it('returns complete monitoring data', run(function* () {
       nodeSystemServiceGet.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(unix_time * 1000);
@@ -225,9 +214,9 @@ describe('Monitor service', () => {
       expect(dbsInfoServicePost.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
-    })));
+    }));
 
-    it('includes empty data for designs that do not exist', run(Effect.gen(function* () {
+    it('includes empty data for designs that do not exist', run(function* () {
       nodeSystemServiceGet.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(unix_time * 1000);
@@ -282,9 +271,9 @@ describe('Monitor service', () => {
       expect(dbsInfoServicePost.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
-    })));
+    }));
 
-    it('fails when any other error is experienced', run(Effect.gen(function* () {
+    it('fails when any other error is experienced', run(function* () {
       nodeSystemServiceGet.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(unix_time * 1000);
@@ -321,9 +310,9 @@ describe('Monitor service', () => {
       } else {
         expect.fail('Expected error to be thrown');
       }
-    })));
+    }));
 
-    it('trims milliseconds from unix_time value', run(Effect.gen(function* () {
+    it('trims milliseconds from unix_time value', run(function* () {
       const nodeSystem = createNodeSystem();
       nodeSystemServiceGet.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
@@ -344,7 +333,7 @@ describe('Monitor service', () => {
       expect(dbsInfoServicePost.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(diskUsageServiceGetSize.notCalled).to.be.true;
-    })));
+    }));
   });
 
   describe('getAsCsv', () => {
@@ -392,7 +381,7 @@ describe('Monitor service', () => {
       ...getNodeSystemCsvData(nodeSystem),
     ];
 
-    it('returns complete monitoring data', run(Effect.gen(function* () {
+    it('returns complete monitoring data', run(function* () {
       nodeSystemServiceGet.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(unix_time * 1000);
@@ -409,9 +398,9 @@ describe('Monitor service', () => {
       expect(dbsInfoServicePost.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
-    })));
+    }));
 
-    it('includes empty data for designs that do not exist', run(Effect.gen(function* () {
+    it('includes empty data for designs that do not exist', run(function* () {
       nodeSystemServiceGet.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(unix_time * 1000);
@@ -468,9 +457,9 @@ describe('Monitor service', () => {
       expect(dbsInfoServicePost.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
-    })));
+    }));
 
-    it('does not include directory_size column when no directory provided', run(Effect.gen(function* () {
+    it('does not include directory_size column when no directory provided', run(function* () {
       nodeSystemServiceGet.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(123456789458);
@@ -484,7 +473,7 @@ describe('Monitor service', () => {
       expect(dbsInfoServicePost.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(diskUsageServiceGetSize.notCalled).to.be.true;
-    })));
+    }));
   });
 
   describe('getCsvHeader', () => {
@@ -586,20 +575,20 @@ describe('Monitor service', () => {
       expect(diskUsageServiceGetSize.notCalled).to.be.true;
     });
 
-    it('returns complete CSV header', run(Effect.gen(function* () {
+    it('returns complete CSV header', run(function* () {
       const directory = 'directory';
 
       const service = yield* MonitorService;
       const data = service.getCsvHeader(Option.some(directory));
 
       expect(data).to.deep.equal(expectedCsvHeader);
-    })));
+    }));
 
-    it('does not include directory_size column when no directory provided', run(Effect.gen(function* () {
+    it('does not include directory_size column when no directory provided', run(function* () {
       const service = yield* MonitorService;
       const data = service.getCsvHeader(Option.none());
 
       expect(data).to.deep.equal(expectedCsvHeader.slice(0, -1));
-    })));
+    }));
   });
 });

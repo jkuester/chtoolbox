@@ -1,5 +1,5 @@
 import { describe, it } from 'mocha';
-import { Array, Chunk, Effect, Either, Layer, Option, Redacted, Stream, TestContext } from 'effect';
+import { Array, Chunk, Effect, Either, Layer, Option, Redacted, Stream } from 'effect';
 import sinon, { SinonStub } from 'sinon';
 import * as core from '../../src/libs/core';
 import PouchDB from 'pouchdb-core';
@@ -12,29 +12,23 @@ import {
 } from '../../src/services/pouchdb';
 import { EnvironmentService } from '../../src/services/environment';
 import { expect } from 'chai';
+import { genWithLayer, sandbox } from '../utils/base';
 
 const FAKE_POUCHDB = { hello: 'world' } as const;
 
+const environmentGet = sandbox.stub();
+
+const run = PouchDBService.Default.pipe(
+  Layer.provide(Layer.succeed(EnvironmentService, { get: environmentGet } as unknown as EnvironmentService)),
+  genWithLayer,
+);
+
 describe('PouchDB Service', () => {
-  let environmentGet: SinonStub;
   let pouchDB: SinonStub;
 
   beforeEach(() => {
-    environmentGet = sinon.stub();
     pouchDB = sinon.stub(core, 'pouchDB');
   });
-
-  afterEach(() => sinon.restore());
-
-  const run = (test: Effect.Effect<unknown, unknown, PouchDBService>) => async () => {
-    await Effect.runPromise(test.pipe(
-      Effect.provide(PouchDBService.Default),
-      Effect.provide(TestContext.TestContext),
-      Effect.provide(Layer.succeed(EnvironmentService, {
-        get: environmentGet,
-      } as unknown as EnvironmentService)),
-    ));
-  };
 
   describe('streamChanges', () => {
     class FakeChangeEmitter {
@@ -55,7 +49,7 @@ describe('PouchDB Service', () => {
         .returns(fakeChangeEmitter as unknown as PouchDB.Core.Changes<object>);
     });
 
-    it('builds stream from changes feed event emitter', run(Effect.gen(function* () {
+    it('builds stream from changes feed event emitter', run(function* () {
       streamChanges()(fakeDdb);
 
       expect(streamAsync.calledOnce).to.be.true;
@@ -91,7 +85,7 @@ describe('PouchDB Service', () => {
 
       yield* cancelStreamEffect;
       expect(fakeChangeEmitter.cancel.calledOnceWithExactly()).to.be.true;
-    })));
+    }));
 
     it('caches the changes since index and reuses it if the stream is retried', () => {
       streamChanges({ since: 100 })(fakeDdb);
@@ -122,7 +116,7 @@ describe('PouchDB Service', () => {
   });
 
   describe('get', () => {
-    it('prepends the url to the request', run(Effect.gen(function* () {
+    it('prepends the url to the request', run(function* () {
       const dbName = 'test-db';
       const url = 'http://localhost:5984/';
       const env = Redacted.make(url).pipe(url => ({ url }));
@@ -148,9 +142,9 @@ describe('PouchDB Service', () => {
       expect(pouchFetch.args[0][0]).to.equal(url);
       expect(pouchFetch.args[0][1]).to.deep.include(fakeOptions);
       expect(pouchFetch.args[0][1]).to.haveOwnProperty('agent');
-    })));
+    }));
 
-    it('returns different PouchDB instances for each database name', run(Effect.gen(function* () {
+    it('returns different PouchDB instances for each database name', run(function* () {
       const url = 'http://localhost:5984/';
       const testDbName = 'test-db';
       const medicDbName = 'medic';
@@ -172,9 +166,9 @@ describe('PouchDB Service', () => {
       expect(pouchDB.args[0][1]).to.haveOwnProperty('fetch');
       expect(pouchDB.args[1][0]).to.equal(`${url}${medicDbName}`);
       expect(pouchDB.args[1][1]).to.haveOwnProperty('fetch');
-    })));
+    }));
 
-    it('returns the same PouchDB instance when called multiple times with the same name', run(Effect.gen(function* () {
+    it('returns the same PouchDB instance when called multiple times with the same name', run(function* () {
       const url = 'http://localhost:5984/';
       const dbName = 'test-db';
       const env = Redacted.make(url).pipe(url => ({ url }));
@@ -192,7 +186,7 @@ describe('PouchDB Service', () => {
       expect(pouchDB.calledOnce).to.be.true;
       expect(pouchDB.args[0][0]).to.equal(`${url}${dbName}`);
       expect(pouchDB.args[0][1]).to.haveOwnProperty('fetch');
-    })));
+    }));
   });
 
   describe('assertPouchResponse', () => {
@@ -229,7 +223,7 @@ describe('PouchDB Service', () => {
       allDocs = sinon.stub(fakeDdb, 'allDocs');
     });
 
-    it('streams pages of docs with the default options', run(Effect.gen(function* () {
+    it('streams pages of docs with the default options', run(function* () {
       const firstResponse = { rows: Array.replicate({ id: '1', value: { rev: '1' } }, 1000) };
       const secondResponse = { rows: Array.replicate({ id: '3', value: { rev: '3' } }, 1000) };
       const thirdResponse = { rows: Array.replicate({ id: '2', value: { rev: '2' } }, 999) };
@@ -246,9 +240,9 @@ describe('PouchDB Service', () => {
         [{ limit: 1000, skip: 1000 }],
         [{ limit: 1000, skip: 2000 }]
       ]);
-    })));
+    }));
 
-    it('streams pages of docs with the provided skip and limit', run(Effect.gen(function* () {
+    it('streams pages of docs with the provided skip and limit', run(function* () {
       const firstResponse = { rows: [{ id: '1', value: { rev: '1' } }, { id: '2', value: { rev: '2' } }] };
       const secondResponse = { rows: [{ id: '3', value: { rev: '3' } }] };
       allDocs.onFirstCall().resolves(firstResponse);
@@ -259,9 +253,9 @@ describe('PouchDB Service', () => {
 
       expect(pages).to.deep.equal([firstResponse, secondResponse]);
       expect(allDocs.args).to.deep.equal([[{ limit: 2, skip: 0 }], [{ limit: 2, skip: 0 }]]);
-    })));
+    }));
 
-    it('streams an empty page when no docs are found', run(Effect.gen(function* () {
+    it('streams an empty page when no docs are found', run(function* () {
       const firstResponse = { rows: [] };
       allDocs.onFirstCall().resolves(firstResponse);
 
@@ -270,7 +264,7 @@ describe('PouchDB Service', () => {
 
       expect(pages).to.deep.equal([firstResponse]);
       expect(allDocs.args).to.deep.equal([[{ limit: 1000, skip: 0 }]]);
-    })));
+    }));
   });
 
   describe('streamQueryPages', () => {
@@ -282,7 +276,7 @@ describe('PouchDB Service', () => {
       query = sinon.stub(fakeDdb, 'query');
     });
 
-    it('streams pages of docs with the default options', run(Effect.gen(function* () {
+    it('streams pages of docs with the default options', run(function* () {
       const firstResponse = { rows: Array.replicate({ id: '1' }, 1000) };
       const secondResponse = { rows: Array.replicate({ id: '3' }, 1000) };
       const thirdResponse = { rows: Array.replicate({ id: '2' }, 999) };
@@ -299,9 +293,9 @@ describe('PouchDB Service', () => {
         [indexName, { limit: 1000, skip: 1000 }],
         [indexName, { limit: 1000, skip: 2000 }]
       ]);
-    })));
+    }));
 
-    it('streams pages of docs with the provided options', run(Effect.gen(function* () {
+    it('streams pages of docs with the provided options', run(function* () {
       const firstResponse = { rows: [{ id: '1' }, { id: '2' }] };
       const secondResponse = { rows: [{ id: '3' }] };
       query.onFirstCall().resolves(firstResponse);
@@ -316,9 +310,9 @@ describe('PouchDB Service', () => {
         [indexName, { limit: 2, skip: 0, key }],
         [indexName, { limit: 2, skip: 0, key }]
       ]);
-    })));
+    }));
 
-    it('streams an empty page when no docs are found', run(Effect.gen(function* () {
+    it('streams an empty page when no docs are found', run(function* () {
       const firstResponse = { rows: [] };
       query.onFirstCall().resolves(firstResponse);
 
@@ -327,6 +321,6 @@ describe('PouchDB Service', () => {
 
       expect(pages).to.deep.equal([firstResponse]);
       expect(query.args).to.deep.equal([[indexName, { limit: 1000, skip: 0 }]]);
-    })));
+    }));
   });
 });

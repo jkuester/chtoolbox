@@ -1,5 +1,5 @@
-import { afterEach, describe, it } from 'mocha';
-import { Chunk, Effect, Layer, Option, Schedule, Stream, TestContext } from 'effect';
+import { describe, it } from 'mocha';
+import { Chunk, Effect, Layer, Option, Schedule, Stream } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
 import { ChtClientService } from '../../../src/services/cht-client';
@@ -15,6 +15,7 @@ import {
 } from '../../../src/services/couch/active-tasks';
 import { createActiveTask } from '../../utils/data-models';
 import * as schedule from 'effect/Schedule';
+import { genWithLayer, sandbox } from '../../utils/base';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
 
@@ -33,29 +34,22 @@ const TASK_LATER = createActiveTask({
 });
 const TASK_MIN_DATA = createActiveTask();
 
+const couchRequest = sandbox.stub();
+
+const run = CouchActiveTasksService.Default.pipe(
+  Layer.provide(Layer.succeed(ChtClientService, { request: couchRequest } as unknown as ChtClientService)),
+  genWithLayer,
+);
+
 describe('Couch Active Tasks Service', () => {
-  let couchRequest: SinonStub;
   let requestGet: SinonStub;
 
   beforeEach(() => {
-    couchRequest = sinon.stub();
     requestGet = sinon.stub(HttpClientRequest, 'get');
   });
 
-  afterEach(() => sinon.restore());
-
-  const run = (test:  Effect.Effect<unknown, unknown, CouchActiveTasksService>) => async () => {
-    await Effect.runPromise(test.pipe(
-      Effect.provide(CouchActiveTasksService.Default),
-      Effect.provide(TestContext.TestContext),
-      Effect.provide(Layer.succeed(ChtClientService, {
-        request: couchRequest,
-      } as unknown as ChtClientService)),
-    ));
-  };
-
   describe('get', () => {
-    it('returns active tasks ordered by started_on', run(Effect.gen(function* () {
+    it('returns active tasks ordered by started_on', run(function* () {
       requestGet.returns(FAKE_CLIENT_REQUEST);
       couchRequest.returns(Effect.succeed({
         json: Effect.succeed([TASK_LATER, TASK_ALL_DATA, TASK_MIN_DATA]),
@@ -66,9 +60,9 @@ describe('Couch Active Tasks Service', () => {
       expect(tasks).to.deep.equal([TASK_MIN_DATA, TASK_ALL_DATA, TASK_LATER]);
       expect(requestGet.calledOnceWithExactly('/_active_tasks')).to.be.true;
       expect(couchRequest.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
-    })));
+    }));
 
-    it('returns an empty array when there are no active tasks', run(Effect.gen(function* () {
+    it('returns an empty array when there are no active tasks', run(function* () {
       requestGet.returns(FAKE_CLIENT_REQUEST);
       couchRequest.returns(Effect.succeed({
         json: Effect.succeed([]),
@@ -79,7 +73,7 @@ describe('Couch Active Tasks Service', () => {
       expect(tasks).to.deep.equal([]);
       expect(requestGet.calledOnceWithExactly('/_active_tasks')).to.be.true;
       expect(couchRequest.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
-    })));
+    }));
   });
 
   describe('stream', () => {
@@ -89,7 +83,7 @@ describe('Couch Active Tasks Service', () => {
       scheduleSpaced = sinon.stub(schedule, 'spaced');
     });
 
-    it('returns a stream of active tasks with the given interval', run(Effect.gen(function* () {
+    it('returns a stream of active tasks with the given interval', run(function* () {
       requestGet.returns(FAKE_CLIENT_REQUEST);
       couchRequest.returns(Effect.succeed({
         json: Effect.succeed([TASK_LATER, TASK_ALL_DATA, TASK_MIN_DATA]),
@@ -113,9 +107,9 @@ describe('Couch Active Tasks Service', () => {
       expect(requestGet.callCount).to.equal(3);
       expect(requestGet.args).to.deep.equal([['/_active_tasks'], ['/_active_tasks'], ['/_active_tasks']]);
       expect(couchRequest.args).to.deep.equal([[FAKE_CLIENT_REQUEST], [FAKE_CLIENT_REQUEST], [FAKE_CLIENT_REQUEST]]);
-    })));
+    }));
 
-    it('returns a stream of empty array when there are no tasks', run(Effect.gen(function* () {
+    it('returns a stream of empty array when there are no tasks', run(function* () {
       requestGet.returns(FAKE_CLIENT_REQUEST);
       couchRequest.returns(Effect.succeed({
         json: Effect.succeed([]),
@@ -134,7 +128,7 @@ describe('Couch Active Tasks Service', () => {
       expect(requestGet.callCount).to.equal(2);
       expect(requestGet.args).to.deep.equal([['/_active_tasks'], ['/_active_tasks']]);
       expect(couchRequest.args).to.deep.equal([[FAKE_CLIENT_REQUEST], [FAKE_CLIENT_REQUEST]]);
-    })));
+    }));
   });
 
   describe('getDesignName', () => {
@@ -205,7 +199,7 @@ describe('Couch Active Tasks Service', () => {
     });
   });
 
-  it('filterStreamByType', run(Effect.gen(function* () {
+  it('filterStreamByType', run(function* () {
     const task1 = createActiveTask({ type: 'type1' });
     const task2 = createActiveTask({ type: 'type2' });
 
@@ -214,5 +208,5 @@ describe('Couch Active Tasks Service', () => {
     const tasks = Chunk.toReadonlyArray(yield* Stream.runCollect(filteredStream));
 
     expect(tasks).to.deep.equal([[task1, task2]]);
-  })));
+  }));
 });

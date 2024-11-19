@@ -1,40 +1,33 @@
-import { afterEach, describe, it } from 'mocha';
-import { Effect, Either, Layer, TestContext } from 'effect';
+import { describe, it } from 'mocha';
+import { Effect, Either, Layer } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
 import { ChtClientService } from '../../../src/services/cht-client';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import { ChtUpgradeService } from '../../../src/services/cht/upgrade';
 import { ResponseError } from '@effect/platform/HttpClientError';
+import { genWithLayer, sandbox } from '../../utils/base';
 
 const version = '3.7.0';
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
 const FAKE_CLIENT_RESPONSE = { goodby: 'world' } as const;
 
+const chtRequest = sandbox.stub();
+const requestBuild = sandbox.stub();
+
+const run = ChtUpgradeService.Default.pipe(
+  Layer.provide(Layer.succeed(ChtClientService, { request: chtRequest } as unknown as ChtClientService)),
+  genWithLayer,
+);
+
 describe('CHT Upgrade Service', () => {
-  let chtRequest: SinonStub;
-  let requestBuild: SinonStub;
   let requestSchemaBody: SinonStub;
   let requestPost: SinonStub;
 
   beforeEach(() => {
-    chtRequest = sinon.stub();
-    requestBuild = sinon.stub();
     requestSchemaBody = sinon.stub(HttpClientRequest, 'schemaBodyJson').returns(requestBuild);
     requestPost = sinon.stub(HttpClientRequest, 'post');
   });
-
-  afterEach(() => sinon.restore());
-
-  const run = (test:  Effect.Effect<unknown, unknown, ChtUpgradeService>) => async () => {
-    await Effect.runPromise(test.pipe(
-      Effect.provide(ChtUpgradeService.Default),
-      Effect.provide(TestContext.TestContext),
-      Effect.provide(Layer.succeed(ChtClientService, {
-        request: chtRequest,
-      } as unknown as ChtClientService)),
-    ));
-  };
 
   ([
     ['upgrade', ChtUpgradeService.upgrade, '/api/v1/upgrade'],
@@ -46,7 +39,7 @@ describe('CHT Upgrade Service', () => {
     string
   ][]).forEach(([name, fn, endpoint]) => {
     describe(name, () => {
-      it(`posts given upgrade version to ${endpoint}`, run(Effect.gen(function* () {
+      it(`posts given upgrade version to ${endpoint}`, run(function* () {
         const fakeBuiltClientRequest = { ...FAKE_CLIENT_REQUEST, built: true };
         requestPost.returns(FAKE_CLIENT_REQUEST);
         requestBuild.returns(Effect.succeed(fakeBuiltClientRequest));
@@ -62,9 +55,9 @@ describe('CHT Upgrade Service', () => {
         )).to.be.true;
         expect(requestSchemaBody.calledOnce).to.be.true;
         expect(requestPost.calledOnceWithExactly(endpoint)).to.be.true;
-      })));
+      }));
 
-      it('returns error if request cannot be built', run(Effect.gen(function* () {
+      it('returns error if request cannot be built', run(function* () {
         const expectedError = Error('Cannot build request.');
         requestPost.returns(FAKE_CLIENT_REQUEST);
         requestBuild.returns(Effect.fail(expectedError));
@@ -83,11 +76,11 @@ describe('CHT Upgrade Service', () => {
         } else {
           expect.fail('Expected error to be thrown.');
         }
-      })));
+      }));
     });
   });
 
-  it('complete will quietly handle 502 errors from server restart', run(Effect.gen(function* () {
+  it('complete will quietly handle 502 errors from server restart', run(function* () {
     const fakeBuiltClientRequest = { ...FAKE_CLIENT_REQUEST, built: true };
     requestPost.returns(FAKE_CLIENT_REQUEST);
     requestBuild.returns(Effect.succeed(fakeBuiltClientRequest));
@@ -107,5 +100,5 @@ describe('CHT Upgrade Service', () => {
     )).to.be.true;
     expect(requestSchemaBody.calledOnce).to.be.true;
     expect(requestPost.calledOnceWithExactly('/api/v1/upgrade/complete')).to.be.true;
-  })));
+  }));
 });

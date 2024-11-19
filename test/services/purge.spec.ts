@@ -1,5 +1,5 @@
 import { describe, it } from 'mocha';
-import { Array, Chunk, Effect, Layer, Option, Stream, TestContext } from 'effect';
+import { Array, Chunk, Effect, Layer, Option, Stream } from 'effect';
 import sinon, { SinonStub } from 'sinon';
 import * as pouchDBService from '../../src/services/pouchdb';
 import { PouchDBService } from '../../src/services/pouchdb';
@@ -7,32 +7,29 @@ import { expect } from 'chai';
 import { PurgeService } from '../../src/services/purge';
 import * as couchPurgeService from '../../src/services/couch/purge';
 import { CouchPurgeService } from '../../src/services/couch/purge';
+import { genWithLayer, sandbox } from '../utils/base';
 
 const FAKE_DB = { name: 'test-db', allDocs: () => null } as const;
 
+const pouchGet = sandbox.stub();
+const purgeFromInner = sandbox.stub();
+
+const run = PurgeService.Default.pipe(
+  Layer.provide(Layer.succeed(PouchDBService, {
+    get: pouchGet,
+  } as unknown as PouchDBService),),
+  Layer.provide(Layer.succeed(CouchPurgeService, {} as unknown as CouchPurgeService)),
+  genWithLayer,
+);
+
 describe('Purge Service', () => {
-  let purgeFromInner: SinonStub;
   let purgeFrom: SinonStub;
-  let pouchGet: SinonStub;
 
   beforeEach(() => {
-    purgeFromInner = sinon.stub().returns(Effect.void);
+    purgeFromInner.returns(Effect.void);
     purgeFrom = sinon.stub(couchPurgeService, 'purgeFrom').returns(purgeFromInner);
-    pouchGet = sinon.stub().returns(Effect.succeed(FAKE_DB));
+    pouchGet.returns(Effect.succeed(FAKE_DB));
   });
-
-  afterEach(() => sinon.restore());
-
-  const run = (test: Effect.Effect<unknown, unknown, PurgeService | CouchPurgeService>) => async () => {
-    await Effect.runPromise(test.pipe(
-      Effect.provide(PurgeService.Default),
-      Effect.provide(TestContext.TestContext),
-      Effect.provide(Layer.succeed(PouchDBService, {
-        get: pouchGet,
-      } as unknown as PouchDBService),),
-      Effect.provide(Layer.succeed(CouchPurgeService, {} as unknown as CouchPurgeService)),
-    ));
-  };
 
   describe('purgeAll', () => {
     let streamAllDocPagesInner: SinonStub;
@@ -43,7 +40,7 @@ describe('Purge Service', () => {
       streamAllDocPages = sinon.stub(pouchDBService, 'streamAllDocPages').returns(streamAllDocPagesInner);
     });
 
-    it('purges all rows except ddocs', run(Effect.gen(function* () {
+    it('purges all rows except ddocs', run(function* () {
       const expectedResponses = [
         { rows: [{ id: '1', value: { rev: 'a' } }, { id: '_design/3', value: { rev: 'c' } }] },
         { rows: [{ id: '2', value: { rev: 'b' } }] },
@@ -63,9 +60,9 @@ describe('Purge Service', () => {
         [[{ _id: '1', _rev: 'a' }]],
         [[{ _id: '2', _rev: 'b' }]],
       ]);
-    })));
+    }));
 
-    it('purges all rows when purgeDdocs is true', run(Effect.gen(function* () {
+    it('purges all rows when purgeDdocs is true', run(function* () {
       const expectedResponses = [
         { rows: [{ id: '1', value: { rev: 'a' } }, { id: '_design/3', value: { rev: 'c' } }] },
         { rows: [{ id: '2', value: { rev: 'b' } }] },
@@ -84,9 +81,9 @@ describe('Purge Service', () => {
         [[{ _id: '1', _rev: 'a' }, { _id: '_design/3', _rev: 'c' }]],
         [[{ _id: '2', _rev: 'b' }]],
       ]);
-    })));
+    }));
 
-    it('does not purge anything if nothing is found', run(Effect.gen(function* () {
+    it('does not purge anything if nothing is found', run(function* () {
       streamAllDocPagesInner.returns(Stream.empty);
 
       const stream = yield* PurgeService.purgeAll(FAKE_DB.name, true);
@@ -98,7 +95,7 @@ describe('Purge Service', () => {
       expect(streamAllDocPagesInner.calledOnceWithExactly(FAKE_DB)).to.be.true;
       expect(purgeFrom.notCalled).to.be.true;
       expect(purgeFromInner.notCalled).to.be.true;
-    })));
+    }));
   });
 
   describe('purgeReports', () => {
@@ -113,7 +110,7 @@ describe('Purge Service', () => {
       dbAllDocs = sinon.stub(FAKE_DB, 'allDocs');
     });
 
-    it('purges all rows returned from medic-client/reports_by_date', run(Effect.gen(function* () {
+    it('purges all rows returned from medic-client/reports_by_date', run(function* () {
       const streamQueryResponses = [
         { rows: [{ id: '1' }, { id: '3' }] },
         { rows: [{ id: '2' }] },
@@ -146,9 +143,9 @@ describe('Purge Service', () => {
         [[{ _id: '2', _rev: 'c' }]],
         [[{ _id: '4', _rev: 'd' }]],
       ]);
-    })));
+    }));
 
-    it('does not purge anything if nothing is found when querying', run(Effect.gen(function* () {
+    it('does not purge anything if nothing is found when querying', run(function* () {
       streamQueryPagesInner.returns(Stream.empty);
       const opts = { since: Option.none(), before: Option.none() };
 
@@ -165,9 +162,9 @@ describe('Purge Service', () => {
       expect(dbAllDocs.notCalled).to.be.true;
       expect(purgeFrom.notCalled).to.be.true;
       expect(purgeFromInner.notCalled).to.be.true;
-    })));
+    }));
 
-    it('does not purge anything if none of the queried docs exist', run(Effect.gen(function* () {
+    it('does not purge anything if none of the queried docs exist', run(function* () {
       const streamQueryResponses = [
         { rows: [{ id: '1' }, { id: '3' }] },
         { rows: [{ id: '2' }] },
@@ -196,9 +193,9 @@ describe('Purge Service', () => {
       ]);
       expect(purgeFrom.args).to.deep.equal(Array.replicate([FAKE_DB.name], 3));
       expect(purgeFromInner.notCalled).to.be.true;
-    })));
+    }));
 
-    it('purges rows for query filtered by provided options', run(Effect.gen(function* () {
+    it('purges rows for query filtered by provided options', run(function* () {
       const streamQueryResponses = [
         { rows: [{ id: '1' }] },
       ];
@@ -221,7 +218,7 @@ describe('Purge Service', () => {
       expect(dbAllDocs.args).to.deep.equal([[{ keys: ['1'] }]]);
       expect(purgeFrom.args).to.deep.equal(Array.replicate([FAKE_DB.name], 1));
       expect(purgeFromInner.args).to.deep.equal([[[{ _id: '1', _rev: 'a' }]]]);
-    })));
+    }));
   });
 
   describe('purgeContacts', () => {
@@ -236,7 +233,7 @@ describe('Purge Service', () => {
       dbAllDocs = sinon.stub(FAKE_DB, 'allDocs');
     });
 
-    it('purges all rows returned from medic-client/contacts_by_type', run(Effect.gen(function* () {
+    it('purges all rows returned from medic-client/contacts_by_type', run(function* () {
       const streamQueryResponses = [
         { rows: [{ id: '1' }, { id: '3' }] },
         { rows: [{ id: '2' }] },
@@ -269,9 +266,9 @@ describe('Purge Service', () => {
         [[{ _id: '2', _rev: 'c' }]],
         [[{ _id: '4', _rev: 'd' }]],
       ]);
-    })));
+    }));
 
-    it('does not purge anything if nothing is found when querying', run(Effect.gen(function* () {
+    it('does not purge anything if nothing is found when querying', run(function* () {
       streamQueryPagesInner.returns(Stream.empty);
       const contactType = 'person';
 
@@ -288,9 +285,9 @@ describe('Purge Service', () => {
       expect(dbAllDocs.notCalled).to.be.true;
       expect(purgeFrom.notCalled).to.be.true;
       expect(purgeFromInner.notCalled).to.be.true;
-    })));
+    }));
 
-    it('does not purge anything if none of the queried docs exist', run(Effect.gen(function* () {
+    it('does not purge anything if none of the queried docs exist', run(function* () {
       const streamQueryResponses = [
         { rows: [{ id: '1' }, { id: '3' }] },
         { rows: [{ id: '2' }] },
@@ -319,6 +316,6 @@ describe('Purge Service', () => {
       ]);
       expect(purgeFrom.args).to.deep.equal(Array.replicate([FAKE_DB.name], 3));
       expect(purgeFromInner.notCalled).to.be.true;
-    })));
+    }));
   });
 });

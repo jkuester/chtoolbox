@@ -1,11 +1,12 @@
 import { describe, it } from 'mocha';
-import { Array, Chunk, Effect, Either, Layer, Stream, TestContext } from 'effect';
+import { Array, Chunk, Effect, Either, Layer, Stream } from 'effect';
 import sinon, { SinonStub } from 'sinon';
 import * as pouchDbService from '../../src/services/pouchdb';
 import { PouchDBService } from '../../src/services/pouchdb';
 import { expect } from 'chai';
 import { UpgradeService } from '../../src/services/upgrade';
 import { ChtUpgradeService } from '../../src/services/cht/upgrade';
+import { genWithLayer, sandbox } from '../utils/base';
 
 const version = '3.7.0';
 const EXPECTED_ALL_DOCS_OPTS = {
@@ -23,44 +24,35 @@ const createUpgradeLog = ({ idMillis = 0, state = '', state_history = [] } = {})
   state_history: state_history
 });
 
+const chtUpgrade = sandbox.stub();
+const chtStage = sandbox.stub();
+const chtComplete = sandbox.stub();
+const pouchGet = sandbox.stub();
+const dbAllDocs = sandbox.stub();
+
+const run = UpgradeService.Default.pipe(
+  Layer.provide(Layer.succeed(PouchDBService, {
+    get: pouchGet,
+  } as unknown as PouchDBService),),
+  Layer.provide(Layer.succeed(ChtUpgradeService, {
+    upgrade: chtUpgrade,
+    stage: chtStage,
+    complete: chtComplete,
+  } as unknown as ChtUpgradeService)),
+  genWithLayer,
+);
+
 describe('Upgrade Service', () => {
-  let chtUpgrade: SinonStub;
-  let chtStage: SinonStub;
-  let chtComplete: SinonStub;
-  let pouchGet: SinonStub;
-  let dbAllDocs: SinonStub;
   let streamChanges: SinonStub;
 
   beforeEach(() => {
-    chtUpgrade = sinon.stub();
-    chtStage = sinon.stub();
-    chtComplete = sinon.stub();
-    pouchGet = sinon.stub();
-    dbAllDocs = sinon.stub();
     streamChanges = sinon.stub(pouchDbService, 'streamChanges');
     pouchGet.returns(Effect.succeed({ allDocs: dbAllDocs, }));
   });
 
-  afterEach(() => sinon.restore());
-
-  const run = (test: Effect.Effect<unknown, unknown, UpgradeService>) => async () => {
-    await Effect.runPromise(test.pipe(
-      Effect.provide(UpgradeService.Default),
-      Effect.provide(TestContext.TestContext),
-      Effect.provide(Layer.succeed(PouchDBService, {
-        get: pouchGet,
-      } as unknown as PouchDBService),),
-      Effect.provide(Layer.succeed(ChtUpgradeService, {
-        upgrade: chtUpgrade,
-        stage: chtStage,
-        complete: chtComplete,
-      } as unknown as ChtUpgradeService)),
-    ));
-  };
-
   describe('upgrade', () => {
     COMPLETED_STATES.forEach(state => {
-      it(`triggers upgrade when existing upgrade log completed with state ${state}`, run(Effect.gen(function* () {
+      it(`triggers upgrade when existing upgrade log completed with state ${state}`, run(function* () {
         const upgradeLog = createUpgradeLog({ idMillis: 1, state });
         dbAllDocs.resolves({ rows: [{ doc: upgradeLog }] });
         streamChanges.returns(sinon.stub().returns(Stream.empty));
@@ -78,11 +70,11 @@ describe('Upgrade Service', () => {
           include_docs: true,
           doc_ids: [upgradeLog._id],
         })).to.be.true;
-      })));
+      }));
     });
 
     IN_PROGRESS_STATES.forEach(state => {
-      it(`returns error when there is already an existing upgrade with status ${state}`, run(Effect.gen(function* () {
+      it(`returns error when there is already an existing upgrade with status ${state}`, run(function* () {
         dbAllDocs.resolves({ rows: [{
           doc: createUpgradeLog({ state })
         }] });
@@ -101,10 +93,10 @@ describe('Upgrade Service', () => {
         } else {
           expect.fail('Expected error to be thrown');
         }
-      })));
+      }));
     });
 
-    it('streams updates to upgrade log when upgrade is triggered', run(Effect.gen(function* () {
+    it('streams updates to upgrade log when upgrade is triggered', run(function* () {
       dbAllDocs.onFirstCall().resolves({ rows: [] });
       const initUpgradeLog = createUpgradeLog({ idMillis: 1, state: 'initiated' });
       dbAllDocs.onSecondCall().resolves({ rows: [{ doc: initUpgradeLog }] });
@@ -149,10 +141,10 @@ describe('Upgrade Service', () => {
       expect(chtUpgrade.calledOnceWithExactly(version)).to.be.true;
       expect(chtStage.notCalled).to.be.true;
       expect(chtComplete.notCalled).to.be.true;
-    })));
+    }));
 
     COMPLETED_STATES.forEach(state => {
-      it('stops streaming values when upgrade log has status ', run(Effect.gen(function* () {
+      it('stops streaming values when upgrade log has status ', run(function* () {
         dbAllDocs.onFirstCall().resolves({ rows: [] });
         const initUpgradeLog = createUpgradeLog({ idMillis: 1, state });
         dbAllDocs.onSecondCall().resolves({ rows: [{ doc: initUpgradeLog }] });
@@ -190,10 +182,10 @@ describe('Upgrade Service', () => {
         expect(chtUpgrade.calledOnceWithExactly(version)).to.be.true;
         expect(chtStage.notCalled).to.be.true;
         expect(chtComplete.notCalled).to.be.true;
-      })));
+      }));
     });
 
-    it('throws error if an upgrade log cannot be found when upgrade is triggered', run(Effect.gen(function* () {
+    it('throws error if an upgrade log cannot be found when upgrade is triggered', run(function* () {
       dbAllDocs.resolves({ rows: [] });
 
       const either = yield* UpgradeService
@@ -227,12 +219,12 @@ describe('Upgrade Service', () => {
       } else {
         expect.fail('Expected error to be thrown');
       }
-    })));
+    }));
   });
 
   describe('stage', () => {
     COMPLETED_STATES.forEach(state => {
-      it(`stages upgrade when existing upgrade log completed with state ${state}`, run(Effect.gen(function* () {
+      it(`stages upgrade when existing upgrade log completed with state ${state}`, run(function* () {
         const upgradeLog = createUpgradeLog({ idMillis: 1, state });
         dbAllDocs.resolves({ rows: [{ doc: upgradeLog }] });
         streamChanges.returns(sinon.stub().returns(Stream.empty));
@@ -250,11 +242,11 @@ describe('Upgrade Service', () => {
           include_docs: true,
           doc_ids: [upgradeLog._id],
         })).to.be.true;
-      })));
+      }));
     });
 
     IN_PROGRESS_STATES.forEach(state => {
-      it(`returns error when there is already an existing upgrade with status ${state}`, run(Effect.gen(function* () {
+      it(`returns error when there is already an existing upgrade with status ${state}`, run(function* () {
         dbAllDocs.resolves({ rows: [{
           doc: createUpgradeLog({ state })
         }] });
@@ -273,10 +265,10 @@ describe('Upgrade Service', () => {
         } else {
           expect.fail('Expected error to be thrown');
         }
-      })));
+      }));
     });
 
-    it('streams updates to upgrade log when upgrade is staged', run(Effect.gen(function* () {
+    it('streams updates to upgrade log when upgrade is staged', run(function* () {
       dbAllDocs.onFirstCall().resolves({ rows: [] });
       const initUpgradeLog = createUpgradeLog({ idMillis: 1, state: 'initiated' });
       dbAllDocs.onSecondCall().resolves({ rows: [{ doc: initUpgradeLog }] });
@@ -320,10 +312,10 @@ describe('Upgrade Service', () => {
       expect(chtUpgrade.notCalled).to.be.true;
       expect(chtStage.calledOnceWithExactly(version)).to.be.true;
       expect(chtComplete.notCalled).to.be.true;
-    })));
+    }));
 
     ['indexed', ...COMPLETED_STATES].forEach(state => {
-      it('stops streaming values when upgrade log has status ', run(Effect.gen(function* () {
+      it('stops streaming values when upgrade log has status ', run(function* () {
         dbAllDocs.onFirstCall().resolves({ rows: [] });
         const initUpgradeLog = createUpgradeLog({ idMillis: 1, state });
         dbAllDocs.onSecondCall().resolves({ rows: [{ doc: initUpgradeLog }] });
@@ -361,12 +353,12 @@ describe('Upgrade Service', () => {
         expect(chtUpgrade.notCalled).to.be.true;
         expect(chtStage.calledOnceWithExactly(version)).to.be.true;
         expect(chtComplete.notCalled).to.be.true;
-      })));
+      }));
     });
   });
 
   describe('complete', () => {
-    it('completes upgrade when existing upgrade log has state indexed', run(Effect.gen(function* () {
+    it('completes upgrade when existing upgrade log has state indexed', run(function* () {
       const upgradeLog = createUpgradeLog({ idMillis: 1, state: 'indexed' });
       dbAllDocs.resolves({ rows: [{ doc: upgradeLog }] });
       streamChanges.returns(sinon.stub().returns(Stream.empty));
@@ -384,10 +376,10 @@ describe('Upgrade Service', () => {
         include_docs: true,
         doc_ids: [upgradeLog._id],
       })).to.be.true;
-    })));
+    }));
 
     [...COMPLETED_STATES, ...IN_PROGRESS_STATES].slice(0, -1).forEach(state => {
-      it('returns error when there is no existing upgrade with status indexed', run(Effect.gen(function* () {
+      it('returns error when there is no existing upgrade with status indexed', run(function* () {
         dbAllDocs.resolves({ rows: [{
           doc: createUpgradeLog({ state })
         }] });
@@ -406,10 +398,10 @@ describe('Upgrade Service', () => {
         } else {
           expect.fail('Expected error to be thrown');
         }
-      })));
+      }));
     });
 
-    it('streams updates to upgrade log when complete is triggered', run(Effect.gen(function* () {
+    it('streams updates to upgrade log when complete is triggered', run(function* () {
       const initUpgradeLog = createUpgradeLog({ idMillis: 1, state: 'indexed' });
       dbAllDocs.resolves({ rows: [{ doc: initUpgradeLog }] });
       const expectedUpgradeLogs = [
@@ -453,10 +445,10 @@ describe('Upgrade Service', () => {
       expect(chtUpgrade.notCalled).to.be.true;
       expect(chtStage.notCalled).to.be.true;
       expect(chtComplete.calledOnceWithExactly(version)).to.be.true;
-    })));
+    }));
 
     COMPLETED_STATES.forEach(state => {
-      it('stops streaming values when upgrade log has status ', run(Effect.gen(function* () {
+      it('stops streaming values when upgrade log has status ', run(function* () {
         const initUpgradeLog = createUpgradeLog({ idMillis: 1, state: 'indexed' });
         dbAllDocs.resolves({ rows: [{ doc: initUpgradeLog }] });
         const expectedUpgradeLogs = [
@@ -493,7 +485,7 @@ describe('Upgrade Service', () => {
         expect(chtUpgrade.notCalled).to.be.true;
         expect(chtStage.notCalled).to.be.true;
         expect(chtComplete.calledOnceWithExactly(version)).to.be.true;
-      })));
+      }));
     });
   });
 });

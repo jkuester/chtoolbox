@@ -1,5 +1,5 @@
-import { afterEach, describe, it } from 'mocha';
-import { Chunk, Effect, Layer, Stream, TestContext } from 'effect';
+import { describe, it } from 'mocha';
+import { Chunk, Effect, Layer, Stream } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
 import { CouchDbsInfoService } from '../../src/services/couch/dbs-info';
@@ -10,60 +10,50 @@ import { CouchCompactService } from '../../src/services/couch/compact';
 import * as CouchActiveTasksSvc from '../../src/services/couch/active-tasks';
 import { CouchActiveTasksService } from '../../src/services/couch/active-tasks';
 import * as core from '../../src/libs/core';
+import { genWithLayer, sandbox } from '../utils/base';
+
+const dbsInfoSvcGetDbNames = sandbox.stub();
+const dbInfoSvcGet = sandbox.stub();
+const designDocsSvcGetNames = sandbox.stub();
+const compactSvcCompactDb = sandbox.stub();
+const compactSvcCompactDesign = sandbox.stub();
+const designInfoSvcGet = sandbox.stub();
+const activeTasksStream = sandbox.stub();
+
+const run = CompactService.Default.pipe(
+  Layer.provide(Layer.succeed(CouchDbsInfoService, {
+    getDbNames: dbsInfoSvcGetDbNames,
+    get: dbInfoSvcGet,
+  } as unknown as CouchDbsInfoService)),
+  Layer.provide(Layer.succeed(CouchDesignDocsService, {
+    getNames: designDocsSvcGetNames,
+  } as unknown as CouchDesignDocsService)),
+  Layer.provide(Layer.succeed(CouchCompactService, {
+    compactDb: compactSvcCompactDb,
+    compactDesign: compactSvcCompactDesign,
+  } as unknown as CouchCompactService)),
+  Layer.provide(Layer.succeed(CouchDesignInfoService, {
+    get: designInfoSvcGet,
+  } as unknown as CouchDesignInfoService)),
+  Layer.provide(Layer.succeed(CouchActiveTasksService, {
+    stream: activeTasksStream,
+  } as unknown as CouchActiveTasksService)),
+  genWithLayer,
+);
 
 describe('Compact service', () => {
-  let dbsInfoSvcGetDbNames: SinonStub;
-  let dbInfoSvcGet: SinonStub;
-  let designDocsSvcGetNames: SinonStub;
-  let compactSvcCompactDb: SinonStub;
-  let compactSvcCompactDesign: SinonStub;
-  let designInfoSvcGet: SinonStub;
-  let activeTasksStream: SinonStub;
   let filterStreamByType: SinonStub;
   let untilEmptyCount: SinonStub;
 
   beforeEach(() => {
-    dbsInfoSvcGetDbNames = sinon.stub();
-    dbInfoSvcGet = sinon.stub();
-    designDocsSvcGetNames = sinon.stub();
-    compactSvcCompactDb = sinon.stub();
-    compactSvcCompactDesign = sinon.stub();
-    designInfoSvcGet = sinon.stub();
-    activeTasksStream = sinon.stub();
     filterStreamByType = sinon
       .stub(CouchActiveTasksSvc, 'filterStreamByType')
       .returns(sinon.stub().returnsArg(0));
     untilEmptyCount = sinon.stub(core, 'untilEmptyCount');
   });
 
-  afterEach(() => sinon.restore());
-
-  const run = (test:  Effect.Effect<unknown, unknown, CompactService>) => async () => {
-    await Effect.runPromise(test.pipe(
-      Effect.provide(CompactService.Default),
-      Effect.provide(TestContext.TestContext),
-      Effect.provide(Layer.succeed(CouchDbsInfoService, {
-        getDbNames: dbsInfoSvcGetDbNames,
-        get: dbInfoSvcGet,
-      } as unknown as CouchDbsInfoService)),
-      Effect.provide(Layer.succeed(CouchDesignDocsService, {
-        getNames: designDocsSvcGetNames,
-      } as unknown as CouchDesignDocsService)),
-      Effect.provide(Layer.succeed(CouchCompactService, {
-        compactDb: compactSvcCompactDb,
-        compactDesign: compactSvcCompactDesign,
-      } as unknown as CouchCompactService)),
-      Effect.provide(Layer.succeed(CouchDesignInfoService, {
-        get: designInfoSvcGet,
-      } as unknown as CouchDesignInfoService)),
-      Effect.provide(Layer.succeed(CouchActiveTasksService, {
-        stream: activeTasksStream,
-      } as unknown as CouchActiveTasksService)),
-    ));
-  };
-
   describe('compactAll', () => {
-    it('compacts all databases and views', run(Effect.gen(function* () {
+    it('compacts all databases and views', run(function* () {
       dbsInfoSvcGetDbNames.returns(Effect.succeed(['medic', 'test']));
       compactSvcCompactDb.returns(Effect.void);
       compactSvcCompactDesign.returns(Effect.void);
@@ -90,9 +80,9 @@ describe('Compact service', () => {
       expect(activeTasksStream.calledOnceWithExactly()).to.be.true;
       expect(filterStreamByType.calledOnceWithExactly('database_compaction', 'view_compaction')).to.be.true;
       expect(untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
-    })));
+    }));
 
-    it('compacts only databases when no views found', run(Effect.gen(function* () {
+    it('compacts only databases when no views found', run(function* () {
       dbsInfoSvcGetDbNames.returns(Effect.succeed(['medic', 'test']));
       compactSvcCompactDb.returns(Effect.void);
       designDocsSvcGetNames.withArgs('medic').returns(Effect.succeed([]));
@@ -111,9 +101,9 @@ describe('Compact service', () => {
       expect(activeTasksStream.calledOnceWithExactly()).to.be.true;
       expect(filterStreamByType.calledOnceWithExactly('database_compaction', 'view_compaction')).to.be.true;
       expect(untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
-    })));
+    }));
 
-    it('compacts nothing if no databases found', run(Effect.gen(function* () {
+    it('compacts nothing if no databases found', run(function* () {
       dbsInfoSvcGetDbNames.returns(Effect.succeed([]));
       activeTasksStream.returns(Stream.succeed([]));
       untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
@@ -129,9 +119,9 @@ describe('Compact service', () => {
       expect(activeTasksStream.calledOnceWithExactly()).to.be.true;
       expect(filterStreamByType.calledOnceWithExactly('database_compaction', 'view_compaction')).to.be.true;
       expect(untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
-    })));
+    }));
 
-    it('compacts databases but not designs when indicated', run(Effect.gen(function* () {
+    it('compacts databases but not designs when indicated', run(function* () {
       dbsInfoSvcGetDbNames.returns(Effect.succeed(['medic', 'test']));
       compactSvcCompactDb.returns(Effect.void);
       const expectedTasks = [{ hello: 'world' }];
@@ -151,11 +141,11 @@ describe('Compact service', () => {
       expect(activeTasksStream.calledOnceWithExactly()).to.be.true;
       expect(filterStreamByType.calledOnceWithExactly('database_compaction')).to.be.true;
       expect(untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
-    })));
+    }));
   });
 
   describe('compactDb', () => {
-    it('compacts database but not designs when indicated', run(Effect.gen(function* () {
+    it('compacts database but not designs when indicated', run(function* () {
       compactSvcCompactDb.returns(Effect.void);
       const expectedTasks = [{ database: 'shards/aaaaaaa8-bffffffc/medic.1727212895' }];
       activeTasksStream.returns(Stream.succeed(expectedTasks));
@@ -175,10 +165,10 @@ describe('Compact service', () => {
       expect(activeTasksStream.calledOnceWithExactly()).to.be.true;
       expect(filterStreamByType.calledOnceWithExactly('database_compaction')).to.be.true;
       expect(untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
-    })));
+    }));
 
 
-    it('compacts database and all its views when indicated', run(Effect.gen(function* () {
+    it('compacts database and all its views when indicated', run(function* () {
       compactSvcCompactDb.returns(Effect.void);
       compactSvcCompactDesign.returns(Effect.void);
       designDocsSvcGetNames.withArgs('medic').returns(Effect.succeed(['medic-client', 'medic-sms']));
@@ -206,10 +196,10 @@ describe('Compact service', () => {
       expect(activeTasksStream.calledOnceWithExactly()).to.be.true;
       expect(filterStreamByType.calledOnceWithExactly('database_compaction', 'view_compaction')).to.be.true;
       expect(untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
-    })));
+    }));
   });
 
-  it('compactDesign', run(Effect.gen(function* () {
+  it('compactDesign', run(function* () {
     compactSvcCompactDesign.returns(Effect.void);
     const expectedTasks = [{
       database: 'shards/aaaaaaa8-bffffffc/medic.1727212895',
@@ -237,5 +227,5 @@ describe('Compact service', () => {
     expect(activeTasksStream.calledOnceWithExactly()).to.be.true;
     expect(filterStreamByType.calledOnceWithExactly('view_compaction')).to.be.true;
     expect(untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
-  })));
+  }));
 });

@@ -1,12 +1,18 @@
-import { afterEach, describe, it } from 'mocha';
-import { Effect, TestContext } from 'effect';
+import { describe, it } from 'mocha';
+import { Effect, Layer } from 'effect';
 import { expect } from 'chai';
 import { LocalDiskUsageService } from '../../src/services/local-disk-usage';
 import { NodeContext } from '@effect/platform-node';
 import sinon from 'sinon';
 import { Command } from '@effect/platform';
+import { genWithLayer } from '../utils/base';
 
 const FAKE_COMMAND = Effect.succeed({ hello: 'world' });
+
+const run = LocalDiskUsageService.Default.pipe(
+  Layer.provide(NodeContext.layer),
+  genWithLayer,
+);
 
 describe('Local Disk Usage Service', () => {
   let commandMake: sinon.SinonStub;
@@ -17,17 +23,7 @@ describe('Local Disk Usage Service', () => {
     commandString = sinon.stub(Command, 'string');
   });
 
-  afterEach(() => sinon.restore());
-
-  const run = (test:  Effect.Effect<unknown, unknown, LocalDiskUsageService>) => async () => {
-    await Effect.runPromise(test.pipe(
-      Effect.provide(LocalDiskUsageService.Default),
-      Effect.provide(TestContext.TestContext),
-      Effect.provide(NodeContext.layer)
-    ));
-  };
-
-  it('loads url from COUCH_URL envar', run(Effect.gen(function* () {
+  it('loads url from COUCH_URL envar', run(function* () {
     const directory = '/home';
     const size = 12345;
     commandMake.returns(FAKE_COMMAND);
@@ -38,5 +34,5 @@ describe('Local Disk Usage Service', () => {
     expect(actualSize).to.equal(size);
     expect(commandMake.calledOnceWithExactly('du', '-s', directory)).to.be.true;
     expect(commandString.calledOnceWithExactly(FAKE_COMMAND)).to.be.true;
-  })));
+  }));
 });

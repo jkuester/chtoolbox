@@ -1,5 +1,5 @@
-import { afterEach, describe, it } from 'mocha';
-import { Effect, Either, Layer, TestContext } from 'effect';
+import { describe, it } from 'mocha';
+import { Effect, Either, Layer } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
 import { ChtClientService } from '../../../src/services/cht-client';
@@ -7,37 +7,32 @@ import { HttpClientRequest } from '@effect/platform';
 import { CouchDbsInfoService } from '../../../src/services/couch/dbs-info';
 import { createDbInfo } from '../../utils/data-models';
 import { NonEmptyArray } from 'effect/Array';
+import { genWithLayer, sandbox } from '../../utils/base';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
 
+const couchRequest = sandbox.stub();
+const requestBuild = sandbox.stub();
+
+const run = CouchDbsInfoService.Default.pipe(
+  Layer.provide(Layer.succeed(ChtClientService, { request: couchRequest } as unknown as ChtClientService)),
+  genWithLayer,
+);
+
 describe('Couch Dbs Info Service', () => {
-  let couchRequest: SinonStub;
-  let requestBuild: SinonStub;
   let requestSchemaBody: SinonStub;
   let requestPost: SinonStub;
   let requestGet: SinonStub;
 
   beforeEach(() => {
-    couchRequest = sinon.stub();
-    requestBuild = sinon.stub();
-    requestSchemaBody = sinon.stub(HttpClientRequest, 'schemaBodyJson').returns(requestBuild);
+    requestSchemaBody = sinon
+      .stub(HttpClientRequest, 'schemaBodyJson')
+      .returns(requestBuild);
     requestPost = sinon.stub(HttpClientRequest, 'post');
     requestGet = sinon.stub(HttpClientRequest, 'get');
   });
 
-  afterEach(() => sinon.restore());
-
-  const run = (test:  Effect.Effect<unknown, unknown, CouchDbsInfoService>) => async () => {
-    await Effect.runPromise(test.pipe(
-      Effect.provide(CouchDbsInfoService.Default),
-      Effect.provide(TestContext.TestContext),
-      Effect.provide(Layer.succeed(ChtClientService, {
-        request: couchRequest,
-      } as unknown as ChtClientService)),
-    ));
-  };
-
-  it('gets db info for all databases', run(Effect.gen(function* () {
+  it('gets db info for all databases', run(function* () {
     requestGet.returns(FAKE_CLIENT_REQUEST);
     const testDbInfo = createDbInfo({
       key: 'test',
@@ -66,9 +61,9 @@ describe('Couch Dbs Info Service', () => {
     expect(requestBuild.notCalled).to.be.true;
     expect(requestSchemaBody.notCalled).to.be.true;
     expect(requestPost.notCalled).to.be.true;
-  })));
+  }));
 
-  it('gets db names for all databases', run(Effect.gen(function* () {
+  it('gets db names for all databases', run(function* () {
     requestGet.returns(FAKE_CLIENT_REQUEST);
     const testDbInfo = createDbInfo({ key: 'test', compact_running: true, file: 123, active: 234 });
     const emptyDbInfo = createDbInfo();
@@ -84,10 +79,10 @@ describe('Couch Dbs Info Service', () => {
     expect(requestBuild.notCalled).to.be.true;
     expect(requestSchemaBody.notCalled).to.be.true;
     expect(requestPost.notCalled).to.be.true;
-  })));
+  }));
 
   describe('post', () => {
-    it('posts db info for specified databases', run(Effect.gen(function* () {
+    it('posts db info for specified databases', run(function* () {
       const fakeBuiltClientRequest = { ...FAKE_CLIENT_REQUEST, built: true };
       requestPost.returns(FAKE_CLIENT_REQUEST);
       requestBuild.returns(Effect.succeed(fakeBuiltClientRequest));
@@ -111,9 +106,9 @@ describe('Couch Dbs Info Service', () => {
       )).to.be.true;
       expect(requestSchemaBody.calledOnce).to.be.true;
       expect(requestPost.calledOnceWithExactly('/_dbs_info')).to.be.true;
-    })));
+    }));
 
-    it('returns error if request cannot be built', run(Effect.gen(function* () {
+    it('returns error if request cannot be built', run(function* () {
       const expectedError = Error('Cannot build request.');
       requestPost.returns(FAKE_CLIENT_REQUEST);
       requestBuild.returns(Effect.fail(expectedError));
@@ -134,6 +129,6 @@ describe('Couch Dbs Info Service', () => {
       } else {
         expect.fail('Expected error to be thrown.');
       }
-    })));
+    }));
   });
 });

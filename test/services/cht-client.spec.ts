@@ -1,40 +1,33 @@
 import { describe, it } from 'mocha';
-import { Effect, Either, Layer, Redacted, Scope, TestContext } from 'effect';
+import { Effect, Either, Layer, Redacted } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
 import { ChtClientService } from '../../src/services/cht-client';
 import { HttpClient, HttpClientRequest } from '@effect/platform';
 import { EnvironmentService } from '../../src/services/environment';
 import { NodeHttpClient } from '@effect/platform-node';
+import { genWithLayer, sandbox } from '../utils/base';
+
+const environmentGet = sandbox.stub();
+
+const run = ChtClientService.Default.pipe(
+  Layer.provide(Layer.succeed(EnvironmentService, { get: environmentGet } as unknown as EnvironmentService)),
+  Layer.provide(NodeHttpClient.layer),
+  genWithLayer,
+);
 
 describe('CHT Client Service', () => {
-  let environmentGet: SinonStub;
   let filterStatusOkay: SinonStub;
   let prependUrl: SinonStub;
   let mapRequest: SinonStub;
 
   beforeEach(() => {
-    environmentGet = sinon.stub();
     filterStatusOkay = sinon.stub(HttpClient, 'filterStatusOk');
     prependUrl = sinon.stub(HttpClientRequest, 'prependUrl');
     mapRequest = sinon.stub(HttpClient, 'mapRequest');
   });
 
-  afterEach(() => sinon.restore());
-
-  const run = (test: Effect.Effect<unknown, unknown, ChtClientService | Scope.Scope>) => async () => {
-    await Effect.runPromise(test.pipe(
-      Effect.provide(ChtClientService.Default),
-      Effect.provide(TestContext.TestContext),
-      Effect.provide(Layer.succeed(EnvironmentService, {
-        get: environmentGet,
-      } as unknown as EnvironmentService)),
-      Effect.provide(NodeHttpClient.layer),
-      Effect.scoped,
-    ));
-  };
-
-  it('prepends the url to the request', run(Effect.gen(function* () {
+  it('prepends the url to the request', run(function* () {
     const url = 'http://localhost:5984';
     const env = Redacted.make(url).pipe(url => ({ url }));
     environmentGet.returns(Effect.succeed(env));
@@ -59,9 +52,9 @@ describe('CHT Client Service', () => {
     expect(mapRequest.calledOnceWithExactly(innerPrependUrl)).to.be.true;
     expect(innerMapRequest.calledOnceWithExactly(fakeHttpClientEffect)).to.be.true;
     expect(execute.calledOnceWithExactly(request)).to.be.true;
-  })));
+  }));
 
-  it('returns error when request fails', run(Effect.gen(function* () {
+  it('returns error when request fails', run(function* () {
     const url = 'http://localhost:5984';
     const env = Redacted.make(url).pipe(url => ({ url }));
     environmentGet.returns(Effect.succeed(env));
@@ -90,5 +83,5 @@ describe('CHT Client Service', () => {
     } else {
       expect.fail('Expected error to be thrown.');
     }
-  })));
+  }));
 });
