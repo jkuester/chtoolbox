@@ -1,19 +1,29 @@
 import { describe, it } from 'mocha';
-import { Effect, Either, Layer, Redacted, TestContext } from 'effect';
+import { Effect, Either, Layer, Redacted } from 'effect';
 import sinon, { SinonStub } from 'sinon';
 import { expect } from 'chai';
 import { TestDataGeneratorService } from '../../src/services/test-data-generator';
 import { EnvironmentService } from '../../src/services/environment';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
 import { Command } from '@effect/platform';
+import { genWithLayer, sandbox } from '../utils/base';
 
 const DESIGN_PATH = '/my/design/path';
 const COUCH_URL = 'http://localhost:5984';
 const ENV = Redacted.make(COUCH_URL).pipe(url => ({ url }));
 const TDG_PATH = require.resolve('test-data-generator');
 
+const envGet = sandbox.stub();
+
+const run = TestDataGeneratorService.Default.pipe(
+  Layer.provide(Layer.succeed(EnvironmentService, {
+    get: envGet,
+  } as unknown as EnvironmentService),),
+  Layer.provide(Layer.succeed(CommandExecutor, {} as unknown as CommandExecutor)),
+  genWithLayer,
+);
+
 describe('Test Data Generator Service', () => {
-  let envGet: SinonStub;
   let commandMake: SinonStub;
   let commandEnv: SinonStub;
   let commandStdout: SinonStub;
@@ -21,7 +31,7 @@ describe('Test Data Generator Service', () => {
   let commandExitCode: SinonStub;
 
   beforeEach(() => {
-    envGet = sinon.stub().returns(Effect.succeed(ENV));
+    envGet.returns(Effect.succeed(ENV));
     commandMake = sinon.stub(Command, 'make').returns(Effect.void as unknown as Command.Command);
     commandEnv = sinon
       .stub(Command, 'env')
@@ -35,20 +45,7 @@ describe('Test Data Generator Service', () => {
     commandExitCode = sinon.stub(Command, 'exitCode');
   });
 
-  afterEach(() => sinon.restore());
-
-  const run = (test: Effect.Effect<unknown, unknown, TestDataGeneratorService>) => async () => {
-    await Effect.runPromise(test.pipe(
-      Effect.provide(TestDataGeneratorService.Default),
-      Effect.provide(TestContext.TestContext),
-      Effect.provide(Layer.succeed(EnvironmentService, {
-        get: envGet,
-      } as unknown as EnvironmentService),),
-      Effect.provide(Layer.succeed(CommandExecutor, {} as unknown as CommandExecutor)),
-    ));
-  };
-
-  it('executes the test-data-generator command', run(Effect.gen(function* () {
+  it('executes the test-data-generator command', run(function* () {
     commandExitCode.returns(Effect.succeed(0));
 
     const exitCode = yield* TestDataGeneratorService.generate(DESIGN_PATH);
@@ -60,9 +57,9 @@ describe('Test Data Generator Service', () => {
     expect(commandStdout.calledOnceWithExactly('inherit')).to.be.true;
     expect(commandStderr.calledOnceWithExactly('inherit')).to.be.true;
     expect(commandExitCode.calledOnce).to.be.true;
-  })));
+  }));
 
-  it('returns an error when test-data-generator command fails', run(Effect.gen(function* () {
+  it('returns an error when test-data-generator command fails', run(function* () {
     commandExitCode.returns(Effect.fail(1));
 
     const either = yield* TestDataGeneratorService
@@ -80,9 +77,9 @@ describe('Test Data Generator Service', () => {
     } else {
       expect.fail('Expected error to be returned');
     }
-  })));
+  }));
 
-  it('throws an error when test-data-generator command completes with an error code', run(Effect.gen(function* () {
+  it('throws an error when test-data-generator command completes with an error code', run(function* () {
     commandExitCode.returns(Effect.succeed(1));
 
     const either = yield* TestDataGeneratorService
@@ -103,5 +100,5 @@ describe('Test Data Generator Service', () => {
     } else {
       expect.fail('Expected error to be thrown');
     }
-  })));
+  }));
 });

@@ -1,47 +1,41 @@
 import { describe, it } from 'mocha';
-import { Chunk, Effect, Layer, Redacted, Stream, TestContext } from 'effect';
+import { Chunk, Effect, Layer, Redacted, Stream } from 'effect';
 import sinon, { SinonStub } from 'sinon';
 import * as PouchSvc from '../../src/services/pouchdb';
+import * as pouchDbService from '../../src/services/pouchdb';
 import { PouchDBService } from '../../src/services/pouchdb';
 import { EnvironmentService } from '../../src/services/environment';
 import { expect } from 'chai';
 import { ReplicateService } from '../../src/services/replicate';
-import * as pouchDbService from '../../src/services/pouchdb';
+import { genWithLayer, sandbox } from '../utils/base';
 
 const FAKE_RESPONSE = { id: 'world' } as const;
 
+const environmentGet = sandbox.stub();
+const pouchGet = sandbox.stub();
+const bulkDocs = sandbox.stub();
+
+const run = ReplicateService.Default.pipe(
+  Layer.provide(Layer.succeed(PouchDBService, {
+    get: pouchGet,
+  } as unknown as PouchDBService),),
+  Layer.provide(Layer.succeed(EnvironmentService, {
+    get: environmentGet,
+  } as unknown as EnvironmentService)),
+  genWithLayer,
+);
+
 describe('Replicate Service', () => {
-  let environmentGet: SinonStub;
-  let pouchGet: SinonStub;
-  let bulkDocs: SinonStub;
   let assertPouchResponse: SinonStub;
   let streamChanges: SinonStub;
 
   beforeEach(() => {
-    environmentGet = sinon.stub();
-    pouchGet = sinon.stub();
-    bulkDocs = sinon.stub();
     pouchGet.returns(Effect.succeed({ bulkDocs }));
     assertPouchResponse = sinon.stub(PouchSvc, 'assertPouchResponse');
     streamChanges = sinon.stub(pouchDbService, 'streamChanges');
   });
 
-  afterEach(() => sinon.restore());
-
-  const run = (test: Effect.Effect<unknown, unknown, ReplicateService>) => async () => {
-    await Effect.runPromise(test.pipe(
-      Effect.provide(ReplicateService.Default),
-      Effect.provide(TestContext.TestContext),
-      Effect.provide(Layer.succeed(PouchDBService, {
-        get: pouchGet,
-      } as unknown as PouchDBService),),
-      Effect.provide(Layer.succeed(EnvironmentService, {
-        get: environmentGet,
-      } as unknown as EnvironmentService)),
-    ));
-  };
-
-  it('creates a doc in the _replication database', run(Effect.gen(function* () {
+  it('creates a doc in the _replication database', run(function* () {
     const owner = 'medic';
     const url = `http://${owner}:password@localhost:5984/`;
     const env = Redacted.make(url).pipe(url => ({ url, user: owner }));
@@ -75,9 +69,9 @@ describe('Replicate Service', () => {
       include_docs: true,
       doc_ids: [FAKE_RESPONSE.id],
     })).to.be.true;
-  })));
+  }));
 
-  it('includes ddocs in replication when param is set', run(Effect.gen(function* () {
+  it('includes ddocs in replication when param is set', run(function* () {
     const owner = 'medic';
     const url = `http://${owner}:password@localhost:5984/`;
     const env = Redacted.make(url).pipe(url => ({ url, user: owner }));
@@ -109,9 +103,9 @@ describe('Replicate Service', () => {
       include_docs: true,
       doc_ids: [FAKE_RESPONSE.id],
     })).to.be.true;
-  })));
+  }));
 
-  it('streams updates to the replication doc until the replication state is completed', run(Effect.gen(function* () {
+  it('streams updates to the replication doc until the replication state is completed', run(function* () {
     const owner = 'medic';
     const url = `http://${owner}:password@localhost:5984/`;
     const env = Redacted.make(url).pipe(url => ({ url, user: owner }));
@@ -167,5 +161,5 @@ describe('Replicate Service', () => {
       include_docs: true,
       doc_ids: [FAKE_RESPONSE.id],
     })).to.be.true;
-  })));
+  }));
 });

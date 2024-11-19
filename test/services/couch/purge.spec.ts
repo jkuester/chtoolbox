@@ -1,41 +1,34 @@
-import { afterEach, describe, it } from 'mocha';
-import { Array, Effect, Either, Layer, TestContext } from 'effect';
+import { describe, it } from 'mocha';
+import { Array, Effect, Either, Layer } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
 import { ChtClientService } from '../../../src/services/cht-client';
 import { HttpClientRequest } from '@effect/platform';
 import { CouchPurgeService, purgeFrom } from '../../../src/services/couch/purge';
+import { genWithLayer, sandbox } from '../../utils/base';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
 const FAKE_CLIENT_RESPONSE = { world: 'hello' } as const;
 
+const couchRequest = sandbox.stub();
+const requestBuild = sandbox.stub();
+
+const run = CouchPurgeService.Default.pipe(
+  Layer.provide(Layer.succeed(ChtClientService, { request: couchRequest } as unknown as ChtClientService)),
+  genWithLayer,
+);
+
 describe('Couch Purge Service', () => {
-  let couchRequest: SinonStub;
-  let requestBuild: SinonStub;
   let requestSchemaBody: SinonStub;
   let requestPost: SinonStub;
 
   beforeEach(() => {
-    couchRequest = sinon.stub();
-    requestBuild = sinon.stub();
     requestSchemaBody = sinon.stub(HttpClientRequest, 'schemaBodyJson').returns(requestBuild);
     requestPost = sinon.stub(HttpClientRequest, 'post');
   });
 
-  afterEach(() => sinon.restore());
-
-  const run = (test:  Effect.Effect<unknown, unknown, CouchPurgeService>) => async () => {
-    await Effect.runPromise(test.pipe(
-      Effect.provide(CouchPurgeService.Default),
-      Effect.provide(TestContext.TestContext),
-      Effect.provide(Layer.succeed(ChtClientService, {
-        request: couchRequest,
-      } as unknown as ChtClientService)),
-    ));
-  };
-
   describe('purge', () => {
-    it('purges identified docs', run(Effect.gen(function* () {
+    it('purges identified docs', run(function* () {
       const fakeBuiltClientRequest = { ...FAKE_CLIENT_REQUEST, built: true };
       requestPost.returns(FAKE_CLIENT_REQUEST);
       requestBuild.returns(Effect.succeed(fakeBuiltClientRequest));
@@ -53,9 +46,9 @@ describe('Couch Purge Service', () => {
       )).to.be.true;
       expect(requestSchemaBody.calledOnce).to.be.true;
       expect(requestPost.calledOnceWithExactly(`/${dbName}/_purge`)).to.be.true;
-    })));
+    }));
 
-    it('returns error if request cannot be built', run(Effect.gen(function* () {
+    it('returns error if request cannot be built', run(function* () {
       const expectedError = Error('Cannot build request.');
       requestPost.returns(FAKE_CLIENT_REQUEST);
       requestBuild.returns(Effect.fail(expectedError));
@@ -76,10 +69,10 @@ describe('Couch Purge Service', () => {
       } else {
         expect.fail('Expected error to be thrown.');
       }
-    })));
+    }));
   });
 
-  it('purgeFrom', run(Effect.gen(function* () {
+  it('purgeFrom', run(function* () {
     const fakeBuiltClientRequest = { ...FAKE_CLIENT_REQUEST, built: true };
     requestPost.returns(FAKE_CLIENT_REQUEST);
     requestBuild.returns(Effect.succeed(fakeBuiltClientRequest));
@@ -97,5 +90,5 @@ describe('Couch Purge Service', () => {
     )).to.be.true;
     expect(requestSchemaBody.calledOnce).to.be.true;
     expect(requestPost.calledOnceWithExactly(`/${dbName}/_purge`)).to.be.true;
-  })));
+  }));
 });

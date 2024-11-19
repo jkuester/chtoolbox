@@ -1,35 +1,29 @@
-import { afterEach, describe, it } from 'mocha';
-import { Effect, Layer, TestContext } from 'effect';
+import { describe, it } from 'mocha';
+import { Effect, Layer } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
 import { ChtClientService } from '../../../src/services/cht-client';
 import { HttpClientRequest } from '@effect/platform';
 import { CouchDesignService } from '../../../src/services/couch/design';
+import { genWithLayer, sandbox } from '../../utils/base';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
 
+const couchRequest = sandbox.stub();
+
+const run = CouchDesignService.Default.pipe(
+  Layer.provide(Layer.succeed(ChtClientService, { request: couchRequest } as unknown as ChtClientService)),
+  genWithLayer,
+);
+
 describe('Couch Design Service', () => {
-  let couchRequest: SinonStub;
   let requestGet: SinonStub;
 
   beforeEach(() => {
-    couchRequest = sinon.stub();
     requestGet = sinon.stub(HttpClientRequest, 'get');
   });
 
-  afterEach(() => sinon.restore());
-
-  const run = (test:  Effect.Effect<unknown, unknown, CouchDesignService>) => async () => {
-    await Effect.runPromise(test.pipe(
-      Effect.provide(CouchDesignService.Default),
-      Effect.provide(TestContext.TestContext),
-      Effect.provide(Layer.succeed(ChtClientService, {
-        request: couchRequest,
-      } as unknown as ChtClientService)),
-    ));
-  };
-
-  it('gets view names for a database and design', run(Effect.gen(function* () {
+  it('gets view names for a database and design', run(function* () {
     requestGet.returns(FAKE_CLIENT_REQUEST);
     const designData = {
       _id: 'medic-client',
@@ -48,9 +42,9 @@ describe('Couch Design Service', () => {
     expect(dbInfos).to.deep.equal(Object.keys(designData.views));
     expect(requestGet.calledOnceWithExactly(`/medic/_design/${designData._id}`)).to.be.true;
     expect(couchRequest.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
-  })));
+  }));
 
-  it('returns an empty array if no views exist', run(Effect.gen(function* () {
+  it('returns an empty array if no views exist', run(function* () {
     requestGet.returns(FAKE_CLIENT_REQUEST);
     const designData = {
       _id: 'medic-client',
@@ -64,5 +58,5 @@ describe('Couch Design Service', () => {
     expect(dbInfos).to.deep.equal([]);
     expect(requestGet.calledOnceWithExactly(`/medic/_design/${designData._id}`)).to.be.true;
     expect(couchRequest.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
-  })));
+  }));
 });

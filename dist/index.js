@@ -39,7 +39,8 @@ const upgrade_3 = require("./services/upgrade");
 const test_data_generator_1 = require("./services/test-data-generator");
 const url = cli_1.Options
     .text('url')
-    .pipe(cli_1.Options.withDescription('The URL of the CouchDB server. Defaults to the COUCH_URL environment variable.'), cli_1.Options.optional);
+    .pipe(cli_1.Options.withDescription('The URL of the CouchDB server. Defaults to the COUCH_URL environment variable. Note that since this tool is ' +
+    'intended for testing/development usage, invalid SSL certificates (e.g. self-signed) are allowed by default.'), cli_1.Options.optional);
 const chtx = cli_1.Command.make('chtx', { url });
 const setEnv = (url) => effect_1.Effect.flatMap(environment_1.EnvironmentService, envSvc => envSvc.setUrl(url));
 const getEnv = effect_1.Effect.flatMap(environment_1.EnvironmentService, envSvc => envSvc.get());
