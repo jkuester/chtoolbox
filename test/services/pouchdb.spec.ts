@@ -118,6 +118,34 @@ describe('PouchDB Service', () => {
   describe('get', () => {
     it('prepends the url to the request', run(function* () {
       const dbName = 'test-db';
+      const url = 'https://localhost:5984/';
+      const env = Redacted.make(url).pipe(url => ({ url }));
+      environmentGet.returns(Effect.succeed(env));
+      pouchDB.returns(FAKE_POUCHDB);
+      const fakeRequest = { fake: 'request' };
+      const pouchFetch = sinon.stub(PouchDB, 'fetch').returns(fakeRequest as unknown as Promise<Response>);
+
+      const testDb = yield* PouchDBService.get(dbName);
+
+      expect(testDb).to.equal(FAKE_POUCHDB);
+      expect(environmentGet.calledOnceWithExactly()).to.be.true;
+      expect(pouchDB.calledOnce).to.be.true;
+      expect(pouchDB.args[0][0]).to.equal(`${url}${dbName}`);
+      expect(pouchDB.args[0][1]).to.haveOwnProperty('fetch');
+
+      // Verify the fetch is overridden with the agent option
+      const fetch = (pouchDB.args[0][1] as { fetch: (url: string, opts: unknown) => unknown }).fetch;
+      const fakeOptions = { hello: 'world' };
+      const req = fetch(url, fakeOptions);
+      expect(req).to.equal(fakeRequest);
+      expect(pouchFetch.calledOnce).to.be.true;
+      expect(pouchFetch.args[0][0]).to.equal(url);
+      expect(pouchFetch.args[0][1]).to.deep.include(fakeOptions);
+      expect(pouchFetch.args[0][1]).to.haveOwnProperty('agent').that.is.not.undefined;
+    }));
+
+    it('does not include agent for http url', run(function* () {
+      const dbName = 'test-db';
       const url = 'http://localhost:5984/';
       const env = Redacted.make(url).pipe(url => ({ url }));
       environmentGet.returns(Effect.succeed(env));
@@ -141,7 +169,7 @@ describe('PouchDB Service', () => {
       expect(pouchFetch.calledOnce).to.be.true;
       expect(pouchFetch.args[0][0]).to.equal(url);
       expect(pouchFetch.args[0][1]).to.deep.include(fakeOptions);
-      expect(pouchFetch.args[0][1]).to.haveOwnProperty('agent');
+      expect(pouchFetch.args[0][1]).to.haveOwnProperty('agent').that.is.undefined;
     }));
 
     it('returns different PouchDB instances for each database name', run(function* () {
