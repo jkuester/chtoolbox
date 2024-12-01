@@ -1,6 +1,6 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { Chunk, Option, pipe, Redacted, Stream, StreamEmit } from 'effect';
+import { Chunk, Match, Option, pipe, Redacted, Stream, StreamEmit, String } from 'effect';
 import PouchDB from 'pouchdb-core';
 import { pouchDB } from '../libs/core';
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
@@ -10,7 +10,7 @@ import PouchDBSessionAuthentication from 'pouchdb-session-authentication';
 import { EnvironmentService } from './environment';
 import https from 'https';
 
-const AGENT_ALLOW_INVALID_SSL = new https.Agent({
+const HTTPS_AGENT_ALLOW_INVALID_SSL = new https.Agent({
   rejectUnauthorized: false,
 });
 PouchDB.plugin(PouchDBAdapterHttp);
@@ -117,10 +117,17 @@ const couchUrl = EnvironmentService
   .get()
   .pipe(Effect.map(({ url }) => url));
 
+const getAgent = (url: string) => Match
+  .value(url)
+  .pipe(
+    Match.when(String.startsWith('https://'), () => HTTPS_AGENT_ALLOW_INVALID_SSL),
+    Match.orElse(() => undefined),
+  );
+
 const getPouchDB = (dbName: string) => couchUrl.pipe(Effect.map(url => pouchDB(
   `${Redacted.value(url)}${dbName}`,
   // @ts-expect-error Setting the `agent` option is not in the PouchDB types for some reason
-  { fetch: (url, opts) => PouchDB.fetch(url, { ...opts, agent: AGENT_ALLOW_INVALID_SSL }) }
+  { fetch: (url, opts) => PouchDB.fetch(url, { ...opts, agent: getAgent(url) }) }
 )));
 
 const serviceContext = EnvironmentService.pipe(Effect.map(env => Context.make(EnvironmentService, env)));
