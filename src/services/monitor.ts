@@ -84,7 +84,6 @@ const getCouchDesignInfos = () => pipe(
 );
 
 const NOUVEAU_INDEXES = [
-  'contacts_by_type_freetext',
   'contacts_by_freetext',
   'reports_by_freetext',
 ];
