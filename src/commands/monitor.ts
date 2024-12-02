@@ -49,6 +49,8 @@ export const monitor = Command.make(
     initializeUrl,
     Effect.andThen(MonitorService.getCsvHeader(trackCouchDbDirSize, trackNouveauDirSize)),
     Effect.tap(printCsvRow),
-    Effect.andThen(Effect.repeat(monitorData(trackCouchDbDirSize, trackNouveauDirSize), Schedule.spaced(interval * 1000))),
+    Effect.andThen(
+      Effect.repeat(monitorData(trackCouchDbDirSize, trackNouveauDirSize), Schedule.spaced(interval * 1000)),
+    ),
   ),
 ).pipe(Command.withDescription(`Poll CHT metrics.`));
