@@ -1,25 +1,17 @@
 import { Command } from '@effect/platform';
-import { Array, Effect, FiberRef, Logger, LogLevel, Match, pipe, Schedule, Schema, String } from 'effect';
+import { Array, Effect, FiberRef, LogLevel, Match, pipe, Schedule, String } from 'effect';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
 import { PlatformError } from '@effect/platform/Error';
-import { NodeContext, NodeHttpClient } from '@effect/platform-node';
 
-class DockerComposeProjectInfo extends Schema.Class<DockerComposeProjectInfo>('DockerComposeProjectInfo')({
-  Name: Schema.String,
-  Status: Schema.String,
-}) {
-  static readonly decodeResponse = (response: string) => pipe(
-    response,
-    JSON.parse,
-    Schema.decodeUnknown(Schema.Array(DockerComposeProjectInfo)),
-  );
-}
+const dockerCompose = (
+  projectName: string,
+  ...args: string[]
+) => Command.make('docker', 'compose', '-p', projectName, ...args);
 
-const dockerCompose = (projectName: string, composeFilePaths: string[], ...args: string[]) => pipe(
+const getComposeFileParams = (composeFilePaths: string[]) => pipe(
   composeFilePaths,
   Array.map(path => ['-f', path]),
   Array.flatten,
-  composePathArgs => Command.make('docker', 'compose', '-p', projectName, ...composePathArgs, ...args),
 );
 
 const debugLoggingEnabled = FiberRef
@@ -49,128 +41,108 @@ const runForExitCode = (command: Command.Command) => printCommandWhenDebugLoggin
       )),
   );
 
-export const pullComposeImages = (
-  projectName: string,
-  env: Record<string, string>,
-  ...composeFilePaths: string[]
-): Effect.Effect<void, Error | PlatformError, CommandExecutor> => dockerCompose(
-  projectName, composeFilePaths, 'pull'
-)
-  .pipe(
-    Command.env(env),
-    runForExitCode,
-    // Pulling all the images at once can result in rate limiting
-    Effect.retry({
-      times: 10,
-      schedule: Schedule.spaced(1000),
-    }),
-  );
-
-const composeProjectInfos = Command
-  .make('docker', 'compose', 'ls', '--all', '--format', 'json')
-  .pipe(
-    Command.string,
-    Effect.flatMap(DockerComposeProjectInfo.decodeResponse),
-  );
-
-export const doesComposeProjectExist = (
-  projectName: string
-): Effect.Effect<boolean, PlatformError | Error, CommandExecutor> => composeProjectInfos.pipe(
-  Effect.map(Array.some(info => info.Name === projectName)),
+const runForString = (command: Command.Command) => command.pipe(
+  Command.string,
+  Effect.tap(Effect.logDebug),
+  Effect.map(String.trim),
 );
+
+export const pullComposeImages = (projectName: string, env: Record<string, string>) => (
+  composeFilePaths: string[]
+): Effect.Effect<void, Error | PlatformError, CommandExecutor> => pipe(
+  getComposeFileParams(composeFilePaths),
+  composeFileParams => dockerCompose(projectName, ...composeFileParams, 'pull'),
+  Command.env(env),
+  runForExitCode,
+  // Pulling all the images at once can result in rate limiting
+  Effect.retry({
+    times: 10,
+    schedule: Schedule.spaced(1000),
+  }),
+);
+
+export const doesComposeProjectHaveContainers = (
+  projectName: string
+): Effect.Effect<boolean, PlatformError | Error, CommandExecutor> => dockerCompose(projectName, 'ps', '-qa')
+  .pipe(
+    runForString,
+    Effect.map(String.isNonEmpty),
+  );
 
 export const doesVolumeExistWithLabel = (
   label: string
 ): Effect.Effect<boolean, PlatformError, CommandExecutor> => Command
   .make('docker', 'volume', 'ls', '--filter', `label=${label}`, '-q',)
   .pipe(
-    Command.string,
-    Effect.map(String.trim),
+    runForString,
     Effect.map(String.isNonEmpty),
   );
 
+
 export const createComposeContainers = (
-  projectName: string,
   env: Record<string, string>,
   ...composeFilePaths: string[]
-): Effect.Effect<void, Error | PlatformError, CommandExecutor> => dockerCompose(
-  projectName, composeFilePaths, 'create',
-)
-  .pipe(
-    Command.env(env),
-    runForExitCode,
-  );
+) => (projectName: string): Effect.Effect<void, Error | PlatformError, CommandExecutor> => pipe(
+  getComposeFileParams(composeFilePaths),
+  composeFileParams => dockerCompose(projectName, ...composeFileParams, 'create'),
+  Command.env(env),
+  runForExitCode,
+);
 
 export const copyFileToComposeContainer = (
   projectName: string,
-  hostFilePath: string,
   containerServiceName: string,
-  containerFilePath: string,
-): Effect.Effect<void, Error | PlatformError, CommandExecutor> => dockerCompose(
-  projectName, [], 'cp', hostFilePath, `${containerServiceName}:${containerFilePath}`,
-)
-  .pipe(runForExitCode);
+) => (
+  [hostFilePath, containerFilePath]: [string, string]
+): Effect.Effect<void, Error | PlatformError, CommandExecutor> => pipe(
+  `${containerServiceName}:${containerFilePath}`,
+  containerPath => dockerCompose(projectName, 'cp', hostFilePath, containerPath),
+  runForExitCode
+);
 
 export const copyFileFromComposeContainer = (
-  projectName: string,
   containerServiceName: string,
   containerFilePath: string,
   hostFilePath: string,
-): Effect.Effect<void, Error | PlatformError, CommandExecutor> => dockerCompose(
-  projectName, [], 'cp', `${containerServiceName}:${containerFilePath}`, hostFilePath,
-)
-  .pipe(runForExitCode);
+) => (projectName: string): Effect.Effect<void, Error | PlatformError, CommandExecutor> => pipe(
+  `${containerServiceName}:${containerFilePath}`,
+  containerPath => dockerCompose(projectName, 'cp', containerPath, hostFilePath),
+  runForExitCode
+);
 
 export const restartCompose = (
   projectName: string,
-): Effect.Effect<void, Error | PlatformError, CommandExecutor> => dockerCompose(
-  projectName, [], 'restart',
-)
+): Effect.Effect<void, Error | PlatformError, CommandExecutor> => dockerCompose(projectName, 'restart')
+  .pipe(runForExitCode);
+
+export const restartComposeService = (
+  projectName: string,
+  serviceName: string,
+): Effect.Effect<void, Error | PlatformError, CommandExecutor> => dockerCompose(projectName, 'restart', serviceName)
   .pipe(runForExitCode);
 
 export const stopCompose = (
   projectName: string,
-): Effect.Effect<void, Error | PlatformError, CommandExecutor> => dockerCompose(
-  projectName, [], 'stop',
-)
+): Effect.Effect<void, Error | PlatformError, CommandExecutor> => dockerCompose(projectName, 'stop')
   .pipe(runForExitCode);
 
 export const destroyCompose = (
   projectName: string,
-): Effect.Effect<void, Error | PlatformError, CommandExecutor> => dockerCompose(
-  projectName, [], 'kill',
-)
+): Effect.Effect<void, Error | PlatformError, CommandExecutor> => dockerCompose(projectName, 'kill')
   .pipe(
     runForExitCode,
-    Effect.andThen(dockerCompose(projectName, [], 'down', '-v')
-      .pipe(
-        runForExitCode
-      )),
+    Effect.andThen(dockerCompose(projectName, 'down', '-v')
+      .pipe(runForExitCode)),
   );
 
-export const rmComposeContainer = (
-  projectName: string, serviceName: string
-): Effect.Effect<void, Error | PlatformError, CommandExecutor> => dockerCompose(
-  projectName, [], 'rm', '-f', serviceName
-)
+export const rmComposeContainer = (serviceName: string) => (
+  projectName: string
+): Effect.Effect<void, Error | PlatformError, CommandExecutor> => dockerCompose(projectName, 'rm', '-f', serviceName)
   .pipe(runForExitCode);
 
 export const getEnvarFromComposeContainer = (
-  projectName: string, containerServiceName: string, envar: string
-): Effect.Effect<string, PlatformError, CommandExecutor> => dockerCompose(
-  projectName, [], 'exec', containerServiceName, 'printenv', envar
+  containerServiceName: string, envar: string
+) => (projectName: string): Effect.Effect<string, PlatformError, CommandExecutor> => dockerCompose(
+  projectName, 'exec', containerServiceName, 'printenv', envar
 )
-  .pipe(
-    Command.string,
-    Effect.map(String.trim),
-  );
-
-// (async () => {
-//   await Effect.runPromise(composeProjectInfos.pipe(
-//     Effect.map(x => x),
-//     Effect.tap(Effect.log),
-//     Effect.provide(NodeHttpClient.layer),
-//     Effect.provide(NodeContext.layer),
-//     Logger.withMinimumLogLevel(LogLevel.Debug),
-//   ));
-// })();
+  .pipe(runForString);
