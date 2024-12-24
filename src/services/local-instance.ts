@@ -1,9 +1,8 @@
-import { Array, Effect, Layer, Logger, LogLevel, Match, pipe, Schedule, Schema } from 'effect';
+import { Array, Effect, Match, pipe, Schedule, Schema } from 'effect';
 import * as Context from 'effect/Context';
 import { FileSystem, HttpClient, HttpClientRequest } from '@effect/platform';
 import crypto from 'crypto';
 import { createTmpDir, getRemoteFile, readJsonFile, writeFile, writeJsonFile, } from '../libs/file';
-import { NodeContext, NodeHttpClient } from '@effect/platform-node';
 import {
   copyFileFromComposeContainer,
   copyFileToComposeContainer,
@@ -11,12 +10,13 @@ import {
   destroyCompose,
   doesComposeProjectHaveContainers,
   doesVolumeExistWithLabel,
-  getEnvarFromComposeContainer,
+  getEnvarFromComposeContainer, getVolumeLabelValue, getVolumeNamesWithLabel,
   pullComposeImages,
   restartCompose,
   restartComposeService,
   rmComposeContainer,
-  stopCompose
+  stopCompose,
+  upCompose
 } from '../libs/docker';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
 import { getFreePorts } from '../libs/local-network';
@@ -92,7 +92,7 @@ const SSL_URL_DICT = {
     ],
   ],
 };
-type SSLType = keyof typeof SSL_URL_DICT;
+export type SSLType = keyof typeof SSL_URL_DICT;
 
 class ChtInstanceConfig extends Schema.Class<ChtInstanceConfig>('ChtInstanceConfig')({
   CHT_COMPOSE_PROJECT_NAME: Schema.NonEmptyString,
@@ -274,13 +274,6 @@ const ensureUpgradeServiceExists = (projectName: string) => assertChtxVolumeExis
         Match.orElse(createUpgradeServiceFromDanglingVolume(projectName)),
       )),
   );
-const ensureInstanceRunning = (instanceName: string) => assertChtxVolumeExists(instanceName)
-  .pipe(
-    Effect.andThen(ensureUpgradeServiceExists(instanceName)),
-    Effect.andThen(restartCompose(upgradeSvcProjectName(instanceName))),
-    Effect.andThen(getPortForInstance(instanceName)),
-    Effect.tap(waitForInstance)
-  );
 
 const serviceContext = Effect
   .all([
@@ -326,8 +319,12 @@ export class LocalInstanceService extends Effect.Service<LocalInstanceService>()
       ),
     start: (
       instanceName: string
-    ): Effect.Effect<`${number}`, Error> => ensureInstanceRunning(instanceName)
+    ): Effect.Effect<`${number}`, Error> => ensureUpgradeServiceExists(instanceName)
       .pipe(
+        Effect.andThen(restartCompose(upgradeSvcProjectName(instanceName))),
+        Effect.andThen(getPortForInstance(instanceName)),
+        Effect.tap(waitForInstance),
+
         Effect.mapError(x => x as Error),
         Effect.provide(context),
       ),
@@ -353,11 +350,14 @@ export class LocalInstanceService extends Effect.Service<LocalInstanceService>()
         Effect.mapError(x => x as Error),
         Effect.provide(context),
       ),
-    updateSSLCerts: (
+    setSSLCerts: (
       instanceName: string,
       sslType: SSLType
-    ): Effect.Effect<void, Error> => ensureInstanceRunning(instanceName)
+    ): Effect.Effect<void, Error> => ensureUpgradeServiceExists(instanceName)
       .pipe(
+        Effect.andThen(upCompose(upgradeSvcProjectName(instanceName))),
+        Effect.andThen(getPortForInstance(instanceName)),
+        Effect.tap(waitForInstance),
         Effect.andThen(createTmpDir()),
         Effect.tap(writeSSLFiles(sslType)),
         Effect.flatMap(copySSLFilesToNginxContainer(instanceName)),
@@ -366,22 +366,14 @@ export class LocalInstanceService extends Effect.Service<LocalInstanceService>()
         Effect.provide(context),
         Effect.scoped,
       ),
+    ls: (): Effect.Effect<string[], Error> => getVolumeNamesWithLabel(CHTX_LABEL_NAME)
+      .pipe(
+        Effect.map(Array.map(getVolumeLabelValue(CHTX_LABEL_NAME))),
+        Effect.flatMap(Effect.all),
+        Effect.mapError(x => x as unknown as Error),
+        Effect.provide(context),
+      ),
   }))),
   accessors: true,
 }) {
 }
-
-(async () => {
-  // await Effect.runPromise(LocalInstanceService.create('myfirstproject', '4.11.0').pipe(
-  // await Effect.runPromise(LocalInstanceService.start('myfirstproject').pipe(
-  // await Effect.runPromise(LocalInstanceService.updateSSLCerts('myfirstproject', 'local-ip').pipe(
-  // await Effect.runPromise(LocalInstanceService.stop('myfirstproject').pipe(
-  await Effect.runPromise(LocalInstanceService.rm('myfirstproject').pipe(
-    Effect.provide(LocalInstanceService.Default),
-    Effect.provide(NodeHttpClient.layerWithoutAgent.pipe(
-      Layer.provide(NodeHttpClient.makeAgentLayer({ rejectUnauthorized: false }))
-    )),
-    Effect.provide(NodeContext.layer),
-    Logger.withMinimumLogLevel(LogLevel.Debug),
-  ));
-})();

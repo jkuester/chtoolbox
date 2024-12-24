@@ -37,7 +37,7 @@ const runForExitCode = (command: Command.Command) => printCommandWhenDebugLoggin
       .value(exitCode)
       .pipe(
         Match.when(0, () => Effect.void),
-        Match.orElse(() => Effect.fail(new Error(`Failed to create containers. Exit code: ${exitCode.toString()}`))),
+        Match.orElse(() => Effect.fail(new Error(`Docker command failed. Exit code: ${exitCode.toString()}`))),
       )),
   );
 
@@ -69,15 +69,30 @@ export const doesComposeProjectHaveContainers = (
     Effect.map(String.isNonEmpty),
   );
 
-export const doesVolumeExistWithLabel = (
+export const getVolumeNamesWithLabel = (
   label: string
-): Effect.Effect<boolean, PlatformError, CommandExecutor> => Command
+): Effect.Effect<string[], PlatformError, CommandExecutor> => Command
   .make('docker', 'volume', 'ls', '--filter', `label=${label}`, '-q',)
   .pipe(
-    runForString,
-    Effect.map(String.isNonEmpty),
+    Command.lines,
+    Effect.tap(Effect.logDebug),
+    Effect.map(Array.map(String.trim)),
+    Effect.map(Array.filter(String.isNonEmpty)),
   );
 
+export const doesVolumeExistWithLabel = (
+  label: string
+): Effect.Effect<boolean, PlatformError, CommandExecutor> => getVolumeNamesWithLabel(label)
+  .pipe(Effect.map(Array.isNonEmptyArray));
+
+export const getVolumeLabelValue = (labelName: string) => (
+  volumeName: string,
+): Effect.Effect<string, PlatformError, CommandExecutor> => Command
+  .make('docker', 'volume', 'inspect', volumeName, '--format', `'{{ index .Labels "${labelName}" }}'`)
+  .pipe(
+    runForString,
+    Effect.map(String.slice(1, -1)),
+  );
 
 export const createComposeContainers = (
   env: Record<string, string>,
@@ -109,6 +124,11 @@ export const copyFileFromComposeContainer = (
   containerPath => dockerCompose(projectName, 'cp', containerPath, hostFilePath),
   runForExitCode
 );
+
+export const upCompose = (
+  projectName: string,
+): Effect.Effect<void, Error | PlatformError, CommandExecutor> => dockerCompose(projectName, 'start')
+  .pipe(runForExitCode);
 
 export const restartCompose = (
   projectName: string,
