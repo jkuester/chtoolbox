@@ -1,5 +1,5 @@
 import { Args, Command } from '@effect/cli';
-import { Array, Console, Effect, pipe } from 'effect';
+import { Array, Effect, pipe } from 'effect';
 import { LocalInstanceService } from '../../services/local-instance';
 import { printInstanceInfo } from './create';
 
