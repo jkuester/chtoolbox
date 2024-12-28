@@ -31,6 +31,8 @@ import { upgrade } from './commands/upgrade';
 import { ChtUpgradeService } from './services/cht/upgrade';
 import { UpgradeService } from './services/upgrade';
 import { TestDataGeneratorService } from './services/test-data-generator';
+import { instance } from './commands/instance';
+import { LocalInstanceService } from './services/local-instance';
 
 const url = Options
   .text('url')
@@ -60,7 +62,7 @@ export const initializeUrl = chtx.pipe(
 );
 
 const command = chtx.pipe(Command.withSubcommands([
-  design, doc, monitor, warmViews, activeTasks, db, upgrade
+  design, doc, monitor, warmViews, activeTasks, db, upgrade, instance
 ]));
 
 const cli = Command.run(command, {
@@ -82,11 +84,16 @@ const couchServices = CouchActiveTasksService
     Layer.provideMerge(CouchViewService.Default),
   );
 
+const httpClientNoSslVerify = Layer.provide(NodeHttpClient.layerWithoutAgent.pipe(
+  Layer.provide(NodeHttpClient.makeAgentLayer({ rejectUnauthorized: false }))
+));
+
 cli(process.argv)
   .pipe(
     Effect.provide(CompactService.Default),
     Effect.provide(MonitorService.Default),
     Effect.provide(LocalDiskUsageService.Default),
+    Effect.provide(LocalInstanceService.Default.pipe(httpClientNoSslVerify)),
     Effect.provide(PurgeService.Default),
     Effect.provide(UpgradeService.Default),
     Effect.provide(WarmViewsService.Default),
@@ -95,11 +102,7 @@ cli(process.argv)
     Effect.provide(TestDataGeneratorService.Default),
     Effect.provide(couchServices),
     Effect.provide(PouchDBService.Default),
-    Effect.provide(ChtClientService.Default.pipe(
-      Layer.provide(NodeHttpClient.layerWithoutAgent.pipe(
-        Layer.provide(NodeHttpClient.makeAgentLayer({ rejectUnauthorized: false }))
-      )),
-    )),
+    Effect.provide(ChtClientService.Default.pipe(httpClientNoSslVerify)),
     Effect.provide(EnvironmentService.Default),
     Effect.provide(NodeContext.layer),
     NodeRuntime.runMain

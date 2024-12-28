@@ -1,10 +1,9 @@
 import { describe, it } from 'mocha';
-import { Chunk, Console, Effect, Stream, TestContext } from 'effect';
+import { Chunk, Effect, Stream, TestContext } from 'effect';
 import { expect } from 'chai';
-import { clearThen, logJson, mergeArrayStreams, pouchDB, untilEmptyCount } from '../../src/libs/core';
+import { mergeArrayStreams, pouchDB, promisedGetPort, untilEmptyCount } from '../../src/libs/core';
 import PouchDB from 'pouchdb-core';
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
-import sinon from 'sinon';
 
 describe('Core libs', () => {
   const run = (test:  Effect.Effect<void, Error>) => async () => {
@@ -30,6 +29,11 @@ describe('Core libs', () => {
     expect(db).to.be.an.instanceOf(PouchDB);
   });
 
+  it('promisedGetPort', async () => {
+    const getPortLib = await promisedGetPort();
+    expect(getPortLib.default).to.be.an.instanceOf(Function);
+  });
+
   it('mergeArrayStreams', run(Effect.gen(function* () {
     const mergedStream = mergeArrayStreams([
       Stream.make([1, 2, 3], [4, 5, 6], [7, 8, 9]),
@@ -45,32 +49,5 @@ describe('Core libs', () => {
       [4, 5, 6, 2],
       [7, 8, 9, 3],
     ]);
-  })));
-
-  it('clearThen', run(Effect.gen(function* () {
-    const log = sinon.stub().returns(Effect.void);
-    const fakeConsole = { clear: Effect.void, log, } as unknown as Console.Console;
-
-    yield* clearThen(Console.log('Hello', 'World')).pipe(
-      Console.withConsole(fakeConsole),
-    );
-
-    expect(log.calledOnceWithExactly('Hello', 'World')).to.be.true;
-    // Need to find a clean way to stub effects like Console.clear.
-  })));
-
-  it('logJson', run(Effect.gen(function* () {
-    const expectedDict = { Hello: 'World' };
-    const expectedJson = '{"Hello": "World"}';
-    const stringify = sinon.stub(JSON, 'stringify').returns(expectedJson);
-    const log = sinon.stub().returns(Effect.void);
-    const fakeConsole = { log, } as unknown as Console.Console;
-
-    yield* logJson(expectedDict).pipe(
-      Console.withConsole(fakeConsole),
-    );
-
-    expect(stringify.calledOnceWithExactly(expectedDict, null, 2)).to.be.true;
-    expect(log.calledOnceWithExactly(expectedJson)).to.be.true;
   })));
 });

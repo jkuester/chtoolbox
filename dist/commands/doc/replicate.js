@@ -6,9 +6,9 @@ const effect_1 = require("effect");
 const index_1 = require("../../index");
 const replicate_1 = require("../../services/replicate");
 const active_tasks_1 = require("../../services/couch/active-tasks");
-const core_1 = require("../../libs/core");
+const console_1 = require("../../libs/console");
 const isRepTask = (id) => (0, effect_1.pipe)(({ type }) => type === 'replication', effect_1.Predicate.and(({ doc_id }) => doc_id === id), effect_1.Predicate.and(({ docs_written }) => docs_written !== undefined));
-const printReplicatingDocs = (id) => (tasks) => (0, effect_1.pipe)(tasks, effect_1.Array.findFirst(isRepTask(id)), effect_1.Option.map(({ docs_written }) => docs_written?.toString() ?? ''), effect_1.Option.map(docs_written => (0, core_1.clearThen)(effect_1.Console.log(`Replicating docs: ${docs_written}`))), effect_1.Option.getOrElse(() => effect_1.Effect.void), effect_1.Effect.tap(effect_1.Effect.logDebug('Printed replication doc task')));
+const printReplicatingDocs = (id) => (tasks) => (0, effect_1.pipe)(tasks, effect_1.Array.findFirst(isRepTask(id)), effect_1.Option.map(({ docs_written }) => docs_written?.toString() ?? ''), effect_1.Option.map(docs_written => (0, console_1.clearThen)(effect_1.Console.log(`Replicating docs: ${docs_written}`))), effect_1.Option.getOrElse(() => effect_1.Effect.void), effect_1.Effect.tap(effect_1.Effect.logDebug('Printed replication doc task')));
 const streamActiveTasks = (id) => active_tasks_1.CouchActiveTasksService
     .stream()
     .pipe(effect_1.Effect.map(effect_1.Stream.tap(printReplicatingDocs(id))), effect_1.Effect.flatMap(effect_1.Stream.runDrain));

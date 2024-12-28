@@ -5,15 +5,15 @@ const cli_1 = require("@effect/cli");
 const effect_1 = require("effect");
 const index_1 = require("../index");
 const upgrade_1 = require("../services/upgrade");
-const core_1 = require("../libs/core");
+const console_1 = require("../libs/console");
 const getUpgradeLogDisplay = ({ state_history }) => (0, effect_1.pipe)(state_history, effect_1.Array.map(({ state, date }) => ({
     state,
     time: effect_1.DateTime
         .unsafeMake(date)
         .pipe(effect_1.DateTime.formatLocal({ hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })),
 })), effect_1.Array.reduce({}, (acc, { state, time }) => ({ ...acc, [state]: { time } })));
-const streamUpgradeLog = (stream) => stream.pipe(effect_1.Stream.map(getUpgradeLogDisplay), effect_1.Stream.tap(log => (0, core_1.clearThen)(effect_1.Console.table(log))), effect_1.Stream.runDrain);
-const printUpgradeLogId = (stream) => stream.pipe(effect_1.Stream.take(1), effect_1.Stream.tap(log => (0, core_1.clearThen)(effect_1.Console.log(`Upgrade started. Check the medic-logs doc for progress: ${log._id}`))), effect_1.Stream.runDrain);
+const streamUpgradeLog = (stream) => stream.pipe(effect_1.Stream.map(getUpgradeLogDisplay), effect_1.Stream.tap(log => (0, console_1.clearThen)(effect_1.Console.table(log))), effect_1.Stream.runDrain);
+const printUpgradeLogId = (stream) => stream.pipe(effect_1.Stream.take(1), effect_1.Stream.tap(log => (0, console_1.clearThen)(effect_1.Console.log(`Upgrade started. Check the medic-logs doc for progress: ${log._id}`))), effect_1.Stream.runDrain);
 const getUpgradeAction = (opts) => effect_1.Match
     .value(opts)
     .pipe(effect_1.Match.when({ stage: true }, ({ version }) => upgrade_1.UpgradeService.stage(version)), effect_1.Match.when({ complete: true }, ({ version }) => upgrade_1.UpgradeService.complete(version)), effect_1.Match.orElse(({ version }) => upgrade_1.UpgradeService.upgrade(version)));

@@ -48,6 +48,7 @@
     "@effect/platform": "^0.69.16",
     "@effect/platform-node": "^0.64.18",
     "effect": "^3.10.10",
+    "get-port": "^7.1.0",
     "pouchdb-adapter-http": "^9.0.0",
     "pouchdb-core": "^9.0.0",
     "pouchdb-mapreduce": "^9.0.0",

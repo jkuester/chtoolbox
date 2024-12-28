@@ -3,7 +3,8 @@ import { Array, Effect, Option, pipe, Record } from 'effect';
 import { initializeUrl } from '../../index';
 import { CouchDesignDocsService } from '../../services/couch/design-docs';
 import { CouchDbsInfoService } from '../../services/couch/dbs-info';
-import { logJson } from '../../libs/core';
+
+import { logJson } from '../../libs/console';
 
 const printDesignDocNames = (dbName: string) => CouchDesignDocsService
   .getNames(dbName)

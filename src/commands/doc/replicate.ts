@@ -3,8 +3,8 @@ import { Array, Console, Effect, Option, pipe, Predicate, Stream } from 'effect'
 import { initializeUrl } from '../../index';
 import { ReplicateService, ReplicationDoc } from '../../services/replicate';
 import { CouchActiveTask, CouchActiveTasksService } from '../../services/couch/active-tasks';
-import { clearThen } from '../../libs/core';
 import { ParseError } from 'effect/Cron';
+import { clearThen } from '../../libs/console';
 
 const isRepTask = (id: string): Predicate.Predicate<CouchActiveTask> => pipe(
   ({ type }: CouchActiveTask) => type === 'replication',

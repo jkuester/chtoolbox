@@ -12,7 +12,9 @@ export declare const untilEmptyCount: (target: number) => (data: unknown[]) => E
  * Shim to make PouchDB easier to mock.
  */
 export declare const pouchDB: (name?: string, options?: PouchDB.Configuration.DatabaseConfiguration) => PouchDB.Database<object>;
+/**
+ * Wrapper for `get-port` ES Module.
+ */
+export declare const promisedGetPort: () => Promise<typeof import("get-port", { with: { "resolution-mode": "import" } })>;
 export declare const mergeArrayStreams: <T>(streams: Stream.Stream<T[], Error>[]) => Stream.Stream<T[], Error>;
-export declare const clearThen: (printEffect: Effect.Effect<void>) => Effect.Effect<void>;
-export declare const logJson: (data: unknown) => Effect.Effect<void>;
 //# sourceMappingURL=core.d.ts.map

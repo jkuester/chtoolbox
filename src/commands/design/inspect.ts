@@ -3,7 +3,8 @@ import { Array, Effect, pipe } from 'effect';
 import { initializeUrl } from '../../index';
 import { CouchDesignInfoService } from '../../services/couch/design-info';
 import { CouchDesignService } from '../../services/couch/design';
-import { logJson } from '../../libs/core';
+
+import { logJson } from '../../libs/console';
 
 const getViewData = (database: string) => (design: string) => Effect
   .all([
