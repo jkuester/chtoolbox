@@ -2,7 +2,8 @@ import { Args, Command, Options } from '@effect/cli';
 import { Array, Console, DateTime, Effect, Match, Option, pipe, Stream } from 'effect';
 import { initializeUrl } from '../index';
 import { UpgradeLog, UpgradeService } from '../services/upgrade';
-import { clearThen } from '../libs/core';
+
+import { clearThen } from '../libs/console';
 
 const getUpgradeLogDisplay = ({ state_history }: UpgradeLog) => pipe(
   state_history,

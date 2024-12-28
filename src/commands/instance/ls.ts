@@ -1,5 +1,5 @@
 import { Command } from '@effect/cli';
-import { Console, Effect, Array } from 'effect';
+import { Array, Console, Effect } from 'effect';
 import { LocalInstanceService } from '../../services/local-instance';
 
 export const ls = Command

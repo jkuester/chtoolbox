@@ -5,7 +5,7 @@ const cli_1 = require("@effect/cli");
 const effect_1 = require("effect");
 const index_1 = require("../../index");
 const purge_1 = require("../../services/purge");
-const core_1 = require("../../libs/core");
+const console_1 = require("../../libs/console");
 const contradictoryTypeQualifiersProvided = (opts) => (0, effect_1.pipe)([opts.all, opts.reports, effect_1.Option.isSome(opts.contacts)], effect_1.Array.filter(Boolean), effect_1.Array.length, length => length > 1);
 const dateQualifiersProvidedWithoutReports = (0, effect_1.pipe)(({ before }) => effect_1.Option.isSome(before), effect_1.Predicate.or(({ since }) => effect_1.Option.isSome(since)), effect_1.Predicate.and(({ reports }) => !reports));
 const assertOpts = (opts) => effect_1.Match
@@ -15,7 +15,7 @@ const purgeAction = (opts) => effect_1.Match
     .value(opts)
     .pipe(effect_1.Match.when(({ reports }) => reports, ({ database, since, before }) => purge_1.PurgeService.purgeReports(database, { since, before })), effect_1.Match.when(({ contacts }) => effect_1.Option.isSome(contacts), ({ database, contacts, }) => purge_1.PurgeService.purgeContacts(database, contacts.pipe(effect_1.Option.getOrThrow))), effect_1.Match.orElse(({ database, all }) => purge_1.PurgeService.purgeAll(database, all)));
 const purgeDocs = (opts) => purgeAction(opts)
-    .pipe(effect_1.Effect.map(effect_1.Stream.scan(0, (acc, next) => acc + next.rows.length)), effect_1.Effect.map(effect_1.Stream.tap((count) => (0, core_1.clearThen)(effect_1.Console.log(`Purging docs: ${count.toString()}`)))), effect_1.Effect.flatMap(effect_1.Stream.run(effect_1.Sink.last())), effect_1.Effect.map(effect_1.Option.getOrThrow), effect_1.Effect.tap((count) => (0, core_1.clearThen)(effect_1.Console.log(`Purged docs: ${count.toString()}`))));
+    .pipe(effect_1.Effect.map(effect_1.Stream.scan(0, (acc, next) => acc + next.rows.length)), effect_1.Effect.map(effect_1.Stream.tap((count) => (0, console_1.clearThen)(effect_1.Console.log(`Purging docs: ${count.toString()}`)))), effect_1.Effect.flatMap(effect_1.Stream.run(effect_1.Sink.last())), effect_1.Effect.map(effect_1.Option.getOrThrow), effect_1.Effect.tap((count) => (0, console_1.clearThen)(effect_1.Console.log(`Purged docs: ${count.toString()}`))));
 const getConfirmationPrompt = ({ database }) => cli_1.Prompt
     .confirm({
     message: `Are you sure you want to permanently purge docs from ${database}?`,

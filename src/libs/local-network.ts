@@ -1,12 +1,11 @@
-import { networkInterfaces } from 'node:os';
+import OS from 'node:os';
 import { Array, Effect, Option, pipe, Predicate, String } from 'effect';
-
-const promisedGetPort = import('get-port');
+import { promisedGetPort } from './core';
 
 const IPV4_FAMILY_VALUES = ['IPv4', 4];
 const LOCALHOST_IP = '127.0.0.1';
 
-const getFreePort = (...exclude: number[]) => Effect.promise(() => promisedGetPort
+const getFreePort = (...exclude: number[]) => Effect.promise(() => promisedGetPort()
   .then(lib => lib.default({ exclude })));
 
 export const getFreePorts = (): Effect.Effect<[number, number]> => getFreePort()
@@ -17,7 +16,7 @@ export const getFreePorts = (): Effect.Effect<[number, number]> => getFreePort()
     )));
 
 const getLANIPAddress = (): string => pipe(
-  networkInterfaces(),
+  OS.networkInterfaces(),
   netsDict => pipe(
     Object.keys(netsDict),
     Array.map((netName) => netsDict[netName]),

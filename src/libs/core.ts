@@ -1,4 +1,4 @@
-import { Array, Console, Effect, Function, Number, Option, pipe, Ref, Stream } from 'effect';
+import { Array, Effect, Function, Number, Option, Ref, Stream } from 'effect';
 import PouchDB from 'pouchdb-core';
 import { HttpClientResponse } from '@effect/platform';
 
@@ -31,6 +31,12 @@ export const pouchDB = (
   options?: PouchDB.Configuration.DatabaseConfiguration
 ): PouchDB.Database<object> => new PouchDB(name, options);
 
+/**
+ * Wrapper for `get-port` ES Module.
+ */
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+export const promisedGetPort = () => import('get-port');
+
 const zipArrayStreams = <T>(
   self: Stream.Stream<T[], Error>,
   other: Stream.Stream<T[], Error>
@@ -44,11 +50,3 @@ const zipArrayStreams = <T>(
 export const mergeArrayStreams = <T>(streams: Stream.Stream<T[], Error>[]): Stream.Stream<T[], Error> => Array
   .reduce(streams.slice(1), streams[0], zipArrayStreams);
 
-export const clearThen = (
-  printEffect: Effect.Effect<void>
-): Effect.Effect<void> => Console.clear.pipe(Effect.tap(printEffect));
-
-export const logJson = (data: unknown): Effect.Effect<void> => pipe(
-  JSON.stringify(data, null, 2),
-  Console.log
-);

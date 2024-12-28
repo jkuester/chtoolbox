@@ -125,7 +125,7 @@ export const copyFileFromComposeContainer = (
   runForExitCode
 );
 
-export const upCompose = (
+export const startCompose = (
   projectName: string,
 ): Effect.Effect<void, Error | PlatformError, CommandExecutor> => dockerCompose(projectName, 'start')
   .pipe(runForExitCode);

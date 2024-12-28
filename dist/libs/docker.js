@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getEnvarFromComposeContainer = exports.rmComposeContainer = exports.destroyCompose = exports.stopCompose = exports.restartComposeService = exports.restartCompose = exports.upCompose = exports.copyFileFromComposeContainer = exports.copyFileToComposeContainer = exports.createComposeContainers = exports.getVolumeLabelValue = exports.doesVolumeExistWithLabel = exports.getVolumeNamesWithLabel = exports.doesComposeProjectHaveContainers = exports.pullComposeImages = void 0;
+exports.getEnvarFromComposeContainer = exports.rmComposeContainer = exports.destroyCompose = exports.stopCompose = exports.restartComposeService = exports.restartCompose = exports.startCompose = exports.copyFileFromComposeContainer = exports.copyFileToComposeContainer = exports.createComposeContainers = exports.getVolumeLabelValue = exports.doesVolumeExistWithLabel = exports.getVolumeNamesWithLabel = exports.doesComposeProjectHaveContainers = exports.pullComposeImages = void 0;
 const platform_1 = require("@effect/platform");
 const effect_1 = require("effect");
 const dockerCompose = (projectName, ...args) => platform_1.Command.make('docker', 'compose', '-p', projectName, ...args);
@@ -43,9 +43,9 @@ const copyFileToComposeContainer = (projectName, containerServiceName) => ([host
 exports.copyFileToComposeContainer = copyFileToComposeContainer;
 const copyFileFromComposeContainer = (containerServiceName, containerFilePath, hostFilePath) => (projectName) => (0, effect_1.pipe)(`${containerServiceName}:${containerFilePath}`, containerPath => dockerCompose(projectName, 'cp', containerPath, hostFilePath), runForExitCode);
 exports.copyFileFromComposeContainer = copyFileFromComposeContainer;
-const upCompose = (projectName) => dockerCompose(projectName, 'start')
+const startCompose = (projectName) => dockerCompose(projectName, 'start')
     .pipe(runForExitCode);
-exports.upCompose = upCompose;
+exports.startCompose = startCompose;
 const restartCompose = (projectName) => dockerCompose(projectName, 'restart')
     .pipe(runForExitCode);
 exports.restartCompose = restartCompose;

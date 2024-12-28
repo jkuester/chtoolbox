@@ -2,7 +2,8 @@ import { Args, Command } from '@effect/cli';
 import { Effect } from 'effect';
 import { initializeUrl } from '../../index';
 import { CouchDbsInfoService } from '../../services/couch/dbs-info';
-import { logJson } from '../../libs/core';
+
+import { logJson } from '../../libs/console';
 
 const databases = Args
   .text({ name: 'database' })

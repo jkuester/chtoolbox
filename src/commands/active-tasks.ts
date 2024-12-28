@@ -10,7 +10,8 @@ import {
   getPid,
   getProgressPct
 } from '../services/couch/active-tasks';
-import { clearThen } from '../libs/core';
+
+import { clearThen } from '../libs/console';
 
 const getDesignDisplayName = (task: CouchActiveTask) => getDesignName(task)
   .pipe(

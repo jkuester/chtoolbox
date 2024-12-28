@@ -1,1 +1,1 @@
-{"version":3,"file":"purge.d.ts","sourceRoot":"","sources":["../../../src/commands/doc/purge.ts"],"names":[],"mappings":"AAAA,OAAO,EAAQ,OAAO,EAAmB,MAAM,aAAa,CAAC;AAC7D,OAAO,EAAiC,MAAM,EAAiC,MAAM,QAAQ,CAAC;AAE9F,OAAO,EAAE,YAAY,EAAE,MAAM,sBAAsB,CAAC;AAgIpD,eAAO,MAAM,KAAK;;;;;;;;EAWd,CAAC"}
+{"version":3,"file":"purge.d.ts","sourceRoot":"","sources":["../../../src/commands/doc/purge.ts"],"names":[],"mappings":"AAAA,OAAO,EAAQ,OAAO,EAAmB,MAAM,aAAa,CAAC;AAC7D,OAAO,EAAiC,MAAM,EAAiC,MAAM,QAAQ,CAAC;AAE9F,OAAO,EAAE,YAAY,EAAE,MAAM,sBAAsB,CAAC;AAiIpD,eAAO,MAAM,KAAK;;;;;;;;EAWd,CAAC"}

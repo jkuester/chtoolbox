@@ -16,7 +16,7 @@ import {
   restartComposeService,
   rmComposeContainer,
   stopCompose,
-  upCompose
+  startCompose
 } from '../libs/docker';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
 import { getFreePorts } from '../libs/local-network';
@@ -324,7 +324,6 @@ export class LocalInstanceService extends Effect.Service<LocalInstanceService>()
         Effect.andThen(restartCompose(upgradeSvcProjectName(instanceName))),
         Effect.andThen(getPortForInstance(instanceName)),
         Effect.tap(waitForInstance),
-
         Effect.mapError(x => x as Error),
         Effect.provide(context),
       ),
@@ -355,7 +354,7 @@ export class LocalInstanceService extends Effect.Service<LocalInstanceService>()
       sslType: SSLType
     ): Effect.Effect<void, Error> => ensureUpgradeServiceExists(instanceName)
       .pipe(
-        Effect.andThen(upCompose(upgradeSvcProjectName(instanceName))),
+        Effect.andThen(startCompose(upgradeSvcProjectName(instanceName))),
         Effect.andThen(getPortForInstance(instanceName)),
         Effect.tap(waitForInstance),
         Effect.andThen(createTmpDir()),

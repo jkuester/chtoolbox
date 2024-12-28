@@ -9,7 +9,7 @@ export declare const getVolumeLabelValue: (labelName: string) => (volumeName: st
 export declare const createComposeContainers: (env: Record<string, string>, ...composeFilePaths: string[]) => (projectName: string) => Effect.Effect<void, Error | PlatformError, CommandExecutor>;
 export declare const copyFileToComposeContainer: (projectName: string, containerServiceName: string) => ([hostFilePath, containerFilePath]: [string, string]) => Effect.Effect<void, Error | PlatformError, CommandExecutor>;
 export declare const copyFileFromComposeContainer: (containerServiceName: string, containerFilePath: string, hostFilePath: string) => (projectName: string) => Effect.Effect<void, Error | PlatformError, CommandExecutor>;
-export declare const upCompose: (projectName: string) => Effect.Effect<void, Error | PlatformError, CommandExecutor>;
+export declare const startCompose: (projectName: string) => Effect.Effect<void, Error | PlatformError, CommandExecutor>;
 export declare const restartCompose: (projectName: string) => Effect.Effect<void, Error | PlatformError, CommandExecutor>;
 export declare const restartComposeService: (projectName: string, serviceName: string) => Effect.Effect<void, Error | PlatformError, CommandExecutor>;
 export declare const stopCompose: (projectName: string) => Effect.Effect<void, Error | PlatformError, CommandExecutor>;

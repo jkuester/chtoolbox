@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.logJson = exports.clearThen = exports.mergeArrayStreams = exports.pouchDB = exports.untilEmptyCount = void 0;
+exports.mergeArrayStreams = exports.promisedGetPort = exports.pouchDB = exports.untilEmptyCount = void 0;
 const effect_1 = require("effect");
 const pouchdb_core_1 = __importDefault(require("pouchdb-core"));
 /**
@@ -21,6 +21,12 @@ exports.untilEmptyCount = untilEmptyCount;
  */
 const pouchDB = (name, options) => new pouchdb_core_1.default(name, options);
 exports.pouchDB = pouchDB;
+/**
+ * Wrapper for `get-port` ES Module.
+ */
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+const promisedGetPort = () => import('get-port');
+exports.promisedGetPort = promisedGetPort;
 const zipArrayStreams = (self, other) => effect_1.Stream.zipAllWith(self, {
     other,
     onSelf: effect_1.Function.identity,
@@ -30,8 +36,4 @@ const zipArrayStreams = (self, other) => effect_1.Stream.zipAllWith(self, {
 const mergeArrayStreams = (streams) => effect_1.Array
     .reduce(streams.slice(1), streams[0], zipArrayStreams);
 exports.mergeArrayStreams = mergeArrayStreams;
-const clearThen = (printEffect) => effect_1.Console.clear.pipe(effect_1.Effect.tap(printEffect));
-exports.clearThen = clearThen;
-const logJson = (data) => (0, effect_1.pipe)(JSON.stringify(data, null, 2), effect_1.Console.log);
-exports.logJson = logJson;
 //# sourceMappingURL=core.js.map
