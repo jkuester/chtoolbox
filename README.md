@@ -4,8 +4,14 @@
 
 CHToolbox is a command-line utility for development and testing of the Community Health Toolkit. The goal is to provide a platform that makes it easy to create and share utility scripts.
 
+Note that some features, such as maintaining local CHT instances, require Docker and Docker Compose to also be installed. 
+
 Features include (but are not limited to):
 
+- Local CHT instance:
+  - Create/destroy local instance
+  - Modify SSL certificates for local instance (`local-ip.medicmobile.org` certs are used by default)
+- Upgrade CHT instance to new version (using REST apis)
 - Couch:
   - Add/remove dbs
   - Replicate docs between databases
