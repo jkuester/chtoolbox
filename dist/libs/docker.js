@@ -18,10 +18,7 @@ const runForExitCode = (command) => printCommandWhenDebugLogging(command)
 const runForString = (command) => command.pipe(platform_1.Command.string, effect_1.Effect.tap(effect_1.Effect.logDebug), effect_1.Effect.map(effect_1.String.trim));
 const pullComposeImages = (projectName, env) => (composeFilePaths) => (0, effect_1.pipe)(getComposeFileParams(composeFilePaths), composeFileParams => dockerCompose(projectName, ...composeFileParams, 'pull'), platform_1.Command.env(env), runForExitCode, 
 // Pulling all the images at once can result in rate limiting
-effect_1.Effect.retry({
-    times: 10,
-    schedule: effect_1.Schedule.spaced(1000),
-}));
+effect_1.Effect.retry({ schedule: effect_1.Schedule.spaced(2000) }));
 exports.pullComposeImages = pullComposeImages;
 const doesComposeProjectHaveContainers = (projectName) => dockerCompose(projectName, 'ps', '-qa')
     .pipe(runForString, effect_1.Effect.map(effect_1.String.isNonEmpty));

@@ -2,7 +2,7 @@ import { Args, Command, Options } from '@effect/cli';
 import { Array, Console, Effect, pipe } from 'effect';
 import { LocalInstanceService } from '../../services/local-instance';
 import { getLocalIpUrl } from '../../libs/local-network';
-import { color } from '../../libs/console';
+import { clearThen, color } from '../../libs/console';
 
 const createChtInstances = (names: string[], version: string) => pipe(
   names,
@@ -24,14 +24,14 @@ const setLocalIpSSLCerts = (names: string[]) => pipe(
 
 export const printInstanceInfo = (names: string[]) => (
   ports: `${number}`[]
-): Effect.Effect<void> => Console
+): Effect.Effect<void> => clearThen(Console
   .log(`
 Instance(s) started!
 
   Username: ${pipe('medic', color('green'))}
   Password: ${pipe('password', color('green'))}
 
-`)
+`))
   .pipe(Effect.andThen(pipe(
     ports,
     Array.map(getLocalIpUrl),
@@ -49,7 +49,7 @@ const names = Args
   );
 
 const version = Options
-  .text('version')
+  .text('cht-version')
   .pipe(
     Options.withAlias('v'),
     Options.withDescription(
@@ -63,7 +63,7 @@ export const create = Command
     .log('Pulling Docker images (this may take awhile depending on network speeds)...')
     .pipe(
       Effect.andThen(createChtInstances(names, version)),
-      Effect.andThen(Console.log('Starting instance(s)...')),
+      Effect.andThen(clearThen(Console.log('Starting instance(s)...'))),
       Effect.andThen(startChtInstances(names)),
       Effect.tap(setLocalIpSSLCerts(names)),
       Effect.flatMap(printInstanceInfo(names))

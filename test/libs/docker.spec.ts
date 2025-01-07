@@ -1,6 +1,6 @@
 import { Command } from '@effect/platform';
 import { describe, it } from 'mocha';
-import { Array, Effect, Either, Layer, Logger, LogLevel, Schedule } from 'effect';
+import { Effect, Layer, Logger, LogLevel, Schedule } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
 import {
@@ -133,29 +133,7 @@ describe('docker libs', () => {
       expect(commandExitCode.args).to.deep.equal([[FAKE_COMMAND], [FAKE_COMMAND]]);
       expect(commandString.notCalled).to.be.true;
       expect(commandLines.notCalled).to.be.true;
-      expect(scheduleSpaced.calledOnceWithExactly(1000)).to.be.true;
-    }));
-
-    it('fails for error code after retrying 10 times', run(function* () {
-      commandExitCode.returns(Effect.succeed(1));
-      const scheduleSpaced = sinon
-        .stub(Schedule, 'spaced')
-        .returns(Schedule.forever); // Avoid waiting in tests
-
-      const either = yield* Effect.either(pullComposeImages(PROJECT_NAME, ENV)(composeFilePaths));
-
-      if (Either.isLeft(either)) {
-        expect(commandMake.calledOnceWithExactly(
-          'docker', 'compose', '-p', PROJECT_NAME, '-f', 'path1', '-f', 'path2', 'pull'
-        )).to.be.true;
-        expect(commandEnv.calledOnceWithExactly(ENV)).to.be.true;
-        expect(commandExitCode.args).to.deep.equal(Array.replicate([FAKE_COMMAND], 11));
-        expect(commandString.notCalled).to.be.true;
-        expect(commandLines.notCalled).to.be.true;
-        expect(scheduleSpaced.calledOnceWithExactly(1000)).to.be.true;
-      } else {
-        expect.fail('Expected error to be thrown');
-      }
+      expect(scheduleSpaced.calledOnceWithExactly(2000)).to.be.true;
     }));
   });
 
