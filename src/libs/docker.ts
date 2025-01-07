@@ -55,10 +55,7 @@ export const pullComposeImages = (projectName: string, env: Record<string, strin
   Command.env(env),
   runForExitCode,
   // Pulling all the images at once can result in rate limiting
-  Effect.retry({
-    times: 10,
-    schedule: Schedule.spaced(1000),
-  }),
+  Effect.retry({ schedule: Schedule.spaced(2000) }),
 );
 
 export const doesComposeProjectHaveContainers = (
