@@ -37,27 +37,25 @@ const TYPE_DB_COMPACT = 'database_compaction';
 const TYPE_VIEW_COMPACT = 'view_compaction';
 const compactDbViews = (dbName) => design_docs_1.CouchDesignDocsService
     .getNames(dbName)
-    .pipe(Effect.map(effect_1.Array.map(compactDesign(dbName))), Effect.flatMap(Effect.all));
-const compactDb = (dbName, compactDesigns) => compact_1.CouchCompactService
-    .compactDb(dbName)
+    .pipe(Effect.map(effect_1.Array.map(compactCouchDesign(dbName))), Effect.flatMap(Effect.all));
+const compactCouchDb = (dbName, compactDesigns) => (0, compact_1.compactDb)(dbName)
     .pipe(Effect.andThen(effect_1.Match
     .value(compactDesigns)
     .pipe(effect_1.Match.when(true, () => compactDbViews(dbName)), effect_1.Match.orElse(() => Effect.void))));
-const compactDesign = (dbName) => (designName) => compact_1.CouchCompactService.compactDesign(dbName, designName);
+const compactCouchDesign = (dbName) => (designName) => (0, compact_1.compactDesign)(dbName, designName);
 const compactAll = (compactDesigns) => dbs_info_1.CouchDbsInfoService
     .getDbNames()
-    .pipe(Effect.map(effect_1.Array.map(dbName => compactDb(dbName, compactDesigns))), Effect.flatMap(Effect.all));
+    .pipe(Effect.map(effect_1.Array.map(dbName => compactCouchDb(dbName, compactDesigns))), Effect.flatMap(Effect.all));
 const ServiceContext = Effect
     .all([
     active_tasks_1.CouchActiveTasksService,
     dbs_info_1.CouchDbsInfoService,
     design_docs_1.CouchDesignDocsService,
-    compact_1.CouchCompactService,
     design_info_1.CouchDesignInfoService,
 ])
-    .pipe(Effect.map(([activeTasks, dbsInfo, designDocs, compact, designInfo]) => Context
+    .pipe(Effect.map(([activeTasks, dbsInfo, designDocs, designInfo]) => Context
     .make(dbs_info_1.CouchDbsInfoService, dbsInfo)
-    .pipe(Context.add(active_tasks_1.CouchActiveTasksService, activeTasks), Context.add(design_docs_1.CouchDesignDocsService, designDocs), Context.add(compact_1.CouchCompactService, compact), Context.add(design_info_1.CouchDesignInfoService, designInfo))));
+    .pipe(Context.add(active_tasks_1.CouchActiveTasksService, activeTasks), Context.add(design_docs_1.CouchDesignDocsService, designDocs), Context.add(design_info_1.CouchDesignInfoService, designInfo))));
 const streamActiveTasks = () => active_tasks_1.CouchActiveTasksService.pipe(Effect.map(service => service.stream()), Effect.map(effect_1.Stream.takeUntilEffect((0, core_1.untilEmptyCount)(5))));
 const getActiveTaskTypeFilter = (compactDesigns) => (0, effect_1.pipe)([TYPE_DB_COMPACT, TYPE_VIEW_COMPACT], effect_1.Option.liftPredicate(() => compactDesigns), effect_1.Option.getOrElse(() => [TYPE_DB_COMPACT]), types => (0, active_tasks_1.filterStreamByType)(...types));
 const streamAll = (compactDesigns) => streamActiveTasks()
@@ -71,9 +69,9 @@ class CompactService extends Effect.Service()('chtoolbox/CompactService', {
     effect: ServiceContext.pipe(Effect.map(context => ({
         compactAll: (compactDesigns) => compactAll(compactDesigns)
             .pipe(Effect.andThen(streamAll(compactDesigns)), Effect.provide(context)),
-        compactDb: (dbName, compactDesigns) => compactDb(dbName, compactDesigns)
+        compactDb: (dbName, compactDesigns) => compactCouchDb(dbName, compactDesigns)
             .pipe(Effect.andThen(streamDb(dbName, compactDesigns)), Effect.provide(context)),
-        compactDesign: (dbName) => (designName) => compactDesign(dbName)(designName)
+        compactDesign: (dbName) => (designName) => compactCouchDesign(dbName)(designName)
             .pipe(Effect.andThen(streamDesign(dbName, designName)), Effect.provide(context)),
     }))),
     accessors: true,

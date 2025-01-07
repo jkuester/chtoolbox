@@ -1,7 +1,6 @@
 import { Schema } from 'effect';
 import { HttpClientRequest } from '@effect/platform';
 import * as Effect from 'effect/Effect';
-import * as Context from 'effect/Context';
 import { ChtClientService } from '../cht-client';
 
 const getDesignPath = (designName?: string) => designName ? `/${designName}` : '';
@@ -14,24 +13,18 @@ const getCompactRequest = (dbName: string, designName?: string) => Schema
     Effect.mapError(x => x as unknown as Error),
   );
 
-const compact = (context: Context.Context<ChtClientService>) => (
+const compact = (
   dbName: string,
   designName?: string
-): Effect.Effect<void, Error> => getCompactRequest(dbName, designName)
+) => getCompactRequest(dbName, designName)
   .pipe(
     Effect.flatMap(request => ChtClientService.request(request)),
     Effect.andThen(Effect.void),
     Effect.scoped,
-    Effect.provide(context),
   );
 
-const serviceContext = ChtClientService.pipe(Effect.map(couch => Context.make(ChtClientService, couch)));
-
-export class CouchCompactService extends Effect.Service<CouchCompactService>()('chtoolbox/CouchCompactService', {
-  effect: serviceContext.pipe(Effect.map(context => ({
-    compactDb: compact(context),
-    compactDesign: compact(context),
-  }))),
-  accessors: true,
-}) {
-}
+export const compactDb = (dbName: string): Effect.Effect<void, Error, ChtClientService> => compact(dbName);
+export const compactDesign = (
+  dbName: string,
+  designName: string
+): Effect.Effect<void, Error, ChtClientService> => compact(dbName, designName);

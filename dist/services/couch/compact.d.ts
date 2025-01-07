@@ -1,13 +1,5 @@
 import * as Effect from 'effect/Effect';
 import { ChtClientService } from '../cht-client';
-declare const CouchCompactService_base: Effect.Service.Class<CouchCompactService, "chtoolbox/CouchCompactService", {
-    readonly effect: Effect.Effect<{
-        compactDb: (dbName: string, designName?: string) => Effect.Effect<void, Error>;
-        compactDesign: (dbName: string, designName?: string) => Effect.Effect<void, Error>;
-    }, never, ChtClientService>;
-    readonly accessors: true;
-}>;
-export declare class CouchCompactService extends CouchCompactService_base {
-}
-export {};
+export declare const compactDb: (dbName: string) => Effect.Effect<void, Error, ChtClientService>;
+export declare const compactDesign: (dbName: string, designName: string) => Effect.Effect<void, Error, ChtClientService>;
 //# sourceMappingURL=compact.d.ts.map

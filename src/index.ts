@@ -16,7 +16,6 @@ import { CouchViewService } from './services/couch/view';
 import { CouchDesignDocsService } from './services/couch/design-docs';
 import { WarmViewsService } from './services/warm-views';
 import { warmViews } from './commands/warm-views';
-import { CouchCompactService } from './services/couch/compact';
 import { CompactService } from './services/compact';
 import { activeTasks } from './commands/active-tasks';
 import { CouchActiveTasksService } from './services/couch/active-tasks';
@@ -74,7 +73,6 @@ const cli = Command.run(command, {
 const couchServices = CouchActiveTasksService
   .Default
   .pipe(
-    Layer.provideMerge(CouchCompactService.Default),
     Layer.provideMerge(CouchNodeSystemService.Default),
     Layer.provideMerge(CouchDbsInfoService.Default),
     Layer.provideMerge(CouchDesignDocsService.Default),
