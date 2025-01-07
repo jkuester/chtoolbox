@@ -1,6 +1,6 @@
 import { Command } from '@effect/platform';
 import { describe, it } from 'mocha';
-import { Array, Effect, Either, Layer, Logger, LogLevel, Schedule } from 'effect';
+import { Effect, Layer, Logger, LogLevel, Schedule } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
 import {
