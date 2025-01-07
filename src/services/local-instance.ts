@@ -61,7 +61,7 @@ services:
       - CHT_NETWORK
 networks:
   cht-net:
-    name: CHT_NETWORK
+    name: \${CHT_NETWORK}
 volumes:
   chtx-compose-files:
     labels:
