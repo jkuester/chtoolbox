@@ -44,26 +44,6 @@ const compactAll = (compactDesigns: boolean) => CouchDbsInfoService
     Effect.flatMap(Effect.all),
   );
 
-const ServiceContext = Effect
-  .all([
-    CouchActiveTasksService,
-    CouchDbsInfoService,
-    CouchDesignDocsService,
-    CouchDesignInfoService,
-  ])
-  .pipe(Effect.map(([
-    activeTasks,
-    dbsInfo,
-    designDocs,
-    designInfo
-  ]) => Context
-    .make(CouchDbsInfoService, dbsInfo)
-    .pipe(
-      Context.add(CouchActiveTasksService, activeTasks),
-      Context.add(CouchDesignDocsService, designDocs),
-      Context.add(CouchDesignInfoService, designInfo),
-    )));
-
 const streamActiveTasks = () => CouchActiveTasksService.pipe(
   Effect.map(service => service.stream()),
   Effect.map(Stream.takeUntilEffect(untilEmptyCount(5))),
@@ -94,11 +74,34 @@ const streamDesign = (dbName: string, designName: string) => streamActiveTasks()
       )))),
   );
 
+const serviceContext = Effect
+  .all([
+    CouchActiveTasksService,
+    CouchDbsInfoService,
+    CouchDesignDocsService,
+    CouchDesignInfoService,
+    ChtClientService,
+  ])
+  .pipe(Effect.map(([
+    activeTasks,
+    dbsInfo,
+    designDocs,
+    designInfo,
+    chtClient,
+  ]) => Context
+    .make(CouchDbsInfoService, dbsInfo)
+    .pipe(
+      Context.add(CouchActiveTasksService, activeTasks),
+      Context.add(CouchDesignDocsService, designDocs),
+      Context.add(CouchDesignInfoService, designInfo),
+      Context.add(ChtClientService, chtClient),
+    )));
+
 export class CompactService extends Effect.Service<CompactService>()('chtoolbox/CompactService', {
-  effect: ServiceContext.pipe(Effect.map(context => ({
+  effect: serviceContext.pipe(Effect.map(context => ({
     compactAll: (
       compactDesigns: boolean
-    ): Effect.Effect<CouchActiveTaskStream, Error, ChtClientService> => compactAll(compactDesigns)
+    ): Effect.Effect<CouchActiveTaskStream, Error> => compactAll(compactDesigns)
       .pipe(
         Effect.andThen(streamAll(compactDesigns)),
         Effect.provide(context),
@@ -106,14 +109,14 @@ export class CompactService extends Effect.Service<CompactService>()('chtoolbox/
     compactDb: (
       dbName: string,
       compactDesigns: boolean
-    ): Effect.Effect<CouchActiveTaskStream, Error, ChtClientService> => compactCouchDb(dbName, compactDesigns)
+    ): Effect.Effect<CouchActiveTaskStream, Error> => compactCouchDb(dbName, compactDesigns)
       .pipe(
         Effect.andThen(streamDb(dbName, compactDesigns)),
         Effect.provide(context),
       ),
     compactDesign: (dbName: string) => (
       designName: string
-    ): Effect.Effect<CouchActiveTaskStream, Error, ChtClientService> => compactCouchDesign(dbName)(designName)
+    ): Effect.Effect<CouchActiveTaskStream, Error> => compactCouchDesign(dbName)(designName)
       .pipe(
         Effect.andThen(streamDesign(dbName, designName)),
         Effect.provide(context),

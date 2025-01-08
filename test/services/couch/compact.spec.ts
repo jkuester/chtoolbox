@@ -2,22 +2,21 @@ import { describe, it } from 'mocha';
 import { Effect, Either, Layer } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
-import { CouchCompactService } from '../../../src/services/couch/compact';
 import { ChtClientService } from '../../../src/services/cht-client';
 import { HttpClientRequest } from '@effect/platform';
 import { genWithLayer, sandbox } from '../../utils/base';
+import { compactDb, compactDesign } from '../../../src/services/couch/compact';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
 
 const couchRequest = sandbox.stub();
 const requestBuild = sandbox.stub();
 
-const run = CouchCompactService.Default.pipe(
-  Layer.provide(Layer.succeed(ChtClientService, { request: couchRequest } as unknown as ChtClientService)),
-  genWithLayer,
-);
+const run = Layer
+  .succeed(ChtClientService, { request: couchRequest } as unknown as ChtClientService)
+  .pipe(genWithLayer);
 
-describe('Couch Compact Service', () => {
+describe('Couch Compact libs', () => {
   let requestSchemaBody: SinonStub;
   let requestPost: SinonStub;
 
@@ -33,7 +32,7 @@ describe('Couch Compact Service', () => {
     couchRequest.returns(Effect.void);
     requestBuild.returns(Effect.succeed(fakeBuiltClientRequest));
 
-    yield* CouchCompactService.compactDb(dbName);
+    yield* compactDb(dbName);
 
     expect(requestSchemaBody.calledOnce).to.be.true;
     expect(requestSchemaBody.args[0][0]).to.deep.include({ fields: {} });
@@ -50,7 +49,7 @@ describe('Couch Compact Service', () => {
     couchRequest.returns(Effect.void);
     requestBuild.returns(Effect.succeed(fakeBuiltClientRequest));
 
-    yield* CouchCompactService.compactDesign(dbName, designName);
+    yield* compactDesign(dbName, designName);
 
     expect(requestSchemaBody.calledOnce).to.be.true;
     expect(requestSchemaBody.args[0][0]).to.deep.include({ fields: {} });
@@ -66,7 +65,7 @@ describe('Couch Compact Service', () => {
     couchRequest.returns(Effect.void);
     requestBuild.returns(Effect.fail(expectedError));
 
-    const either = yield* Effect.either(CouchCompactService.compactDb(dbName));
+    const either = yield* Effect.either(compactDb(dbName));
 
     if (Either.isLeft(either)) {
       expect(either.left).to.equal(expectedError);

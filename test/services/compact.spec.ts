@@ -33,7 +33,7 @@ const run = CompactService.Default.pipe(
   Layer.provide(Layer.succeed(CouchActiveTasksService, {
     stream: activeTasksStream,
   } as unknown as CouchActiveTasksService)),
-  Layer.merge(Layer.succeed(ChtClientService, {} as unknown as ChtClientService)),
+  Layer.provide(Layer.succeed(ChtClientService, {} as unknown as ChtClientService)),
   genWithLayer,
 );
 
