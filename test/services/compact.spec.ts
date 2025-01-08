@@ -8,7 +8,7 @@ import { CompactService } from '../../src/services/compact';
 import { CouchDesignDocsService } from '../../src/services/couch/design-docs';
 import * as CouchActiveTasksSvc from '../../src/services/couch/active-tasks';
 import { CouchActiveTasksService } from '../../src/services/couch/active-tasks';
-import * as CouchCompactService from '../../src/services/couch/compact';
+import * as CouchCompactService from '../../src/libs/couch/compact';
 import * as core from '../../src/libs/core';
 import { genWithLayer, sandbox } from '../utils/base';
 import { ChtClientService } from '../../src/services/cht-client';

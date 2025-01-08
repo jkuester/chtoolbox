@@ -1,7 +1,7 @@
 import { Schema } from 'effect';
 import { HttpClientRequest } from '@effect/platform';
 import * as Effect from 'effect/Effect';
-import { ChtClientService } from '../cht-client';
+import { ChtClientService } from '../../services/cht-client';
 
 const getDesignPath = (designName?: string) => designName ? `/${designName}` : '';
 

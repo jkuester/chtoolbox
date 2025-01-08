@@ -27,7 +27,7 @@ exports.compactDesign = exports.compactDb = void 0;
 const effect_1 = require("effect");
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
-const cht_client_1 = require("../cht-client");
+const cht_client_1 = require("../../services/cht-client");
 const getDesignPath = (designName) => designName ? `/${designName}` : '';
 const getCompactRequest = (dbName, designName) => effect_1.Schema
     .Struct({})

@@ -3,7 +3,7 @@ import * as Context from 'effect/Context';
 import { Array, Match, Option, pipe, Stream } from 'effect';
 import { CouchDbsInfoService } from './couch/dbs-info';
 import { CouchDesignDocsService } from './couch/design-docs';
-import { compactDb, compactDesign } from './couch/compact';
+import { compactDb, compactDesign } from '../libs/couch/compact';
 import { CouchDesignInfoService } from './couch/design-info';
 import {
   CouchActiveTasksService,

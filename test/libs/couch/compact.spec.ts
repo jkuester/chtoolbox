@@ -5,7 +5,7 @@ import sinon, { SinonStub } from 'sinon';
 import { ChtClientService } from '../../../src/services/cht-client';
 import { HttpClientRequest } from '@effect/platform';
 import { genWithLayer, sandbox } from '../../utils/base';
-import { compactDb, compactDesign } from '../../../src/services/couch/compact';
+import { compactDb, compactDesign } from '../../../src/libs/couch/compact';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
 
