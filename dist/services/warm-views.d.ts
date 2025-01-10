@@ -1,6 +1,5 @@
 import * as Effect from 'effect/Effect';
 import { CouchDesignDocsService } from './couch/design-docs';
-import { CouchDesignService } from './couch/design';
 import { CouchViewService } from './couch/view';
 import { CouchDesignInfoService } from './couch/design-info';
 import { ChtClientService } from './cht-client';
@@ -11,7 +10,7 @@ declare const WarmViewsService_base: Effect.Service.Class<WarmViewsService, "cht
             dbName: string;
             designId: string;
         }[], Error>;
-    }, never, ChtClientService | CouchDesignInfoService | CouchDesignService | CouchViewService | CouchDesignDocsService>;
+    }, never, ChtClientService | CouchDesignInfoService | CouchViewService | CouchDesignDocsService>;
     readonly accessors: true;
 }>;
 export declare class WarmViewsService extends WarmViewsService_base {

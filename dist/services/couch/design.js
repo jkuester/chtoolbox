@@ -23,10 +23,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CouchDesignService = void 0;
+exports.getViewNames = void 0;
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
-const Context = __importStar(require("effect/Context"));
 const cht_client_1 = require("../cht-client");
 const effect_1 = require("effect");
 class CouchDesign extends effect_1.Schema.Class('CouchDesign')({
@@ -35,15 +34,8 @@ class CouchDesign extends effect_1.Schema.Class('CouchDesign')({
 }) {
     static decodeResponse = platform_1.HttpClientResponse.schemaBodyJson(CouchDesign);
 }
-const serviceContext = cht_client_1.ChtClientService.pipe(Effect.map(couch => Context.make(cht_client_1.ChtClientService, couch)));
-class CouchDesignService extends Effect.Service()('chtoolbox/CouchDesignService', {
-    effect: serviceContext.pipe(Effect.map(context => ({
-        getViewNames: (dbName, designName) => cht_client_1.ChtClientService
-            .request(platform_1.HttpClientRequest.get(`/${dbName}/_design/${designName}`))
-            .pipe(Effect.flatMap(CouchDesign.decodeResponse), Effect.scoped, Effect.map(design => design.views), Effect.map(effect_1.Option.fromNullable), Effect.map(effect_1.Option.map(Object.keys)), Effect.map(effect_1.Option.getOrElse(() => [])), Effect.provide(context)),
-    }))),
-    accessors: true,
-}) {
-}
-exports.CouchDesignService = CouchDesignService;
+const getViewNames = (dbName, designName) => cht_client_1.ChtClientService
+    .request(platform_1.HttpClientRequest.get(`/${dbName}/_design/${designName}`))
+    .pipe(Effect.flatMap(CouchDesign.decodeResponse), Effect.scoped, Effect.map(design => design.views), Effect.map(effect_1.Option.fromNullable), Effect.map(effect_1.Option.map(Object.keys)), Effect.map(effect_1.Option.getOrElse(() => [])));
+exports.getViewNames = getViewNames;
 //# sourceMappingURL=design.js.map

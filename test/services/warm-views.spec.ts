@@ -6,14 +6,13 @@ import { CouchDesignInfoService } from '../../src/services/couch/design-info';
 import { CouchDesignDocsService } from '../../src/services/couch/design-docs';
 import { createDesignInfo } from '../utils/data-models';
 import { WarmViewsService } from '../../src/services/warm-views';
-import { CouchDesignService } from '../../src/services/couch/design';
+import * as CouchDesign from '../../src/services/couch/design';
 import { CouchViewService } from '../../src/services/couch/view';
 import { genWithLayer, sandbox } from '../utils/base';
 import { ChtClientService } from '../../src/services/cht-client';
 import sinon, { SinonStub } from 'sinon';
 
 const designDocsSvcGetNames = sandbox.stub();
-const designSvcGetViewNames = sandbox.stub();
 const viewSvcWarm = sandbox.stub();
 const designInfoSvcGet = sandbox.stub();
 
@@ -22,9 +21,6 @@ const run = WarmViewsService.Default.pipe(
   Layer.provide(Layer.succeed(CouchDesignDocsService, {
     getNames: designDocsSvcGetNames,
   } as unknown as CouchDesignDocsService)),
-  Layer.provide(Layer.succeed(CouchDesignService, {
-    getViewNames: designSvcGetViewNames,
-  } as unknown as CouchDesignService)),
   Layer.provide(Layer.succeed(CouchViewService, {
     warm: viewSvcWarm,
   } as unknown as CouchViewService)),
@@ -35,9 +31,11 @@ const run = WarmViewsService.Default.pipe(
 );
 
 describe('Warm Views Service', () => {
+  let designSvcGetViewNames: SinonStub;
   let dbsInfoSvcGetDbNames: SinonStub;
 
   beforeEach(() => {
+    designSvcGetViewNames = sinon.stub(CouchDesign, 'getViewNames');
     dbsInfoSvcGetDbNames = sinon.stub(CouchDbsInfo, 'getDbNames');
   });
 

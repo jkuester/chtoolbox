@@ -37,8 +37,7 @@ const warmView = (dbName, designId) => (viewName) => view_1.CouchViewService.war
 const warmAll = () => (0, dbs_info_1.getDbNames)()
     .pipe(Effect.map(effect_1.Array.map(dbName => design_docs_1.CouchDesignDocsService
     .getNames(dbName)
-    .pipe(Effect.map(effect_1.Array.map(designName => design_1.CouchDesignService
-    .getViewNames(dbName, designName)
+    .pipe(Effect.map(effect_1.Array.map(designName => (0, design_1.getViewNames)(dbName, designName)
     .pipe(Effect.map(effect_1.Array.map(warmView(dbName, designName))), Effect.flatMap(Effect.all)))), Effect.flatMap(Effect.all), Effect.map(effect_1.Array.flatten)))), Effect.flatMap(Effect.all), Effect.map(effect_1.Array.flatten));
 const designsCurrentlyUpdating = () => (0, dbs_info_1.getDbNames)()
     .pipe(Effect.map(effect_1.Array.map(dbName => design_docs_1.CouchDesignDocsService
@@ -48,17 +47,18 @@ const serviceContext = Effect
     .all([
     cht_client_1.ChtClientService,
     design_docs_1.CouchDesignDocsService,
-    design_1.CouchDesignService,
     view_1.CouchViewService,
     design_info_1.CouchDesignInfoService,
 ])
-    .pipe(Effect.map(([chtClient, couchDesignDocs, couchDesign, couchView, couchDesignInfo]) => Context
+    .pipe(Effect.map(([chtClient, couchDesignDocs, couchView, couchDesignInfo]) => Context
     .make(cht_client_1.ChtClientService, chtClient)
-    .pipe(Context.add(design_docs_1.CouchDesignDocsService, couchDesignDocs), Context.add(design_1.CouchDesignService, couchDesign), Context.add(view_1.CouchViewService, couchView), Context.add(design_info_1.CouchDesignInfoService, couchDesignInfo))));
+    .pipe(Context.add(design_docs_1.CouchDesignDocsService, couchDesignDocs), Context.add(view_1.CouchViewService, couchView), Context.add(design_info_1.CouchDesignInfoService, couchDesignInfo))));
 class WarmViewsService extends Effect.Service()('chtoolbox/WarmViewsService', {
     effect: serviceContext.pipe(Effect.map(context => ({
-        warmAll: () => warmAll().pipe(Effect.provide(context)),
-        designsCurrentlyUpdating: () => designsCurrentlyUpdating().pipe(Effect.provide(context)),
+        warmAll: () => warmAll()
+            .pipe(Effect.provide(context)),
+        designsCurrentlyUpdating: () => designsCurrentlyUpdating()
+            .pipe(Effect.provide(context)),
     }))),
     accessors: true,
 }) {

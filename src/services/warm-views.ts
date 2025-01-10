@@ -3,7 +3,7 @@ import * as Context from 'effect/Context';
 import { Array } from 'effect';
 import { getDbNames } from '../libs/couch/dbs-info';
 import { CouchDesignDocsService } from './couch/design-docs';
-import { CouchDesignService } from './couch/design';
+import { getViewNames } from './couch/design';
 import { CouchViewService } from './couch/view';
 import { CouchDesignInfoService } from './couch/design-info';
 import { ChtClientService } from './cht-client';
@@ -17,8 +17,7 @@ const warmAll = () => getDbNames()
     Effect.map(Array.map(dbName => CouchDesignDocsService
       .getNames(dbName)
       .pipe(
-        Effect.map(Array.map(designName => CouchDesignService
-          .getViewNames(dbName, designName)
+        Effect.map(Array.map(designName => getViewNames(dbName, designName)
           .pipe(
             Effect.map(Array.map(warmView(dbName, designName))),
             Effect.flatMap(Effect.all),
@@ -48,32 +47,31 @@ const serviceContext = Effect
   .all([
     ChtClientService,
     CouchDesignDocsService,
-    CouchDesignService,
     CouchViewService,
     CouchDesignInfoService,
   ])
   .pipe(Effect.map(([
     chtClient,
     couchDesignDocs,
-    couchDesign,
     couchView,
     couchDesignInfo
   ]) => Context
     .make(ChtClientService, chtClient)
     .pipe(
       Context.add(CouchDesignDocsService, couchDesignDocs),
-      Context.add(CouchDesignService, couchDesign),
       Context.add(CouchViewService, couchView),
       Context.add(CouchDesignInfoService, couchDesignInfo),
     )));
 
 export class WarmViewsService extends Effect.Service<WarmViewsService>()('chtoolbox/WarmViewsService', {
   effect: serviceContext.pipe(Effect.map(context => ({
-    warmAll: (): Effect.Effect<void, Error> => warmAll().pipe(Effect.provide(context)),
+    warmAll: (): Effect.Effect<void, Error> => warmAll()
+      .pipe(Effect.provide(context)),
     designsCurrentlyUpdating: (): Effect.Effect<{
       dbName: string,
       designId: string
-    }[], Error> => designsCurrentlyUpdating().pipe(Effect.provide(context)),
+    }[], Error> => designsCurrentlyUpdating()
+      .pipe(Effect.provide(context)),
   }))),
   accessors: true,
 }) {

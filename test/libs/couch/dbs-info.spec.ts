@@ -18,7 +18,7 @@ const run = Layer
   .succeed(ChtClientService, { request: couchRequest } as unknown as ChtClientService)
   .pipe(genWithLayer);
 
-describe('Couch Dbs Info Service', () => {
+describe('Couch Dbs Info libs', () => {
   let requestSchemaBody: SinonStub;
   let requestPost: SinonStub;
   let requestGet: SinonStub;

@@ -10,7 +10,6 @@ import { EnvironmentService, } from './services/environment';
 import { CouchDesignInfoService } from './services/couch/design-info';
 import { MonitorService } from './services/monitor';
 import { LocalDiskUsageService } from './services/local-disk-usage';
-import { CouchDesignService } from './services/couch/design';
 import { CouchViewService } from './services/couch/view';
 import { CouchDesignDocsService } from './services/couch/design-docs';
 import { WarmViewsService } from './services/warm-views';
@@ -75,7 +74,6 @@ const couchServices = CouchActiveTasksService
     Layer.provideMerge(CouchNodeSystemService.Default),
     Layer.provideMerge(CouchDesignDocsService.Default),
     Layer.provideMerge(CouchDesignInfoService.Default),
-    Layer.provideMerge(CouchDesignService.Default),
     Layer.provideMerge(CouchPurgeService.Default),
     Layer.provideMerge(CouchViewService.Default),
   );
