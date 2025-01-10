@@ -8,7 +8,6 @@ import packageJson from '../package.json';
 import { EnvironmentService, } from './services/environment';
 import { MonitorService } from './services/monitor';
 import { LocalDiskUsageService } from './services/local-disk-usage';
-import { CouchViewService } from './services/couch/view';
 import { WarmViewsService } from './services/warm-views';
 import { warmViews } from './commands/warm-views';
 import { CompactService } from './services/compact';
@@ -65,10 +64,7 @@ const cli = Command.run(command, {
 });
 
 const couchServices = CouchActiveTasksService
-  .Default
-  .pipe(
-    Layer.provideMerge(CouchViewService.Default),
-  );
+  .Default;
 
 const httpClientNoSslVerify = Layer.provide(NodeHttpClient.layerWithoutAgent.pipe(
   Layer.provide(NodeHttpClient.makeAgentLayer({ rejectUnauthorized: false }))

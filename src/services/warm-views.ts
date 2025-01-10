@@ -4,13 +4,13 @@ import { Array } from 'effect';
 import { getDbNames } from '../libs/couch/dbs-info';
 import { getDesignDocNames } from '../libs/couch/design-docs';
 import { getViewNames } from '../libs/couch/design';
-import { CouchViewService } from './couch/view';
+import { warmView } from './couch/view';
 import { getDesignInfo } from '../libs/couch/design-info';
 import { ChtClientService } from './cht-client';
 
-const warmView = (dbName: string, designId: string) => (
+const warmCouchView = (dbName: string, designId: string) => (
   viewName: string
-) => CouchViewService.warm(dbName, designId, viewName);
+) => warmView(dbName, designId, viewName);
 
 const warmAll = () => getDbNames()
   .pipe(
@@ -18,7 +18,7 @@ const warmAll = () => getDbNames()
       .pipe(
         Effect.map(Array.map(designName => getViewNames(dbName, designName)
           .pipe(
-            Effect.map(Array.map(warmView(dbName, designName))),
+            Effect.map(Array.map(warmCouchView(dbName, designName))),
             Effect.flatMap(Effect.all),
           ))),
         Effect.flatMap(Effect.all),
@@ -41,19 +41,7 @@ const designsCurrentlyUpdating = () => getDbNames()
     Effect.map(Array.flatten),
   );
 
-const serviceContext = Effect
-  .all([
-    ChtClientService,
-    CouchViewService,
-  ])
-  .pipe(Effect.map(([
-    chtClient,
-    couchView,
-  ]) => Context
-    .make(ChtClientService, chtClient)
-    .pipe(
-      Context.add(CouchViewService, couchView),
-    )));
+const serviceContext = ChtClientService.pipe(Effect.map(couch => Context.make(ChtClientService, couch)));
 
 export class WarmViewsService extends Effect.Service<WarmViewsService>()('chtoolbox/WarmViewsService', {
   effect: serviceContext.pipe(Effect.map(context => ({

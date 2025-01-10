@@ -33,22 +33,15 @@ const design_1 = require("../libs/couch/design");
 const view_1 = require("./couch/view");
 const design_info_1 = require("../libs/couch/design-info");
 const cht_client_1 = require("./cht-client");
-const warmView = (dbName, designId) => (viewName) => view_1.CouchViewService.warm(dbName, designId, viewName);
+const warmCouchView = (dbName, designId) => (viewName) => (0, view_1.warmView)(dbName, designId, viewName);
 const warmAll = () => (0, dbs_info_1.getDbNames)()
     .pipe(Effect.map(effect_1.Array.map(dbName => (0, design_docs_1.getDesignDocNames)(dbName)
     .pipe(Effect.map(effect_1.Array.map(designName => (0, design_1.getViewNames)(dbName, designName)
-    .pipe(Effect.map(effect_1.Array.map(warmView(dbName, designName))), Effect.flatMap(Effect.all)))), Effect.flatMap(Effect.all), Effect.map(effect_1.Array.flatten)))), Effect.flatMap(Effect.all), Effect.map(effect_1.Array.flatten));
+    .pipe(Effect.map(effect_1.Array.map(warmCouchView(dbName, designName))), Effect.flatMap(Effect.all)))), Effect.flatMap(Effect.all), Effect.map(effect_1.Array.flatten)))), Effect.flatMap(Effect.all), Effect.map(effect_1.Array.flatten));
 const designsCurrentlyUpdating = () => (0, dbs_info_1.getDbNames)()
     .pipe(Effect.map(effect_1.Array.map(dbName => (0, design_docs_1.getDesignDocNames)(dbName)
     .pipe(Effect.map(effect_1.Array.map(designId => (0, design_info_1.getDesignInfo)(dbName, designId))), Effect.flatMap(Effect.all), Effect.map(effect_1.Array.filter(designInfo => designInfo.view_index.updater_running)), Effect.map(effect_1.Array.map(designInfo => ({ dbName, designId: designInfo.name })))))), Effect.flatMap(Effect.all), Effect.map(effect_1.Array.flatten));
-const serviceContext = Effect
-    .all([
-    cht_client_1.ChtClientService,
-    view_1.CouchViewService,
-])
-    .pipe(Effect.map(([chtClient, couchView,]) => Context
-    .make(cht_client_1.ChtClientService, chtClient)
-    .pipe(Context.add(view_1.CouchViewService, couchView))));
+const serviceContext = cht_client_1.ChtClientService.pipe(Effect.map(couch => Context.make(cht_client_1.ChtClientService, couch)));
 class WarmViewsService extends Effect.Service()('chtoolbox/WarmViewsService', {
     effect: serviceContext.pipe(Effect.map(context => ({
         warmAll: () => warmAll()

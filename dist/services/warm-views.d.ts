@@ -1,5 +1,4 @@
 import * as Effect from 'effect/Effect';
-import { CouchViewService } from './couch/view';
 import { ChtClientService } from './cht-client';
 declare const WarmViewsService_base: Effect.Service.Class<WarmViewsService, "chtoolbox/WarmViewsService", {
     readonly effect: Effect.Effect<{
@@ -8,7 +7,7 @@ declare const WarmViewsService_base: Effect.Service.Class<WarmViewsService, "cht
             dbName: string;
             designId: string;
         }[], Error>;
-    }, never, ChtClientService | CouchViewService>;
+    }, never, ChtClientService>;
     readonly accessors: true;
 }>;
 export declare class WarmViewsService extends WarmViewsService_base {
