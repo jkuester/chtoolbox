@@ -70,7 +70,7 @@ services:
       - CHT_NETWORK
 networks:
   cht-net:
-    name: CHT_NETWORK
+    name: \${CHT_NETWORK}
 volumes:
   chtx-compose-files:
     labels:
@@ -144,7 +144,9 @@ const assertChtxVolumeExists = (instanceName) => doesChtxVolumeExist(instanceNam
     .pipe(effect_1.Effect.flatMap(exists => effect_1.Match
     .value(exists)
     .pipe(effect_1.Match.when(false, () => effect_1.Effect.fail(new Error(`Instance ${instanceName} does not exist`))), effect_1.Match.orElse(() => effect_1.Effect.void))));
-const pullAllChtImages = (instanceName, env, tmpDir) => (0, effect_1.pipe)([...CHT_COMPOSE_FILE_NAMES, UPGRADE_SVC_COMPOSE_FILE_NAME], effect_1.Array.map(fileName => `${tmpDir}/${fileName}`), (0, docker_1.pullComposeImages)(instanceName, ChtInstanceConfig.asRecord(env)));
+const pullAllChtImages = (instanceName, env, tmpDir) => (0, effect_1.pipe)([...CHT_COMPOSE_FILE_NAMES, UPGRADE_SVC_COMPOSE_FILE_NAME], effect_1.Array.map(fileName => `${tmpDir}/${fileName}`), (0, docker_1.pullComposeImages)(instanceName, ChtInstanceConfig.asRecord(env)), 
+// Log the output of the docker pull because this could take a very long time
+effect_1.Logger.withMinimumLogLevel(effect_1.LogLevel.Debug));
 const createUpgradeSvcContainer = (instanceName, env, tmpDir) => (0, effect_1.pipe)(upgradeSvcProjectName(instanceName), (0, docker_1.createComposeContainers)(env, `${tmpDir}/${UPGRADE_SVC_COMPOSE_FILE_NAME}`));
 const rmTempUpgradeServiceContainer = (instanceName) => (0, effect_1.pipe)(upgradeSvcProjectName(instanceName), (0, docker_1.rmComposeContainer)(UPGRADE_SVC_NAME), effect_1.Effect.catchAll(() => effect_1.Effect.void));
 const copyFilesToUpgradeSvcContainer = (instanceName, tmpDir) => (0, effect_1.pipe)([...CHT_COMPOSE_FILE_NAMES, ENV_FILE_NAME], effect_1.Array.map((fileName) => [`${tmpDir}/${fileName}`, `/docker-compose/${fileName}`]), effect_1.Array.map((0, docker_1.copyFileToComposeContainer)(upgradeSvcProjectName(instanceName), UPGRADE_SVC_NAME)), effect_1.Effect.all);

@@ -1,4 +1,4 @@
-import { Array, Effect, Match, pipe, Schedule, Schema } from 'effect';
+import { Array, Effect, Logger, LogLevel, Match, pipe, Schedule, Schema } from 'effect';
 import * as Context from 'effect/Context';
 import { FileSystem, HttpClient, HttpClientRequest } from '@effect/platform';
 import crypto from 'crypto';
@@ -10,13 +10,15 @@ import {
   destroyCompose,
   doesComposeProjectHaveContainers,
   doesVolumeExistWithLabel,
-  getEnvarFromComposeContainer, getVolumeLabelValue, getVolumeNamesWithLabel,
+  getEnvarFromComposeContainer,
+  getVolumeLabelValue,
+  getVolumeNamesWithLabel,
   pullComposeImages,
   restartCompose,
   restartComposeService,
   rmComposeContainer,
-  stopCompose,
-  startCompose
+  startCompose,
+  stopCompose
 } from '../libs/docker';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
 import { getFreePorts } from '../libs/local-network';
@@ -59,7 +61,7 @@ services:
       - CHT_NETWORK
 networks:
   cht-net:
-    name: CHT_NETWORK
+    name: \${CHT_NETWORK}
 volumes:
   chtx-compose-files:
     labels:
@@ -180,6 +182,8 @@ const pullAllChtImages = (instanceName: string, env: ChtInstanceConfig, tmpDir: 
   [...CHT_COMPOSE_FILE_NAMES, UPGRADE_SVC_COMPOSE_FILE_NAME],
   Array.map(fileName => `${tmpDir}/${fileName}`),
   pullComposeImages(instanceName, ChtInstanceConfig.asRecord(env)),
+  // Log the output of the docker pull because this could take a very long time
+  Logger.withMinimumLogLevel(LogLevel.Debug)
 );
 
 const createUpgradeSvcContainer = (
