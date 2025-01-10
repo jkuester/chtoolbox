@@ -1,13 +1,14 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { CouchDbInfo, CouchDbsInfoService } from './couch/dbs-info';
-import { CouchDesignInfo, CouchDesignInfoService } from './couch/design-info';
-import { CouchNodeSystem, CouchNodeSystemService } from './couch/node-system';
+import { CouchDbInfo, getDbsInfoByName } from '../libs/couch/dbs-info';
+import { CouchDesignInfo, getDesignInfo } from '../libs/couch/design-info';
+import { CouchNodeSystem, getCouchNodeSystem } from '../libs/couch/node-system';
 import { Array, Clock, Number, Option, pipe } from 'effect';
 import { LocalDiskUsageService } from './local-disk-usage';
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { NonEmptyArray } from 'effect/Array';
 import { PlatformError } from '@effect/platform/Error';
+import { ChtClientService } from './cht-client';
 
 interface DatabaseInfo extends CouchDbInfo {
   designs: CouchDesignInfo[]
@@ -65,18 +66,16 @@ const emptyDesignInfo: CouchDesignInfo = {
     },
   },
 } as CouchDesignInfo;
-const getCouchDesignInfosForDb = (dbName: string) => CouchDesignInfoService.pipe(
-  Effect.flatMap(service => Effect.all(pipe(
-    VIEW_INDEXES_BY_DB[dbName],
-    Array.map(designName => service.get(dbName, designName)),
-    Array.map(Effect.catchIf(
-      (error) => error instanceof ResponseError && error.response.status === 404,
-      () => Effect.succeed(emptyDesignInfo),
-    )),
-  ))),
-);
+const getCouchDesignInfosForDb = (dbName: string) => Effect.all(pipe(
+  VIEW_INDEXES_BY_DB[dbName],
+  Array.map(designName => getDesignInfo(dbName, designName)),
+  Array.map(Effect.catchIf(
+    (error) => error instanceof ResponseError && error.response.status === 404,
+    () => Effect.succeed(emptyDesignInfo),
+  )),
+));
 
-const getCouchDesignInfos = pipe(
+const getCouchDesignInfos = () => pipe(
   DB_NAMES,
   Array.map(getCouchDesignInfosForDb),
   Effect.all,
@@ -93,9 +92,9 @@ const getDirectorySize = (directory: Option.Option<string>) => LocalDiskUsageSer
 const getMonitoringData = (directory: Option.Option<string>) => pipe(
   Effect.all([
     currentTimeSec,
-    CouchNodeSystemService.get(),
-    CouchDbsInfoService.post(DB_NAMES),
-    getCouchDesignInfos,
+    getCouchNodeSystem(),
+    getDbsInfoByName(DB_NAMES),
+    getCouchDesignInfos(),
     getDirectorySize(directory),
   ]),
   Effect.map(([
@@ -164,23 +163,15 @@ const getAsCsv = (directory: Option.Option<string>) => pipe(
 
 const serviceContext = Effect
   .all([
-    CouchNodeSystemService,
-    CouchDbsInfoService,
-    CouchDesignInfoService,
     LocalDiskUsageService,
+    ChtClientService,
   ])
   .pipe(Effect.map(([
-    couchNodeSystem,
-    couchDbsInfo,
-    couchDesignInfo,
     localDiskUsage,
+    chtClient,
   ]) => Context
-    .make(CouchNodeSystemService, couchNodeSystem)
-    .pipe(
-      Context.add(CouchDbsInfoService, couchDbsInfo),
-      Context.add(CouchDesignInfoService, couchDesignInfo),
-      Context.add(LocalDiskUsageService, localDiskUsage),
-    )));
+    .make(LocalDiskUsageService, localDiskUsage)
+    .pipe(Context.add(ChtClientService, chtClient))));
 
 export class MonitorService extends Effect.Service<MonitorService>()('chtoolbox/MonitorService', {
   effect: serviceContext.pipe(Effect.map(context => ({

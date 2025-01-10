@@ -2,16 +2,20 @@ import { afterEach, describe, it } from 'mocha';
 import { Effect, Either, Layer, Option, TestClock } from 'effect';
 import { expect } from 'chai';
 import { MonitorService } from '../../src/services/monitor';
-import { CouchNodeSystem, CouchNodeSystemService } from '../../src/services/couch/node-system';
-import { SinonStub } from 'sinon';
-import { CouchDbInfo, CouchDbsInfoService } from '../../src/services/couch/dbs-info';
-import { CouchDesignInfo, CouchDesignInfoService } from '../../src/services/couch/design-info';
+import * as CouchNodeSystemLib from '../../src/libs/couch/node-system';
+import { CouchNodeSystem } from '../../src/libs/couch/node-system';
+import sinon, { SinonStub } from 'sinon';
+import * as CouchDbsInfo from '../../src/libs/couch/dbs-info';
+import { CouchDbInfo } from '../../src/libs/couch/dbs-info';
+import * as CouchDesignInfoLib from '../../src/libs/couch/design-info';
+import { CouchDesignInfo } from '../../src/libs/couch/design-info';
 import { LocalDiskUsageService } from '../../src/services/local-disk-usage';
 import { createDbInfo, createDesignInfo, createNodeSystem } from '../utils/data-models';
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import { NonEmptyArray } from 'effect/Array';
 import { genWithLayer, sandbox } from '../utils/base';
+import { ChtClientService } from '../../src/services/cht-client';
 
 const DB_NAMES: NonEmptyArray<string> = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 const EXPECTED_DESIGN_INFO_ARGS = [
@@ -128,21 +132,10 @@ const initializeDesignInfoServiceGet = (designInfoServiceGet: SinonStub) => {
   designInfoServiceGet.withArgs('_users', ':staged:users').returns(Effect.succeed(usersStagedDesignInfo));
 };
 
-const nodeSystemServiceGet = sandbox.stub();
-const dbsInfoServicePost = sandbox.stub();
-const designInfoServiceGet = sandbox.stub();
 const diskUsageServiceGetSize = sandbox.stub();
 
 const run = MonitorService.Default.pipe(
-  Layer.provide(Layer.succeed(CouchNodeSystemService, {
-    get: nodeSystemServiceGet,
-  } as unknown as CouchNodeSystemService)),
-  Layer.provide(Layer.succeed(CouchDbsInfoService, {
-    post: dbsInfoServicePost,
-  } as unknown as CouchDbsInfoService)),
-  Layer.provide(Layer.succeed(CouchDesignInfoService, {
-    get: designInfoServiceGet,
-  } as unknown as CouchDesignInfoService)),
+  Layer.provide(Layer.succeed(ChtClientService, {} as unknown as ChtClientService)),
   Layer.provide(Layer.succeed(LocalDiskUsageService, {
     getSize: diskUsageServiceGetSize,
   } as unknown as LocalDiskUsageService)),
@@ -150,6 +143,16 @@ const run = MonitorService.Default.pipe(
 );
 
 describe('Monitor service', () => {
+  let nodeSystemServiceGet: SinonStub;
+  let designInfoServiceGet: SinonStub;
+  let dbsInfoServicePost: SinonStub;
+
+  beforeEach(() => {
+    nodeSystemServiceGet = sinon.stub(CouchNodeSystemLib, 'getCouchNodeSystem');
+    designInfoServiceGet = sinon.stub(CouchDesignInfoLib, 'getDesignInfo');
+    dbsInfoServicePost = sinon.stub(CouchDbsInfo, 'getDbsInfoByName');
+  });
+
   describe('get', () => {
     it('returns empty monitoring data', run(function* () {
       const nodeSystem = createNodeSystem();
@@ -305,7 +308,7 @@ describe('Monitor service', () => {
 
         expect(nodeSystemServiceGet.calledOnceWithExactly()).to.be.true;
         expect(dbsInfoServicePost.calledOnceWithExactly(DB_NAMES)).to.be.true;
-        expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS.slice(0, 12));
+        expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
         expect(diskUsageServiceGetSize.notCalled).to.be.true;
       } else {
         expect.fail('Expected error to be thrown');

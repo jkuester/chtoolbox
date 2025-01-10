@@ -2,50 +2,41 @@ import { describe, it } from 'mocha';
 import { Chunk, Effect, Layer, Stream } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
-import { CouchDbsInfoService } from '../../src/services/couch/dbs-info';
-import { CouchDesignInfoService } from '../../src/services/couch/design-info';
+import * as CouchDbsInfo from '../../src/libs/couch/dbs-info';
+import * as CouchDesignInfo from '../../src/libs/couch/design-info';
 import { CompactService } from '../../src/services/compact';
-import { CouchDesignDocsService } from '../../src/services/couch/design-docs';
-import { CouchCompactService } from '../../src/services/couch/compact';
-import * as CouchActiveTasksSvc from '../../src/services/couch/active-tasks';
-import { CouchActiveTasksService } from '../../src/services/couch/active-tasks';
+import * as CouchDesignDocs from '../../src/libs/couch/design-docs';
+import * as CouchActiveTasksSvc from '../../src/libs/couch/active-tasks';
+import * as CouchCompactService from '../../src/libs/couch/compact';
 import * as core from '../../src/libs/core';
-import { genWithLayer, sandbox } from '../utils/base';
+import { genWithLayer } from '../utils/base';
+import { ChtClientService } from '../../src/services/cht-client';
 
-const dbsInfoSvcGetDbNames = sandbox.stub();
-const dbInfoSvcGet = sandbox.stub();
-const designDocsSvcGetNames = sandbox.stub();
-const compactSvcCompactDb = sandbox.stub();
-const compactSvcCompactDesign = sandbox.stub();
-const designInfoSvcGet = sandbox.stub();
-const activeTasksStream = sandbox.stub();
-
-const run = CompactService.Default.pipe(
-  Layer.provide(Layer.succeed(CouchDbsInfoService, {
-    getDbNames: dbsInfoSvcGetDbNames,
-    get: dbInfoSvcGet,
-  } as unknown as CouchDbsInfoService)),
-  Layer.provide(Layer.succeed(CouchDesignDocsService, {
-    getNames: designDocsSvcGetNames,
-  } as unknown as CouchDesignDocsService)),
-  Layer.provide(Layer.succeed(CouchCompactService, {
-    compactDb: compactSvcCompactDb,
-    compactDesign: compactSvcCompactDesign,
-  } as unknown as CouchCompactService)),
-  Layer.provide(Layer.succeed(CouchDesignInfoService, {
-    get: designInfoSvcGet,
-  } as unknown as CouchDesignInfoService)),
-  Layer.provide(Layer.succeed(CouchActiveTasksService, {
-    stream: activeTasksStream,
-  } as unknown as CouchActiveTasksService)),
-  genWithLayer,
-);
+const run = CompactService.Default
+  .pipe(
+    Layer.provideMerge(Layer.succeed(ChtClientService, {} as unknown as ChtClientService)),
+    genWithLayer,
+  );
 
 describe('Compact service', () => {
+  let activeTasksStream: SinonStub;
+  let designInfoSvcGet: SinonStub;
+  let designDocsSvcGetNames: SinonStub;
+  let dbsInfoSvcGetDbNames: SinonStub;
+  let dbInfoSvcGet: SinonStub;
+  let compactSvcCompactDb: SinonStub;
+  let compactSvcCompactDesign: SinonStub;
   let filterStreamByType: SinonStub;
   let untilEmptyCount: SinonStub;
 
   beforeEach(() => {
+    activeTasksStream = sinon.stub(CouchActiveTasksSvc, 'streamActiveTasks');
+    designInfoSvcGet = sinon.stub(CouchDesignInfo, 'getDesignInfo');
+    designDocsSvcGetNames = sinon.stub(CouchDesignDocs, 'getDesignDocNames');
+    dbsInfoSvcGetDbNames = sinon.stub(CouchDbsInfo, 'getDbNames');
+    dbInfoSvcGet = sinon.stub(CouchDbsInfo, 'getAllDbsInfo');
+    compactSvcCompactDb = sinon.stub(CouchCompactService, 'compactDb');
+    compactSvcCompactDesign = sinon.stub(CouchCompactService, 'compactDesign');
     filterStreamByType = sinon
       .stub(CouchActiveTasksSvc, 'filterStreamByType')
       .returns(sinon.stub().returnsArg(0));

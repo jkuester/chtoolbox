@@ -1,5 +1,5 @@
 import { Command } from '@effect/cli';
-export declare const doc: Command.Command<"doc", import("../../services/environment").EnvironmentService | Command.Command.Context<"chtx"> | import("../../services/couch/active-tasks").CouchActiveTasksService | import("../../services/replicate").ReplicateService | import("@effect/platform/Terminal").Terminal | import("../../services/test-data-generator").TestDataGeneratorService | import("../../services/purge").PurgeService, Error | import("@effect/platform/Terminal").QuitException | import("effect/Cron").ParseError, {
+export declare const doc: Command.Command<"doc", import("../../services/environment").EnvironmentService | import("../../services/cht-client").ChtClientService | Command.Command.Context<"chtx"> | import("../../services/replicate").ReplicateService | import("@effect/platform/Terminal").Terminal | import("../../services/test-data-generator").TestDataGeneratorService | import("../../services/purge").PurgeService, Error | import("@effect/platform/Terminal").QuitException | import("effect/Cron").ParseError, {
     readonly subcommand: import("effect/Option").Option<{
         readonly designScriptPath: string;
     } | {

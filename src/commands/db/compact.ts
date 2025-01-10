@@ -4,13 +4,14 @@ import { initializeUrl } from '../../index';
 import { CompactService } from '../../services/compact';
 import { mergeArrayStreams } from '../../libs/core';
 import {
-  CouchActiveTask,
+  CouchActiveTask, CouchActiveTaskStream,
   getDbName,
   getDesignName,
   getDisplayDictByPid,
   getPid,
   getProgressPct
-} from '../../services/couch/active-tasks';
+} from '../../libs/couch/active-tasks';
+import { ChtClientService } from '../../services/cht-client';
 
 const getDesignDisplayName = (task: CouchActiveTask) => getDesignName(task)
   .pipe(
@@ -25,8 +26,8 @@ const getTaskDisplayData = (task: CouchActiveTask) => ({
 });
 
 export const streamActiveTasks = (
-  taskStream: Stream.Stream<CouchActiveTask[], Error>
-): Effect.Effect<void, Error> => taskStream.pipe(
+  taskStream: CouchActiveTaskStream
+): Effect.Effect<void, Error, ChtClientService> => taskStream.pipe(
   Stream.map(Array.map(getTaskDisplayData)),
   Stream.map(getDisplayDictByPid),
   Stream.runForEach(taskDict => Console.clear.pipe(

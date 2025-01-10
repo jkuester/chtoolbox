@@ -37,9 +37,9 @@ export const pouchDB = (
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export const promisedGetPort = () => import('get-port');
 
-const zipArrayStreams = <T>(
-  self: Stream.Stream<T[], Error>,
-  other: Stream.Stream<T[], Error>
+const zipArrayStreams = <T, Q>(
+  self: Stream.Stream<T[], Error, Q>,
+  other: Stream.Stream<T[], Error, Q>
 ) => Stream.zipAllWith(self, {
     other,
     onSelf: Function.identity,
@@ -47,6 +47,5 @@ const zipArrayStreams = <T>(
     onBoth: (s, o) => [...s, ...o],
   });
 
-export const mergeArrayStreams = <T>(streams: Stream.Stream<T[], Error>[]): Stream.Stream<T[], Error> => Array
+export const mergeArrayStreams = <T, Q>(streams: Stream.Stream<T[], Error, Q>[]): Stream.Stream<T[], Error, Q> => Array
   .reduce(streams.slice(1), streams[0], zipArrayStreams);
-

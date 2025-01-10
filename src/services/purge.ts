@@ -2,7 +2,8 @@ import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { AllDocsResponseStream, PouchDBService, streamAllDocPages, streamQueryPages } from './pouchdb';
 import { Array, Option, pipe, Predicate, Schema, Stream, String } from 'effect';
-import { CouchPurgeService, purgeFrom } from './couch/purge';
+import { purgeFrom } from '../libs/couch/purge';
+import { ChtClientService } from './cht-client';
 import AllDocsResponse = PouchDB.Core.AllDocsResponse;
 import AllDocsWithKeysResponse = PouchDB.Core.AllDocsWithKeysResponse;
 
@@ -71,15 +72,15 @@ const purgeByViewQuery = (dbName: string, viewName: string) => (
 
 const serviceContext = Effect
   .all([
-    CouchPurgeService,
+    ChtClientService,
     PouchDBService,
   ])
   .pipe(Effect.map(([
-    purge,
+    chtClient,
     pouch,
   ]) => Context
     .make(PouchDBService, pouch)
-    .pipe(Context.add(CouchPurgeService, purge))));
+    .pipe(Context.add(ChtClientService, chtClient))));
 
 export class PurgeService extends Effect.Service<PurgeService>()('chtoolbox/PurgeService', {
   effect: serviceContext.pipe(Effect.map(context => ({

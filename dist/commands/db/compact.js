@@ -6,7 +6,7 @@ const effect_1 = require("effect");
 const index_1 = require("../../index");
 const compact_1 = require("../../services/compact");
 const core_1 = require("../../libs/core");
-const active_tasks_1 = require("../../services/couch/active-tasks");
+const active_tasks_1 = require("../../libs/couch/active-tasks");
 const getDesignDisplayName = (task) => (0, active_tasks_1.getDesignName)(task)
     .pipe(effect_1.Option.map(design => `/${design}`), effect_1.Option.getOrElse(() => effect_1.String.empty));
 const getTaskDisplayData = (task) => ({

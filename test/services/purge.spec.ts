@@ -5,9 +5,9 @@ import * as pouchDBService from '../../src/services/pouchdb';
 import { PouchDBService } from '../../src/services/pouchdb';
 import { expect } from 'chai';
 import { PurgeService } from '../../src/services/purge';
-import * as couchPurgeService from '../../src/services/couch/purge';
-import { CouchPurgeService } from '../../src/services/couch/purge';
+import * as couchPurgeService from '../../src/libs/couch/purge';
 import { genWithLayer, sandbox } from '../utils/base';
+import { ChtClientService } from '../../src/services/cht-client';
 
 const FAKE_DB = { name: 'test-db', allDocs: () => null } as const;
 
@@ -18,7 +18,7 @@ const run = PurgeService.Default.pipe(
   Layer.provide(Layer.succeed(PouchDBService, {
     get: pouchGet,
   } as unknown as PouchDBService),),
-  Layer.provide(Layer.succeed(CouchPurgeService, {} as unknown as CouchPurgeService)),
+  Layer.provide(Layer.succeed(ChtClientService, {} as unknown as ChtClientService)),
   genWithLayer,
 );
 

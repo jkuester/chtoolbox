@@ -1,9 +1,5 @@
 import * as Effect from 'effect/Effect';
-import { CouchDbsInfoService } from './couch/dbs-info';
-import { CouchDesignDocsService } from './couch/design-docs';
-import { CouchDesignService } from './couch/design';
-import { CouchViewService } from './couch/view';
-import { CouchDesignInfoService } from './couch/design-info';
+import { ChtClientService } from './cht-client';
 declare const WarmViewsService_base: Effect.Service.Class<WarmViewsService, "chtoolbox/WarmViewsService", {
     readonly effect: Effect.Effect<{
         warmAll: () => Effect.Effect<void, Error>;
@@ -11,7 +7,7 @@ declare const WarmViewsService_base: Effect.Service.Class<WarmViewsService, "cht
             dbName: string;
             designId: string;
         }[], Error>;
-    }, never, CouchDbsInfoService | CouchDesignInfoService | CouchDesignService | CouchViewService | CouchDesignDocsService>;
+    }, never, ChtClientService>;
     readonly accessors: true;
 }>;
 export declare class WarmViewsService extends WarmViewsService_base {

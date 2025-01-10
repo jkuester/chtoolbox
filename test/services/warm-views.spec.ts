@@ -1,41 +1,37 @@
 import { describe, it } from 'mocha';
 import { Effect, Layer } from 'effect';
 import { expect } from 'chai';
-import { CouchDbsInfoService } from '../../src/services/couch/dbs-info';
-import { CouchDesignInfoService } from '../../src/services/couch/design-info';
-import { CouchDesignDocsService } from '../../src/services/couch/design-docs';
+import * as CouchDbsInfo from '../../src/libs/couch/dbs-info';
+import * as CouchDesignInfoLib from '../../src/libs/couch/design-info';
+import * as CouchDesignDocs from '../../src/libs/couch/design-docs';
 import { createDesignInfo } from '../utils/data-models';
 import { WarmViewsService } from '../../src/services/warm-views';
-import { CouchDesignService } from '../../src/services/couch/design';
-import { CouchViewService } from '../../src/services/couch/view';
-import { genWithLayer, sandbox } from '../utils/base';
-
-const dbsInfoSvcGetDbNames = sandbox.stub();
-const designDocsSvcGetNames = sandbox.stub();
-const designSvcGetViewNames = sandbox.stub();
-const viewSvcWarm = sandbox.stub();
-const designInfoSvcGet = sandbox.stub();
+import * as CouchDesign from '../../src/libs/couch/design';
+import * as CouchView from '../../src/libs/couch/view';
+import { genWithLayer } from '../utils/base';
+import { ChtClientService } from '../../src/services/cht-client';
+import sinon, { SinonStub } from 'sinon';
 
 const run = WarmViewsService.Default.pipe(
-  Layer.provide(Layer.succeed(CouchDbsInfoService, {
-    getDbNames: dbsInfoSvcGetDbNames,
-  } as unknown as CouchDbsInfoService)),
-  Layer.provide(Layer.succeed(CouchDesignDocsService, {
-    getNames: designDocsSvcGetNames,
-  } as unknown as CouchDesignDocsService)),
-  Layer.provide(Layer.succeed(CouchDesignService, {
-    getViewNames: designSvcGetViewNames,
-  } as unknown as CouchDesignService)),
-  Layer.provide(Layer.succeed(CouchViewService, {
-    warm: viewSvcWarm,
-  } as unknown as CouchViewService)),
-  Layer.provide(Layer.succeed(CouchDesignInfoService, {
-    get: designInfoSvcGet,
-  } as unknown as CouchDesignInfoService)),
+  Layer.provide(Layer.succeed(ChtClientService, {} as unknown as ChtClientService)),
   genWithLayer,
 );
 
 describe('Warm Views Service', () => {
+  let viewSvcWarm: SinonStub;
+  let designInfoSvcGet: SinonStub;
+  let designDocsSvcGetNames: SinonStub;
+  let designSvcGetViewNames: SinonStub;
+  let dbsInfoSvcGetDbNames: SinonStub;
+
+  beforeEach(() => {
+    viewSvcWarm = sinon.stub(CouchView, 'warmView');
+    designInfoSvcGet = sinon.stub(CouchDesignInfoLib, 'getDesignInfo');
+    designDocsSvcGetNames = sinon.stub(CouchDesignDocs, 'getDesignDocNames');
+    designSvcGetViewNames = sinon.stub(CouchDesign, 'getViewNames');
+    dbsInfoSvcGetDbNames = sinon.stub(CouchDbsInfo, 'getDbNames');
+  });
+
   describe('warmAll', () => {
     it('warms all views for all databases', run(function* () {
       dbsInfoSvcGetDbNames.returns(Effect.succeed(['medic', 'test', 'sentinel']));

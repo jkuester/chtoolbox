@@ -4,16 +4,14 @@ exports.ls = void 0;
 const cli_1 = require("@effect/cli");
 const effect_1 = require("effect");
 const index_1 = require("../../index");
-const design_docs_1 = require("../../services/couch/design-docs");
-const dbs_info_1 = require("../../services/couch/dbs-info");
+const design_docs_1 = require("../../libs/couch/design-docs");
+const dbs_info_1 = require("../../libs/couch/dbs-info");
 const console_1 = require("../../libs/console");
-const printDesignDocNames = (dbName) => design_docs_1.CouchDesignDocsService
-    .getNames(dbName)
+const printDesignDocNames = (dbName) => (0, design_docs_1.getDesignDocNames)(dbName)
     .pipe(effect_1.Effect.flatMap(console_1.logJson));
 const getDisplayDict = (data) => effect_1.Array.reduce(data, {}, (dict, [designNames, dbName]) => effect_1.Record.set(dbName, designNames)(dict));
-const printAllDesignDocNames = dbs_info_1.CouchDbsInfoService
-    .getDbNames()
-    .pipe(effect_1.Effect.flatMap(dbNames => (0, effect_1.pipe)(effect_1.Array.map(dbNames, design_docs_1.CouchDesignDocsService.getNames), effect_1.Effect.all, effect_1.Effect.map(effect_1.Array.zip(dbNames)), effect_1.Effect.map(getDisplayDict))), effect_1.Effect.flatMap(console_1.logJson));
+const printAllDesignDocNames = (0, dbs_info_1.getDbNames)()
+    .pipe(effect_1.Effect.flatMap(dbNames => (0, effect_1.pipe)(effect_1.Array.map(dbNames, design_docs_1.getDesignDocNames), effect_1.Effect.all, effect_1.Effect.map(effect_1.Array.zip(dbNames)), effect_1.Effect.map(getDisplayDict))), effect_1.Effect.flatMap(console_1.logJson));
 const database = cli_1.Args
     .text({ name: 'database' })
     .pipe(cli_1.Args.withDescription('The database with the designs to list'), cli_1.Args.optional);

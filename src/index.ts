@@ -2,30 +2,21 @@
 import { Command, Options } from '@effect/cli';
 import { NodeContext, NodeHttpClient, NodeRuntime } from '@effect/platform-node';
 import { Effect, Layer, Option, Redacted, String } from 'effect';
-import { CouchNodeSystemService } from './services/couch/node-system';
 import { ChtClientService } from './services/cht-client';
-import { CouchDbsInfoService } from './services/couch/dbs-info';
 import { monitor } from './commands/monitor';
 import packageJson from '../package.json';
 import { EnvironmentService, } from './services/environment';
-import { CouchDesignInfoService } from './services/couch/design-info';
 import { MonitorService } from './services/monitor';
 import { LocalDiskUsageService } from './services/local-disk-usage';
-import { CouchDesignService } from './services/couch/design';
-import { CouchViewService } from './services/couch/view';
-import { CouchDesignDocsService } from './services/couch/design-docs';
 import { WarmViewsService } from './services/warm-views';
 import { warmViews } from './commands/warm-views';
-import { CouchCompactService } from './services/couch/compact';
 import { CompactService } from './services/compact';
 import { activeTasks } from './commands/active-tasks';
-import { CouchActiveTasksService } from './services/couch/active-tasks';
 import { PouchDBService } from './services/pouchdb';
 import { ReplicateService } from './services/replicate';
 import { db } from './commands/db';
 import { design } from './commands/design';
 import { doc } from './commands/doc';
-import { CouchPurgeService } from './services/couch/purge';
 import { PurgeService } from './services/purge';
 import { upgrade } from './commands/upgrade';
 import { ChtUpgradeService } from './services/cht/upgrade';
@@ -71,19 +62,6 @@ const cli = Command.run(command, {
   version: packageJson.version
 });
 
-const couchServices = CouchActiveTasksService
-  .Default
-  .pipe(
-    Layer.provideMerge(CouchCompactService.Default),
-    Layer.provideMerge(CouchNodeSystemService.Default),
-    Layer.provideMerge(CouchDbsInfoService.Default),
-    Layer.provideMerge(CouchDesignDocsService.Default),
-    Layer.provideMerge(CouchDesignInfoService.Default),
-    Layer.provideMerge(CouchDesignService.Default),
-    Layer.provideMerge(CouchPurgeService.Default),
-    Layer.provideMerge(CouchViewService.Default),
-  );
-
 const httpClientNoSslVerify = Layer.provide(NodeHttpClient.layerWithoutAgent.pipe(
   Layer.provide(NodeHttpClient.makeAgentLayer({ rejectUnauthorized: false }))
 ));
@@ -100,7 +78,6 @@ cli(process.argv)
     Effect.provide(ReplicateService.Default),
     Effect.provide(ChtUpgradeService.Default),
     Effect.provide(TestDataGeneratorService.Default),
-    Effect.provide(couchServices),
     Effect.provide(PouchDBService.Default),
     Effect.provide(ChtClientService.Default.pipe(httpClientNoSslVerify)),
     Effect.provide(EnvironmentService.Default),

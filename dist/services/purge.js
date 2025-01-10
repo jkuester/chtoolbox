@@ -28,7 +28,8 @@ const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
 const pouchdb_1 = require("./pouchdb");
 const effect_1 = require("effect");
-const purge_1 = require("./couch/purge");
+const purge_1 = require("../libs/couch/purge");
+const cht_client_1 = require("./cht-client");
 // _purge endpoint only accepts batches of 100.
 // skip: 0 just keeps getting the next 100 (after the last was purged)
 const PAGE_OPTIONS = { limit: 100, skip: 0 };
@@ -54,12 +55,12 @@ const purgeByViewQuery = (dbName, viewName) => (opts) => pouchdb_1.PouchDBServic
     .pipe(Effect.map((0, pouchdb_1.streamQueryPages)(viewName, opts)), Effect.map(effect_1.Stream.tap(purgeDocsFromResponse(dbName))));
 const serviceContext = Effect
     .all([
-    purge_1.CouchPurgeService,
+    cht_client_1.ChtClientService,
     pouchdb_1.PouchDBService,
 ])
-    .pipe(Effect.map(([purge, pouch,]) => Context
+    .pipe(Effect.map(([chtClient, pouch,]) => Context
     .make(pouchdb_1.PouchDBService, pouch)
-    .pipe(Context.add(purge_1.CouchPurgeService, purge))));
+    .pipe(Context.add(cht_client_1.ChtClientService, chtClient))));
 class PurgeService extends Effect.Service()('chtoolbox/PurgeService', {
     effect: serviceContext.pipe(Effect.map(context => ({
         purgeAll: (dbName, purgeDdocs = false) => pouchdb_1.PouchDBService

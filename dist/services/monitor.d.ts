@@ -1,10 +1,11 @@
 import * as Effect from 'effect/Effect';
-import { CouchDbInfo, CouchDbsInfoService } from './couch/dbs-info';
-import { CouchDesignInfo, CouchDesignInfoService } from './couch/design-info';
-import { CouchNodeSystem, CouchNodeSystemService } from './couch/node-system';
+import { CouchDbInfo } from '../libs/couch/dbs-info';
+import { CouchDesignInfo } from '../libs/couch/design-info';
+import { CouchNodeSystem } from '../libs/couch/node-system';
 import { Option } from 'effect';
 import { LocalDiskUsageService } from './local-disk-usage';
 import { PlatformError } from '@effect/platform/Error';
+import { ChtClientService } from './cht-client';
 interface DatabaseInfo extends CouchDbInfo {
     designs: CouchDesignInfo[];
 }
@@ -18,7 +19,7 @@ declare const MonitorService_base: Effect.Service.Class<MonitorService, "chtoolb
         get: (directory: Option.Option<string>) => Effect.Effect<MonitoringData, Error | PlatformError>;
         getCsvHeader: (directory: Option.Option<string>) => string[];
         getAsCsv: (directory: Option.Option<string>) => Effect.Effect<string[], Error | PlatformError>;
-    }, never, CouchNodeSystemService | CouchDbsInfoService | CouchDesignInfoService | LocalDiskUsageService>;
+    }, never, ChtClientService | LocalDiskUsageService>;
     readonly accessors: true;
 }>;
 export declare class MonitorService extends MonitorService_base {

@@ -4,13 +4,13 @@ exports.inspect = void 0;
 const cli_1 = require("@effect/cli");
 const effect_1 = require("effect");
 const index_1 = require("../../index");
-const design_info_1 = require("../../services/couch/design-info");
-const design_1 = require("../../services/couch/design");
+const design_info_1 = require("../../libs/couch/design-info");
+const design_1 = require("../../libs/couch/design");
 const console_1 = require("../../libs/console");
 const getViewData = (database) => (design) => effect_1.Effect
     .all([
-    design_info_1.CouchDesignInfoService.get(database, design),
-    design_1.CouchDesignService.getViewNames(database, design),
+    (0, design_info_1.getDesignInfo)(database, design),
+    (0, design_1.getViewNames)(database, design),
 ])
     .pipe(effect_1.Effect.map(([designInfo, views]) => ({
     ...designInfo,

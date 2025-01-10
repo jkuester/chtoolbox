@@ -4,7 +4,7 @@ exports.activeTasks = void 0;
 const cli_1 = require("@effect/cli");
 const effect_1 = require("effect");
 const index_1 = require("../index");
-const active_tasks_1 = require("../services/couch/active-tasks");
+const active_tasks_1 = require("../libs/couch/active-tasks");
 const console_1 = require("../libs/console");
 const getDesignDisplayName = (task) => (0, active_tasks_1.getDesignName)(task)
     .pipe(effect_1.Option.map(design => `/${design}`), effect_1.Option.getOrElse(() => effect_1.String.empty));
@@ -18,14 +18,12 @@ const getTaskDisplayData = (task) => ({
         .pipe(effect_1.DateTime.formatLocal({ hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })),
 });
 const getPrintableTasks = (tasks) => (0, effect_1.pipe)(tasks, effect_1.Option.liftPredicate(effect_1.Array.isNonEmptyArray), effect_1.Option.map(effect_1.Array.map(getTaskDisplayData)), effect_1.Option.map(active_tasks_1.getDisplayDictByPid), effect_1.Option.getOrElse(() => 'No active tasks.'));
-const printCurrentTasks = active_tasks_1.CouchActiveTasksService
-    .get()
+const printCurrentTasks = (0, active_tasks_1.getActiveTasks)()
     .pipe(effect_1.Effect.map(getPrintableTasks), effect_1.Effect.tap(effect_1.Console.table));
-const followActiveTasks = active_tasks_1.CouchActiveTasksService
-    .stream()
-    .pipe(effect_1.Effect.flatMap(effect_1.Stream.runForEach(tasks => effect_1.Effect
+const followActiveTasks = (0, active_tasks_1.streamActiveTasks)()
+    .pipe(effect_1.Stream.runForEach(tasks => effect_1.Effect
     .succeed(getPrintableTasks(tasks))
-    .pipe(effect_1.Effect.tap(tasks => (0, console_1.clearThen)(effect_1.Console.table(tasks)))))));
+    .pipe(effect_1.Effect.tap(tasks => (0, console_1.clearThen)(effect_1.Console.table(tasks))))));
 const follow = cli_1.Options
     .boolean('follow')
     .pipe(cli_1.Options.withAlias('f'), cli_1.Options.withDescription('Continuously poll the active tasks.'), cli_1.Options.withDefault(false));
