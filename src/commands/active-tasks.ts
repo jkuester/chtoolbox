@@ -3,12 +3,13 @@ import { Array, Console, DateTime, Effect, Number, Option, pipe, Stream, String 
 import { initializeUrl } from '../index';
 import {
   CouchActiveTask,
-  CouchActiveTasksService,
+  getActiveTasks,
   getDbName,
   getDesignName,
   getDisplayDictByPid,
   getPid,
-  getProgressPct
+  getProgressPct,
+  streamActiveTasks
 } from '../services/couch/active-tasks';
 
 import { clearThen } from '../libs/console';
@@ -37,20 +38,16 @@ const getPrintableTasks = (tasks: CouchActiveTask[]) => pipe(
   Option.getOrElse(() => 'No active tasks.'),
 );
 
-const printCurrentTasks = CouchActiveTasksService
-  .get()
+const printCurrentTasks = getActiveTasks()
   .pipe(
     Effect.map(getPrintableTasks),
     Effect.tap(Console.table),
   );
 
-const followActiveTasks = CouchActiveTasksService
-  .stream()
-  .pipe(
-    Effect.flatMap(Stream.runForEach(tasks => Effect
-      .succeed(getPrintableTasks(tasks))
-      .pipe(Effect.tap(tasks => clearThen(Console.table(tasks)))))),
-  );
+const followActiveTasks = streamActiveTasks()
+  .pipe(Stream.runForEach(tasks => Effect
+    .succeed(getPrintableTasks(tasks))
+    .pipe(Effect.tap(tasks => clearThen(Console.table(tasks))))));
 
 const follow = Options
   .boolean('follow')

@@ -5,13 +5,14 @@ import sinon, { SinonStub } from 'sinon';
 import { ChtClientService } from '../../../src/services/cht-client';
 import { HttpClientRequest } from '@effect/platform';
 import {
-  CouchActiveTasksService,
   filterStreamByType,
+  getActiveTasks,
   getDbName,
   getDesignName,
   getDisplayDictByPid,
   getPid,
-  getProgressPct
+  getProgressPct,
+  streamActiveTasks
 } from '../../../src/services/couch/active-tasks';
 import { createActiveTask } from '../../utils/data-models';
 import * as schedule from 'effect/Schedule';
@@ -36,10 +37,9 @@ const TASK_MIN_DATA = createActiveTask();
 
 const couchRequest = sandbox.stub();
 
-const run = CouchActiveTasksService.Default.pipe(
-  Layer.provide(Layer.succeed(ChtClientService, { request: couchRequest } as unknown as ChtClientService)),
-  genWithLayer,
-);
+const run = Layer
+  .succeed(ChtClientService, { request: couchRequest } as unknown as ChtClientService)
+  .pipe(genWithLayer);
 
 describe('Couch Active Tasks Service', () => {
   let requestGet: SinonStub;
@@ -55,7 +55,7 @@ describe('Couch Active Tasks Service', () => {
         json: Effect.succeed([TASK_LATER, TASK_ALL_DATA, TASK_MIN_DATA]),
       }));
 
-      const tasks = yield* CouchActiveTasksService.get();
+      const tasks = yield* getActiveTasks();
 
       expect(tasks).to.deep.equal([TASK_MIN_DATA, TASK_ALL_DATA, TASK_LATER]);
       expect(requestGet.calledOnceWithExactly('/_active_tasks')).to.be.true;
@@ -68,7 +68,7 @@ describe('Couch Active Tasks Service', () => {
         json: Effect.succeed([]),
       }));
 
-      const tasks = yield* CouchActiveTasksService.get();
+      const tasks = yield* getActiveTasks();
 
       expect(tasks).to.deep.equal([]);
       expect(requestGet.calledOnceWithExactly('/_active_tasks')).to.be.true;
@@ -91,8 +91,7 @@ describe('Couch Active Tasks Service', () => {
       scheduleSpaced.returns(Schedule.recurs(2));
       const expectedInterval = 5000;
 
-      const service = yield* CouchActiveTasksService;
-      const taskStream = service.stream(expectedInterval);
+      const taskStream = streamActiveTasks(expectedInterval);
 
       expect(scheduleSpaced.calledOnceWithExactly(expectedInterval)).to.be.true;
       expect(requestGet.notCalled).to.be.true;
@@ -116,8 +115,7 @@ describe('Couch Active Tasks Service', () => {
       }));
       scheduleSpaced.returns(Schedule.once);
 
-      const service = yield* CouchActiveTasksService;
-      const taskStream = service.stream();
+      const taskStream = streamActiveTasks();
 
       expect(scheduleSpaced.calledOnceWithExactly(1000)).to.be.true;
       expect(requestGet.notCalled).to.be.true;

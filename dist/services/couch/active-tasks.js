@@ -1,31 +1,7 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CouchActiveTasksService = exports.filterStreamByType = exports.getDisplayDictByPid = exports.getProgressPct = exports.getPid = exports.getDbName = exports.getDesignName = exports.CouchActiveTask = void 0;
+exports.streamActiveTasks = exports.getActiveTasks = exports.filterStreamByType = exports.getDisplayDictByPid = exports.getProgressPct = exports.getPid = exports.getDbName = exports.getDesignName = exports.CouchActiveTask = void 0;
 const platform_1 = require("@effect/platform");
-const Context = __importStar(require("effect/Context"));
 const cht_client_1 = require("../cht-client");
 const effect_1 = require("effect");
 const ENDPOINT = '/_active_tasks';
@@ -64,14 +40,8 @@ const filterStreamByType = (...types) => (taskStream) => taskStream.pipe(effect_
 exports.filterStreamByType = filterStreamByType;
 const orderByStartedOn = effect_1.Order.make((a, b) => effect_1.Number.Order(a.started_on, b.started_on));
 const activeTasks = cht_client_1.ChtClientService.pipe(effect_1.Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(ENDPOINT))), effect_1.Effect.flatMap(CouchActiveTask.decodeResponse), effect_1.Effect.scoped, effect_1.Effect.map(effect_1.Array.sort(orderByStartedOn)));
-const serviceContext = cht_client_1.ChtClientService.pipe(effect_1.Effect.map(couch => Context.make(cht_client_1.ChtClientService, couch)));
-class CouchActiveTasksService extends effect_1.Effect.Service()('chtoolbox/CouchActiveTasksService', {
-    effect: serviceContext.pipe(effect_1.Effect.map(context => ({
-        get: () => activeTasks.pipe(effect_1.Effect.provide(context)),
-        stream: (interval = 1000) => effect_1.Stream.repeat(activeTasks.pipe(effect_1.Effect.provide(context)), effect_1.Schedule.spaced(interval)),
-    }))),
-    accessors: true,
-}) {
-}
-exports.CouchActiveTasksService = CouchActiveTasksService;
+const getActiveTasks = () => activeTasks;
+exports.getActiveTasks = getActiveTasks;
+const streamActiveTasks = (interval = 1000) => effect_1.Stream.repeat(activeTasks, effect_1.Schedule.spaced(interval));
+exports.streamActiveTasks = streamActiveTasks;
 //# sourceMappingURL=active-tasks.js.map

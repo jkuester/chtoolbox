@@ -5,11 +5,11 @@ import { getDbNames } from '../libs/couch/dbs-info';
 import { getDesignDocNames } from '../libs/couch/design-docs';
 import { compactDb, compactDesign } from '../libs/couch/compact';
 import {
-  CouchActiveTasksService,
   CouchActiveTaskStream,
   filterStreamByType,
   getDbName,
-  getDesignName
+  getDesignName,
+  streamActiveTasks
 } from './couch/active-tasks';
 import { untilEmptyCount } from '../libs/core';
 import { ChtClientService } from './cht-client';
@@ -41,10 +41,8 @@ const compactAll = (compactDesigns: boolean) => getDbNames()
     Effect.flatMap(Effect.all),
   );
 
-const streamActiveTasks = () => CouchActiveTasksService.pipe(
-  Effect.map(service => service.stream()),
-  Effect.map(Stream.takeUntilEffect(untilEmptyCount(5))),
-);
+const streamActiveTasksUntilEmpty = () => streamActiveTasks()
+  .pipe(Stream.takeUntilEffect(untilEmptyCount(5)));
 
 const getActiveTaskTypeFilter = (compactDesigns: boolean) => pipe(
   [TYPE_DB_COMPACT, TYPE_VIEW_COMPACT],
@@ -53,37 +51,25 @@ const getActiveTaskTypeFilter = (compactDesigns: boolean) => pipe(
   types => filterStreamByType(...types),
 );
 
-const streamAll = (compactDesigns: boolean) => streamActiveTasks()
-  .pipe(Effect.map(getActiveTaskTypeFilter(compactDesigns)));
+const streamAll = (compactDesigns: boolean) => streamActiveTasksUntilEmpty()
+  .pipe(getActiveTaskTypeFilter(compactDesigns));
 
 const streamDb = (dbName: string, compactDesigns: boolean) => streamAll(compactDesigns)
-  .pipe(Effect.map(Stream.map(Array.filter(task => getDbName(task) === dbName))));
+  .pipe(Stream.map(Array.filter(task => getDbName(task) === dbName)));
 
 
-const streamDesign = (dbName: string, designName: string) => streamActiveTasks()
+const streamDesign = (dbName: string, designName: string) => streamActiveTasksUntilEmpty()
   .pipe(
-    Effect.map(filterStreamByType(TYPE_VIEW_COMPACT)),
-    Effect.map(Stream.map(Array.filter(task => getDbName(task) === dbName))),
-    Effect.map(Stream.map(Array.filter(task => getDesignName(task)
+    filterStreamByType(TYPE_VIEW_COMPACT),
+    Stream.map(Array.filter(task => getDbName(task) === dbName)),
+    Stream.map(Array.filter(task => getDesignName(task)
       .pipe(
         Option.map(name => name === designName),
         Option.getOrElse(() => false),
-      )))),
+      ))),
   );
 
-const serviceContext = Effect
-  .all([
-    CouchActiveTasksService,
-    ChtClientService,
-  ])
-  .pipe(Effect.map(([
-    activeTasks,
-    chtClient,
-  ]) => Context
-    .make(CouchActiveTasksService, activeTasks)
-    .pipe(
-      Context.add(ChtClientService, chtClient),
-    )));
+const serviceContext = ChtClientService.pipe(Effect.map(cht => Context.make(ChtClientService, cht)));
 
 export class CompactService extends Effect.Service<CompactService>()('chtoolbox/CompactService', {
   effect: serviceContext.pipe(Effect.map(context => ({

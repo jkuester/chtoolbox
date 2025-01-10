@@ -12,7 +12,6 @@ import { WarmViewsService } from './services/warm-views';
 import { warmViews } from './commands/warm-views';
 import { CompactService } from './services/compact';
 import { activeTasks } from './commands/active-tasks';
-import { CouchActiveTasksService } from './services/couch/active-tasks';
 import { PouchDBService } from './services/pouchdb';
 import { ReplicateService } from './services/replicate';
 import { db } from './commands/db';
@@ -63,9 +62,6 @@ const cli = Command.run(command, {
   version: packageJson.version
 });
 
-const couchServices = CouchActiveTasksService
-  .Default;
-
 const httpClientNoSslVerify = Layer.provide(NodeHttpClient.layerWithoutAgent.pipe(
   Layer.provide(NodeHttpClient.makeAgentLayer({ rejectUnauthorized: false }))
 ));
@@ -82,7 +78,6 @@ cli(process.argv)
     Effect.provide(ReplicateService.Default),
     Effect.provide(ChtUpgradeService.Default),
     Effect.provide(TestDataGeneratorService.Default),
-    Effect.provide(couchServices),
     Effect.provide(PouchDBService.Default),
     Effect.provide(ChtClientService.Default.pipe(httpClientNoSslVerify)),
     Effect.provide(EnvironmentService.Default),

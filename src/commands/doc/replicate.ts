@@ -2,7 +2,7 @@ import { Args, Command, Options } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe, Predicate, Stream } from 'effect';
 import { initializeUrl } from '../../index';
 import { ReplicateService, ReplicationDoc } from '../../services/replicate';
-import { CouchActiveTask, CouchActiveTasksService } from '../../services/couch/active-tasks';
+import { CouchActiveTask, streamActiveTasks } from '../../services/couch/active-tasks';
 import { ParseError } from 'effect/Cron';
 import { clearThen } from '../../libs/console';
 
@@ -21,11 +21,10 @@ const printReplicatingDocs = (id: string) => (tasks: CouchActiveTask[]) => pipe(
   Effect.tap(Effect.logDebug('Printed replication doc task')),
 );
 
-const streamActiveTasks = (id: string) => CouchActiveTasksService
-  .stream()
+const streamReplicationTasks = (id: string) => streamActiveTasks()
   .pipe(
-    Effect.map(Stream.tap(printReplicatingDocs(id))),
-    Effect.flatMap(Stream.runDrain),
+    Stream.tap(printReplicatingDocs(id)),
+    Stream.runDrain,
   );
 
 const getReplicationDocId = (completionStream: Stream.Stream<ReplicationDoc, Error | ParseError>) => Stream
@@ -41,7 +40,7 @@ const watchReplication = (completionStream: Stream.Stream<ReplicationDoc, Error 
   .pipe(
     Effect.race(
       getReplicationDocId(completionStream)
-        .pipe(Effect.flatMap(streamActiveTasks))
+        .pipe(Effect.flatMap(streamReplicationTasks))
     ),
   );
 

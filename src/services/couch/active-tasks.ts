@@ -1,7 +1,6 @@
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
-import * as Context from 'effect/Context';
 import { ChtClientService } from '../cht-client';
-import { Array, Number, Option, Order, pipe, Record, Schedule, Schema, Stream, String, Effect } from 'effect';
+import { Array, Effect, Number, Option, Order, pipe, Record, Schedule, Schema, Stream, String } from 'effect';
 
 const ENDPOINT = '/_active_tasks';
 
@@ -59,8 +58,8 @@ const taskHasType = (types: string[]) => (task: CouchActiveTask) => pipe(
   Array.contains(task.type),
 );
 export const filterStreamByType = (...types: string[]) => (
-  taskStream: Stream.Stream<CouchActiveTask[], Error>
-): Stream.Stream<CouchActiveTask[], Error> => taskStream.pipe(Stream.map(Array.filter(taskHasType(types))));
+  taskStream: CouchActiveTaskStream
+): CouchActiveTaskStream => taskStream.pipe(Stream.map(Array.filter(taskHasType(types))));
 
 const orderByStartedOn = Order.make(
   (a: CouchActiveTask, b: CouchActiveTask) => Number.Order(a.started_on, b.started_on)
@@ -73,22 +72,11 @@ const activeTasks = ChtClientService.pipe(
   Effect.map(Array.sort(orderByStartedOn)),
 );
 
-const serviceContext = ChtClientService.pipe(Effect.map(couch => Context.make(ChtClientService, couch)));
+export const getActiveTasks = (): Effect.Effect<CouchActiveTask[], Error, ChtClientService> => activeTasks;
 
-export type CouchActiveTaskStream = Stream.Stream<CouchActiveTask[], Error>;
+export type CouchActiveTaskStream = Stream.Stream<CouchActiveTask[], Error, ChtClientService>;
 
-export class CouchActiveTasksService extends Effect.Service<CouchActiveTasksService>()(
-  'chtoolbox/CouchActiveTasksService',
-  {
-    effect: serviceContext.pipe(Effect.map(context => ({
-      get: (): Effect.Effect<CouchActiveTask[], Error> => activeTasks.pipe(Effect.provide(context)),
-      stream: (interval = 1000): CouchActiveTaskStream => Stream.repeat(
-        activeTasks.pipe(Effect.provide(context)),
-        Schedule.spaced(interval)
-      ),
-    }))),
-    accessors: true,
-  }
-) {
-}
-
+export const streamActiveTasks = (interval = 1000): CouchActiveTaskStream => Stream.repeat(
+  activeTasks,
+  Schedule.spaced(interval)
+);

@@ -1,5 +1,5 @@
 import { ChtClientService } from '../cht-client';
-import { Option, Schema, Stream, Effect } from 'effect';
+import { Effect, Option, Schema, Stream } from 'effect';
 declare const CouchActiveTask_base: Schema.Class<CouchActiveTask, {
     database: typeof Schema.String;
     design_document: Schema.UndefinedOr<typeof Schema.String>;
@@ -45,16 +45,9 @@ export declare const getProgressPct: (task: CouchActiveTask) => string;
 export declare const getDisplayDictByPid: (tasks: {
     pid: string;
 }[]) => Record<string, Record<string, string>>;
-export declare const filterStreamByType: (...types: string[]) => (taskStream: Stream.Stream<CouchActiveTask[], Error>) => Stream.Stream<CouchActiveTask[], Error>;
-export type CouchActiveTaskStream = Stream.Stream<CouchActiveTask[], Error>;
-declare const CouchActiveTasksService_base: Effect.Service.Class<CouchActiveTasksService, "chtoolbox/CouchActiveTasksService", {
-    readonly effect: Effect.Effect<{
-        get: () => Effect.Effect<CouchActiveTask[], Error>;
-        stream: (interval?: number) => CouchActiveTaskStream;
-    }, never, ChtClientService>;
-    readonly accessors: true;
-}>;
-export declare class CouchActiveTasksService extends CouchActiveTasksService_base {
-}
+export declare const filterStreamByType: (...types: string[]) => (taskStream: CouchActiveTaskStream) => CouchActiveTaskStream;
+export declare const getActiveTasks: () => Effect.Effect<CouchActiveTask[], Error, ChtClientService>;
+export type CouchActiveTaskStream = Stream.Stream<CouchActiveTask[], Error, ChtClientService>;
+export declare const streamActiveTasks: (interval?: number) => CouchActiveTaskStream;
 export {};
 //# sourceMappingURL=active-tasks.d.ts.map
