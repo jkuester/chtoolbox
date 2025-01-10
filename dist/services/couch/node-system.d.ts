@@ -20,13 +20,6 @@ declare const CouchNodeSystem_base: Schema.Class<CouchNodeSystem, {
 export declare class CouchNodeSystem extends CouchNodeSystem_base {
     static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<CouchNodeSystem, import("effect/ParseResult").ParseError | E, never>;
 }
-declare const CouchNodeSystemService_base: Effect.Service.Class<CouchNodeSystemService, "chtoolbox/CouchNodeSystemService", {
-    readonly effect: Effect.Effect<{
-        get: () => Effect.Effect<CouchNodeSystem, Error>;
-    }, never, ChtClientService>;
-    readonly accessors: true;
-}>;
-export declare class CouchNodeSystemService extends CouchNodeSystemService_base {
-}
+export declare const getCouchNodeSystem: () => Effect.Effect<CouchNodeSystem, Error, ChtClientService>;
 export {};
 //# sourceMappingURL=node-system.d.ts.map

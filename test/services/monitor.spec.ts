@@ -2,7 +2,8 @@ import { afterEach, describe, it } from 'mocha';
 import { Effect, Either, Layer, Option, TestClock } from 'effect';
 import { expect } from 'chai';
 import { MonitorService } from '../../src/services/monitor';
-import { CouchNodeSystem, CouchNodeSystemService } from '../../src/services/couch/node-system';
+import * as CouchNodeSystemLib from '../../src/services/couch/node-system';
+import { CouchNodeSystem } from '../../src/services/couch/node-system';
 import sinon, { SinonStub } from 'sinon';
 import * as CouchDbsInfo from '../../src/libs/couch/dbs-info';
 import { CouchDbInfo } from '../../src/libs/couch/dbs-info';
@@ -131,13 +132,9 @@ const initializeDesignInfoServiceGet = (designInfoServiceGet: SinonStub) => {
   designInfoServiceGet.withArgs('_users', ':staged:users').returns(Effect.succeed(usersStagedDesignInfo));
 };
 
-const nodeSystemServiceGet = sandbox.stub();
 const diskUsageServiceGetSize = sandbox.stub();
 
 const run = MonitorService.Default.pipe(
-  Layer.provide(Layer.succeed(CouchNodeSystemService, {
-    get: nodeSystemServiceGet,
-  } as unknown as CouchNodeSystemService)),
   Layer.provide(Layer.succeed(ChtClientService, {} as unknown as ChtClientService)),
   Layer.provide(Layer.succeed(LocalDiskUsageService, {
     getSize: diskUsageServiceGetSize,
@@ -146,10 +143,12 @@ const run = MonitorService.Default.pipe(
 );
 
 describe('Monitor service', () => {
+  let nodeSystemServiceGet: SinonStub;
   let designInfoServiceGet: SinonStub;
   let dbsInfoServicePost: SinonStub;
 
   beforeEach(() => {
+    nodeSystemServiceGet = sinon.stub(CouchNodeSystemLib, 'getCouchNodeSystem');
     designInfoServiceGet = sinon.stub(CouchDesignInfoLib, 'getDesignInfo');
     dbsInfoServicePost = sinon.stub(CouchDbsInfo, 'getDbsInfoByName');
   });

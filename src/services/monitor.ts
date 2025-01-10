@@ -2,7 +2,7 @@ import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { CouchDbInfo, getDbsInfoByName } from '../libs/couch/dbs-info';
 import { CouchDesignInfo, getDesignInfo } from '../libs/couch/design-info';
-import { CouchNodeSystem, CouchNodeSystemService } from './couch/node-system';
+import { CouchNodeSystem, getCouchNodeSystem } from './couch/node-system';
 import { Array, Clock, Number, Option, pipe } from 'effect';
 import { LocalDiskUsageService } from './local-disk-usage';
 import { ResponseError } from '@effect/platform/HttpClientError';
@@ -92,7 +92,7 @@ const getDirectorySize = (directory: Option.Option<string>) => LocalDiskUsageSer
 const getMonitoringData = (directory: Option.Option<string>) => pipe(
   Effect.all([
     currentTimeSec,
-    CouchNodeSystemService.get(),
+    getCouchNodeSystem(),
     getDbsInfoByName(DB_NAMES),
     getCouchDesignInfos(),
     getDirectorySize(directory),
@@ -163,20 +163,15 @@ const getAsCsv = (directory: Option.Option<string>) => pipe(
 
 const serviceContext = Effect
   .all([
-    CouchNodeSystemService,
     LocalDiskUsageService,
     ChtClientService,
   ])
   .pipe(Effect.map(([
-    couchNodeSystem,
     localDiskUsage,
     chtClient,
   ]) => Context
-    .make(CouchNodeSystemService, couchNodeSystem)
-    .pipe(
-      Context.add(LocalDiskUsageService, localDiskUsage),
-      Context.add(ChtClientService, chtClient),
-    )));
+    .make(LocalDiskUsageService, localDiskUsage)
+    .pipe(Context.add(ChtClientService, chtClient))));
 
 export class MonitorService extends Effect.Service<MonitorService>()('chtoolbox/MonitorService', {
   effect: serviceContext.pipe(Effect.map(context => ({

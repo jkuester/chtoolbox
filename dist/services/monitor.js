@@ -79,7 +79,7 @@ const getCouchDesignInfos = () => (0, effect_1.pipe)(DB_NAMES, effect_1.Array.ma
 const getDirectorySize = (directory) => local_disk_usage_1.LocalDiskUsageService.pipe(Effect.flatMap(service => directory.pipe(effect_1.Option.map(dir => service.getSize(dir)), effect_1.Option.getOrElse(() => Effect.succeed(null)))), Effect.map(effect_1.Option.fromNullable));
 const getMonitoringData = (directory) => (0, effect_1.pipe)(Effect.all([
     currentTimeSec,
-    node_system_1.CouchNodeSystemService.get(),
+    (0, node_system_1.getCouchNodeSystem)(),
     (0, dbs_info_1.getDbsInfoByName)(DB_NAMES),
     getCouchDesignInfos(),
     getDirectorySize(directory),
@@ -128,13 +128,12 @@ const getAsCsv = (directory) => (0, effect_1.pipe)(getMonitoringData(directory),
 ]));
 const serviceContext = Effect
     .all([
-    node_system_1.CouchNodeSystemService,
     local_disk_usage_1.LocalDiskUsageService,
     cht_client_1.ChtClientService,
 ])
-    .pipe(Effect.map(([couchNodeSystem, localDiskUsage, chtClient,]) => Context
-    .make(node_system_1.CouchNodeSystemService, couchNodeSystem)
-    .pipe(Context.add(local_disk_usage_1.LocalDiskUsageService, localDiskUsage), Context.add(cht_client_1.ChtClientService, chtClient))));
+    .pipe(Effect.map(([localDiskUsage, chtClient,]) => Context
+    .make(local_disk_usage_1.LocalDiskUsageService, localDiskUsage)
+    .pipe(Context.add(cht_client_1.ChtClientService, chtClient))));
 class MonitorService extends Effect.Service()('chtoolbox/MonitorService', {
     effect: serviceContext.pipe(Effect.map(context => ({
         get: (directory) => getMonitoringData(directory)

@@ -23,11 +23,10 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CouchNodeSystemService = exports.CouchNodeSystem = void 0;
+exports.getCouchNodeSystem = exports.CouchNodeSystem = void 0;
 const effect_1 = require("effect");
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
-const Context = __importStar(require("effect/Context"));
 const cht_client_1 = require("../cht-client");
 const ENDPOINT = '/_node/_local/_system';
 class CouchNodeSystem extends effect_1.Schema.Class('CouchNodeSystem')({
@@ -39,15 +38,8 @@ class CouchNodeSystem extends effect_1.Schema.Class('CouchNodeSystem')({
     static decodeResponse = platform_1.HttpClientResponse.schemaBodyJson(CouchNodeSystem);
 }
 exports.CouchNodeSystem = CouchNodeSystem;
-const serviceContext = cht_client_1.ChtClientService.pipe(Effect.map(couch => Context.make(cht_client_1.ChtClientService, couch)));
-class CouchNodeSystemService extends Effect.Service()('chtoolbox/CouchNodeSystemService', {
-    effect: serviceContext.pipe(Effect.map(context => ({
-        get: () => cht_client_1.ChtClientService
-            .request(platform_1.HttpClientRequest.get(ENDPOINT))
-            .pipe(Effect.flatMap(CouchNodeSystem.decodeResponse), Effect.scoped, Effect.provide(context)),
-    }))),
-    accessors: true,
-}) {
-}
-exports.CouchNodeSystemService = CouchNodeSystemService;
+const getCouchNodeSystem = () => cht_client_1.ChtClientService
+    .request(platform_1.HttpClientRequest.get(ENDPOINT))
+    .pipe(Effect.flatMap(CouchNodeSystem.decodeResponse), Effect.scoped);
+exports.getCouchNodeSystem = getCouchNodeSystem;
 //# sourceMappingURL=node-system.js.map

@@ -2,7 +2,6 @@
 import { Command, Options } from '@effect/cli';
 import { NodeContext, NodeHttpClient, NodeRuntime } from '@effect/platform-node';
 import { Effect, Layer, Option, Redacted, String } from 'effect';
-import { CouchNodeSystemService } from './services/couch/node-system';
 import { ChtClientService } from './services/cht-client';
 import { monitor } from './commands/monitor';
 import packageJson from '../package.json';
@@ -69,7 +68,6 @@ const cli = Command.run(command, {
 const couchServices = CouchActiveTasksService
   .Default
   .pipe(
-    Layer.provideMerge(CouchNodeSystemService.Default),
     Layer.provideMerge(CouchPurgeService.Default),
     Layer.provideMerge(CouchViewService.Default),
   );

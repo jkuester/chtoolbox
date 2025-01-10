@@ -5,17 +5,16 @@ import sinon, { SinonStub } from 'sinon';
 import { ChtClientService } from '../../../src/services/cht-client';
 import { HttpClientRequest } from '@effect/platform';
 import { createNodeSystem } from '../../utils/data-models';
-import { CouchNodeSystemService } from '../../../src/services/couch/node-system';
+import { getCouchNodeSystem } from '../../../src/services/couch/node-system';
 import { genWithLayer, sandbox } from '../../utils/base';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
 
 const couchRequest = sandbox.stub();
 
-const run = CouchNodeSystemService.Default.pipe(
-  Layer.provide(Layer.succeed(ChtClientService, { request: couchRequest } as unknown as ChtClientService)),
-  genWithLayer,
-);
+const run = Layer
+  .succeed(ChtClientService, { request: couchRequest } as unknown as ChtClientService)
+  .pipe(genWithLayer);
 
 describe('Couch Node System Service', () => {
   let requestGet: SinonStub;
@@ -34,7 +33,7 @@ describe('Couch Node System Service', () => {
       json: Effect.succeed(expectedNodeSystem),
     }));
 
-    const nodeSystem = yield* CouchNodeSystemService.get();
+    const nodeSystem = yield* getCouchNodeSystem();
 
     expect(nodeSystem).to.deep.equal(expectedNodeSystem);
     expect(requestGet.calledOnceWithExactly('/_node/_local/_system')).to.be.true;
