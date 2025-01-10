@@ -27,7 +27,7 @@ exports.getCouchNodeSystem = exports.CouchNodeSystem = void 0;
 const effect_1 = require("effect");
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
-const cht_client_1 = require("../cht-client");
+const cht_client_1 = require("../../services/cht-client");
 const ENDPOINT = '/_node/_local/_system';
 class CouchNodeSystem extends effect_1.Schema.Class('CouchNodeSystem')({
     memory: effect_1.Schema.Struct({

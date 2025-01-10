@@ -1,7 +1,7 @@
 import * as Effect from 'effect/Effect';
 import { CouchDbInfo } from '../libs/couch/dbs-info';
 import { CouchDesignInfo } from '../libs/couch/design-info';
-import { CouchNodeSystem } from './couch/node-system';
+import { CouchNodeSystem } from '../libs/couch/node-system';
 import { Option } from 'effect';
 import { LocalDiskUsageService } from './local-disk-usage';
 import { PlatformError } from '@effect/platform/Error';

@@ -5,7 +5,7 @@ import sinon, { SinonStub } from 'sinon';
 import { ChtClientService } from '../../../src/services/cht-client';
 import { HttpClientRequest } from '@effect/platform';
 import { createNodeSystem } from '../../utils/data-models';
-import { getCouchNodeSystem } from '../../../src/services/couch/node-system';
+import { getCouchNodeSystem } from '../../../src/libs/couch/node-system';
 import { genWithLayer, sandbox } from '../../utils/base';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
@@ -16,7 +16,7 @@ const run = Layer
   .succeed(ChtClientService, { request: couchRequest } as unknown as ChtClientService)
   .pipe(genWithLayer);
 
-describe('Couch Node System Service', () => {
+describe('Couch Node System libs', () => {
   let requestGet: SinonStub;
 
   beforeEach(() => {
