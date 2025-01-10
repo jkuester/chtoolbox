@@ -15,7 +15,7 @@ const run = Layer
   .succeed(ChtClientService, { request: couchRequest } as unknown as ChtClientService)
   .pipe(genWithLayer);
 
-describe('Couch Design Service', () => {
+describe('Couch Design libs', () => {
   let requestGet: SinonStub;
 
   beforeEach(() => {

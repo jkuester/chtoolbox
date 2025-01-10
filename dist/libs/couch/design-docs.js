@@ -27,7 +27,7 @@ exports.getDesignDocNames = void 0;
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
 const effect_1 = require("effect");
-const cht_client_1 = require("../cht-client");
+const cht_client_1 = require("../../services/cht-client");
 class CouchDesignDocs extends effect_1.Schema.Class('CouchDesignDocs')({
     rows: effect_1.Schema.Array(effect_1.Schema.Struct({
         id: effect_1.Schema.String,

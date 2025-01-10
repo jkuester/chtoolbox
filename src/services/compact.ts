@@ -2,7 +2,7 @@ import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { Array, Match, Option, pipe, Stream } from 'effect';
 import { getDbNames } from '../libs/couch/dbs-info';
-import { getDesignDocNames } from './couch/design-docs';
+import { getDesignDocNames } from '../libs/couch/design-docs';
 import { compactDb, compactDesign } from '../libs/couch/compact';
 import { CouchDesignInfoService } from './couch/design-info';
 import {

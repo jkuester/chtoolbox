@@ -5,7 +5,7 @@ import sinon, { SinonStub } from 'sinon';
 import * as CouchDbsInfo from '../../src/libs/couch/dbs-info';
 import { CouchDesignInfoService } from '../../src/services/couch/design-info';
 import { CompactService } from '../../src/services/compact';
-import * as CouchDesignDocs from '../../src/services/couch/design-docs';
+import * as CouchDesignDocs from '../../src/libs/couch/design-docs';
 import * as CouchActiveTasksSvc from '../../src/services/couch/active-tasks';
 import { CouchActiveTasksService } from '../../src/services/couch/active-tasks';
 import * as CouchCompactService from '../../src/libs/couch/compact';

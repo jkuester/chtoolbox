@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
 import { ChtClientService } from '../../../src/services/cht-client';
 import { HttpClientRequest } from '@effect/platform';
-import { getDesignDocNames } from '../../../src/services/couch/design-docs';
+import { getDesignDocNames } from '../../../src/libs/couch/design-docs';
 import { genWithLayer, sandbox } from '../../utils/base';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
@@ -15,7 +15,7 @@ const run = Layer
   .succeed(ChtClientService, { request: couchRequest } as unknown as ChtClientService)
   .pipe(genWithLayer);
 
-describe('Couch Design Docs Service', () => {
+describe('Couch Design Docs libs', () => {
   let requestGet: SinonStub;
 
   beforeEach(() => {
