@@ -3,7 +3,7 @@ import { Chunk, Effect, Layer, Stream } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
 import * as CouchDbsInfo from '../../src/libs/couch/dbs-info';
-import * as CouchDesignInfo from '../../src/services/couch/design-info';
+import * as CouchDesignInfo from '../../src/libs/couch/design-info';
 import { CompactService } from '../../src/services/compact';
 import * as CouchDesignDocs from '../../src/libs/couch/design-docs';
 import * as CouchActiveTasksSvc from '../../src/services/couch/active-tasks';

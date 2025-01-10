@@ -5,7 +5,7 @@ import { getDbNames } from '../libs/couch/dbs-info';
 import { getDesignDocNames } from '../libs/couch/design-docs';
 import { getViewNames } from '../libs/couch/design';
 import { CouchViewService } from './couch/view';
-import { getDesignInfo } from './couch/design-info';
+import { getDesignInfo } from '../libs/couch/design-info';
 import { ChtClientService } from './cht-client';
 
 const warmView = (dbName: string, designId: string) => (

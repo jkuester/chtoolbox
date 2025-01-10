@@ -27,7 +27,7 @@ exports.getDesignInfo = exports.CouchDesignInfo = void 0;
 const effect_1 = require("effect");
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
-const cht_client_1 = require("../cht-client");
+const cht_client_1 = require("../../services/cht-client");
 class CouchDesignInfo extends effect_1.Schema.Class('CouchDesignInfo')({
     name: effect_1.Schema.String,
     view_index: effect_1.Schema.Struct({

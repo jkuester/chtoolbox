@@ -1,6 +1,6 @@
 import * as Effect from 'effect/Effect';
 import { CouchDbInfo } from '../libs/couch/dbs-info';
-import { CouchDesignInfo } from './couch/design-info';
+import { CouchDesignInfo } from '../libs/couch/design-info';
 import { CouchNodeSystem, CouchNodeSystemService } from './couch/node-system';
 import { Option } from 'effect';
 import { LocalDiskUsageService } from './local-disk-usage';

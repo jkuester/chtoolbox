@@ -6,8 +6,8 @@ import { CouchNodeSystem, CouchNodeSystemService } from '../../src/services/couc
 import sinon, { SinonStub } from 'sinon';
 import * as CouchDbsInfo from '../../src/libs/couch/dbs-info';
 import { CouchDbInfo } from '../../src/libs/couch/dbs-info';
-import * as CouchDesignInfoLib from '../../src/services/couch/design-info';
-import { CouchDesignInfo } from '../../src/services/couch/design-info';
+import * as CouchDesignInfoLib from '../../src/libs/couch/design-info';
+import { CouchDesignInfo } from '../../src/libs/couch/design-info';
 import { LocalDiskUsageService } from '../../src/services/local-disk-usage';
 import { createDbInfo, createDesignInfo, createNodeSystem } from '../utils/data-models';
 import { ResponseError } from '@effect/platform/HttpClientError';

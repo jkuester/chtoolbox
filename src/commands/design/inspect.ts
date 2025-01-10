@@ -1,7 +1,7 @@
 import { Args, Command } from '@effect/cli';
 import { Array, Effect, pipe } from 'effect';
 import { initializeUrl } from '../../index';
-import { getDesignInfo } from '../../services/couch/design-info';
+import { getDesignInfo } from '../../libs/couch/design-info';
 import { getViewNames } from '../../libs/couch/design';
 
 import { logJson } from '../../libs/console';

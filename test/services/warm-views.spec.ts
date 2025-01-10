@@ -2,7 +2,7 @@ import { describe, it } from 'mocha';
 import { Effect, Layer } from 'effect';
 import { expect } from 'chai';
 import * as CouchDbsInfo from '../../src/libs/couch/dbs-info';
-import * as CouchDesignInfoLib from '../../src/services/couch/design-info';
+import * as CouchDesignInfoLib from '../../src/libs/couch/design-info';
 import * as CouchDesignDocs from '../../src/libs/couch/design-docs';
 import { createDesignInfo } from '../utils/data-models';
 import { WarmViewsService } from '../../src/services/warm-views';
