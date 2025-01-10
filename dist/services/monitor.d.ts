@@ -1,5 +1,5 @@
 import * as Effect from 'effect/Effect';
-import { CouchDbInfo } from './couch/dbs-info';
+import { CouchDbInfo } from '../libs/couch/dbs-info';
 import { CouchDesignInfo, CouchDesignInfoService } from './couch/design-info';
 import { CouchNodeSystem, CouchNodeSystemService } from './couch/node-system';
 import { Option } from 'effect';

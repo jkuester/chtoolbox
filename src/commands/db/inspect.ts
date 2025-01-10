@@ -1,7 +1,7 @@
 import { Args, Command } from '@effect/cli';
 import { Effect } from 'effect';
 import { initializeUrl } from '../../index';
-import { getDbsInfoByName } from '../../services/couch/dbs-info';
+import { getDbsInfoByName } from '../../libs/couch/dbs-info';
 
 import { logJson } from '../../libs/console';
 

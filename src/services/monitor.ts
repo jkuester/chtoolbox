@@ -1,6 +1,6 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { CouchDbInfo, getDbsInfoByName } from './couch/dbs-info';
+import { CouchDbInfo, getDbsInfoByName } from '../libs/couch/dbs-info';
 import { CouchDesignInfo, CouchDesignInfoService } from './couch/design-info';
 import { CouchNodeSystem, CouchNodeSystemService } from './couch/node-system';
 import { Array, Clock, Number, Option, pipe } from 'effect';

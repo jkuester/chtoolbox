@@ -1,7 +1,7 @@
 import { describe, it } from 'mocha';
 import { Effect, Layer } from 'effect';
 import { expect } from 'chai';
-import * as CouchDbsInfo from '../../src/services/couch/dbs-info';
+import * as CouchDbsInfo from '../../src/libs/couch/dbs-info';
 import { CouchDesignInfoService } from '../../src/services/couch/design-info';
 import { CouchDesignDocsService } from '../../src/services/couch/design-docs';
 import { createDesignInfo } from '../utils/data-models';

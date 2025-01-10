@@ -5,7 +5,7 @@ const cli_1 = require("@effect/cli");
 const effect_1 = require("effect");
 const index_1 = require("../../index");
 const design_docs_1 = require("../../services/couch/design-docs");
-const dbs_info_1 = require("../../services/couch/dbs-info");
+const dbs_info_1 = require("../../libs/couch/dbs-info");
 const console_1 = require("../../libs/console");
 const printDesignDocNames = (dbName) => design_docs_1.CouchDesignDocsService
     .getNames(dbName)

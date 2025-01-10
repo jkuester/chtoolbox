@@ -4,7 +4,7 @@ exports.inspect = void 0;
 const cli_1 = require("@effect/cli");
 const effect_1 = require("effect");
 const index_1 = require("../../index");
-const dbs_info_1 = require("../../services/couch/dbs-info");
+const dbs_info_1 = require("../../libs/couch/dbs-info");
 const console_1 = require("../../libs/console");
 const databases = cli_1.Args
     .text({ name: 'database' })

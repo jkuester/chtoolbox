@@ -2,7 +2,7 @@ import { Args, Command } from '@effect/cli';
 import { Array, Effect, Option, pipe, Record } from 'effect';
 import { initializeUrl } from '../../index';
 import { CouchDesignDocsService } from '../../services/couch/design-docs';
-import { getDbNames } from '../../services/couch/dbs-info';
+import { getDbNames } from '../../libs/couch/dbs-info';
 
 import { logJson } from '../../libs/console';
 

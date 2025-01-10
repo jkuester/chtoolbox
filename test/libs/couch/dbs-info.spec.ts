@@ -7,7 +7,7 @@ import { HttpClientRequest } from '@effect/platform';
 import { createDbInfo } from '../../utils/data-models';
 import { NonEmptyArray } from 'effect/Array';
 import { genWithLayer, sandbox } from '../../utils/base';
-import { getAllDbsInfo, getDbNames, getDbsInfoByName } from '../../../src/services/couch/dbs-info';
+import { getAllDbsInfo, getDbNames, getDbsInfoByName } from '../../../src/libs/couch/dbs-info';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
 

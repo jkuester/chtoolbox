@@ -26,7 +26,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MonitorService = void 0;
 const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
-const dbs_info_1 = require("./couch/dbs-info");
+const dbs_info_1 = require("../libs/couch/dbs-info");
 const design_info_1 = require("./couch/design-info");
 const node_system_1 = require("./couch/node-system");
 const effect_1 = require("effect");

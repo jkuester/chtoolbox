@@ -27,7 +27,7 @@ exports.getDbNames = exports.getDbsInfoByName = exports.getAllDbsInfo = exports.
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
 const effect_1 = require("effect");
-const cht_client_1 = require("../cht-client");
+const cht_client_1 = require("../../services/cht-client");
 const ENDPOINT = '/_dbs_info';
 const DbsInfoBody = effect_1.Schema.Struct({ keys: effect_1.Schema.Array(effect_1.Schema.String) });
 const getPostRequest = (keys) => DbsInfoBody.pipe(platform_1.HttpClientRequest.schemaBodyJson, build => build(platform_1.HttpClientRequest.post(ENDPOINT), { keys }), Effect.mapError(x => x));

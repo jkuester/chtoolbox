@@ -2,7 +2,7 @@ import { describe, it } from 'mocha';
 import { Chunk, Effect, Layer, Stream } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
-import * as CouchDbsInfo from '../../src/services/couch/dbs-info';
+import * as CouchDbsInfo from '../../src/libs/couch/dbs-info';
 import { CouchDesignInfoService } from '../../src/services/couch/design-info';
 import { CompactService } from '../../src/services/compact';
 import { CouchDesignDocsService } from '../../src/services/couch/design-docs';
