@@ -4,17 +4,16 @@ import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
 import { ChtClientService } from '../../../src/services/cht-client';
 import { HttpClientRequest } from '@effect/platform';
-import { CouchDesignDocsService } from '../../../src/services/couch/design-docs';
+import { getDesignDocNames } from '../../../src/services/couch/design-docs';
 import { genWithLayer, sandbox } from '../../utils/base';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
 
 const couchRequest = sandbox.stub();
 
-const run = CouchDesignDocsService.Default.pipe(
-  Layer.provide(Layer.succeed(ChtClientService, { request: couchRequest } as unknown as ChtClientService)),
-  genWithLayer,
-);
+const run = Layer
+  .succeed(ChtClientService, { request: couchRequest } as unknown as ChtClientService)
+  .pipe(genWithLayer);
 
 describe('Couch Design Docs Service', () => {
   let requestGet: SinonStub;
@@ -35,7 +34,7 @@ describe('Couch Design Docs Service', () => {
       }),
     }));
 
-    const designNames = yield* CouchDesignDocsService.getNames('medic');
+    const designNames = yield* getDesignDocNames('medic');
 
     expect(designNames).to.deep.equal(['medic', 'medic-client', 'medic-sms']);
     expect(requestGet.calledOnceWithExactly('/medic/_design_docs')).to.be.true;
@@ -48,7 +47,7 @@ describe('Couch Design Docs Service', () => {
       json: Effect.succeed({ rows: [] }),
     }));
 
-    const designNames = yield* CouchDesignDocsService.getNames('medic');
+    const designNames = yield* getDesignDocNames('medic');
 
     expect(designNames).to.deep.equal([]);
     expect(requestGet.calledOnceWithExactly('/medic/_design_docs')).to.be.true;

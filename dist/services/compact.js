@@ -36,8 +36,7 @@ const core_1 = require("../libs/core");
 const cht_client_1 = require("./cht-client");
 const TYPE_DB_COMPACT = 'database_compaction';
 const TYPE_VIEW_COMPACT = 'view_compaction';
-const compactDbViews = (dbName) => design_docs_1.CouchDesignDocsService
-    .getNames(dbName)
+const compactDbViews = (dbName) => (0, design_docs_1.getDesignDocNames)(dbName)
     .pipe(Effect.map(effect_1.Array.map(compactCouchDesign(dbName))), Effect.flatMap(Effect.all));
 const compactCouchDb = (dbName, compactDesigns) => (0, compact_1.compactDb)(dbName)
     .pipe(Effect.andThen(effect_1.Match
@@ -58,13 +57,12 @@ const streamDesign = (dbName, designName) => streamActiveTasks()
 const serviceContext = Effect
     .all([
     active_tasks_1.CouchActiveTasksService,
-    design_docs_1.CouchDesignDocsService,
     design_info_1.CouchDesignInfoService,
     cht_client_1.ChtClientService,
 ])
-    .pipe(Effect.map(([activeTasks, designDocs, designInfo, chtClient,]) => Context
+    .pipe(Effect.map(([activeTasks, designInfo, chtClient,]) => Context
     .make(active_tasks_1.CouchActiveTasksService, activeTasks)
-    .pipe(Context.add(design_docs_1.CouchDesignDocsService, designDocs), Context.add(design_info_1.CouchDesignInfoService, designInfo), Context.add(cht_client_1.ChtClientService, chtClient))));
+    .pipe(Context.add(design_info_1.CouchDesignInfoService, designInfo), Context.add(cht_client_1.ChtClientService, chtClient))));
 class CompactService extends Effect.Service()('chtoolbox/CompactService', {
     effect: serviceContext.pipe(Effect.map(context => ({
         compactAll: (compactDesigns) => compactAll(compactDesigns)

@@ -11,7 +11,6 @@ import { CouchDesignInfoService } from './services/couch/design-info';
 import { MonitorService } from './services/monitor';
 import { LocalDiskUsageService } from './services/local-disk-usage';
 import { CouchViewService } from './services/couch/view';
-import { CouchDesignDocsService } from './services/couch/design-docs';
 import { WarmViewsService } from './services/warm-views';
 import { warmViews } from './commands/warm-views';
 import { CompactService } from './services/compact';
@@ -72,7 +71,6 @@ const couchServices = CouchActiveTasksService
   .Default
   .pipe(
     Layer.provideMerge(CouchNodeSystemService.Default),
-    Layer.provideMerge(CouchDesignDocsService.Default),
     Layer.provideMerge(CouchDesignInfoService.Default),
     Layer.provideMerge(CouchPurgeService.Default),
     Layer.provideMerge(CouchViewService.Default),

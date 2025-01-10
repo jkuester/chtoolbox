@@ -1,13 +1,12 @@
 import { Args, Command } from '@effect/cli';
 import { Array, Effect, Option, pipe, Record } from 'effect';
 import { initializeUrl } from '../../index';
-import { CouchDesignDocsService } from '../../services/couch/design-docs';
+import { getDesignDocNames } from '../../services/couch/design-docs';
 import { getDbNames } from '../../libs/couch/dbs-info';
 
 import { logJson } from '../../libs/console';
 
-const printDesignDocNames = (dbName: string) => CouchDesignDocsService
-  .getNames(dbName)
+const printDesignDocNames = (dbName: string) => getDesignDocNames(dbName)
   .pipe(Effect.flatMap(logJson));
 
 const getDisplayDict = (data: [readonly string[], string][]) => Array.reduce(
@@ -19,7 +18,7 @@ const getDisplayDict = (data: [readonly string[], string][]) => Array.reduce(
 const printAllDesignDocNames = getDbNames()
   .pipe(
     Effect.flatMap(dbNames => pipe(
-      Array.map(dbNames, CouchDesignDocsService.getNames),
+      Array.map(dbNames, getDesignDocNames),
       Effect.all,
       Effect.map(Array.zip(dbNames)),
       Effect.map(getDisplayDict),

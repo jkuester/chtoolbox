@@ -1,5 +1,4 @@
 import * as Effect from 'effect/Effect';
-import { CouchDesignDocsService } from './couch/design-docs';
 import { CouchDesignInfoService } from './couch/design-info';
 import { CouchActiveTasksService, CouchActiveTaskStream } from './couch/active-tasks';
 import { ChtClientService } from './cht-client';
@@ -8,7 +7,7 @@ declare const CompactService_base: Effect.Service.Class<CompactService, "chtoolb
         compactAll: (compactDesigns: boolean) => Effect.Effect<CouchActiveTaskStream, Error>;
         compactDb: (dbName: string, compactDesigns: boolean) => Effect.Effect<CouchActiveTaskStream, Error>;
         compactDesign: (dbName: string) => (designName: string) => Effect.Effect<CouchActiveTaskStream, Error>;
-    }, never, ChtClientService | CouchDesignInfoService | CouchDesignDocsService | CouchActiveTasksService>;
+    }, never, ChtClientService | CouchDesignInfoService | CouchActiveTasksService>;
     readonly accessors: true;
 }>;
 export declare class CompactService extends CompactService_base {

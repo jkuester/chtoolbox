@@ -2,7 +2,7 @@ import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { Array } from 'effect';
 import { getDbNames } from '../libs/couch/dbs-info';
-import { CouchDesignDocsService } from './couch/design-docs';
+import { getDesignDocNames } from './couch/design-docs';
 import { getViewNames } from '../libs/couch/design';
 import { CouchViewService } from './couch/view';
 import { CouchDesignInfoService } from './couch/design-info';
@@ -14,8 +14,7 @@ const warmView = (dbName: string, designId: string) => (
 
 const warmAll = () => getDbNames()
   .pipe(
-    Effect.map(Array.map(dbName => CouchDesignDocsService
-      .getNames(dbName)
+    Effect.map(Array.map(dbName => getDesignDocNames(dbName)
       .pipe(
         Effect.map(Array.map(designName => getViewNames(dbName, designName)
           .pipe(
@@ -31,8 +30,7 @@ const warmAll = () => getDbNames()
 
 const designsCurrentlyUpdating = () => getDbNames()
   .pipe(
-    Effect.map(Array.map(dbName => CouchDesignDocsService
-      .getNames(dbName)
+    Effect.map(Array.map(dbName => getDesignDocNames(dbName)
       .pipe(
         Effect.map(Array.map(designId => CouchDesignInfoService.get(dbName, designId))),
         Effect.flatMap(Effect.all),
@@ -46,19 +44,16 @@ const designsCurrentlyUpdating = () => getDbNames()
 const serviceContext = Effect
   .all([
     ChtClientService,
-    CouchDesignDocsService,
     CouchViewService,
     CouchDesignInfoService,
   ])
   .pipe(Effect.map(([
     chtClient,
-    couchDesignDocs,
     couchView,
     couchDesignInfo
   ]) => Context
     .make(ChtClientService, chtClient)
     .pipe(
-      Context.add(CouchDesignDocsService, couchDesignDocs),
       Context.add(CouchViewService, couchView),
       Context.add(CouchDesignInfoService, couchDesignInfo),
     )));
