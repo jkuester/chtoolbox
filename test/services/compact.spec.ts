@@ -3,7 +3,7 @@ import { Chunk, Effect, Layer, Stream } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
 import * as CouchDbsInfo from '../../src/libs/couch/dbs-info';
-import { CouchDesignInfoService } from '../../src/services/couch/design-info';
+import * as CouchDesignInfo from '../../src/services/couch/design-info';
 import { CompactService } from '../../src/services/compact';
 import * as CouchDesignDocs from '../../src/libs/couch/design-docs';
 import * as CouchActiveTasksSvc from '../../src/services/couch/active-tasks';
@@ -13,13 +13,9 @@ import * as core from '../../src/libs/core';
 import { genWithLayer, sandbox } from '../utils/base';
 import { ChtClientService } from '../../src/services/cht-client';
 
-const designInfoSvcGet = sandbox.stub();
 const activeTasksStream = sandbox.stub();
 
 const run = CompactService.Default.pipe(
-  Layer.provide(Layer.succeed(CouchDesignInfoService, {
-    get: designInfoSvcGet,
-  } as unknown as CouchDesignInfoService)),
   Layer.provide(Layer.succeed(CouchActiveTasksService, {
     stream: activeTasksStream,
   } as unknown as CouchActiveTasksService)),
@@ -28,6 +24,7 @@ const run = CompactService.Default.pipe(
 );
 
 describe('Compact service', () => {
+  let designInfoSvcGet: SinonStub;
   let designDocsSvcGetNames: SinonStub;
   let dbsInfoSvcGetDbNames: SinonStub;
   let dbInfoSvcGet: SinonStub;
@@ -37,6 +34,7 @@ describe('Compact service', () => {
   let untilEmptyCount: SinonStub;
 
   beforeEach(() => {
+    designInfoSvcGet = sinon.stub(CouchDesignInfo, 'getDesignInfo');
     designDocsSvcGetNames = sinon.stub(CouchDesignDocs, 'getDesignDocNames');
     dbsInfoSvcGetDbNames = sinon.stub(CouchDbsInfo, 'getDbNames');
     dbInfoSvcGet = sinon.stub(CouchDbsInfo, 'getAllDbsInfo');

@@ -1,7 +1,6 @@
 import { Schema } from 'effect';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
-import * as Context from 'effect/Context';
 import { ChtClientService } from '../cht-client';
 
 export class CouchDesignInfo extends Schema.Class<CouchDesignInfo>('CouchDesignInfo')({
@@ -30,21 +29,12 @@ export class CouchDesignInfo extends Schema.Class<CouchDesignInfo>('CouchDesignI
   static readonly decodeResponse = HttpClientResponse.schemaBodyJson(CouchDesignInfo);
 }
 
-const serviceContext = ChtClientService.pipe(Effect.map(couch => Context.make(ChtClientService, couch)));
-
-export class CouchDesignInfoService extends Effect.Service<CouchDesignInfoService>()(
-  'chtoolbox/CouchDesignInfoService',
-  {
-    effect: serviceContext.pipe(Effect.map(context => ({
-      get: (dbName: string, designName: string): Effect.Effect<CouchDesignInfo, Error> => ChtClientService
-        .request(HttpClientRequest.get(`/${dbName}/_design/${designName}/_info`))
-        .pipe(
-          Effect.flatMap(CouchDesignInfo.decodeResponse),
-          Effect.scoped,
-          Effect.provide(context),
-        )
-    }))),
-    accessors: true,
-  }
-) {
-}
+export const getDesignInfo = (
+  dbName: string,
+  designName: string
+): Effect.Effect<CouchDesignInfo, Error, ChtClientService> => ChtClientService
+  .request(HttpClientRequest.get(`/${dbName}/_design/${designName}/_info`))
+  .pipe(
+    Effect.flatMap(CouchDesignInfo.decodeResponse),
+    Effect.scoped,
+  );

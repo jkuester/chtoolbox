@@ -13,7 +13,6 @@ const cht_client_1 = require("./services/cht-client");
 const monitor_1 = require("./commands/monitor");
 const package_json_1 = __importDefault(require("../package.json"));
 const environment_1 = require("./services/environment");
-const design_info_1 = require("./services/couch/design-info");
 const monitor_2 = require("./services/monitor");
 const local_disk_usage_1 = require("./services/local-disk-usage");
 const view_1 = require("./services/couch/view");
@@ -53,7 +52,7 @@ const cli = cli_1.Command.run(command, {
 });
 const couchServices = active_tasks_2.CouchActiveTasksService
     .Default
-    .pipe(effect_1.Layer.provideMerge(node_system_1.CouchNodeSystemService.Default), effect_1.Layer.provideMerge(design_info_1.CouchDesignInfoService.Default), effect_1.Layer.provideMerge(purge_1.CouchPurgeService.Default), effect_1.Layer.provideMerge(view_1.CouchViewService.Default));
+    .pipe(effect_1.Layer.provideMerge(node_system_1.CouchNodeSystemService.Default), effect_1.Layer.provideMerge(purge_1.CouchPurgeService.Default), effect_1.Layer.provideMerge(view_1.CouchViewService.Default));
 const httpClientNoSslVerify = effect_1.Layer.provide(platform_node_1.NodeHttpClient.layerWithoutAgent.pipe(effect_1.Layer.provide(platform_node_1.NodeHttpClient.makeAgentLayer({ rejectUnauthorized: false }))));
 cli(process.argv)
     .pipe(effect_1.Effect.provide(compact_1.CompactService.Default), effect_1.Effect.provide(monitor_2.MonitorService.Default), effect_1.Effect.provide(local_disk_usage_1.LocalDiskUsageService.Default), effect_1.Effect.provide(local_instance_1.LocalInstanceService.Default.pipe(httpClientNoSslVerify)), effect_1.Effect.provide(purge_2.PurgeService.Default), effect_1.Effect.provide(upgrade_3.UpgradeService.Default), effect_1.Effect.provide(warm_views_1.WarmViewsService.Default), effect_1.Effect.provide(replicate_1.ReplicateService.Default), effect_1.Effect.provide(upgrade_2.ChtUpgradeService.Default), effect_1.Effect.provide(test_data_generator_1.TestDataGeneratorService.Default), effect_1.Effect.provide(couchServices), effect_1.Effect.provide(pouchdb_1.PouchDBService.Default), effect_1.Effect.provide(cht_client_1.ChtClientService.Default.pipe(httpClientNoSslVerify)), effect_1.Effect.provide(environment_1.EnvironmentService.Default), effect_1.Effect.provide(platform_node_1.NodeContext.layer), platform_node_1.NodeRuntime.runMain);

@@ -9,7 +9,7 @@ const design_1 = require("../../libs/couch/design");
 const console_1 = require("../../libs/console");
 const getViewData = (database) => (design) => effect_1.Effect
     .all([
-    design_info_1.CouchDesignInfoService.get(database, design),
+    (0, design_info_1.getDesignInfo)(database, design),
     (0, design_1.getViewNames)(database, design),
 ])
     .pipe(effect_1.Effect.map(([designInfo, views]) => ({

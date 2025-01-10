@@ -74,14 +74,14 @@ const emptyDesignInfo = {
         },
     },
 };
-const getCouchDesignInfosForDb = (dbName) => design_info_1.CouchDesignInfoService.pipe(Effect.flatMap(service => Effect.all((0, effect_1.pipe)(VIEW_INDEXES_BY_DB[dbName], effect_1.Array.map(designName => service.get(dbName, designName)), effect_1.Array.map(Effect.catchIf((error) => error instanceof HttpClientError_1.ResponseError && error.response.status === 404, () => Effect.succeed(emptyDesignInfo)))))));
-const getCouchDesignInfos = (0, effect_1.pipe)(DB_NAMES, effect_1.Array.map(getCouchDesignInfosForDb), Effect.all);
+const getCouchDesignInfosForDb = (dbName) => Effect.all((0, effect_1.pipe)(VIEW_INDEXES_BY_DB[dbName], effect_1.Array.map(designName => (0, design_info_1.getDesignInfo)(dbName, designName)), effect_1.Array.map(Effect.catchIf((error) => error instanceof HttpClientError_1.ResponseError && error.response.status === 404, () => Effect.succeed(emptyDesignInfo)))));
+const getCouchDesignInfos = () => (0, effect_1.pipe)(DB_NAMES, effect_1.Array.map(getCouchDesignInfosForDb), Effect.all);
 const getDirectorySize = (directory) => local_disk_usage_1.LocalDiskUsageService.pipe(Effect.flatMap(service => directory.pipe(effect_1.Option.map(dir => service.getSize(dir)), effect_1.Option.getOrElse(() => Effect.succeed(null)))), Effect.map(effect_1.Option.fromNullable));
 const getMonitoringData = (directory) => (0, effect_1.pipe)(Effect.all([
     currentTimeSec,
     node_system_1.CouchNodeSystemService.get(),
     (0, dbs_info_1.getDbsInfoByName)(DB_NAMES),
-    getCouchDesignInfos,
+    getCouchDesignInfos(),
     getDirectorySize(directory),
 ]), Effect.map(([unixTime, nodeSystem, dbsInfo, designInfos, directory_size]) => ({
     ...nodeSystem,
@@ -129,13 +129,12 @@ const getAsCsv = (directory) => (0, effect_1.pipe)(getMonitoringData(directory),
 const serviceContext = Effect
     .all([
     node_system_1.CouchNodeSystemService,
-    design_info_1.CouchDesignInfoService,
     local_disk_usage_1.LocalDiskUsageService,
     cht_client_1.ChtClientService,
 ])
-    .pipe(Effect.map(([couchNodeSystem, couchDesignInfo, localDiskUsage, chtClient,]) => Context
+    .pipe(Effect.map(([couchNodeSystem, localDiskUsage, chtClient,]) => Context
     .make(node_system_1.CouchNodeSystemService, couchNodeSystem)
-    .pipe(Context.add(design_info_1.CouchDesignInfoService, couchDesignInfo), Context.add(local_disk_usage_1.LocalDiskUsageService, localDiskUsage), Context.add(cht_client_1.ChtClientService, chtClient))));
+    .pipe(Context.add(local_disk_usage_1.LocalDiskUsageService, localDiskUsage), Context.add(cht_client_1.ChtClientService, chtClient))));
 class MonitorService extends Effect.Service()('chtoolbox/MonitorService', {
     effect: serviceContext.pipe(Effect.map(context => ({
         get: (directory) => getMonitoringData(directory)

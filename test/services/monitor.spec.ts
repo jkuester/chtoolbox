@@ -4,9 +4,10 @@ import { expect } from 'chai';
 import { MonitorService } from '../../src/services/monitor';
 import { CouchNodeSystem, CouchNodeSystemService } from '../../src/services/couch/node-system';
 import sinon, { SinonStub } from 'sinon';
-import { CouchDbInfo } from '../../src/libs/couch/dbs-info';
 import * as CouchDbsInfo from '../../src/libs/couch/dbs-info';
-import { CouchDesignInfo, CouchDesignInfoService } from '../../src/services/couch/design-info';
+import { CouchDbInfo } from '../../src/libs/couch/dbs-info';
+import * as CouchDesignInfoLib from '../../src/services/couch/design-info';
+import { CouchDesignInfo } from '../../src/services/couch/design-info';
 import { LocalDiskUsageService } from '../../src/services/local-disk-usage';
 import { createDbInfo, createDesignInfo, createNodeSystem } from '../utils/data-models';
 import { ResponseError } from '@effect/platform/HttpClientError';
@@ -131,7 +132,6 @@ const initializeDesignInfoServiceGet = (designInfoServiceGet: SinonStub) => {
 };
 
 const nodeSystemServiceGet = sandbox.stub();
-const designInfoServiceGet = sandbox.stub();
 const diskUsageServiceGetSize = sandbox.stub();
 
 const run = MonitorService.Default.pipe(
@@ -139,9 +139,6 @@ const run = MonitorService.Default.pipe(
     get: nodeSystemServiceGet,
   } as unknown as CouchNodeSystemService)),
   Layer.provide(Layer.succeed(ChtClientService, {} as unknown as ChtClientService)),
-  Layer.provide(Layer.succeed(CouchDesignInfoService, {
-    get: designInfoServiceGet,
-  } as unknown as CouchDesignInfoService)),
   Layer.provide(Layer.succeed(LocalDiskUsageService, {
     getSize: diskUsageServiceGetSize,
   } as unknown as LocalDiskUsageService)),
@@ -149,9 +146,11 @@ const run = MonitorService.Default.pipe(
 );
 
 describe('Monitor service', () => {
+  let designInfoServiceGet: SinonStub;
   let dbsInfoServicePost: SinonStub;
 
   beforeEach(() => {
+    designInfoServiceGet = sinon.stub(CouchDesignInfoLib, 'getDesignInfo');
     dbsInfoServicePost = sinon.stub(CouchDbsInfo, 'getDbsInfoByName');
   });
 
@@ -310,7 +309,7 @@ describe('Monitor service', () => {
 
         expect(nodeSystemServiceGet.calledOnceWithExactly()).to.be.true;
         expect(dbsInfoServicePost.calledOnceWithExactly(DB_NAMES)).to.be.true;
-        expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS.slice(0, 12));
+        expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
         expect(diskUsageServiceGetSize.notCalled).to.be.true;
       } else {
         expect.fail('Expected error to be thrown');

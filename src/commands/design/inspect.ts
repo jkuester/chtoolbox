@@ -1,14 +1,14 @@
 import { Args, Command } from '@effect/cli';
 import { Array, Effect, pipe } from 'effect';
 import { initializeUrl } from '../../index';
-import { CouchDesignInfoService } from '../../services/couch/design-info';
+import { getDesignInfo } from '../../services/couch/design-info';
 import { getViewNames } from '../../libs/couch/design';
 
 import { logJson } from '../../libs/console';
 
 const getViewData = (database: string) => (design: string) => Effect
   .all([
-    CouchDesignInfoService.get(database, design),
+    getDesignInfo(database, design),
     getViewNames(database, design),
   ])
   .pipe(

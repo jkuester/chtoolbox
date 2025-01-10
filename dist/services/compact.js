@@ -30,7 +30,6 @@ const effect_1 = require("effect");
 const dbs_info_1 = require("../libs/couch/dbs-info");
 const design_docs_1 = require("../libs/couch/design-docs");
 const compact_1 = require("../libs/couch/compact");
-const design_info_1 = require("./couch/design-info");
 const active_tasks_1 = require("./couch/active-tasks");
 const core_1 = require("../libs/core");
 const cht_client_1 = require("./cht-client");
@@ -57,12 +56,11 @@ const streamDesign = (dbName, designName) => streamActiveTasks()
 const serviceContext = Effect
     .all([
     active_tasks_1.CouchActiveTasksService,
-    design_info_1.CouchDesignInfoService,
     cht_client_1.ChtClientService,
 ])
-    .pipe(Effect.map(([activeTasks, designInfo, chtClient,]) => Context
+    .pipe(Effect.map(([activeTasks, chtClient,]) => Context
     .make(active_tasks_1.CouchActiveTasksService, activeTasks)
-    .pipe(Context.add(design_info_1.CouchDesignInfoService, designInfo), Context.add(cht_client_1.ChtClientService, chtClient))));
+    .pipe(Context.add(cht_client_1.ChtClientService, chtClient))));
 class CompactService extends Effect.Service()('chtoolbox/CompactService', {
     effect: serviceContext.pipe(Effect.map(context => ({
         compactAll: (compactDesigns) => compactAll(compactDesigns)

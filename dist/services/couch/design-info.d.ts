@@ -72,13 +72,6 @@ declare const CouchDesignInfo_base: Schema.Class<CouchDesignInfo, {
 export declare class CouchDesignInfo extends CouchDesignInfo_base {
     static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<CouchDesignInfo, import("effect/ParseResult").ParseError | E, never>;
 }
-declare const CouchDesignInfoService_base: Effect.Service.Class<CouchDesignInfoService, "chtoolbox/CouchDesignInfoService", {
-    readonly effect: Effect.Effect<{
-        get: (dbName: string, designName: string) => Effect.Effect<CouchDesignInfo, Error>;
-    }, never, ChtClientService>;
-    readonly accessors: true;
-}>;
-export declare class CouchDesignInfoService extends CouchDesignInfoService_base {
-}
+export declare const getDesignInfo: (dbName: string, designName: string) => Effect.Effect<CouchDesignInfo, Error, ChtClientService>;
 export {};
 //# sourceMappingURL=design-info.d.ts.map

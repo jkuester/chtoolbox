@@ -4,7 +4,6 @@ import { Array, Match, Option, pipe, Stream } from 'effect';
 import { getDbNames } from '../libs/couch/dbs-info';
 import { getDesignDocNames } from '../libs/couch/design-docs';
 import { compactDb, compactDesign } from '../libs/couch/compact';
-import { CouchDesignInfoService } from './couch/design-info';
 import {
   CouchActiveTasksService,
   CouchActiveTaskStream,
@@ -75,17 +74,14 @@ const streamDesign = (dbName: string, designName: string) => streamActiveTasks()
 const serviceContext = Effect
   .all([
     CouchActiveTasksService,
-    CouchDesignInfoService,
     ChtClientService,
   ])
   .pipe(Effect.map(([
     activeTasks,
-    designInfo,
     chtClient,
   ]) => Context
     .make(CouchActiveTasksService, activeTasks)
     .pipe(
-      Context.add(CouchDesignInfoService, designInfo),
       Context.add(ChtClientService, chtClient),
     )));
 

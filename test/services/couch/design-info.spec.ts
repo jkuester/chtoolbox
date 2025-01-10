@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
 import { ChtClientService } from '../../../src/services/cht-client';
 import { HttpClientRequest } from '@effect/platform';
-import { CouchDesignInfoService } from '../../../src/services/couch/design-info';
+import { getDesignInfo } from '../../../src/services/couch/design-info';
 import { createDesignInfo } from '../../utils/data-models';
 import { genWithLayer, sandbox } from '../../utils/base';
 
@@ -12,10 +12,9 @@ const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
 
 const couchRequest = sandbox.stub();
 
-const run = CouchDesignInfoService.Default.pipe(
-  Layer.provide(Layer.succeed(ChtClientService, { request: couchRequest } as unknown as ChtClientService)),
-  genWithLayer,
-);
+const run = Layer
+  .succeed(ChtClientService, { request: couchRequest } as unknown as ChtClientService)
+  .pipe(genWithLayer);
 
 describe('Couch Design Info Service', () => {
   let requestGet: SinonStub;
@@ -51,7 +50,7 @@ describe('Couch Design Info Service', () => {
         json: Effect.succeed(expectedDesignInfo),
       }));
 
-      const designInfo = yield* CouchDesignInfoService.get(db, expectedDesignInfo.name);
+      const designInfo = yield* getDesignInfo(db, expectedDesignInfo.name);
 
       expect(designInfo).to.deep.equal(expectedDesignInfo);
       expect(requestGet.calledOnceWithExactly(`/${db}/_design/${expectedDesignInfo.name}/_info`)).to.be.true;

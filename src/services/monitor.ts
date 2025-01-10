@@ -1,7 +1,7 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { CouchDbInfo, getDbsInfoByName } from '../libs/couch/dbs-info';
-import { CouchDesignInfo, CouchDesignInfoService } from './couch/design-info';
+import { CouchDesignInfo, getDesignInfo } from './couch/design-info';
 import { CouchNodeSystem, CouchNodeSystemService } from './couch/node-system';
 import { Array, Clock, Number, Option, pipe } from 'effect';
 import { LocalDiskUsageService } from './local-disk-usage';
@@ -66,18 +66,16 @@ const emptyDesignInfo: CouchDesignInfo = {
     },
   },
 } as CouchDesignInfo;
-const getCouchDesignInfosForDb = (dbName: string) => CouchDesignInfoService.pipe(
-  Effect.flatMap(service => Effect.all(pipe(
-    VIEW_INDEXES_BY_DB[dbName],
-    Array.map(designName => service.get(dbName, designName)),
-    Array.map(Effect.catchIf(
-      (error) => error instanceof ResponseError && error.response.status === 404,
-      () => Effect.succeed(emptyDesignInfo),
-    )),
-  ))),
-);
+const getCouchDesignInfosForDb = (dbName: string) => Effect.all(pipe(
+  VIEW_INDEXES_BY_DB[dbName],
+  Array.map(designName => getDesignInfo(dbName, designName)),
+  Array.map(Effect.catchIf(
+    (error) => error instanceof ResponseError && error.response.status === 404,
+    () => Effect.succeed(emptyDesignInfo),
+  )),
+));
 
-const getCouchDesignInfos = pipe(
+const getCouchDesignInfos = () => pipe(
   DB_NAMES,
   Array.map(getCouchDesignInfosForDb),
   Effect.all,
@@ -96,7 +94,7 @@ const getMonitoringData = (directory: Option.Option<string>) => pipe(
     currentTimeSec,
     CouchNodeSystemService.get(),
     getDbsInfoByName(DB_NAMES),
-    getCouchDesignInfos,
+    getCouchDesignInfos(),
     getDirectorySize(directory),
   ]),
   Effect.map(([
@@ -166,19 +164,16 @@ const getAsCsv = (directory: Option.Option<string>) => pipe(
 const serviceContext = Effect
   .all([
     CouchNodeSystemService,
-    CouchDesignInfoService,
     LocalDiskUsageService,
     ChtClientService,
   ])
   .pipe(Effect.map(([
     couchNodeSystem,
-    couchDesignInfo,
     localDiskUsage,
     chtClient,
   ]) => Context
     .make(CouchNodeSystemService, couchNodeSystem)
     .pipe(
-      Context.add(CouchDesignInfoService, couchDesignInfo),
       Context.add(LocalDiskUsageService, localDiskUsage),
       Context.add(ChtClientService, chtClient),
     )));

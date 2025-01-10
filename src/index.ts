@@ -7,7 +7,6 @@ import { ChtClientService } from './services/cht-client';
 import { monitor } from './commands/monitor';
 import packageJson from '../package.json';
 import { EnvironmentService, } from './services/environment';
-import { CouchDesignInfoService } from './services/couch/design-info';
 import { MonitorService } from './services/monitor';
 import { LocalDiskUsageService } from './services/local-disk-usage';
 import { CouchViewService } from './services/couch/view';
@@ -71,7 +70,6 @@ const couchServices = CouchActiveTasksService
   .Default
   .pipe(
     Layer.provideMerge(CouchNodeSystemService.Default),
-    Layer.provideMerge(CouchDesignInfoService.Default),
     Layer.provideMerge(CouchPurgeService.Default),
     Layer.provideMerge(CouchViewService.Default),
   );
