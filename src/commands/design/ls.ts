@@ -2,7 +2,7 @@ import { Args, Command } from '@effect/cli';
 import { Array, Effect, Option, pipe, Record } from 'effect';
 import { initializeUrl } from '../../index';
 import { CouchDesignDocsService } from '../../services/couch/design-docs';
-import { CouchDbsInfoService } from '../../services/couch/dbs-info';
+import { getDbNames } from '../../services/couch/dbs-info';
 
 import { logJson } from '../../libs/console';
 
@@ -16,8 +16,7 @@ const getDisplayDict = (data: [readonly string[], string][]) => Array.reduce(
   (dict, [designNames, dbName]) => Record.set(dbName, designNames)(dict),
 );
 
-const printAllDesignDocNames = CouchDbsInfoService
-  .getDbNames()
+const printAllDesignDocNames = getDbNames()
   .pipe(
     Effect.flatMap(dbNames => pipe(
       Array.map(dbNames, CouchDesignDocsService.getNames),

@@ -2,7 +2,7 @@ import { describe, it } from 'mocha';
 import { Chunk, Effect, Layer, Stream } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
-import { CouchDbsInfoService } from '../../src/services/couch/dbs-info';
+import * as CouchDbsInfo from '../../src/services/couch/dbs-info';
 import { CouchDesignInfoService } from '../../src/services/couch/design-info';
 import { CompactService } from '../../src/services/compact';
 import { CouchDesignDocsService } from '../../src/services/couch/design-docs';
@@ -13,17 +13,11 @@ import * as core from '../../src/libs/core';
 import { genWithLayer, sandbox } from '../utils/base';
 import { ChtClientService } from '../../src/services/cht-client';
 
-const dbsInfoSvcGetDbNames = sandbox.stub();
-const dbInfoSvcGet = sandbox.stub();
 const designDocsSvcGetNames = sandbox.stub();
 const designInfoSvcGet = sandbox.stub();
 const activeTasksStream = sandbox.stub();
 
 const run = CompactService.Default.pipe(
-  Layer.provide(Layer.succeed(CouchDbsInfoService, {
-    getDbNames: dbsInfoSvcGetDbNames,
-    get: dbInfoSvcGet,
-  } as unknown as CouchDbsInfoService)),
   Layer.provide(Layer.succeed(CouchDesignDocsService, {
     getNames: designDocsSvcGetNames,
   } as unknown as CouchDesignDocsService)),
@@ -38,12 +32,16 @@ const run = CompactService.Default.pipe(
 );
 
 describe('Compact service', () => {
+  let dbsInfoSvcGetDbNames: SinonStub;
+  let dbInfoSvcGet: SinonStub;
   let compactSvcCompactDb: SinonStub;
   let compactSvcCompactDesign: SinonStub;
   let filterStreamByType: SinonStub;
   let untilEmptyCount: SinonStub;
 
   beforeEach(() => {
+    dbsInfoSvcGetDbNames = sinon.stub(CouchDbsInfo, 'getDbNames');
+    dbInfoSvcGet = sinon.stub(CouchDbsInfo, 'getAllDbsInfo');
     compactSvcCompactDb = sinon.stub(CouchCompactService, 'compactDb');
     compactSvcCompactDesign = sinon.stub(CouchCompactService, 'compactDesign');
     filterStreamByType = sinon

@@ -76,15 +76,8 @@ declare const CouchDbInfo_base: Schema.Class<CouchDbInfo, {
 export declare class CouchDbInfo extends CouchDbInfo_base {
     static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<readonly CouchDbInfo[], import("effect/ParseResult").ParseError | E, never>;
 }
-declare const CouchDbsInfoService_base: Effect.Service.Class<CouchDbsInfoService, "chtoolbox/CouchDbsInfoService", {
-    readonly effect: Effect.Effect<{
-        post: (dbNames: NonEmptyArray<string>) => Effect.Effect<readonly CouchDbInfo[], Error>;
-        get: () => Effect.Effect<readonly CouchDbInfo[], Error>;
-        getDbNames: () => Effect.Effect<string[], Error>;
-    }, never, ChtClientService>;
-    readonly accessors: true;
-}>;
-export declare class CouchDbsInfoService extends CouchDbsInfoService_base {
-}
+export declare const getAllDbsInfo: () => Effect.Effect<readonly CouchDbInfo[], Error, ChtClientService>;
+export declare const getDbsInfoByName: (dbNames: NonEmptyArray<string>) => Effect.Effect<readonly CouchDbInfo[], Error, ChtClientService>;
+export declare const getDbNames: () => Effect.Effect<string[], Error, ChtClientService>;
 export {};
 //# sourceMappingURL=dbs-info.d.ts.map

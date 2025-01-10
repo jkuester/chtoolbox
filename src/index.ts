@@ -4,7 +4,6 @@ import { NodeContext, NodeHttpClient, NodeRuntime } from '@effect/platform-node'
 import { Effect, Layer, Option, Redacted, String } from 'effect';
 import { CouchNodeSystemService } from './services/couch/node-system';
 import { ChtClientService } from './services/cht-client';
-import { CouchDbsInfoService } from './services/couch/dbs-info';
 import { monitor } from './commands/monitor';
 import packageJson from '../package.json';
 import { EnvironmentService, } from './services/environment';
@@ -74,7 +73,6 @@ const couchServices = CouchActiveTasksService
   .Default
   .pipe(
     Layer.provideMerge(CouchNodeSystemService.Default),
-    Layer.provideMerge(CouchDbsInfoService.Default),
     Layer.provideMerge(CouchDesignDocsService.Default),
     Layer.provideMerge(CouchDesignInfoService.Default),
     Layer.provideMerge(CouchDesignService.Default),

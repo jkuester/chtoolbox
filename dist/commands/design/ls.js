@@ -11,8 +11,7 @@ const printDesignDocNames = (dbName) => design_docs_1.CouchDesignDocsService
     .getNames(dbName)
     .pipe(effect_1.Effect.flatMap(console_1.logJson));
 const getDisplayDict = (data) => effect_1.Array.reduce(data, {}, (dict, [designNames, dbName]) => effect_1.Record.set(dbName, designNames)(dict));
-const printAllDesignDocNames = dbs_info_1.CouchDbsInfoService
-    .getDbNames()
+const printAllDesignDocNames = (0, dbs_info_1.getDbNames)()
     .pipe(effect_1.Effect.flatMap(dbNames => (0, effect_1.pipe)(effect_1.Array.map(dbNames, design_docs_1.CouchDesignDocsService.getNames), effect_1.Effect.all, effect_1.Effect.map(effect_1.Array.zip(dbNames)), effect_1.Effect.map(getDisplayDict))), effect_1.Effect.flatMap(console_1.logJson));
 const database = cli_1.Args
     .text({ name: 'database' })

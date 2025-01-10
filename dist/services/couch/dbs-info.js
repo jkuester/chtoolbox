@@ -23,10 +23,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CouchDbsInfoService = exports.CouchDbInfo = void 0;
+exports.getDbNames = exports.getDbsInfoByName = exports.getAllDbsInfo = exports.CouchDbInfo = void 0;
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
-const Context = __importStar(require("effect/Context"));
 const effect_1 = require("effect");
 const cht_client_1 = require("../cht-client");
 const ENDPOINT = '/_dbs_info';
@@ -59,17 +58,12 @@ class CouchDbInfo extends effect_1.Schema.Class('CouchDbInfo')({
     static decodeResponse = platform_1.HttpClientResponse.schemaBodyJson(effect_1.Schema.Array(CouchDbInfo));
 }
 exports.CouchDbInfo = CouchDbInfo;
-const dbsInfo = cht_client_1.ChtClientService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(ENDPOINT))), Effect.flatMap(CouchDbInfo.decodeResponse), Effect.scoped);
-const serviceContext = cht_client_1.ChtClientService.pipe(Effect.map(couch => Context.make(cht_client_1.ChtClientService, couch)));
-class CouchDbsInfoService extends Effect.Service()('chtoolbox/CouchDbsInfoService', {
-    effect: serviceContext.pipe(Effect.map(context => ({
-        post: (dbNames) => getPostRequest(dbNames)
-            .pipe(Effect.flatMap(request => cht_client_1.ChtClientService.request(request)), Effect.flatMap(CouchDbInfo.decodeResponse), Effect.scoped, Effect.provide(context)),
-        get: () => dbsInfo.pipe(Effect.provide(context)),
-        getDbNames: () => dbsInfo.pipe(Effect.map(effect_1.Array.map(x => x.key)), Effect.provide(context))
-    }))),
-    accessors: true,
-}) {
-}
-exports.CouchDbsInfoService = CouchDbsInfoService;
+const getAllDbsInfo = () => cht_client_1.ChtClientService.pipe(Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(ENDPOINT))), Effect.flatMap(CouchDbInfo.decodeResponse), Effect.scoped);
+exports.getAllDbsInfo = getAllDbsInfo;
+const getDbsInfoByName = (dbNames) => getPostRequest(dbNames)
+    .pipe(Effect.flatMap(request => cht_client_1.ChtClientService.request(request)), Effect.flatMap(CouchDbInfo.decodeResponse), Effect.scoped);
+exports.getDbsInfoByName = getDbsInfoByName;
+const getDbNames = () => (0, exports.getAllDbsInfo)()
+    .pipe(Effect.map(effect_1.Array.map(({ key }) => key)));
+exports.getDbNames = getDbNames;
 //# sourceMappingURL=dbs-info.js.map

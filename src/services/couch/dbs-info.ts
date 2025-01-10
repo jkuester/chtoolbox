@@ -1,6 +1,5 @@
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
-import * as Context from 'effect/Context';
 import { Array, Schema } from 'effect';
 import { ChtClientService } from '../cht-client';
 import { NonEmptyArray } from 'effect/Array';
@@ -44,29 +43,22 @@ export class CouchDbInfo extends Schema.Class<CouchDbInfo>('CouchDbInfo')({
   static readonly decodeResponse = HttpClientResponse.schemaBodyJson(Schema.Array(CouchDbInfo));
 }
 
-const dbsInfo = ChtClientService.pipe(
+export const getAllDbsInfo = (): Effect.Effect<
+  readonly CouchDbInfo[], Error, ChtClientService
+> => ChtClientService.pipe(
   Effect.flatMap(couch => couch.request(HttpClientRequest.get(ENDPOINT))),
   Effect.flatMap(CouchDbInfo.decodeResponse),
   Effect.scoped,
 );
 
-const serviceContext = ChtClientService.pipe(Effect.map(couch => Context.make(ChtClientService, couch)));
+export const getDbsInfoByName = (
+  dbNames: NonEmptyArray<string>
+): Effect.Effect<readonly CouchDbInfo[], Error, ChtClientService> => getPostRequest(dbNames)
+  .pipe(
+    Effect.flatMap(request => ChtClientService.request(request)),
+    Effect.flatMap(CouchDbInfo.decodeResponse),
+    Effect.scoped,
+  );
 
-export class CouchDbsInfoService extends Effect.Service<CouchDbsInfoService>()('chtoolbox/CouchDbsInfoService', {
-  effect: serviceContext.pipe(Effect.map(context => ({
-    post: (dbNames: NonEmptyArray<string>): Effect.Effect<readonly CouchDbInfo[], Error> => getPostRequest(dbNames)
-      .pipe(
-        Effect.flatMap(request => ChtClientService.request(request)),
-        Effect.flatMap(CouchDbInfo.decodeResponse),
-        Effect.scoped,
-        Effect.provide(context),
-      ),
-    get: (): Effect.Effect<readonly CouchDbInfo[], Error> => dbsInfo.pipe(Effect.provide(context)),
-    getDbNames: (): Effect.Effect<string[], Error> => dbsInfo.pipe(
-      Effect.map(Array.map(x => x.key)),
-      Effect.provide(context),
-    )
-  }))),
-  accessors: true,
-}) {
-}
+export const getDbNames = (): Effect.Effect<string[], Error, ChtClientService> => getAllDbsInfo()
+  .pipe(Effect.map(Array.map(({ key }) => key)));

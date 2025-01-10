@@ -4,20 +4,19 @@ import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
 import { ChtClientService } from '../../../src/services/cht-client';
 import { HttpClientRequest } from '@effect/platform';
-import { CouchDbsInfoService } from '../../../src/services/couch/dbs-info';
 import { createDbInfo } from '../../utils/data-models';
 import { NonEmptyArray } from 'effect/Array';
 import { genWithLayer, sandbox } from '../../utils/base';
+import { getAllDbsInfo, getDbNames, getDbsInfoByName } from '../../../src/services/couch/dbs-info';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
 
 const couchRequest = sandbox.stub();
 const requestBuild = sandbox.stub();
 
-const run = CouchDbsInfoService.Default.pipe(
-  Layer.provide(Layer.succeed(ChtClientService, { request: couchRequest } as unknown as ChtClientService)),
-  genWithLayer,
-);
+const run = Layer
+  .succeed(ChtClientService, { request: couchRequest } as unknown as ChtClientService)
+  .pipe(genWithLayer);
 
 describe('Couch Dbs Info Service', () => {
   let requestSchemaBody: SinonStub;
@@ -53,7 +52,7 @@ describe('Couch Dbs Info Service', () => {
       json: Effect.succeed([testDbInfo, emptyDbInfo]),
     }));
 
-    const dbInfos = yield* CouchDbsInfoService.get();
+    const dbInfos = yield* getAllDbsInfo();
 
     expect(dbInfos).to.deep.equal([testDbInfo, emptyDbInfo]);
     expect(requestGet.calledOnceWithExactly('/_dbs_info')).to.be.true;
@@ -71,7 +70,7 @@ describe('Couch Dbs Info Service', () => {
       json: Effect.succeed([testDbInfo, emptyDbInfo]),
     }));
 
-    const dbNames = yield* CouchDbsInfoService.getDbNames();
+    const dbNames = yield* getDbNames();
 
     expect(dbNames).to.deep.equal([testDbInfo.key, emptyDbInfo.key]);
     expect(requestGet.calledOnceWithExactly('/_dbs_info')).to.be.true;
@@ -95,7 +94,7 @@ describe('Couch Dbs Info Service', () => {
       }));
       const dbNames: NonEmptyArray<string> = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 
-      const dbInfos = yield* CouchDbsInfoService.post(dbNames);
+      const dbInfos = yield* getDbsInfoByName(dbNames);
 
       expect(dbInfos).to.deep.equal([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]);
       expect(requestGet.notCalled).to.be.true;
@@ -114,7 +113,7 @@ describe('Couch Dbs Info Service', () => {
       requestBuild.returns(Effect.fail(expectedError));
       const dbNames: NonEmptyArray<string> = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 
-      const either = yield* Effect.either(CouchDbsInfoService.post(dbNames));
+      const either = yield* Effect.either(getDbsInfoByName(dbNames));
 
       if (Either.isLeft(either)) {
         expect(either.left).to.equal(expectedError);

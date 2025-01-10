@@ -1,6 +1,6 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { CouchDbInfo, CouchDbsInfoService } from './couch/dbs-info';
+import { CouchDbInfo, getDbsInfoByName } from './couch/dbs-info';
 import { CouchDesignInfo, CouchDesignInfoService } from './couch/design-info';
 import { CouchNodeSystem, CouchNodeSystemService } from './couch/node-system';
 import { Array, Clock, Number, Option, pipe } from 'effect';
@@ -8,6 +8,7 @@ import { LocalDiskUsageService } from './local-disk-usage';
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { NonEmptyArray } from 'effect/Array';
 import { PlatformError } from '@effect/platform/Error';
+import { ChtClientService } from './cht-client';
 
 interface DatabaseInfo extends CouchDbInfo {
   designs: CouchDesignInfo[]
@@ -94,7 +95,7 @@ const getMonitoringData = (directory: Option.Option<string>) => pipe(
   Effect.all([
     currentTimeSec,
     CouchNodeSystemService.get(),
-    CouchDbsInfoService.post(DB_NAMES),
+    getDbsInfoByName(DB_NAMES),
     getCouchDesignInfos,
     getDirectorySize(directory),
   ]),
@@ -165,21 +166,21 @@ const getAsCsv = (directory: Option.Option<string>) => pipe(
 const serviceContext = Effect
   .all([
     CouchNodeSystemService,
-    CouchDbsInfoService,
     CouchDesignInfoService,
     LocalDiskUsageService,
+    ChtClientService,
   ])
   .pipe(Effect.map(([
     couchNodeSystem,
-    couchDbsInfo,
     couchDesignInfo,
     localDiskUsage,
+    chtClient,
   ]) => Context
     .make(CouchNodeSystemService, couchNodeSystem)
     .pipe(
-      Context.add(CouchDbsInfoService, couchDbsInfo),
       Context.add(CouchDesignInfoService, couchDesignInfo),
       Context.add(LocalDiskUsageService, localDiskUsage),
+      Context.add(ChtClientService, chtClient),
     )));
 
 export class MonitorService extends Effect.Service<MonitorService>()('chtoolbox/MonitorService', {

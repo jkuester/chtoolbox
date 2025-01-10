@@ -3,8 +3,9 @@ import { Effect, Either, Layer, Option, TestClock } from 'effect';
 import { expect } from 'chai';
 import { MonitorService } from '../../src/services/monitor';
 import { CouchNodeSystem, CouchNodeSystemService } from '../../src/services/couch/node-system';
-import { SinonStub } from 'sinon';
-import { CouchDbInfo, CouchDbsInfoService } from '../../src/services/couch/dbs-info';
+import sinon, { SinonStub } from 'sinon';
+import { CouchDbInfo } from '../../src/services/couch/dbs-info';
+import * as CouchDbsInfo from '../../src/services/couch/dbs-info';
 import { CouchDesignInfo, CouchDesignInfoService } from '../../src/services/couch/design-info';
 import { LocalDiskUsageService } from '../../src/services/local-disk-usage';
 import { createDbInfo, createDesignInfo, createNodeSystem } from '../utils/data-models';
@@ -12,6 +13,7 @@ import { ResponseError } from '@effect/platform/HttpClientError';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import { NonEmptyArray } from 'effect/Array';
 import { genWithLayer, sandbox } from '../utils/base';
+import { ChtClientService } from '../../src/services/cht-client';
 
 const DB_NAMES: NonEmptyArray<string> = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 const EXPECTED_DESIGN_INFO_ARGS = [
@@ -129,7 +131,6 @@ const initializeDesignInfoServiceGet = (designInfoServiceGet: SinonStub) => {
 };
 
 const nodeSystemServiceGet = sandbox.stub();
-const dbsInfoServicePost = sandbox.stub();
 const designInfoServiceGet = sandbox.stub();
 const diskUsageServiceGetSize = sandbox.stub();
 
@@ -137,9 +138,7 @@ const run = MonitorService.Default.pipe(
   Layer.provide(Layer.succeed(CouchNodeSystemService, {
     get: nodeSystemServiceGet,
   } as unknown as CouchNodeSystemService)),
-  Layer.provide(Layer.succeed(CouchDbsInfoService, {
-    post: dbsInfoServicePost,
-  } as unknown as CouchDbsInfoService)),
+  Layer.provide(Layer.succeed(ChtClientService, {} as unknown as ChtClientService)),
   Layer.provide(Layer.succeed(CouchDesignInfoService, {
     get: designInfoServiceGet,
   } as unknown as CouchDesignInfoService)),
@@ -150,6 +149,12 @@ const run = MonitorService.Default.pipe(
 );
 
 describe('Monitor service', () => {
+  let dbsInfoServicePost: SinonStub;
+
+  beforeEach(() => {
+    dbsInfoServicePost = sinon.stub(CouchDbsInfo, 'getDbsInfoByName');
+  });
+
   describe('get', () => {
     it('returns empty monitoring data', run(function* () {
       const nodeSystem = createNodeSystem();

@@ -1,7 +1,7 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { Array, Match, Option, pipe, Stream } from 'effect';
-import { CouchDbsInfoService } from './couch/dbs-info';
+import { getDbNames } from './couch/dbs-info';
 import { CouchDesignDocsService } from './couch/design-docs';
 import { compactDb, compactDesign } from '../libs/couch/compact';
 import { CouchDesignInfoService } from './couch/design-info';
@@ -37,8 +37,7 @@ const compactCouchDb = (dbName: string, compactDesigns: boolean) => compactDb(db
 
 const compactCouchDesign = (dbName: string) => (designName: string) => compactDesign(dbName, designName);
 
-const compactAll = (compactDesigns: boolean) => CouchDbsInfoService
-  .getDbNames()
+const compactAll = (compactDesigns: boolean) => getDbNames()
   .pipe(
     Effect.map(Array.map(dbName => compactCouchDb(dbName, compactDesigns))),
     Effect.flatMap(Effect.all),
@@ -77,21 +76,18 @@ const streamDesign = (dbName: string, designName: string) => streamActiveTasks()
 const serviceContext = Effect
   .all([
     CouchActiveTasksService,
-    CouchDbsInfoService,
     CouchDesignDocsService,
     CouchDesignInfoService,
     ChtClientService,
   ])
   .pipe(Effect.map(([
     activeTasks,
-    dbsInfo,
     designDocs,
     designInfo,
     chtClient,
   ]) => Context
-    .make(CouchDbsInfoService, dbsInfo)
+    .make(CouchActiveTasksService, activeTasks)
     .pipe(
-      Context.add(CouchActiveTasksService, activeTasks),
       Context.add(CouchDesignDocsService, designDocs),
       Context.add(CouchDesignInfoService, designInfo),
       Context.add(ChtClientService, chtClient),
