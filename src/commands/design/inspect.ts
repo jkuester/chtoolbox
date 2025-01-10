@@ -2,7 +2,7 @@ import { Args, Command } from '@effect/cli';
 import { Array, Effect, pipe } from 'effect';
 import { initializeUrl } from '../../index';
 import { CouchDesignInfoService } from '../../services/couch/design-info';
-import { getViewNames } from '../../services/couch/design';
+import { getViewNames } from '../../libs/couch/design';
 
 import { logJson } from '../../libs/console';
 

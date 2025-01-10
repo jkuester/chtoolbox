@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
 import { ChtClientService } from '../../../src/services/cht-client';
 import { HttpClientRequest } from '@effect/platform';
-import { getViewNames } from '../../../src/services/couch/design';
+import { getViewNames } from '../../../src/libs/couch/design';
 import { genWithLayer, sandbox } from '../../utils/base';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;

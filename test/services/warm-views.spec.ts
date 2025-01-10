@@ -6,7 +6,7 @@ import { CouchDesignInfoService } from '../../src/services/couch/design-info';
 import { CouchDesignDocsService } from '../../src/services/couch/design-docs';
 import { createDesignInfo } from '../utils/data-models';
 import { WarmViewsService } from '../../src/services/warm-views';
-import * as CouchDesign from '../../src/services/couch/design';
+import * as CouchDesign from '../../src/libs/couch/design';
 import { CouchViewService } from '../../src/services/couch/view';
 import { genWithLayer, sandbox } from '../utils/base';
 import { ChtClientService } from '../../src/services/cht-client';

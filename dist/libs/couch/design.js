@@ -26,7 +26,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getViewNames = void 0;
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
-const cht_client_1 = require("../cht-client");
+const cht_client_1 = require("../../services/cht-client");
 const effect_1 = require("effect");
 class CouchDesign extends effect_1.Schema.Class('CouchDesign')({
     _id: effect_1.Schema.String,
