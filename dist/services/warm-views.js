@@ -30,7 +30,7 @@ const effect_1 = require("effect");
 const dbs_info_1 = require("../libs/couch/dbs-info");
 const design_docs_1 = require("../libs/couch/design-docs");
 const design_1 = require("../libs/couch/design");
-const view_1 = require("./couch/view");
+const view_1 = require("../libs/couch/view");
 const design_info_1 = require("../libs/couch/design-info");
 const cht_client_1 = require("./cht-client");
 const warmCouchView = (dbName, designId) => (viewName) => (0, view_1.warmView)(dbName, designId, viewName);

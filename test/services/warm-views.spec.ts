@@ -7,7 +7,7 @@ import * as CouchDesignDocs from '../../src/libs/couch/design-docs';
 import { createDesignInfo } from '../utils/data-models';
 import { WarmViewsService } from '../../src/services/warm-views';
 import * as CouchDesign from '../../src/libs/couch/design';
-import * as CouchView from '../../src/services/couch/view';
+import * as CouchView from '../../src/libs/couch/view';
 import { genWithLayer } from '../utils/base';
 import { ChtClientService } from '../../src/services/cht-client';
 import sinon, { SinonStub } from 'sinon';

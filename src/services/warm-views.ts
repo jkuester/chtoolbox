@@ -4,7 +4,7 @@ import { Array } from 'effect';
 import { getDbNames } from '../libs/couch/dbs-info';
 import { getDesignDocNames } from '../libs/couch/design-docs';
 import { getViewNames } from '../libs/couch/design';
-import { warmView } from './couch/view';
+import { warmView } from '../libs/couch/view';
 import { getDesignInfo } from '../libs/couch/design-info';
 import { ChtClientService } from './cht-client';
 

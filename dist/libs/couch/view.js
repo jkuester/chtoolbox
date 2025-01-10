@@ -26,7 +26,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.warmView = void 0;
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
-const cht_client_1 = require("../cht-client");
+const cht_client_1 = require("../../services/cht-client");
 const getWarmRequest = (dbName, designName, viewName) => platform_1.HttpClientRequest
     .get(`/${dbName}/_design/${designName}/_view/${viewName}`)
     .pipe(platform_1.HttpClientRequest.setUrlParam('limit', '0'));
