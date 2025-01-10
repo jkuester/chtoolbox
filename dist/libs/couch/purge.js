@@ -27,7 +27,7 @@ exports.purgeFrom = void 0;
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
 const effect_1 = require("effect");
-const cht_client_1 = require("../cht-client");
+const cht_client_1 = require("../../services/cht-client");
 const PurgeBody = effect_1.Schema.Record({ key: effect_1.Schema.String, value: effect_1.Schema.Array(effect_1.Schema.String) });
 const getPostRequest = (dbName, body) => PurgeBody.pipe(platform_1.HttpClientRequest.schemaBodyJson, build => build(platform_1.HttpClientRequest.post(`/${dbName}/_purge`), body), Effect.mapError(x => x));
 const purgeDb = (dbName) => (body) => getPostRequest(dbName, body)

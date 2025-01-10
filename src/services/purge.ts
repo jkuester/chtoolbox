@@ -2,7 +2,7 @@ import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { AllDocsResponseStream, PouchDBService, streamAllDocPages, streamQueryPages } from './pouchdb';
 import { Array, Option, pipe, Predicate, Schema, Stream, String } from 'effect';
-import { purgeFrom } from './couch/purge';
+import { purgeFrom } from '../libs/couch/purge';
 import { ChtClientService } from './cht-client';
 import AllDocsResponse = PouchDB.Core.AllDocsResponse;
 import AllDocsWithKeysResponse = PouchDB.Core.AllDocsWithKeysResponse;

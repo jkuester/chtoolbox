@@ -28,7 +28,7 @@ const Effect = __importStar(require("effect/Effect"));
 const Context = __importStar(require("effect/Context"));
 const pouchdb_1 = require("./pouchdb");
 const effect_1 = require("effect");
-const purge_1 = require("./couch/purge");
+const purge_1 = require("../libs/couch/purge");
 const cht_client_1 = require("./cht-client");
 // _purge endpoint only accepts batches of 100.
 // skip: 0 just keeps getting the next 100 (after the last was purged)
