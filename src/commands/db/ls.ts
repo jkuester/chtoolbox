@@ -2,7 +2,7 @@ import { Command } from '@effect/cli';
 import { Array, Console, Effect } from 'effect';
 import { initializeUrl } from '../../index';
 import { CouchDbInfo, getAllDbsInfo } from '../../libs/couch/dbs-info';
-import { getDisplayDictByPid } from '../../services/couch/active-tasks';
+import { getDisplayDictByPid } from '../../libs/couch/active-tasks';
 
 const getDbDisplay = ({ info: { db_name, doc_count } }: CouchDbInfo) => ({
   pid: db_name,

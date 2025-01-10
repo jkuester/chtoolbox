@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.streamActiveTasks = exports.getActiveTasks = exports.filterStreamByType = exports.getDisplayDictByPid = exports.getProgressPct = exports.getPid = exports.getDbName = exports.getDesignName = exports.CouchActiveTask = void 0;
 const platform_1 = require("@effect/platform");
-const cht_client_1 = require("../cht-client");
+const cht_client_1 = require("../../services/cht-client");
 const effect_1 = require("effect");
 const ENDPOINT = '/_active_tasks';
 class CouchActiveTask extends effect_1.Schema.Class('CouchActiveTask')({

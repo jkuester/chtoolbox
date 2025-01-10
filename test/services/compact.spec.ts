@@ -6,7 +6,7 @@ import * as CouchDbsInfo from '../../src/libs/couch/dbs-info';
 import * as CouchDesignInfo from '../../src/libs/couch/design-info';
 import { CompactService } from '../../src/services/compact';
 import * as CouchDesignDocs from '../../src/libs/couch/design-docs';
-import * as CouchActiveTasksSvc from '../../src/services/couch/active-tasks';
+import * as CouchActiveTasksSvc from '../../src/libs/couch/active-tasks';
 import * as CouchCompactService from '../../src/libs/couch/compact';
 import * as core from '../../src/libs/core';
 import { genWithLayer } from '../utils/base';

@@ -10,7 +10,7 @@ import {
   getDisplayDictByPid,
   getPid,
   getProgressPct
-} from '../../services/couch/active-tasks';
+} from '../../libs/couch/active-tasks';
 import { ChtClientService } from '../../services/cht-client';
 
 const getDesignDisplayName = (task: CouchActiveTask) => getDesignName(task)

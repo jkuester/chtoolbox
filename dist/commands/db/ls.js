@@ -5,7 +5,7 @@ const cli_1 = require("@effect/cli");
 const effect_1 = require("effect");
 const index_1 = require("../../index");
 const dbs_info_1 = require("../../libs/couch/dbs-info");
-const active_tasks_1 = require("../../services/couch/active-tasks");
+const active_tasks_1 = require("../../libs/couch/active-tasks");
 const getDbDisplay = ({ info: { db_name, doc_count } }) => ({
     pid: db_name,
     doc_count,

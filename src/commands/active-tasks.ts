@@ -10,7 +10,7 @@ import {
   getPid,
   getProgressPct,
   streamActiveTasks
-} from '../services/couch/active-tasks';
+} from '../libs/couch/active-tasks';
 
 import { clearThen } from '../libs/console';
 

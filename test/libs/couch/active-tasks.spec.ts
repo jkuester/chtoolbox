@@ -13,7 +13,7 @@ import {
   getPid,
   getProgressPct,
   streamActiveTasks
-} from '../../../src/services/couch/active-tasks';
+} from '../../../src/libs/couch/active-tasks';
 import { createActiveTask } from '../../utils/data-models';
 import * as schedule from 'effect/Schedule';
 import { genWithLayer, sandbox } from '../../utils/base';

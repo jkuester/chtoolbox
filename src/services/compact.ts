@@ -10,7 +10,7 @@ import {
   getDbName,
   getDesignName,
   streamActiveTasks
-} from './couch/active-tasks';
+} from '../libs/couch/active-tasks';
 import { untilEmptyCount } from '../libs/core';
 import { ChtClientService } from './cht-client';
 
