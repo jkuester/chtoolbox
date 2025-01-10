@@ -23,25 +23,16 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.purgeFrom = exports.CouchPurgeService = void 0;
+exports.purgeFrom = void 0;
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
-const Context = __importStar(require("effect/Context"));
 const effect_1 = require("effect");
 const cht_client_1 = require("../cht-client");
 const PurgeBody = effect_1.Schema.Record({ key: effect_1.Schema.String, value: effect_1.Schema.Array(effect_1.Schema.String) });
 const getPostRequest = (dbName, body) => PurgeBody.pipe(platform_1.HttpClientRequest.schemaBodyJson, build => build(platform_1.HttpClientRequest.post(`/${dbName}/_purge`), body), Effect.mapError(x => x));
-const purge = (dbName) => (body) => getPostRequest(dbName, body)
+const purgeDb = (dbName) => (body) => getPostRequest(dbName, body)
     .pipe(Effect.flatMap(cht_client_1.ChtClientService.request), Effect.scoped);
-const serviceContext = cht_client_1.ChtClientService.pipe(Effect.map(couch => Context.make(cht_client_1.ChtClientService, couch)));
-class CouchPurgeService extends Effect.Service()('chtoolbox/CouchPurgeService', {
-    effect: serviceContext.pipe(Effect.map(context => ({
-        purge: (dbName, docs) => (0, effect_1.pipe)(docs, effect_1.Array.reduce({}, (acc, doc) => ({ ...acc, [doc._id]: [doc._rev] })), purge(dbName), Effect.provide(context)),
-    }))),
-    accessors: true,
-}) {
-}
-exports.CouchPurgeService = CouchPurgeService;
-const purgeFrom = (dbName) => (docs) => CouchPurgeService.purge(dbName, docs);
+const purgeDocs = (dbName, docs) => (0, effect_1.pipe)(docs, effect_1.Array.reduce({}, (acc, doc) => ({ ...acc, [doc._id]: [doc._rev] })), purgeDb(dbName));
+const purgeFrom = (dbName) => (docs) => purgeDocs(dbName, docs);
 exports.purgeFrom = purgeFrom;
 //# sourceMappingURL=purge.js.map

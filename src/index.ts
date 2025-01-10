@@ -19,7 +19,6 @@ import { ReplicateService } from './services/replicate';
 import { db } from './commands/db';
 import { design } from './commands/design';
 import { doc } from './commands/doc';
-import { CouchPurgeService } from './services/couch/purge';
 import { PurgeService } from './services/purge';
 import { upgrade } from './commands/upgrade';
 import { ChtUpgradeService } from './services/cht/upgrade';
@@ -68,7 +67,6 @@ const cli = Command.run(command, {
 const couchServices = CouchActiveTasksService
   .Default
   .pipe(
-    Layer.provideMerge(CouchPurgeService.Default),
     Layer.provideMerge(CouchViewService.Default),
   );
 
