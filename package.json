@@ -31,7 +31,7 @@
     "@types/pouchdb-mapreduce": "^6.1.10",
     "@types/sinon": "^10.0.20",
     "@typescript-eslint/eslint-plugin": "^8.13.0",
-    "@typescript-eslint/parser": "^8.13.0",
+    "@typescript-eslint/parser": "^8.19.1",
     "chai": "^4.5.0",
     "eslint": "^8.57.1",
     "eslint-plugin-node": "^11.1.0",
