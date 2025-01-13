@@ -2,7 +2,7 @@ import { describe, it } from 'mocha';
 import { Console, Effect, TestContext } from 'effect';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { clearThen, logJson, color, AnsiColor } from '../../src/libs/console';
+import { clearThen, logJson, color } from '../../src/libs/console';
 
 describe('Console libs', () => {
   const run = (test:  Effect.Effect<void, Error>) => async () => {
@@ -15,7 +15,7 @@ describe('Console libs', () => {
     ['blue', '\x1b[34m']
   ].forEach(([ansiColor, expectedCode]) => {
     it(`color(${ansiColor})`, () => {
-      expect(color(ansiColor as AnsiColor)('hello')).to.equal(`${expectedCode}hello\x1b[0m`);
+      expect(color(ansiColor as 'red' | 'green' | 'blue')('hello')).to.equal(`${expectedCode}hello\x1b[0m`);
     });
   });
 
