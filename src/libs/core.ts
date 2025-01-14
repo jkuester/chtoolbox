@@ -1,8 +1,5 @@
 import { Array, Effect, Function, Number, Option, Ref, Stream } from 'effect';
 import PouchDB from 'pouchdb-core';
-import { HttpClientResponse } from '@effect/platform';
-
-export type HttpClientResponseEffect = Effect.Effect<HttpClientResponse.HttpClientResponse, Error>;
 
 /**
  * Returns a function that takes an array. The function will return `false` until

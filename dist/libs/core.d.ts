@@ -1,6 +1,4 @@
 import { Effect, Stream } from 'effect';
-import { HttpClientResponse } from '@effect/platform';
-export type HttpClientResponseEffect = Effect.Effect<HttpClientResponse.HttpClientResponse, Error>;
 /**
  * Returns a function that takes an array. The function will return `false` until
  * it has been called `target` times with an empty array.

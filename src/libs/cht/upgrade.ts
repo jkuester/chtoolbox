@@ -1,6 +1,6 @@
 import { HttpClientRequest } from '@effect/platform';
 import * as Effect from 'effect/Effect';
-import { ChtClientService } from '../cht-client';
+import { ChtClientService } from '../../services/cht-client';
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { Schema } from 'effect';
 import { HttpClientResponse } from '@effect/platform/HttpClientResponse';

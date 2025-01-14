@@ -5,7 +5,7 @@ import * as pouchDbService from '../../src/services/pouchdb';
 import { PouchDBService } from '../../src/services/pouchdb';
 import { expect } from 'chai';
 import { UpgradeService } from '../../src/services/upgrade';
-import * as ChtUpgradeLib from '../../src/services/cht/upgrade';
+import * as ChtUpgradeLib from '../../src/libs/cht/upgrade';
 import { genWithLayer, sandbox } from '../utils/base';
 import { ChtClientService } from '../../src/services/cht-client';
 

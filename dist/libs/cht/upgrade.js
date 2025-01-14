@@ -26,7 +26,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.completeChtUpgrade = exports.stageChtUpgrade = exports.upgradeCht = void 0;
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
-const cht_client_1 = require("../cht-client");
+const cht_client_1 = require("../../services/cht-client");
 const HttpClientError_1 = require("@effect/platform/HttpClientError");
 const effect_1 = require("effect");
 const ENDPOINT_UPGRADE = '/api/v1/upgrade';

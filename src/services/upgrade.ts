@@ -2,7 +2,7 @@ import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { PouchDBService, streamChanges } from './pouchdb';
 import { Array, DateTime, Match, Option, Schedule, Schema, Stream } from 'effect';
-import { completeChtUpgrade, stageChtUpgrade, upgradeCht } from './cht/upgrade';
+import { completeChtUpgrade, stageChtUpgrade, upgradeCht } from '../libs/cht/upgrade';
 import { ChtClientService } from './cht-client';
 
 const UPGRADE_LOG_NAME = 'upgrade_log';

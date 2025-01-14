@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
 import { ChtClientService } from '../../../src/services/cht-client';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
-import { completeChtUpgrade, stageChtUpgrade, upgradeCht } from '../../../src/services/cht/upgrade';
+import { completeChtUpgrade, stageChtUpgrade, upgradeCht } from '../../../src/libs/cht/upgrade';
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { genWithLayer, sandbox } from '../../utils/base';
 
