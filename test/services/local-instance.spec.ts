@@ -1,5 +1,5 @@
 import { describe, it } from 'mocha';
-import { Array, Effect, Either, Layer, Schedule } from 'effect';
+import { Array, Effect, Either, Layer, Schedule, Option, pipe } from 'effect';
 import sinon, { SinonStub } from 'sinon';
 import { expect } from 'chai';
 import * as Docker from '../../src/libs/docker';
@@ -600,20 +600,46 @@ describe('Local Instance Service', () => {
         .returns(getVolumeLabelValueInner);
     });
 
-    it('returns the project names for the current local instances', run(function* () {
+    it('returns the project info for the current local instances', run(function* () {
       const volumeNames = ['chtx-instance-1', 'chtx-instance-2', 'chtx-instance-3'];
       const projectNames = ['myfirstinstance', 'mysecondinstance', 'mythirdinstance'];
+      const ports = ['1111', '2222', '3333'];
       getVolumeNamesWithLabel.returns(Effect.succeed(volumeNames));
-      getVolumeLabelValueInner.onFirstCall().returns(Effect.succeed(projectNames[0]));
-      getVolumeLabelValueInner.onSecondCall().returns(Effect.succeed(projectNames[1]));
-      getVolumeLabelValueInner.onThirdCall().returns(Effect.succeed(projectNames[2]));
+      projectNames.forEach((name, i) => getVolumeLabelValueInner.onCall(i).returns(Effect.succeed(name)));
+      ports.forEach((port, i) => getEnvarFromComposeContainerInner.onCall(i).returns(Effect.succeed(port)));
 
       const results = yield* LocalInstanceService.ls();
 
-      expect(results).to.deep.equal(projectNames);
+      const expectedResults = pipe(
+        Array.map(ports, Option.some),
+        Array.zipWith(projectNames, (port, name) => ({ name, port })),
+      );
+      expect(results).to.deep.equal(expectedResults);
       expect(getVolumeNamesWithLabel.calledOnceWithExactly('chtx.instance')).to.be.true;
       expect(getVolumeLabelValueOuter.calledOnceWithExactly('chtx.instance')).to.be.true;
       expect(getVolumeLabelValueInner.args).to.deep.equal(Array.map(volumeNames, Array.make));
+      const expectedGetEnvarParams = pipe(
+        Array.map(projectNames, name => `${name}-up`),
+        Array.map(names => [names]),
+      );
+      expect(getEnvarFromComposeContainerInner.args).to.deep.equal(expectedGetEnvarParams);
+    }));
+
+    it('does not include port when it cannot be found', run(function* () {
+      const volumeName = 'chtx-instance-1';
+      const projectName = 'myfirstinstance';
+      getVolumeNamesWithLabel.returns(Effect.succeed([volumeName]));
+      getVolumeLabelValueInner.returns(Effect.succeed(projectName));
+      getEnvarFromComposeContainerInner.returns(Effect.succeed('invalid port'));
+
+      const results = yield* LocalInstanceService.ls();
+
+      const expectedResults = [{ name: projectName, port: Option.none() }];
+      expect(results).to.deep.equal(expectedResults);
+      expect(getVolumeNamesWithLabel.calledOnceWithExactly('chtx.instance')).to.be.true;
+      expect(getVolumeLabelValueOuter.calledOnceWithExactly('chtx.instance')).to.be.true;
+      expect(getVolumeLabelValueInner.args).to.deep.equal(Array.map([volumeName], Array.make));
+      expect(getEnvarFromComposeContainerInner.calledOnceWithExactly(`${projectName}-up`)).to.be.true;
     }));
 
     it('returns error when there is a problem getting volume names', run(function* () {

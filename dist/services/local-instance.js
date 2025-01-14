@@ -207,7 +207,7 @@ class LocalInstanceService extends effect_1.Effect.Service()('chtoolbox/LocalIns
         setSSLCerts: (instanceName, sslType) => ensureUpgradeServiceExists(instanceName)
             .pipe(effect_1.Effect.andThen((0, docker_1.startCompose)(upgradeSvcProjectName(instanceName))), effect_1.Effect.andThen(getPortForInstance(instanceName)), effect_1.Effect.tap(waitForInstance), effect_1.Effect.andThen((0, file_1.createTmpDir)()), effect_1.Effect.tap(writeSSLFiles(sslType)), effect_1.Effect.flatMap(copySSLFilesToNginxContainer(instanceName)), effect_1.Effect.andThen((0, docker_1.restartComposeService)(instanceName, NGINX_SVC_NAME)), effect_1.Effect.mapError(x => x), effect_1.Effect.provide(context), effect_1.Effect.scoped),
         ls: () => (0, docker_1.getVolumeNamesWithLabel)(CHTX_LABEL_NAME)
-            .pipe(effect_1.Effect.map(effect_1.Array.map((0, docker_1.getVolumeLabelValue)(CHTX_LABEL_NAME))), effect_1.Effect.flatMap(effect_1.Effect.all), effect_1.Effect.mapError(x => x), effect_1.Effect.provide(context)),
+            .pipe(effect_1.Effect.map(effect_1.Array.map((0, docker_1.getVolumeLabelValue)(CHTX_LABEL_NAME))), effect_1.Effect.flatMap(effect_1.Effect.all), effect_1.Effect.map(effect_1.Array.map(name => getPortForInstance(name).pipe(effect_1.Effect.catchAll(() => effect_1.Effect.succeed(null)), effect_1.Effect.map(portVal => ({ name, port: effect_1.Option.fromNullable(portVal) }))))), effect_1.Effect.flatMap(effect_1.Effect.all), effect_1.Effect.mapError(x => x), effect_1.Effect.provide(context)),
     }))),
     accessors: true,
 }) {

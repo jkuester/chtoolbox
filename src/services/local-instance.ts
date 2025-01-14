@@ -1,4 +1,4 @@
-import { Array, Effect, Logger, LogLevel, Match, pipe, Schedule, Schema } from 'effect';
+import { Array, Effect, Logger, LogLevel, Match, pipe, Schedule, Schema, Option } from 'effect';
 import * as Context from 'effect/Context';
 import { FileSystem, HttpClient, HttpClientRequest } from '@effect/platform';
 import crypto from 'crypto';
@@ -369,9 +369,16 @@ export class LocalInstanceService extends Effect.Service<LocalInstanceService>()
         Effect.provide(context),
         Effect.scoped,
       ),
-    ls: (): Effect.Effect<string[], Error> => getVolumeNamesWithLabel(CHTX_LABEL_NAME)
+    ls: (): Effect.Effect<
+      { name: string, port: Option.Option<`${number}`> }[], Error
+    > => getVolumeNamesWithLabel(CHTX_LABEL_NAME)
       .pipe(
         Effect.map(Array.map(getVolumeLabelValue(CHTX_LABEL_NAME))),
+        Effect.flatMap(Effect.all),
+        Effect.map(Array.map(name => getPortForInstance(name).pipe(
+          Effect.catchAll(() => Effect.succeed(null)),
+          Effect.map(portVal => ({ name, port: Option.fromNullable(portVal) })),
+        ))),
         Effect.flatMap(Effect.all),
         Effect.mapError(x => x as unknown as Error),
         Effect.provide(context),
