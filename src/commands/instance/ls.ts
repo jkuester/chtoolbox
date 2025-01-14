@@ -1,12 +1,25 @@
 import { Command } from '@effect/cli';
-import { Array, Console, Effect } from 'effect';
+import { Array, Console, Effect, Option, pipe } from 'effect';
 import { LocalInstanceService } from '../../services/local-instance';
+import { getLocalIpUrl } from '../../libs/local-network';
+import { color } from '../../libs/console';
+
+const getUrl = (port: Option.Option<`${number}`>) => port.pipe(
+  Option.map(getLocalIpUrl),
+  Option.getOrElse(() => ''),
+);
+
+const printInstanceInfo = ({ name, port }: { name: string, port: Option.Option<`${number}`> }) => pipe(
+  getUrl(port),
+  color('blue'),
+  url => Console.log(`${name} - ${url}`),
+);
 
 export const ls = Command
   .make('ls', {}, () => LocalInstanceService
     .ls()
     .pipe(
-      Effect.map(Array.map(name => Console.log(name))),
+      Effect.map(Array.map(printInstanceInfo)),
       Effect.flatMap(Effect.all),
     ))
   .pipe(Command.withDescription(
