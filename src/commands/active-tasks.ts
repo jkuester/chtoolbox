@@ -54,7 +54,6 @@ const follow = Options
   .pipe(
     Options.withAlias('f'),
     Options.withDescription('Continuously poll the active tasks.'),
-    Options.withDefault(false),
   );
 
 export const activeTasks = Command

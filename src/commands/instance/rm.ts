@@ -26,7 +26,6 @@ const yes = Options
   .pipe(
     Options.withAlias('y'),
     Options.withDescription('Do not prompt for confirmation.'),
-    Options.withDefault(false),
   );
 
 const names = Args

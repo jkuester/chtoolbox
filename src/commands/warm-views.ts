@@ -34,7 +34,6 @@ const follow = Options
   .pipe(
     Options.withAlias('f'),
     Options.withDescription('After triggering warming, wait for all indexing jobs to complete.'),
-    Options.withDefault(false),
   );
 
 export const warmViews = Command

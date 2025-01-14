@@ -15,7 +15,7 @@ const isRemoveConfirmed = (dbNames, yes) => effect_1.Match
     .pipe(effect_1.Match.when(true, () => effect_1.Effect.succeed(true)), effect_1.Match.orElse(() => getConfirmationPrompt(dbNames)));
 const yes = cli_1.Options
     .boolean('yes')
-    .pipe(cli_1.Options.withAlias('y'), cli_1.Options.withDescription('Do not prompt for confirmation.'), cli_1.Options.withDefault(false));
+    .pipe(cli_1.Options.withAlias('y'), cli_1.Options.withDescription('Do not prompt for confirmation.'));
 const databases = cli_1.Args
     .text({ name: 'database' })
     .pipe(cli_1.Args.withDescription('The name of the database to remove'), cli_1.Args.atLeast(1));

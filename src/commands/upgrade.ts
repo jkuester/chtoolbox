@@ -45,21 +45,18 @@ const follow = Options
   .pipe(
     Options.withAlias('f'),
     Options.withDescription('After triggering upgrade, wait for it to complete.'),
-    Options.withDefault(false),
   );
 
 const stage = Options
   .boolean('stage')
   .pipe(
     Options.withDescription('Stage the upgrade without actually running it.'),
-    Options.withDefault(false),
   );
 
 const complete = Options
   .boolean('complete')
   .pipe(
     Options.withDescription('Complete a staged upgrade.'),
-    Options.withDefault(false),
   );
 
 const version = Args

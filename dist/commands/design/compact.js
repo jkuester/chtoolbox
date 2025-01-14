@@ -15,7 +15,7 @@ const designs = cli_1.Args
     .pipe(cli_1.Args.withDescription('The design(s) to compact'), cli_1.Args.atLeast(1));
 const follow = cli_1.Options
     .boolean('follow')
-    .pipe(cli_1.Options.withAlias('f'), cli_1.Options.withDescription('After triggering compaction, wait for all compacting jobs to complete.'), cli_1.Options.withDefault(false));
+    .pipe(cli_1.Options.withAlias('f'), cli_1.Options.withDescription('After triggering compaction, wait for all compacting jobs to complete.'));
 exports.compact = cli_1.Command
     .make('compact', { follow, database, designs }, ({ follow, database, designs }) => index_1.initializeUrl.pipe(effect_1.Effect.andThen(compact_1.CompactService.compactDesign(database)), effect_1.Effect.map(compactDesign => effect_1.Array.map(designs, compactDesign)), effect_1.Effect.flatMap(effect_1.Effect.all), effect_1.Effect.map(effect_1.Option.liftPredicate(() => follow)), effect_1.Effect.map(effect_1.Option.map(core_1.mergeArrayStreams)), effect_1.Effect.map(effect_1.Option.map(compact_2.streamActiveTasks)), effect_1.Effect.flatMap(effect_1.Option.getOrElse(() => effect_1.Console.log('Compaction started. Watch the active tasks for progress: chtx active-tasks -f')))))
     .pipe(cli_1.Command.withDescription(`Run compaction on one or more Couch designs. `

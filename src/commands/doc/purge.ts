@@ -73,22 +73,15 @@ const yes = Options
   .pipe(
     Options.withAlias('y'),
     Options.withDescription('Do not prompt for confirmation'),
-    Options.withDefault(false),
   );
 
 const all = Options
   .boolean('all')
-  .pipe(
-    Options.withDescription('Purge everything including design documents'),
-    Options.withDefault(false),
-  );
+  .pipe(Options.withDescription('Purge everything including design documents'));
 
 const reports = Options
   .boolean('reports')
-  .pipe(
-    Options.withDescription('Purge docs with the data_record type'),
-    Options.withDefault(false),
-  );
+  .pipe(Options.withDescription('Purge docs with the data_record type'));
 
 const contacts = Options
   .text('contacts')
@@ -116,9 +109,7 @@ const before = Options
 
 const database = Args
   .text({ name: 'database' })
-  .pipe(
-    Args.withDescription('The database to purge'),
-  );
+  .pipe(Args.withDescription('The database to purge'));
 
 interface PurgeOptions {
   readonly database: string,

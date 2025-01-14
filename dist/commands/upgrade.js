@@ -22,13 +22,13 @@ const getStreamAction = (follow) => effect_1.Option
     .pipe(effect_1.Option.getOrElse(() => printUpgradeLogId));
 const follow = cli_1.Options
     .boolean('follow')
-    .pipe(cli_1.Options.withAlias('f'), cli_1.Options.withDescription('After triggering upgrade, wait for it to complete.'), cli_1.Options.withDefault(false));
+    .pipe(cli_1.Options.withAlias('f'), cli_1.Options.withDescription('After triggering upgrade, wait for it to complete.'));
 const stage = cli_1.Options
     .boolean('stage')
-    .pipe(cli_1.Options.withDescription('Stage the upgrade without actually running it.'), cli_1.Options.withDefault(false));
+    .pipe(cli_1.Options.withDescription('Stage the upgrade without actually running it.'));
 const complete = cli_1.Options
     .boolean('complete')
-    .pipe(cli_1.Options.withDescription('Complete a staged upgrade.'), cli_1.Options.withDefault(false));
+    .pipe(cli_1.Options.withDescription('Complete a staged upgrade.'));
 const version = cli_1.Args
     .text({ name: 'version' })
     .pipe(cli_1.Args.withDescription('The CHT version to upgrade to'));

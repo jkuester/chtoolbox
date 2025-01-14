@@ -14,7 +14,7 @@ const isRemoveConfirmed = (names, yes) => effect_1.Match
 const rmChtInstances = (names) => (0, effect_1.pipe)(names, effect_1.Array.map(local_instance_1.LocalInstanceService.rm), effect_1.Effect.all, effect_1.Effect.andThen(effect_1.Console.log('CHT instance(s) removed')));
 const yes = cli_1.Options
     .boolean('yes')
-    .pipe(cli_1.Options.withAlias('y'), cli_1.Options.withDescription('Do not prompt for confirmation.'), cli_1.Options.withDefault(false));
+    .pipe(cli_1.Options.withAlias('y'), cli_1.Options.withDescription('Do not prompt for confirmation.'));
 const names = cli_1.Args
     .text({ name: 'name' })
     .pipe(cli_1.Args.withDescription('The project name of the CHT instance to remove'), cli_1.Args.atLeast(1));

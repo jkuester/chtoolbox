@@ -49,14 +49,10 @@ const follow = Options
   .pipe(
     Options.withAlias('f'),
     Options.withDescription('After triggering replication, wait for job to complete.'),
-    Options.withDefault(false),
   );
 const all = Options
   .boolean('all')
-  .pipe(
-    Options.withDescription('Replicate everything including design documents'),
-    Options.withDefault(false),
-  );
+  .pipe(Options.withDescription('Replicate everything including design documents'));
 const source = Args
   .text({ name: 'source' })
   .pipe(Args.withDescription('The source database name.'));

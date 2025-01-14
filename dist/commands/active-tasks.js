@@ -26,7 +26,7 @@ const followActiveTasks = (0, active_tasks_1.streamActiveTasks)()
     .pipe(effect_1.Effect.tap(tasks => (0, console_1.clearThen)(effect_1.Console.table(tasks))))));
 const follow = cli_1.Options
     .boolean('follow')
-    .pipe(cli_1.Options.withAlias('f'), cli_1.Options.withDescription('Continuously poll the active tasks.'), cli_1.Options.withDefault(false));
+    .pipe(cli_1.Options.withAlias('f'), cli_1.Options.withDescription('Continuously poll the active tasks.'));
 exports.activeTasks = cli_1.Command
     .make('active-tasks', { follow }, ({ follow }) => index_1.initializeUrl.pipe(effect_1.Effect.andThen(followActiveTasks), effect_1.Option.liftPredicate(() => follow), effect_1.Option.getOrElse(() => printCurrentTasks)))
     .pipe(cli_1.Command.withDescription(`Force compaction on databases and views.`));

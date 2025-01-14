@@ -26,13 +26,13 @@ const isPurgeConfirmed = (opts) => effect_1.Match
     .pipe(effect_1.Match.when(true, () => effect_1.Effect.succeed(true)), effect_1.Match.orElse(() => getConfirmationPrompt(opts)));
 const yes = cli_1.Options
     .boolean('yes')
-    .pipe(cli_1.Options.withAlias('y'), cli_1.Options.withDescription('Do not prompt for confirmation'), cli_1.Options.withDefault(false));
+    .pipe(cli_1.Options.withAlias('y'), cli_1.Options.withDescription('Do not prompt for confirmation'));
 const all = cli_1.Options
     .boolean('all')
-    .pipe(cli_1.Options.withDescription('Purge everything including design documents'), cli_1.Options.withDefault(false));
+    .pipe(cli_1.Options.withDescription('Purge everything including design documents'));
 const reports = cli_1.Options
     .boolean('reports')
-    .pipe(cli_1.Options.withDescription('Purge docs with the data_record type'), cli_1.Options.withDefault(false));
+    .pipe(cli_1.Options.withDescription('Purge docs with the data_record type'));
 const contacts = cli_1.Options
     .text('contacts')
     .pipe(cli_1.Options.withDescription('Purge contacts with the given contact type'), cli_1.Options.optional);

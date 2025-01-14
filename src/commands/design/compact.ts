@@ -23,7 +23,6 @@ const follow = Options
   .pipe(
     Options.withAlias('f'),
     Options.withDescription('After triggering compaction, wait for all compacting jobs to complete.'),
-    Options.withDefault(false),
   );
 
 export const compact = Command

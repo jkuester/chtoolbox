@@ -25,10 +25,10 @@ const databases = cli_1.Args
     .pipe(cli_1.Args.withDescription('The database(s) to compact. Leave empty to compact all databases.'), cli_1.Args.atLeast(0));
 const all = cli_1.Options
     .boolean('all')
-    .pipe(cli_1.Options.withAlias('a'), cli_1.Options.withDescription('Also compact all of the designs for the database(s).'), cli_1.Options.withDefault(false));
+    .pipe(cli_1.Options.withAlias('a'), cli_1.Options.withDescription('Also compact all of the designs for the database(s).'));
 const follow = cli_1.Options
     .boolean('follow')
-    .pipe(cli_1.Options.withAlias('f'), cli_1.Options.withDescription('After triggering compaction, wait for all compacting jobs to complete.'), cli_1.Options.withDefault(false));
+    .pipe(cli_1.Options.withAlias('f'), cli_1.Options.withDescription('After triggering compaction, wait for all compacting jobs to complete.'));
 exports.compact = cli_1.Command
     .make('compact', { follow, databases, all }, ({ follow, databases, all }) => index_1.initializeUrl.pipe(effect_1.Effect.andThen(() => doCompaction(databases, all)), effect_1.Effect.map(effect_1.Option.liftPredicate(() => follow)), effect_1.Effect.map(effect_1.Option.map(core_1.mergeArrayStreams)), effect_1.Effect.map(effect_1.Option.map(exports.streamActiveTasks)), effect_1.Effect.flatMap(effect_1.Option.getOrElse(() => effect_1.Console.log('Compaction started. Watch the active tasks for progress: chtx active-tasks -f')))))
     .pipe(cli_1.Command.withDescription(`Run compaction on one or more Couch databases. `

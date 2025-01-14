@@ -20,10 +20,10 @@ const watchReplication = (completionStream) => effect_1.Stream
     .pipe(effect_1.Effect.flatMap(streamReplicationTasks))));
 const follow = cli_1.Options
     .boolean('follow')
-    .pipe(cli_1.Options.withAlias('f'), cli_1.Options.withDescription('After triggering replication, wait for job to complete.'), cli_1.Options.withDefault(false));
+    .pipe(cli_1.Options.withAlias('f'), cli_1.Options.withDescription('After triggering replication, wait for job to complete.'));
 const all = cli_1.Options
     .boolean('all')
-    .pipe(cli_1.Options.withDescription('Replicate everything including design documents'), cli_1.Options.withDefault(false));
+    .pipe(cli_1.Options.withDescription('Replicate everything including design documents'));
 const source = cli_1.Args
     .text({ name: 'source' })
     .pipe(cli_1.Args.withDescription('The source database name.'));
