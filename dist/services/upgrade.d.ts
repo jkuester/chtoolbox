@@ -1,7 +1,7 @@
 import * as Effect from 'effect/Effect';
 import { PouchDBService } from './pouchdb';
 import { Schema, Stream } from 'effect';
-import { ChtUpgradeService } from './cht/upgrade';
+import { ChtClientService } from './cht-client';
 declare const UpgradeLog_base: Schema.Class<UpgradeLog, {
     _id: typeof Schema.String;
     state: Schema.Schema<string, string, never>;
@@ -34,7 +34,7 @@ declare const UpgradeService_base: Effect.Service.Class<UpgradeService, "chtoolb
         upgrade: (version: string) => UpgradeLogStreamEffect;
         stage: (version: string) => UpgradeLogStreamEffect;
         complete: (version: string) => UpgradeLogStreamEffect;
-    }, never, PouchDBService | ChtUpgradeService>;
+    }, never, ChtClientService | PouchDBService>;
     readonly accessors: true;
 }>;
 export declare class UpgradeService extends UpgradeService_base {

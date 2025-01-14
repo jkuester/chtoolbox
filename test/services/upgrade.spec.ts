@@ -5,8 +5,9 @@ import * as pouchDbService from '../../src/services/pouchdb';
 import { PouchDBService } from '../../src/services/pouchdb';
 import { expect } from 'chai';
 import { UpgradeService } from '../../src/services/upgrade';
-import { ChtUpgradeService } from '../../src/services/cht/upgrade';
+import * as ChtUpgradeLib from '../../src/libs/cht/upgrade';
 import { genWithLayer, sandbox } from '../utils/base';
+import { ChtClientService } from '../../src/services/cht-client';
 
 const version = '3.7.0';
 const EXPECTED_ALL_DOCS_OPTS = {
@@ -24,9 +25,6 @@ const createUpgradeLog = ({ idMillis = 0, state = '', state_history = [] } = {})
   state_history: state_history
 });
 
-const chtUpgrade = sandbox.stub();
-const chtStage = sandbox.stub();
-const chtComplete = sandbox.stub();
 const pouchGet = sandbox.stub();
 const dbAllDocs = sandbox.stub();
 
@@ -34,18 +32,20 @@ const run = UpgradeService.Default.pipe(
   Layer.provide(Layer.succeed(PouchDBService, {
     get: pouchGet,
   } as unknown as PouchDBService),),
-  Layer.provide(Layer.succeed(ChtUpgradeService, {
-    upgrade: chtUpgrade,
-    stage: chtStage,
-    complete: chtComplete,
-  } as unknown as ChtUpgradeService)),
+  Layer.provide(Layer.succeed(ChtClientService, { } as unknown as ChtClientService)),
   genWithLayer,
 );
 
 describe('Upgrade Service', () => {
+  let chtUpgrade: SinonStub;
+  let chtStage: SinonStub;
+  let chtComplete: SinonStub;
   let streamChanges: SinonStub;
 
   beforeEach(() => {
+    chtUpgrade = sinon.stub(ChtUpgradeLib, 'upgradeCht');
+    chtStage = sinon.stub(ChtUpgradeLib, 'stageChtUpgrade');
+    chtComplete = sinon.stub(ChtUpgradeLib, 'completeChtUpgrade');
     streamChanges = sinon.stub(pouchDbService, 'streamChanges');
     pouchGet.returns(Effect.succeed({ allDocs: dbAllDocs, }));
   });
@@ -86,7 +86,7 @@ describe('Upgrade Service', () => {
           expect(pouchGet.args).to.deep.equal([['medic-logs']]);
           expect(dbAllDocs.calledOnce).to.be.true;
           expect(dbAllDocs.args[0][0]).to.deep.include(EXPECTED_ALL_DOCS_OPTS);
-          expect(chtUpgrade.notCalled).to.be.true;
+          expect(chtUpgrade.calledOnceWithExactly(version)).to.be.true;
           expect(chtStage.notCalled).to.be.true;
           expect(chtComplete.notCalled).to.be.true;
           expect(streamChanges.notCalled).to.be.true;
@@ -259,7 +259,7 @@ describe('Upgrade Service', () => {
           expect(dbAllDocs.calledOnce).to.be.true;
           expect(dbAllDocs.args[0][0]).to.deep.include(EXPECTED_ALL_DOCS_OPTS);
           expect(chtUpgrade.notCalled).to.be.true;
-          expect(chtStage.notCalled).to.be.true;
+          expect(chtStage.calledOnceWithExactly(version)).to.be.true;
           expect(chtComplete.notCalled).to.be.true;
           expect(streamChanges.notCalled).to.be.true;
         } else {
@@ -393,7 +393,7 @@ describe('Upgrade Service', () => {
           expect(dbAllDocs.args[0][0]).to.deep.include(EXPECTED_ALL_DOCS_OPTS);
           expect(chtUpgrade.notCalled).to.be.true;
           expect(chtStage.notCalled).to.be.true;
-          expect(chtComplete.notCalled).to.be.true;
+          expect(chtComplete.calledOnceWithExactly(version)).to.be.true;
           expect(streamChanges.notCalled).to.be.true;
         } else {
           expect.fail('Expected error to be thrown');

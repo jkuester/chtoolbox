@@ -2,7 +2,8 @@ import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { PouchDBService, streamChanges } from './pouchdb';
 import { Array, DateTime, Match, Option, Schedule, Schema, Stream } from 'effect';
-import { ChtUpgradeService } from './cht/upgrade';
+import { completeChtUpgrade, stageChtUpgrade, upgradeCht } from '../libs/cht/upgrade';
+import { ChtClientService } from './cht-client';
 
 const UPGRADE_LOG_NAME = 'upgrade_log';
 const COMPLETED_STATES = ['finalized', 'aborted', 'errored', 'interrupted'];
@@ -32,7 +33,9 @@ const latestUpgradeLog = PouchDBService
   .get('medic-logs')
   .pipe(
     Effect.flatMap(db => Effect.tryPromise(() => db.allDocs({
-      startkey: `${UPGRADE_LOG_NAME}:${DateTime.unsafeNow().epochMillis.toString()}:`,
+      startkey: `${UPGRADE_LOG_NAME}:${DateTime.unsafeNow()
+        .epochMillis
+        .toString()}:`,
       endkey: `${UPGRADE_LOG_NAME}:0:`,
       descending: true,
       limit: 1,
@@ -66,15 +69,15 @@ const streamUpgradeLogChanges = (completedStates: string[]) => latestUpgradeLog
 
 const serviceContext = Effect
   .all([
-    ChtUpgradeService,
+    ChtClientService,
     PouchDBService,
   ])
   .pipe(Effect.map(([
-    upgrade,
+    chtClient,
     pouch,
   ]) => Context
     .make(PouchDBService, pouch)
-    .pipe(Context.add(ChtUpgradeService, upgrade))));
+    .pipe(Context.add(ChtClientService, chtClient))));
 
 const assertReadyForUpgrade = latestUpgradeLog.pipe(
   Effect.map(Option.map(({ state }) => state)),
@@ -96,17 +99,17 @@ type UpgradeLogStreamEffect = Effect.Effect<Stream.Stream<UpgradeLog, Error>, Er
 export class UpgradeService extends Effect.Service<UpgradeService>()('chtoolbox/UpgradeService', {
   effect: serviceContext.pipe(Effect.map(context => ({
     upgrade: (version: string): UpgradeLogStreamEffect => assertReadyForUpgrade.pipe(
-      Effect.andThen(ChtUpgradeService.upgrade(version)),
+      Effect.andThen(upgradeCht(version)),
       Effect.andThen(streamUpgradeLogChanges(COMPLETED_STATES)),
       Effect.provide(context),
     ),
     stage: (version: string): UpgradeLogStreamEffect => assertReadyForUpgrade.pipe(
-      Effect.andThen(ChtUpgradeService.stage(version)),
+      Effect.andThen(stageChtUpgrade(version)),
       Effect.andThen(streamUpgradeLogChanges(STAGING_COMPLETE_STATES)),
       Effect.provide(context),
     ),
     complete: (version: string): UpgradeLogStreamEffect => assertReadyForComplete.pipe(
-      Effect.andThen(ChtUpgradeService.complete(version)),
+      Effect.andThen(completeChtUpgrade(version)),
       Effect.andThen(streamUpgradeLogChanges(COMPLETED_STATES)
         .pipe(
           Effect.retry(Schedule.spaced(1000)), // Getting the upgrade log may fail while the server is still restarting

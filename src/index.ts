@@ -19,7 +19,6 @@ import { design } from './commands/design';
 import { doc } from './commands/doc';
 import { PurgeService } from './services/purge';
 import { upgrade } from './commands/upgrade';
-import { ChtUpgradeService } from './services/cht/upgrade';
 import { UpgradeService } from './services/upgrade';
 import { TestDataGeneratorService } from './services/test-data-generator';
 import { instance } from './commands/instance';
@@ -76,7 +75,6 @@ cli(process.argv)
     Effect.provide(UpgradeService.Default),
     Effect.provide(WarmViewsService.Default),
     Effect.provide(ReplicateService.Default),
-    Effect.provide(ChtUpgradeService.Default),
     Effect.provide(TestDataGeneratorService.Default),
     Effect.provide(PouchDBService.Default),
     Effect.provide(ChtClientService.Default.pipe(httpClientNoSslVerify)),
