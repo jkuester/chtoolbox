@@ -1,10 +1,9 @@
 import { HttpClientRequest } from '@effect/platform';
 import * as Effect from 'effect/Effect';
-import * as Context from 'effect/Context';
 import { ChtClientService } from '../cht-client';
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { Schema } from 'effect';
-import { HttpClientResponseEffect } from '../../libs/core';
+import { HttpClientResponse } from '@effect/platform/HttpClientResponse';
 
 const ENDPOINT_UPGRADE = '/api/v1/upgrade';
 const ENDPOINT_STAGE = `${ENDPOINT_UPGRADE}/stage`;
@@ -32,26 +31,21 @@ const postUpgrade = (endpoint: string, version: string) => getPostRequest(endpoi
     Effect.scoped,
   );
 
-const serviceContext = ChtClientService.pipe(Effect.map(cht => Context.make(ChtClientService, cht)));
+export const upgradeCht = (
+  version: string
+): Effect.Effect<HttpClientResponse, Error, ChtClientService> => postUpgrade(ENDPOINT_UPGRADE, version);
 
-export class ChtUpgradeService extends Effect.Service<ChtUpgradeService>()('chtoolbox/ChtUpgradeService', {
-  effect: serviceContext.pipe(Effect.map(context => ({
-    upgrade: (version: string): HttpClientResponseEffect => postUpgrade(ENDPOINT_UPGRADE, version)
-      .pipe(Effect.provide(context)),
-    stage: (version: string): HttpClientResponseEffect => postUpgrade(ENDPOINT_STAGE, version)
-      .pipe(Effect.provide(context)),
-    complete: (
-      version: string
-    ): HttpClientResponseEffect | Effect.Effect<void, Error> => postUpgrade(ENDPOINT_COMPLETE, version)
-      .pipe(
-        Effect.catchIf(
-          (err) => err instanceof ResponseError && err.response.status === 502,
-          () => Effect.void, // The api server is restarting, so we can ignore this error
-        ),
-        Effect.scoped,
-        Effect.provide(context)
-      ),
-  }))),
-  accessors: true,
-}) {
-}
+export const stageChtUpgrade = (
+  version: string
+): Effect.Effect<HttpClientResponse, Error, ChtClientService> => postUpgrade(ENDPOINT_STAGE, version);
+
+export const completeChtUpgrade = (
+  version: string
+): Effect.Effect<void, Error, ChtClientService> => postUpgrade(ENDPOINT_COMPLETE, version)
+  .pipe(
+    Effect.catchIf(
+      (err) => err instanceof ResponseError && err.response.status === 502,
+      () => Effect.void, // The api server is restarting, so we can ignore this error
+    ),
+    Effect.scoped,
+  );

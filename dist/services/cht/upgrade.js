@@ -23,10 +23,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ChtUpgradeService = void 0;
+exports.completeChtUpgrade = exports.stageChtUpgrade = exports.upgradeCht = void 0;
 const platform_1 = require("@effect/platform");
 const Effect = __importStar(require("effect/Effect"));
-const Context = __importStar(require("effect/Context"));
 const cht_client_1 = require("../cht-client");
 const HttpClientError_1 = require("@effect/platform/HttpClientError");
 const effect_1 = require("effect");
@@ -43,18 +42,11 @@ const UpgradeBody = effect_1.Schema.Struct({
 const getPostRequest = (endpoint, version) => UpgradeBody.pipe(platform_1.HttpClientRequest.schemaBodyJson, build => build(platform_1.HttpClientRequest.post(endpoint), { build: { version, namespace: 'medic', application: 'medic' } }), Effect.mapError(x => x));
 const postUpgrade = (endpoint, version) => getPostRequest(endpoint, version)
     .pipe(Effect.flatMap(cht_client_1.ChtClientService.request), Effect.scoped);
-const serviceContext = cht_client_1.ChtClientService.pipe(Effect.map(cht => Context.make(cht_client_1.ChtClientService, cht)));
-class ChtUpgradeService extends Effect.Service()('chtoolbox/ChtUpgradeService', {
-    effect: serviceContext.pipe(Effect.map(context => ({
-        upgrade: (version) => postUpgrade(ENDPOINT_UPGRADE, version)
-            .pipe(Effect.provide(context)),
-        stage: (version) => postUpgrade(ENDPOINT_STAGE, version)
-            .pipe(Effect.provide(context)),
-        complete: (version) => postUpgrade(ENDPOINT_COMPLETE, version)
-            .pipe(Effect.catchIf((err) => err instanceof HttpClientError_1.ResponseError && err.response.status === 502, () => Effect.void), Effect.scoped, Effect.provide(context)),
-    }))),
-    accessors: true,
-}) {
-}
-exports.ChtUpgradeService = ChtUpgradeService;
+const upgradeCht = (version) => postUpgrade(ENDPOINT_UPGRADE, version);
+exports.upgradeCht = upgradeCht;
+const stageChtUpgrade = (version) => postUpgrade(ENDPOINT_STAGE, version);
+exports.stageChtUpgrade = stageChtUpgrade;
+const completeChtUpgrade = (version) => postUpgrade(ENDPOINT_COMPLETE, version)
+    .pipe(Effect.catchIf((err) => err instanceof HttpClientError_1.ResponseError && err.response.status === 502, () => Effect.void), Effect.scoped);
+exports.completeChtUpgrade = completeChtUpgrade;
 //# sourceMappingURL=upgrade.js.map

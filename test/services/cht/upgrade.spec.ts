@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
 import { ChtClientService } from '../../../src/services/cht-client';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
-import { ChtUpgradeService } from '../../../src/services/cht/upgrade';
+import { completeChtUpgrade, stageChtUpgrade, upgradeCht } from '../../../src/services/cht/upgrade';
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { genWithLayer, sandbox } from '../../utils/base';
 
@@ -15,12 +15,11 @@ const FAKE_CLIENT_RESPONSE = { goodby: 'world' } as const;
 const chtRequest = sandbox.stub();
 const requestBuild = sandbox.stub();
 
-const run = ChtUpgradeService.Default.pipe(
-  Layer.provide(Layer.succeed(ChtClientService, { request: chtRequest } as unknown as ChtClientService)),
-  genWithLayer,
-);
+const run = Layer
+  .succeed(ChtClientService, { request: chtRequest } as unknown as ChtClientService)
+  .pipe(genWithLayer);
 
-describe('CHT Upgrade Service', () => {
+describe('CHT Upgrade libs', () => {
   let requestSchemaBody: SinonStub;
   let requestPost: SinonStub;
 
@@ -30,12 +29,12 @@ describe('CHT Upgrade Service', () => {
   });
 
   ([
-    ['upgrade', ChtUpgradeService.upgrade, '/api/v1/upgrade'],
-    ['stage', ChtUpgradeService.stage, '/api/v1/upgrade/stage'],
-    ['complete', ChtUpgradeService.complete, '/api/v1/upgrade/complete'],
+    ['upgrade', upgradeCht, '/api/v1/upgrade'],
+    ['stage', stageChtUpgrade, '/api/v1/upgrade/stage'],
+    ['complete', completeChtUpgrade, '/api/v1/upgrade/complete'],
   ] as unknown as [
     string,
-    (version: string) => Effect.Effect<HttpClientResponse.HttpClientResponse, Error, ChtUpgradeService>,
+    (version: string) => Effect.Effect<HttpClientResponse.HttpClientResponse, Error, ChtClientService>,
     string
   ][]).forEach(([name, fn, endpoint]) => {
     describe(name, () => {
@@ -90,7 +89,7 @@ describe('CHT Upgrade Service', () => {
       reason: 'StatusCode'
     })));
 
-    const response = yield* ChtUpgradeService.complete(version);
+    const response = yield* completeChtUpgrade(version);
 
     expect(response).to.be.undefined;
     expect(chtRequest.calledOnceWithExactly(fakeBuiltClientRequest)).to.be.true;
