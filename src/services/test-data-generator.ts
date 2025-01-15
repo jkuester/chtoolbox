@@ -4,7 +4,7 @@ import { EnvironmentService } from './environment.js';
 import { CommandExecutor, ExitCode } from '@effect/platform/CommandExecutor';
 import * as Context from 'effect/Context';
 
-const tdgPath = require.resolve('test-data-generator');
+const tdgPath = import.meta.resolve('test-data-generator');
 
 const tdgCommand = (designScriptPath: string) => EnvironmentService
   .get()

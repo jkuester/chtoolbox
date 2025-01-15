@@ -11,7 +11,7 @@ import { genWithLayer, sandbox } from '../utils/base.js';
 const DESIGN_PATH = '/my/design/path';
 const COUCH_URL = 'http://localhost:5984';
 const ENV = Redacted.make(COUCH_URL).pipe(url => ({ url }));
-const TDG_PATH = require.resolve('test-data-generator');
+const TDG_PATH = import.meta.resolve('test-data-generator');
 
 const envGet = sandbox.stub();
 
