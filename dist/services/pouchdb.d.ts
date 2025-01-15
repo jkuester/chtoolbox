@@ -1,6 +1,6 @@
 import * as Effect from 'effect/Effect';
 import { Stream } from 'effect';
-import { EnvironmentService } from './environment';
+import { EnvironmentService } from './environment.js';
 export declare const assertPouchResponse: (value: PouchDB.Core.Response | PouchDB.Core.Error) => PouchDB.Core.Response;
 type AllDocsOptions = PouchDB.Core.AllDocsWithKeyOptions | PouchDB.Core.AllDocsWithinRangeOptions | PouchDB.Core.AllDocsOptions;
 export type AllDocsResponseStream = Stream.Stream<PouchDB.Core.AllDocsResponse<object>, Error>;

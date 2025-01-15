@@ -2,10 +2,10 @@ import { describe, it } from 'mocha';
 import { TestContext } from 'effect';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { genWithLayer, sandbox } from '../utils/base';
+import { genWithLayer, sandbox } from '../utils/base.js';
 import OS from 'node:os';
-import { getFreePorts, getLocalIpUrl } from '../../src/libs/local-network';
-import * as Core from '../../src/libs/core';
+import { getFreePorts, getLocalIpUrl } from '../../src/libs/local-network.js';
+import * as Core from '../../src/libs/core.js';
 
 const run = TestContext.TestContext.pipe(genWithLayer);
 

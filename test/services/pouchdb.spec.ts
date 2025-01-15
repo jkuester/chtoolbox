@@ -1,7 +1,7 @@
 import { describe, it } from 'mocha';
 import { Array, Chunk, Effect, Either, Layer, Option, Redacted, Stream } from 'effect';
 import sinon, { SinonStub } from 'sinon';
-import * as core from '../../src/libs/core';
+import * as core from '../../src/libs/core.js';
 import PouchDB from 'pouchdb-core';
 import {
   assertPouchResponse,
@@ -9,10 +9,10 @@ import {
   streamAllDocPages,
   streamChanges,
   streamQueryPages
-} from '../../src/services/pouchdb';
-import { EnvironmentService } from '../../src/services/environment';
+} from '../../src/services/pouchdb.js';
+import { EnvironmentService } from '../../src/services/environment.js';
 import { expect } from 'chai';
-import { genWithLayer, sandbox } from '../utils/base';
+import { genWithLayer, sandbox } from '../utils/base.js';
 
 const FAKE_POUCHDB = { hello: 'world' } as const;
 

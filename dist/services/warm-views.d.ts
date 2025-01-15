@@ -1,5 +1,5 @@
 import * as Effect from 'effect/Effect';
-import { ChtClientService } from './cht-client';
+import { ChtClientService } from './cht-client.js';
 declare const WarmViewsService_base: Effect.Service.Class<WarmViewsService, "chtoolbox/WarmViewsService", {
     readonly effect: Effect.Effect<{
         warmAll: () => Effect.Effect<void, Error>;

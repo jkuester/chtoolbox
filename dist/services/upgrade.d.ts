@@ -1,7 +1,7 @@
 import * as Effect from 'effect/Effect';
-import { PouchDBService } from './pouchdb';
+import { PouchDBService } from './pouchdb.js';
 import { Schema, Stream } from 'effect';
-import { ChtClientService } from './cht-client';
+import { ChtClientService } from './cht-client.js';
 declare const UpgradeLog_base: Schema.Class<UpgradeLog, {
     _id: typeof Schema.String;
     state: Schema.Schema<string, string, never>;

@@ -2,15 +2,15 @@ import { describe, it } from 'mocha';
 import { Chunk, Effect, Layer, Stream } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
-import * as CouchDbsInfo from '../../src/libs/couch/dbs-info';
-import * as CouchDesignInfo from '../../src/libs/couch/design-info';
-import { CompactService } from '../../src/services/compact';
-import * as CouchDesignDocs from '../../src/libs/couch/design-docs';
-import * as CouchActiveTasksSvc from '../../src/libs/couch/active-tasks';
-import * as CouchCompactService from '../../src/libs/couch/compact';
-import * as core from '../../src/libs/core';
-import { genWithLayer } from '../utils/base';
-import { ChtClientService } from '../../src/services/cht-client';
+import * as CouchDbsInfo from '../../src/libs/couch/dbs-info.js';
+import * as CouchDesignInfo from '../../src/libs/couch/design-info.js';
+import { CompactService } from '../../src/services/compact.js';
+import * as CouchDesignDocs from '../../src/libs/couch/design-docs.js';
+import * as CouchActiveTasksSvc from '../../src/libs/couch/active-tasks.js';
+import * as CouchCompactService from '../../src/libs/couch/compact.js';
+import * as core from '../../src/libs/core.js';
+import { genWithLayer } from '../utils/base.js';
+import { ChtClientService } from '../../src/services/cht-client.js';
 
 const run = CompactService.Default
   .pipe(

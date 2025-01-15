@@ -1,47 +1,35 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.streamActiveTasks = exports.getActiveTasks = exports.filterStreamByType = exports.getDisplayDictByPid = exports.getProgressPct = exports.getPid = exports.getDbName = exports.getDesignName = exports.CouchActiveTask = void 0;
-const platform_1 = require("@effect/platform");
-const cht_client_1 = require("../../services/cht-client");
-const effect_1 = require("effect");
+import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
+import { ChtClientService } from '../../services/cht-client.js';
+import { Array, Effect, Number, Option, Order, pipe, Record, Schedule, Schema, Stream, String } from 'effect';
 const ENDPOINT = '/_active_tasks';
-class CouchActiveTask extends effect_1.Schema.Class('CouchActiveTask')({
-    database: effect_1.Schema.String,
-    design_document: effect_1.Schema.UndefinedOr(effect_1.Schema.String),
-    doc_id: effect_1.Schema.UndefinedOr(effect_1.Schema.String),
-    docs_written: effect_1.Schema.UndefinedOr(effect_1.Schema.Number),
-    pid: effect_1.Schema.String,
-    progress: effect_1.Schema.UndefinedOr(effect_1.Schema.Number),
-    started_on: effect_1.Schema.Number,
-    type: effect_1.Schema.String,
+export class CouchActiveTask extends Schema.Class('CouchActiveTask')({
+    database: Schema.String,
+    design_document: Schema.UndefinedOr(Schema.String),
+    doc_id: Schema.UndefinedOr(Schema.String),
+    docs_written: Schema.UndefinedOr(Schema.Number),
+    pid: Schema.String,
+    progress: Schema.UndefinedOr(Schema.Number),
+    started_on: Schema.Number,
+    type: Schema.String,
 }) {
-    static decodeResponse = platform_1.HttpClientResponse.schemaBodyJson(effect_1.Schema.Array(CouchActiveTask));
+    static decodeResponse = HttpClientResponse.schemaBodyJson(Schema.Array(CouchActiveTask));
 }
-exports.CouchActiveTask = CouchActiveTask;
-const getDesignName = (task) => effect_1.Option
+export const getDesignName = (task) => Option
     .fromNullable(task.design_document)
-    .pipe(effect_1.Option.flatMap(effect_1.String.match(/^_design\/(.*)$/)), effect_1.Option.flatMap(effect_1.Array.get(1)));
-exports.getDesignName = getDesignName;
-const getDbName = (task) => (0, effect_1.pipe)(task.database, effect_1.String.match(/^.+\/.+\/([^.]+)\..+/), effect_1.Option.flatMap(effect_1.Array.get(1)), effect_1.Option.getOrThrow);
-exports.getDbName = getDbName;
-const getPid = (task) => (0, effect_1.pipe)(task.pid, effect_1.String.slice(1, -1));
-exports.getPid = getPid;
-const getProgressPct = (task) => effect_1.Option
+    .pipe(Option.flatMap(String.match(/^_design\/(.*)$/)), Option.flatMap(Array.get(1)));
+export const getDbName = (task) => pipe(task.database, String.match(/^.+\/.+\/([^.]+)\..+/), Option.flatMap(Array.get(1)), Option.getOrThrow);
+export const getPid = (task) => pipe(task.pid, String.slice(1, -1));
+export const getProgressPct = (task) => Option
     .fromNullable(task.progress)
-    .pipe(effect_1.Option.map(progress => `${progress.toString()}%`), effect_1.Option.getOrElse(() => effect_1.String.empty));
-exports.getProgressPct = getProgressPct;
-const removePid = effect_1.Record.remove('pid');
-const addByPid = (task) => effect_1.Record.set(task.pid, removePid(task));
-const buildDictByPid = (dict, task) => (0, effect_1.pipe)(dict, addByPid(task));
-const getDisplayDictByPid = (tasks) => effect_1.Array.reduce(tasks, {}, buildDictByPid);
-exports.getDisplayDictByPid = getDisplayDictByPid;
-const taskHasType = (types) => (task) => (0, effect_1.pipe)(types, effect_1.Array.contains(task.type));
-const filterStreamByType = (...types) => (taskStream) => taskStream.pipe(effect_1.Stream.map(effect_1.Array.filter(taskHasType(types))));
-exports.filterStreamByType = filterStreamByType;
-const orderByStartedOn = effect_1.Order.make((a, b) => effect_1.Number.Order(a.started_on, b.started_on));
-const activeTasks = cht_client_1.ChtClientService.pipe(effect_1.Effect.flatMap(couch => couch.request(platform_1.HttpClientRequest.get(ENDPOINT))), effect_1.Effect.flatMap(CouchActiveTask.decodeResponse), effect_1.Effect.scoped, effect_1.Effect.map(effect_1.Array.sort(orderByStartedOn)));
-const getActiveTasks = () => activeTasks;
-exports.getActiveTasks = getActiveTasks;
-const streamActiveTasks = (interval = 1000) => effect_1.Stream.repeat(activeTasks, effect_1.Schedule.spaced(interval));
-exports.streamActiveTasks = streamActiveTasks;
+    .pipe(Option.map(progress => `${progress.toString()}%`), Option.getOrElse(() => String.empty));
+const removePid = Record.remove('pid');
+const addByPid = (task) => Record.set(task.pid, removePid(task));
+const buildDictByPid = (dict, task) => pipe(dict, addByPid(task));
+export const getDisplayDictByPid = (tasks) => Array.reduce(tasks, {}, buildDictByPid);
+const taskHasType = (types) => (task) => pipe(types, Array.contains(task.type));
+export const filterStreamByType = (...types) => (taskStream) => taskStream.pipe(Stream.map(Array.filter(taskHasType(types))));
+const orderByStartedOn = Order.make((a, b) => Number.Order(a.started_on, b.started_on));
+const activeTasks = ChtClientService.pipe(Effect.flatMap(couch => couch.request(HttpClientRequest.get(ENDPOINT))), Effect.flatMap(CouchActiveTask.decodeResponse), Effect.scoped, Effect.map(Array.sort(orderByStartedOn)));
+export const getActiveTasks = () => activeTasks;
+export const streamActiveTasks = (interval = 1000) => Stream.repeat(activeTasks, Schedule.spaced(interval));
 //# sourceMappingURL=active-tasks.js.map

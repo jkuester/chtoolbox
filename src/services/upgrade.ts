@@ -1,9 +1,9 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { PouchDBService, streamChanges } from './pouchdb';
+import { PouchDBService, streamChanges } from './pouchdb.js';
 import { Array, DateTime, Match, Option, Schedule, Schema, Stream } from 'effect';
-import { completeChtUpgrade, stageChtUpgrade, upgradeCht } from '../libs/cht/upgrade';
-import { ChtClientService } from './cht-client';
+import { completeChtUpgrade, stageChtUpgrade, upgradeCht } from '../libs/cht/upgrade.js';
+import { ChtClientService } from './cht-client.js';
 
 const UPGRADE_LOG_NAME = 'upgrade_log';
 const COMPLETED_STATES = ['finalized', 'aborted', 'errored', 'interrupted'];

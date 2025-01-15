@@ -1,16 +1,13 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.create = void 0;
-const cli_1 = require("@effect/cli");
-const effect_1 = require("effect");
-const index_1 = require("../../index");
-const pouchdb_1 = require("../../services/pouchdb");
-const console_1 = require("../../libs/console");
-const createDbs = (dbs) => (0, effect_1.pipe)(dbs, effect_1.Array.map(pouchdb_1.PouchDBService.get), effect_1.Effect.all);
-const databases = cli_1.Args
+import { Args, Command } from '@effect/cli';
+import { Array, Effect, pipe } from 'effect';
+import { initializeUrl } from '../../index.js';
+import { PouchDBService } from '../../services/pouchdb.js';
+import { logJson } from '../../libs/console.js';
+const createDbs = (dbs) => pipe(dbs, Array.map(PouchDBService.get), Effect.all);
+const databases = Args
     .text({ name: 'database' })
-    .pipe(cli_1.Args.withDescription('The name of the database to create'), cli_1.Args.atLeast(1));
-exports.create = cli_1.Command
-    .make('create', { databases }, ({ databases }) => index_1.initializeUrl.pipe(effect_1.Effect.andThen(createDbs(databases)), effect_1.Effect.map(effect_1.Array.map(db => effect_1.Effect.promise(() => db.info()))), effect_1.Effect.flatMap(effect_1.Effect.all), effect_1.Effect.tap(console_1.logJson)))
-    .pipe(cli_1.Command.withDescription(`Create new Couch database. Nothing happens if the database already exists.`));
+    .pipe(Args.withDescription('The name of the database to create'), Args.atLeast(1));
+export const create = Command
+    .make('create', { databases }, ({ databases }) => initializeUrl.pipe(Effect.andThen(createDbs(databases)), Effect.map(Array.map(db => Effect.promise(() => db.info()))), Effect.flatMap(Effect.all), Effect.tap(logJson)))
+    .pipe(Command.withDescription(`Create new Couch database. Nothing happens if the database already exists.`));
 //# sourceMappingURL=create.js.map

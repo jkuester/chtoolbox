@@ -1,38 +1,35 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.upgrade = void 0;
-const cli_1 = require("@effect/cli");
-const effect_1 = require("effect");
-const index_1 = require("../index");
-const upgrade_1 = require("../services/upgrade");
-const console_1 = require("../libs/console");
-const getUpgradeLogDisplay = ({ state_history }) => (0, effect_1.pipe)(state_history, effect_1.Array.map(({ state, date }) => ({
+import { Args, Command, Options } from '@effect/cli';
+import { Array, Console, DateTime, Effect, Match, Option, pipe, Stream } from 'effect';
+import { initializeUrl } from '../index.js';
+import { UpgradeService } from '../services/upgrade.js';
+import { clearThen } from '../libs/console.js';
+const getUpgradeLogDisplay = ({ state_history }) => pipe(state_history, Array.map(({ state, date }) => ({
     state,
-    time: effect_1.DateTime
+    time: DateTime
         .unsafeMake(date)
-        .pipe(effect_1.DateTime.formatLocal({ hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })),
-})), effect_1.Array.reduce({}, (acc, { state, time }) => ({ ...acc, [state]: { time } })));
-const streamUpgradeLog = (stream) => stream.pipe(effect_1.Stream.map(getUpgradeLogDisplay), effect_1.Stream.tap(log => (0, console_1.clearThen)(effect_1.Console.table(log))), effect_1.Stream.runDrain);
-const printUpgradeLogId = (stream) => stream.pipe(effect_1.Stream.take(1), effect_1.Stream.tap(log => (0, console_1.clearThen)(effect_1.Console.log(`Upgrade started. Check the medic-logs doc for progress: ${log._id}`))), effect_1.Stream.runDrain);
-const getUpgradeAction = (opts) => effect_1.Match
+        .pipe(DateTime.formatLocal({ hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })),
+})), Array.reduce({}, (acc, { state, time }) => ({ ...acc, [state]: { time } })));
+const streamUpgradeLog = (stream) => stream.pipe(Stream.map(getUpgradeLogDisplay), Stream.tap(log => clearThen(Console.table(log))), Stream.runDrain);
+const printUpgradeLogId = (stream) => stream.pipe(Stream.take(1), Stream.tap(log => clearThen(Console.log(`Upgrade started. Check the medic-logs doc for progress: ${log._id}`))), Stream.runDrain);
+const getUpgradeAction = (opts) => Match
     .value(opts)
-    .pipe(effect_1.Match.when({ stage: true }, ({ version }) => upgrade_1.UpgradeService.stage(version)), effect_1.Match.when({ complete: true }, ({ version }) => upgrade_1.UpgradeService.complete(version)), effect_1.Match.orElse(({ version }) => upgrade_1.UpgradeService.upgrade(version)));
-const getStreamAction = (follow) => effect_1.Option
+    .pipe(Match.when({ stage: true }, ({ version }) => UpgradeService.stage(version)), Match.when({ complete: true }, ({ version }) => UpgradeService.complete(version)), Match.orElse(({ version }) => UpgradeService.upgrade(version)));
+const getStreamAction = (follow) => Option
     .liftPredicate(streamUpgradeLog, () => follow)
-    .pipe(effect_1.Option.getOrElse(() => printUpgradeLogId));
-const follow = cli_1.Options
+    .pipe(Option.getOrElse(() => printUpgradeLogId));
+const follow = Options
     .boolean('follow')
-    .pipe(cli_1.Options.withAlias('f'), cli_1.Options.withDescription('After triggering upgrade, wait for it to complete.'));
-const stage = cli_1.Options
+    .pipe(Options.withAlias('f'), Options.withDescription('After triggering upgrade, wait for it to complete.'));
+const stage = Options
     .boolean('stage')
-    .pipe(cli_1.Options.withDescription('Stage the upgrade without actually running it.'));
-const complete = cli_1.Options
+    .pipe(Options.withDescription('Stage the upgrade without actually running it.'));
+const complete = Options
     .boolean('complete')
-    .pipe(cli_1.Options.withDescription('Complete a staged upgrade.'));
-const version = cli_1.Args
+    .pipe(Options.withDescription('Complete a staged upgrade.'));
+const version = Args
     .text({ name: 'version' })
-    .pipe(cli_1.Args.withDescription('The CHT version to upgrade to'));
-exports.upgrade = cli_1.Command
-    .make('upgrade', { version, follow, stage, complete }, (opts) => index_1.initializeUrl.pipe(effect_1.Effect.andThen(getUpgradeAction(opts)), effect_1.Effect.flatMap(getStreamAction(opts.follow))))
-    .pipe(cli_1.Command.withDescription(`Run compaction on all databases and views.`));
+    .pipe(Args.withDescription('The CHT version to upgrade to'));
+export const upgrade = Command
+    .make('upgrade', { version, follow, stage, complete }, (opts) => initializeUrl.pipe(Effect.andThen(getUpgradeAction(opts)), Effect.flatMap(getStreamAction(opts.follow))))
+    .pipe(Command.withDescription(`Run compaction on all databases and views.`));
 //# sourceMappingURL=upgrade.js.map

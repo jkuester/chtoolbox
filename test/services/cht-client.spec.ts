@@ -2,11 +2,11 @@ import { describe, it } from 'mocha';
 import { Effect, Either, Layer, Redacted } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
-import { ChtClientService } from '../../src/services/cht-client';
+import { ChtClientService } from '../../src/services/cht-client.js';
 import { HttpClient, HttpClientRequest } from '@effect/platform';
-import { EnvironmentService } from '../../src/services/environment';
+import { EnvironmentService } from '../../src/services/environment.js';
 import { NodeHttpClient } from '@effect/platform-node';
-import { genWithLayer, sandbox } from '../utils/base';
+import { genWithLayer, sandbox } from '../utils/base.js';
 
 const environmentGet = sandbox.stub();
 

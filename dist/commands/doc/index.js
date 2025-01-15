@@ -1,11 +1,8 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.doc = void 0;
-const cli_1 = require("@effect/cli");
-const generate_1 = require("./generate");
-const purge_1 = require("./purge");
-const replicate_1 = require("./replicate");
-exports.doc = cli_1.Command
+import { Command } from '@effect/cli';
+import { generate } from './generate.js';
+import { purge } from './purge.js';
+import { replicate } from './replicate.js';
+export const doc = Command
     .make('doc', {})
-    .pipe(cli_1.Command.withDescription(`Manage Couch documents.`), cli_1.Command.withSubcommands([generate_1.generate, purge_1.purge, replicate_1.replicate]));
+    .pipe(Command.withDescription(`Manage Couch documents.`), Command.withSubcommands([generate, purge, replicate]));
 //# sourceMappingURL=index.js.map

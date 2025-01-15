@@ -3,8 +3,8 @@ import { describe, it } from 'mocha';
 import { Effect, Layer } from 'effect';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { genWithLayer, sandbox } from '../utils/base';
-import { createTmpDir, getRemoteFile, readJsonFile, writeFile, writeJsonFile } from '../../src/libs/file';
+import { genWithLayer, sandbox } from '../utils/base.js';
+import { createTmpDir, getRemoteFile, readJsonFile, writeFile, writeJsonFile } from '../../src/libs/file.js';
 
 const httpClientExecute = sandbox.stub();
 const fsMakeTempDirectoryScoped = sandbox.stub();

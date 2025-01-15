@@ -1,15 +1,15 @@
 import { describe, it } from 'mocha';
 import { Effect, Layer } from 'effect';
 import { expect } from 'chai';
-import * as CouchDbsInfo from '../../src/libs/couch/dbs-info';
-import * as CouchDesignInfoLib from '../../src/libs/couch/design-info';
-import * as CouchDesignDocs from '../../src/libs/couch/design-docs';
-import { createDesignInfo } from '../utils/data-models';
-import { WarmViewsService } from '../../src/services/warm-views';
-import * as CouchDesign from '../../src/libs/couch/design';
-import * as CouchView from '../../src/libs/couch/view';
-import { genWithLayer } from '../utils/base';
-import { ChtClientService } from '../../src/services/cht-client';
+import * as CouchDbsInfo from '../../src/libs/couch/dbs-info.js';
+import * as CouchDesignInfoLib from '../../src/libs/couch/design-info.js';
+import * as CouchDesignDocs from '../../src/libs/couch/design-docs.js';
+import { createDesignInfo } from '../utils/data-models.js';
+import { WarmViewsService } from '../../src/services/warm-views.js';
+import * as CouchDesign from '../../src/libs/couch/design.js';
+import * as CouchView from '../../src/libs/couch/view.js';
+import { genWithLayer } from '../utils/base.js';
+import { ChtClientService } from '../../src/services/cht-client.js';
 import sinon, { SinonStub } from 'sinon';
 
 const run = WarmViewsService.Default.pipe(

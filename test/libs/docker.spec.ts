@@ -19,10 +19,10 @@ import {
   rmComposeContainer,
   startCompose,
   stopCompose
-} from '../../src/libs/docker';
+} from '../../src/libs/docker.js';
 import { PlatformError } from '@effect/platform/Error';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
-import { genWithLayer } from '../utils/base';
+import { genWithLayer } from '../utils/base.js';
 
 const PROJECT_NAME = 'projectName';
 const ENV = { hello: 'world' } as const;

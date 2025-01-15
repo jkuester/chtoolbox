@@ -1,19 +1,16 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.monitor = void 0;
-const cli_1 = require("@effect/cli");
-const effect_1 = require("effect");
-const index_1 = require("../index");
-const monitor_1 = require("../services/monitor");
-const printCsvRow = (row) => (0, effect_1.pipe)(row, effect_1.Array.map(value => String(value)), effect_1.Array.join(','), effect_1.Console.log);
-const monitorData = (trackDirSize) => (0, effect_1.pipe)(monitor_1.MonitorService.getAsCsv(trackDirSize), effect_1.Effect.tap(printCsvRow), effect_1.Effect.catchAll(effect_1.Console.error));
-const interval = cli_1.Options
+import { Command, Options } from '@effect/cli';
+import { Array, Console, Effect, pipe, Schedule } from 'effect';
+import { initializeUrl } from '../index.js';
+import { MonitorService } from '../services/monitor.js';
+const printCsvRow = (row) => pipe(row, Array.map(value => String(value)), Array.join(','), Console.log);
+const monitorData = (trackDirSize) => pipe(MonitorService.getAsCsv(trackDirSize), Effect.tap(printCsvRow), Effect.catchAll(Console.error));
+const interval = Options
     .integer('interval')
-    .pipe(cli_1.Options.withAlias('i'), cli_1.Options.withDescription('The interval in seconds to poll the data. Default is 1 second.'), cli_1.Options.withDefault(1));
-const trackDirSize = cli_1.Options
+    .pipe(Options.withAlias('i'), Options.withDescription('The interval in seconds to poll the data. Default is 1 second.'), Options.withDefault(1));
+const trackDirSize = Options
     .directory('track-dir-size', { exists: 'yes' })
-    .pipe(cli_1.Options.withDescription('The local directory to monitor disk usage. (Useful when monitoring a locally deployed CHT instance.)'), cli_1.Options.optional);
-exports.monitor = cli_1.Command
-    .make('monitor', { interval, trackDirSize }, ({ interval, trackDirSize }) => (0, effect_1.pipe)(index_1.initializeUrl, effect_1.Effect.andThen(monitor_1.MonitorService.getCsvHeader(trackDirSize)), effect_1.Effect.tap(printCsvRow), effect_1.Effect.andThen(effect_1.Effect.repeat(monitorData(trackDirSize), effect_1.Schedule.spaced(interval * 1000)))))
-    .pipe(cli_1.Command.withDescription(`Poll CHT metrics.`));
+    .pipe(Options.withDescription('The local directory to monitor disk usage. (Useful when monitoring a locally deployed CHT instance.)'), Options.optional);
+export const monitor = Command
+    .make('monitor', { interval, trackDirSize }, ({ interval, trackDirSize }) => pipe(initializeUrl, Effect.andThen(MonitorService.getCsvHeader(trackDirSize)), Effect.tap(printCsvRow), Effect.andThen(Effect.repeat(monitorData(trackDirSize), Schedule.spaced(interval * 1000)))))
+    .pipe(Command.withDescription(`Poll CHT metrics.`));
 //# sourceMappingURL=monitor.js.map

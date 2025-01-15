@@ -1,6 +1,6 @@
 import OS from 'node:os';
 import { Array, Effect, Option, pipe, Predicate, String } from 'effect';
-import { promisedGetPort } from './core';
+import { promisedGetPort } from './core.js';
 
 const IPV4_FAMILY_VALUES = ['IPv4', 4];
 const LOCALHOST_IP = '127.0.0.1';

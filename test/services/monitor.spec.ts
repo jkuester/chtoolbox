@@ -1,21 +1,21 @@
 import { afterEach, describe, it } from 'mocha';
 import { Effect, Either, Layer, Option, TestClock } from 'effect';
 import { expect } from 'chai';
-import { MonitorService } from '../../src/services/monitor';
-import * as CouchNodeSystemLib from '../../src/libs/couch/node-system';
-import { CouchNodeSystem } from '../../src/libs/couch/node-system';
+import { MonitorService } from '../../src/services/monitor.js';
+import * as CouchNodeSystemLib from '../../src/libs/couch/node-system.js';
+import { CouchNodeSystem } from '../../src/libs/couch/node-system.js';
 import sinon, { SinonStub } from 'sinon';
-import * as CouchDbsInfo from '../../src/libs/couch/dbs-info';
-import { CouchDbInfo } from '../../src/libs/couch/dbs-info';
-import * as CouchDesignInfoLib from '../../src/libs/couch/design-info';
-import { CouchDesignInfo } from '../../src/libs/couch/design-info';
-import { LocalDiskUsageService } from '../../src/services/local-disk-usage';
-import { createDbInfo, createDesignInfo, createNodeSystem } from '../utils/data-models';
+import * as CouchDbsInfo from '../../src/libs/couch/dbs-info.js';
+import { CouchDbInfo } from '../../src/libs/couch/dbs-info.js';
+import * as CouchDesignInfoLib from '../../src/libs/couch/design-info.js';
+import { CouchDesignInfo } from '../../src/libs/couch/design-info.js';
+import { LocalDiskUsageService } from '../../src/services/local-disk-usage.js';
+import { createDbInfo, createDesignInfo, createNodeSystem } from '../utils/data-models.js';
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import { NonEmptyArray } from 'effect/Array';
-import { genWithLayer, sandbox } from '../utils/base';
-import { ChtClientService } from '../../src/services/cht-client';
+import { genWithLayer, sandbox } from '../utils/base.js';
+import { ChtClientService } from '../../src/services/cht-client.js';
 
 const DB_NAMES: NonEmptyArray<string> = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 const EXPECTED_DESIGN_INFO_ARGS = [

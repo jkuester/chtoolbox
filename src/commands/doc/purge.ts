@@ -1,9 +1,9 @@
 import { Args, Command, Options, Prompt } from '@effect/cli';
 import { Array, Console, Effect, Match, Option, pipe, Predicate, Sink, Stream } from 'effect';
-import { initializeUrl } from '../../index';
-import { PurgeService } from '../../services/purge';
+import { initializeUrl } from '../../index.js';
+import { PurgeService } from '../../services/purge.js';
 
-import { clearThen } from '../../libs/console';
+import { clearThen } from '../../libs/console.js';
 
 const contradictoryTypeQualifiersProvided = (opts: PurgeOptions) => pipe(
   [opts.all, opts.reports, Option.isSome(opts.contacts)],

@@ -1,11 +1,11 @@
 import { describe, it } from 'mocha';
 import { Effect, Layer } from 'effect';
 import { expect } from 'chai';
-import { LocalDiskUsageService } from '../../src/services/local-disk-usage';
+import { LocalDiskUsageService } from '../../src/services/local-disk-usage.js';
 import { NodeContext } from '@effect/platform-node';
 import sinon from 'sinon';
 import { Command } from '@effect/platform';
-import { genWithLayer } from '../utils/base';
+import { genWithLayer } from '../utils/base.js';
 
 const FAKE_COMMAND = Effect.succeed({ hello: 'world' });
 

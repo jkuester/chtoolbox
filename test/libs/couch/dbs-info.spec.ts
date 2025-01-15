@@ -2,12 +2,12 @@ import { describe, it } from 'mocha';
 import { Effect, Either, Layer } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
-import { ChtClientService } from '../../../src/services/cht-client';
+import { ChtClientService } from '../../../src/services/cht-client.js';
 import { HttpClientRequest } from '@effect/platform';
-import { createDbInfo } from '../../utils/data-models';
+import { createDbInfo } from '../../utils/data-models.js';
 import { NonEmptyArray } from 'effect/Array';
-import { genWithLayer, sandbox } from '../../utils/base';
-import { getAllDbsInfo, getDbNames, getDbsInfoByName } from '../../../src/libs/couch/dbs-info';
+import { genWithLayer, sandbox } from '../../utils/base.js';
+import { getAllDbsInfo, getDbNames, getDbsInfoByName } from '../../../src/libs/couch/dbs-info.js';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
 

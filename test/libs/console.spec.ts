@@ -2,7 +2,7 @@ import { describe, it } from 'mocha';
 import { Console, Effect, TestContext } from 'effect';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { clearThen, logJson, color } from '../../src/libs/console';
+import { clearThen, logJson, color } from '../../src/libs/console.js';
 
 describe('Console libs', () => {
   const run = (test:  Effect.Effect<void, Error>) => async () => {

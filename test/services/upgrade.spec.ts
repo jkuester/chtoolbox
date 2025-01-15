@@ -1,13 +1,13 @@
 import { describe, it } from 'mocha';
 import { Array, Chunk, Effect, Either, Layer, Stream } from 'effect';
 import sinon, { SinonStub } from 'sinon';
-import * as pouchDbService from '../../src/services/pouchdb';
-import { PouchDBService } from '../../src/services/pouchdb';
+import * as pouchDbService from '../../src/services/pouchdb.js';
+import { PouchDBService } from '../../src/services/pouchdb.js';
 import { expect } from 'chai';
-import { UpgradeService } from '../../src/services/upgrade';
-import * as ChtUpgradeLib from '../../src/libs/cht/upgrade';
-import { genWithLayer, sandbox } from '../utils/base';
-import { ChtClientService } from '../../src/services/cht-client';
+import { UpgradeService } from '../../src/services/upgrade.js';
+import * as ChtUpgradeLib from '../../src/libs/cht/upgrade.js';
+import { genWithLayer, sandbox } from '../utils/base.js';
+import { ChtClientService } from '../../src/services/cht-client.js';
 
 const version = '3.7.0';
 const EXPECTED_ALL_DOCS_OPTS = {

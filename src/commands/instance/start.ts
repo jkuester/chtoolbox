@@ -1,7 +1,7 @@
 import { Args, Command } from '@effect/cli';
 import { Array, Effect, pipe } from 'effect';
-import { LocalInstanceService } from '../../services/local-instance';
-import { printInstanceInfo } from './create';
+import { LocalInstanceService } from '../../services/local-instance.js';
+import { printInstanceInfo } from './create.js';
 
 const startChtInstances = (names: string[]) => pipe(
   names,

@@ -1,36 +1,33 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.replicate = void 0;
-const cli_1 = require("@effect/cli");
-const effect_1 = require("effect");
-const index_1 = require("../../index");
-const replicate_1 = require("../../services/replicate");
-const active_tasks_1 = require("../../libs/couch/active-tasks");
-const console_1 = require("../../libs/console");
-const isRepTask = (id) => (0, effect_1.pipe)(({ type }) => type === 'replication', effect_1.Predicate.and(({ doc_id }) => doc_id === id), effect_1.Predicate.and(({ docs_written }) => docs_written !== undefined));
-const printReplicatingDocs = (id) => (tasks) => (0, effect_1.pipe)(tasks, effect_1.Array.findFirst(isRepTask(id)), effect_1.Option.map(({ docs_written }) => docs_written?.toString() ?? ''), effect_1.Option.map(docs_written => (0, console_1.clearThen)(effect_1.Console.log(`Replicating docs: ${docs_written}`))), effect_1.Option.getOrElse(() => effect_1.Effect.void), effect_1.Effect.tap(effect_1.Effect.logDebug('Printed replication doc task')));
-const streamReplicationTasks = (id) => (0, active_tasks_1.streamActiveTasks)()
-    .pipe(effect_1.Stream.tap(printReplicatingDocs(id)), effect_1.Stream.runDrain);
-const getReplicationDocId = (completionStream) => effect_1.Stream
+import { Args, Command, Options } from '@effect/cli';
+import { Array, Console, Effect, Option, pipe, Predicate, Stream } from 'effect';
+import { initializeUrl } from '../../index.js';
+import { ReplicateService } from '../../services/replicate.js';
+import { streamActiveTasks } from '../../libs/couch/active-tasks.js';
+import { clearThen } from '../../libs/console.js';
+const isRepTask = (id) => pipe(({ type }) => type === 'replication', Predicate.and(({ doc_id }) => doc_id === id), Predicate.and(({ docs_written }) => docs_written !== undefined));
+const printReplicatingDocs = (id) => (tasks) => pipe(tasks, Array.findFirst(isRepTask(id)), Option.map(({ docs_written }) => docs_written?.toString() ?? ''), Option.map(docs_written => clearThen(Console.log(`Replicating docs: ${docs_written}`))), Option.getOrElse(() => Effect.void), Effect.tap(Effect.logDebug('Printed replication doc task')));
+const streamReplicationTasks = (id) => streamActiveTasks()
+    .pipe(Stream.tap(printReplicatingDocs(id)), Stream.runDrain);
+const getReplicationDocId = (completionStream) => Stream
     .take(completionStream, 1)
-    .pipe(effect_1.Stream.runHead, effect_1.Effect.map(effect_1.Option.getOrThrow), effect_1.Effect.map(({ _id }) => _id));
-const watchReplication = (completionStream) => effect_1.Stream
+    .pipe(Stream.runHead, Effect.map(Option.getOrThrow), Effect.map(({ _id }) => _id));
+const watchReplication = (completionStream) => Stream
     .runDrain(completionStream)
-    .pipe(effect_1.Effect.race(getReplicationDocId(completionStream)
-    .pipe(effect_1.Effect.flatMap(streamReplicationTasks))));
-const follow = cli_1.Options
+    .pipe(Effect.race(getReplicationDocId(completionStream)
+    .pipe(Effect.flatMap(streamReplicationTasks))));
+const follow = Options
     .boolean('follow')
-    .pipe(cli_1.Options.withAlias('f'), cli_1.Options.withDescription('After triggering replication, wait for job to complete.'));
-const all = cli_1.Options
+    .pipe(Options.withAlias('f'), Options.withDescription('After triggering replication, wait for job to complete.'));
+const all = Options
     .boolean('all')
-    .pipe(cli_1.Options.withDescription('Replicate everything including design documents'));
-const source = cli_1.Args
+    .pipe(Options.withDescription('Replicate everything including design documents'));
+const source = Args
     .text({ name: 'source' })
-    .pipe(cli_1.Args.withDescription('The source database name.'));
-const target = cli_1.Args
+    .pipe(Args.withDescription('The source database name.'));
+const target = Args
     .text({ name: 'target' })
-    .pipe(cli_1.Args.withDescription('The target database name.'));
-exports.replicate = cli_1.Command
-    .make('replicate', { follow, source, target, all }, ({ follow, source, target, all }) => index_1.initializeUrl.pipe(effect_1.Effect.andThen(replicate_1.ReplicateService.replicate(source, target, all)), effect_1.Effect.map(completionStream => effect_1.Option.liftPredicate(completionStream, () => follow)), effect_1.Effect.map(effect_1.Option.map(watchReplication)), effect_1.Effect.flatMap(effect_1.Option.getOrElse(() => effect_1.Console.clear.pipe(effect_1.Effect.andThen(effect_1.Console.log('Replication started. Watch the active tasks for progress: chtx active-tasks -f')))))))
-    .pipe(cli_1.Command.withDescription('Triggers a one-time server-side replication of the docs from the source to the target database.'));
+    .pipe(Args.withDescription('The target database name.'));
+export const replicate = Command
+    .make('replicate', { follow, source, target, all }, ({ follow, source, target, all }) => initializeUrl.pipe(Effect.andThen(ReplicateService.replicate(source, target, all)), Effect.map(completionStream => Option.liftPredicate(completionStream, () => follow)), Effect.map(Option.map(watchReplication)), Effect.flatMap(Option.getOrElse(() => Console.clear.pipe(Effect.andThen(Console.log('Replication started. Watch the active tasks for progress: chtx active-tasks -f')))))))
+    .pipe(Command.withDescription('Triggers a one-time server-side replication of the docs from the source to the target database.'));
 //# sourceMappingURL=replicate.js.map

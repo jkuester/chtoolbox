@@ -1,26 +1,22 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.EnvironmentService = void 0;
-const effect_1 = require("effect");
+import { Config, Effect, Option, Redacted, Ref, String } from 'effect';
 const COUCH_URL_PATTERN = /^(https?:\/\/([^:]+):[^/]+).*$/;
-const parseCouchUrl = (url) => url.pipe(effect_1.Redacted.value, effect_1.String.match(COUCH_URL_PATTERN), effect_1.Option.map(([, url, user]) => ({
-    url: effect_1.Redacted.make(`${url}/`),
+const parseCouchUrl = (url) => url.pipe(Redacted.value, String.match(COUCH_URL_PATTERN), Option.map(([, url, user]) => ({
+    url: Redacted.make(`${url}/`),
     user
-})), effect_1.Option.map(effect_1.Effect.succeed), effect_1.Option.getOrElse(() => effect_1.Effect.fail(Error('Could not parse URL.'))));
-const COUCH_URL = effect_1.Config
+})), Option.map(Effect.succeed), Option.getOrElse(() => Effect.fail(Error('Could not parse URL.'))));
+const COUCH_URL = Config
     .redacted('COUCH_URL')
-    .pipe(effect_1.Config.withDescription('The URL of the CouchDB server.'), effect_1.Config.option);
-const createEnvironmentService = effect_1.Ref
+    .pipe(Config.withDescription('The URL of the CouchDB server.'), Config.option);
+const createEnvironmentService = Ref
     .make({
-    url: effect_1.Redacted.make(effect_1.String.empty),
-    user: effect_1.String.empty,
+    url: Redacted.make(String.empty),
+    user: String.empty,
 })
-    .pipe(effect_1.Effect.map(env => ({
-    get: () => effect_1.Ref.get(env),
+    .pipe(Effect.map(env => ({
+    get: () => Ref.get(env),
     setUrl: (url) => parseCouchUrl(url)
-        .pipe(effect_1.Effect.flatMap(newEnv => effect_1.Ref.setAndGet(env, newEnv))),
-})), effect_1.Effect.tap((envService) => COUCH_URL.pipe(effect_1.Config.map(effect_1.Option.map(envService.setUrl)), effect_1.Config.map(effect_1.Option.map(effect_1.Effect.asVoid)), effect_1.Effect.flatMap(effect_1.Option.getOrElse(() => effect_1.Effect.void)))));
-class EnvironmentService extends effect_1.Effect.Service()('chtoolbox/EnvironmentService', { effect: createEnvironmentService, accessors: true, }) {
+        .pipe(Effect.flatMap(newEnv => Ref.setAndGet(env, newEnv))),
+})), Effect.tap((envService) => COUCH_URL.pipe(Config.map(Option.map(envService.setUrl)), Config.map(Option.map(Effect.asVoid)), Effect.flatMap(Option.getOrElse(() => Effect.void)))));
+export class EnvironmentService extends Effect.Service()('chtoolbox/EnvironmentService', { effect: createEnvironmentService, accessors: true, }) {
 }
-exports.EnvironmentService = EnvironmentService;
 //# sourceMappingURL=environment.js.map

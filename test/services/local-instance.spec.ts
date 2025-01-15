@@ -2,11 +2,11 @@ import { describe, it } from 'mocha';
 import { Array, Effect, Either, Layer, Schedule, Option, pipe } from 'effect';
 import sinon, { SinonStub } from 'sinon';
 import { expect } from 'chai';
-import * as Docker from '../../src/libs/docker';
-import * as LocalNetwork from '../../src/libs/local-network';
-import * as File from '../../src/libs/file';
-import { genWithLayer, sandbox } from '../utils/base';
-import { LocalInstanceService, SSLType } from '../../src/services/local-instance';
+import * as Docker from '../../src/libs/docker.js';
+import * as LocalNetwork from '../../src/libs/local-network.js';
+import * as File from '../../src/libs/file.js';
+import { genWithLayer, sandbox } from '../utils/base.js';
+import { LocalInstanceService, SSLType } from '../../src/services/local-instance.js';
 import { NodeContext } from '@effect/platform-node';
 import { HttpClient, HttpClientRequest } from '@effect/platform';
 

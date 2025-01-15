@@ -2,11 +2,11 @@ import { describe, it } from 'mocha';
 import { Effect, Either, Layer, Redacted } from 'effect';
 import sinon, { SinonStub } from 'sinon';
 import { expect } from 'chai';
-import { TestDataGeneratorService } from '../../src/services/test-data-generator';
-import { EnvironmentService } from '../../src/services/environment';
+import { TestDataGeneratorService } from '../../src/services/test-data-generator.js';
+import { EnvironmentService } from '../../src/services/environment.js';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
 import { Command } from '@effect/platform';
-import { genWithLayer, sandbox } from '../utils/base';
+import { genWithLayer, sandbox } from '../utils/base.js';
 
 const DESIGN_PATH = '/my/design/path';
 const COUCH_URL = 'http://localhost:5984';

@@ -2,6 +2,7 @@
   "name": "chtoolbox",
   "version": "0.0.1",
   "description": "Toolbox of utilities for the CHT ",
+  "type": "module",
   "repository": {
     "type": "git",
     "url": "https://github.com/jkuester/chtoolbox.git"

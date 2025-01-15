@@ -2,10 +2,10 @@ import { describe, it } from 'mocha';
 import { Effect, Layer } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonSpy, SinonStub } from 'sinon';
-import { ChtClientService } from '../../../src/services/cht-client';
+import { ChtClientService } from '../../../src/services/cht-client.js';
 import { HttpClientRequest } from '@effect/platform';
-import { warmView } from '../../../src/libs/couch/view';
-import { genWithLayer, sandbox } from '../../utils/base';
+import { warmView } from '../../../src/libs/couch/view.js';
+import { genWithLayer, sandbox } from '../../utils/base.js';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
 

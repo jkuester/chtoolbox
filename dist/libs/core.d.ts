@@ -13,6 +13,6 @@ export declare const pouchDB: (name?: string, options?: PouchDB.Configuration.Da
 /**
  * Wrapper for `get-port` ES Module.
  */
-export declare const promisedGetPort: () => Promise<typeof import("get-port", { with: { "resolution-mode": "import" } })>;
+export declare const promisedGetPort: () => Promise<typeof import("get-port")>;
 export declare const mergeArrayStreams: <T, Q>(streams: Stream.Stream<T[], Error, Q>[]) => Stream.Stream<T[], Error, Q>;
 //# sourceMappingURL=core.d.ts.map

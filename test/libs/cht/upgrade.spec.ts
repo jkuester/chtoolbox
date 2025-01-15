@@ -2,11 +2,11 @@ import { describe, it } from 'mocha';
 import { Effect, Either, Layer } from 'effect';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
-import { ChtClientService } from '../../../src/services/cht-client';
+import { ChtClientService } from '../../../src/services/cht-client.js';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
-import { completeChtUpgrade, stageChtUpgrade, upgradeCht } from '../../../src/libs/cht/upgrade';
+import { completeChtUpgrade, stageChtUpgrade, upgradeCht } from '../../../src/libs/cht/upgrade.js';
 import { ResponseError } from '@effect/platform/HttpClientError';
-import { genWithLayer, sandbox } from '../../utils/base';
+import { genWithLayer, sandbox } from '../../utils/base.js';
 
 const version = '3.7.0';
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;

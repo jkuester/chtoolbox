@@ -2,7 +2,7 @@ import { Array, Effect, Logger, LogLevel, Match, pipe, Schedule, Schema, Option 
 import * as Context from 'effect/Context';
 import { FileSystem, HttpClient, HttpClientRequest } from '@effect/platform';
 import crypto from 'crypto';
-import { createTmpDir, getRemoteFile, readJsonFile, writeFile, writeJsonFile, } from '../libs/file';
+import { createTmpDir, getRemoteFile, readJsonFile, writeFile, writeJsonFile, } from '../libs/file.js';
 import {
   copyFileFromComposeContainer,
   copyFileToComposeContainer,
@@ -19,9 +19,9 @@ import {
   rmComposeContainer,
   startCompose,
   stopCompose
-} from '../libs/docker';
+} from '../libs/docker.js';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
-import { getFreePorts } from '../libs/local-network';
+import { getFreePorts } from '../libs/local-network.js';
 
 const CHTX_LABEL_NAME = 'chtx.instance';
 const UPGRADE_SVC_NAME = 'cht-upgrade-service';

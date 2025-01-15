@@ -1,10 +1,10 @@
 import { Args, Command, Options } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe, Predicate, Stream } from 'effect';
-import { initializeUrl } from '../../index';
-import { ReplicateService, ReplicationDoc } from '../../services/replicate';
-import { CouchActiveTask, streamActiveTasks } from '../../libs/couch/active-tasks';
+import { initializeUrl } from '../../index.js';
+import { ReplicateService, ReplicationDoc } from '../../services/replicate.js';
+import { CouchActiveTask, streamActiveTasks } from '../../libs/couch/active-tasks.js';
 import { ParseError } from 'effect/Cron';
-import { clearThen } from '../../libs/console';
+import { clearThen } from '../../libs/console.js';
 
 const isRepTask = (id: string): Predicate.Predicate<CouchActiveTask> => pipe(
   ({ type }: CouchActiveTask) => type === 'replication',

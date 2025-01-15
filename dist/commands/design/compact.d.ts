@@ -1,6 +1,6 @@
 import { Command } from '@effect/cli';
-import { CompactService } from '../../services/compact';
-export declare const compact: Command.Command<"compact", import("../../services/environment").EnvironmentService | import("../../services/cht-client").ChtClientService | Command.Command.Context<"chtx"> | CompactService, Error, {
+import { CompactService } from '../../services/compact.js';
+export declare const compact: Command.Command<"compact", import("../../services/environment.js").EnvironmentService | import("../../services/cht-client.js").ChtClientService | Command.Command.Context<"chtx"> | CompactService, Error, {
     readonly follow: boolean;
     readonly database: string;
     readonly designs: [string, ...string[]];
