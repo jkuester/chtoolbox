@@ -1,29 +1,25 @@
 import { describe, it } from 'mocha';
 import { Effect, Layer } from 'effect';
 import { expect } from 'chai';
-import sinon, { SinonStub } from 'sinon';
 import { ChtClientService } from '../../../src/services/cht-client.js';
-import { HttpClientRequest } from '@effect/platform';
-import { getViewNames } from '../../../src/libs/couch/design.js';
+import * as DesignLibs from '../../../src/libs/couch/design.js';
 import { genWithLayer, sandbox } from '../../utils/base.js';
+import esmock from 'esmock';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
-
-const couchRequest = sandbox.stub();
+const mockChtClient = { request: sandbox.stub() };
+const mockHttpRequest = { get: sandbox.stub() };
 
 const run = Layer
-  .succeed(ChtClientService, { request: couchRequest } as unknown as ChtClientService)
+  .succeed(ChtClientService, mockChtClient as unknown as ChtClientService)
   .pipe(genWithLayer);
+const { getViewNames } = await esmock<typeof DesignLibs>('../../../src/libs/couch/design.js', {
+  '@effect/platform': { HttpClientRequest: mockHttpRequest }
+});
 
 describe('Couch Design libs', () => {
-  let requestGet: SinonStub;
-
-  beforeEach(() => {
-    requestGet = sinon.stub(HttpClientRequest, 'get');
-  });
-
   it('gets view names for a database and design', run(function* () {
-    requestGet.returns(FAKE_CLIENT_REQUEST);
+    mockHttpRequest.get.returns(FAKE_CLIENT_REQUEST);
     const designData = {
       _id: 'medic-client',
       views: {
@@ -32,30 +28,30 @@ describe('Couch Design libs', () => {
         'contacts_by_parent': {},
       },
     };
-    couchRequest.returns(Effect.succeed({
+    mockChtClient.request.returns(Effect.succeed({
       json: Effect.succeed(designData),
     }));
 
     const dbInfos = yield* getViewNames('medic', designData._id);
 
     expect(dbInfos).to.deep.equal(Object.keys(designData.views));
-    expect(requestGet.calledOnceWithExactly(`/medic/_design/${designData._id}`)).to.be.true;
-    expect(couchRequest.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
+    expect(mockHttpRequest.get.calledOnceWithExactly(`/medic/_design/${designData._id}`)).to.be.true;
+    expect(mockChtClient.request.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
   }));
 
   it('returns an empty array if no views exist', run(function* () {
-    requestGet.returns(FAKE_CLIENT_REQUEST);
+    mockHttpRequest.get.returns(FAKE_CLIENT_REQUEST);
     const designData = {
       _id: 'medic-client',
     };
-    couchRequest.returns(Effect.succeed({
+    mockChtClient.request.returns(Effect.succeed({
       json: Effect.succeed(designData),
     }));
 
     const dbInfos = yield* getViewNames('medic', designData._id);
 
     expect(dbInfos).to.deep.equal([]);
-    expect(requestGet.calledOnceWithExactly(`/medic/_design/${designData._id}`)).to.be.true;
-    expect(couchRequest.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
+    expect(mockHttpRequest.get.calledOnceWithExactly(`/medic/_design/${designData._id}`)).to.be.true;
+    expect(mockChtClient.request.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
   }));
 });

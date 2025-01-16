@@ -1,22 +1,11 @@
 import { describe, it } from 'mocha';
 import { Chunk, Effect, Layer, Option, Schedule, Stream } from 'effect';
 import { expect } from 'chai';
-import sinon, { SinonStub } from 'sinon';
 import { ChtClientService } from '../../../src/services/cht-client.js';
-import { HttpClientRequest } from '@effect/platform';
-import {
-  filterStreamByType,
-  getActiveTasks,
-  getDbName,
-  getDesignName,
-  getDisplayDictByPid,
-  getPid,
-  getProgressPct,
-  streamActiveTasks
-} from '../../../src/libs/couch/active-tasks.js';
+import * as ActiveTasksLib from '../../../src/libs/couch/active-tasks.js';
 import { createActiveTask } from '../../utils/data-models.js';
-import * as schedule from 'effect/Schedule';
 import { genWithLayer, sandbox } from '../../utils/base.js';
+import esmock from 'esmock';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
 
@@ -35,97 +24,101 @@ const TASK_LATER = createActiveTask({
 });
 const TASK_MIN_DATA = createActiveTask();
 
-const couchRequest = sandbox.stub();
+const mockChtClient = { request: sandbox.stub() };
+const mockHttpRequest = { get: sandbox.stub() };
+const mockSchedule = { spaced: sandbox.stub() };
 
 const run = Layer
-  .succeed(ChtClientService, { request: couchRequest } as unknown as ChtClientService)
+  .succeed(ChtClientService, mockChtClient as unknown as ChtClientService)
   .pipe(genWithLayer);
+const {
+  filterStreamByType,
+  getActiveTasks,
+  getDbName,
+  getDesignName,
+  getDisplayDictByPid,
+  getPid,
+  getProgressPct,
+  streamActiveTasks
+} = await esmock<typeof ActiveTasksLib>('../../../src/libs/couch/active-tasks.js', {
+  '@effect/platform': { HttpClientRequest: mockHttpRequest },
+  'effect': { Schedule: mockSchedule },
+});
 
 describe('Couch Active Tasks Service', () => {
-  let requestGet: SinonStub;
-
-  beforeEach(() => {
-    requestGet = sinon.stub(HttpClientRequest, 'get');
-  });
-
   describe('get', () => {
     it('returns active tasks ordered by started_on', run(function* () {
-      requestGet.returns(FAKE_CLIENT_REQUEST);
-      couchRequest.returns(Effect.succeed({
+      mockHttpRequest.get.returns(FAKE_CLIENT_REQUEST);
+      mockChtClient.request.returns(Effect.succeed({
         json: Effect.succeed([TASK_LATER, TASK_ALL_DATA, TASK_MIN_DATA]),
       }));
 
       const tasks = yield* getActiveTasks();
 
       expect(tasks).to.deep.equal([TASK_MIN_DATA, TASK_ALL_DATA, TASK_LATER]);
-      expect(requestGet.calledOnceWithExactly('/_active_tasks')).to.be.true;
-      expect(couchRequest.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
+      expect(mockHttpRequest.get.calledOnceWithExactly('/_active_tasks')).to.be.true;
+      expect(mockChtClient.request.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
     }));
 
     it('returns an empty array when there are no active tasks', run(function* () {
-      requestGet.returns(FAKE_CLIENT_REQUEST);
-      couchRequest.returns(Effect.succeed({
+      mockHttpRequest.get.returns(FAKE_CLIENT_REQUEST);
+      mockChtClient.request.returns(Effect.succeed({
         json: Effect.succeed([]),
       }));
 
       const tasks = yield* getActiveTasks();
 
       expect(tasks).to.deep.equal([]);
-      expect(requestGet.calledOnceWithExactly('/_active_tasks')).to.be.true;
-      expect(couchRequest.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
+      expect(mockHttpRequest.get.calledOnceWithExactly('/_active_tasks')).to.be.true;
+      expect(mockChtClient.request.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
     }));
   });
 
   describe('stream', () => {
-    let scheduleSpaced: SinonStub;
-
-    beforeEach(() => {
-      scheduleSpaced = sinon.stub(schedule, 'spaced');
-    });
-
     it('returns a stream of active tasks with the given interval', run(function* () {
-      requestGet.returns(FAKE_CLIENT_REQUEST);
-      couchRequest.returns(Effect.succeed({
+      mockHttpRequest.get.returns(FAKE_CLIENT_REQUEST);
+      mockChtClient.request.returns(Effect.succeed({
         json: Effect.succeed([TASK_LATER, TASK_ALL_DATA, TASK_MIN_DATA]),
       }));
-      scheduleSpaced.returns(Schedule.recurs(2));
+      mockSchedule.spaced.returns(Schedule.recurs(2));
       const expectedInterval = 5000;
 
       const taskStream = streamActiveTasks(expectedInterval);
 
-      expect(scheduleSpaced.calledOnceWithExactly(expectedInterval)).to.be.true;
-      expect(requestGet.notCalled).to.be.true;
+      expect(mockSchedule.spaced.calledOnceWithExactly(expectedInterval)).to.be.true;
+      expect(mockHttpRequest.get.notCalled).to.be.true;
 
       const streamedTasks = Chunk.toReadonlyArray(yield* Stream.runCollect(taskStream));
 
       expect(streamedTasks).to.deep.equal([
-        [TASK_MIN_DATA, TASK_ALL_DATA, TASK_LATER],
-        [TASK_MIN_DATA, TASK_ALL_DATA, TASK_LATER],
-        [TASK_MIN_DATA, TASK_ALL_DATA, TASK_LATER],
-      ]);
-      expect(requestGet.callCount).to.equal(3);
-      expect(requestGet.args).to.deep.equal([['/_active_tasks'], ['/_active_tasks'], ['/_active_tasks']]);
-      expect(couchRequest.args).to.deep.equal([[FAKE_CLIENT_REQUEST], [FAKE_CLIENT_REQUEST], [FAKE_CLIENT_REQUEST]]);
+          [TASK_MIN_DATA, TASK_ALL_DATA, TASK_LATER],
+          [TASK_MIN_DATA, TASK_ALL_DATA, TASK_LATER],
+          [TASK_MIN_DATA, TASK_ALL_DATA, TASK_LATER],
+        ]);
+      expect(mockHttpRequest.get.callCount).to.equal(3);
+      expect(mockHttpRequest.get.args).to.deep.equal([['/_active_tasks'], ['/_active_tasks'], ['/_active_tasks']]);
+      expect(mockChtClient.request.args).to.deep.equal([[FAKE_CLIENT_REQUEST], [FAKE_CLIENT_REQUEST], [FAKE_CLIENT_REQUEST]]);
     }));
 
     it('returns a stream of empty array when there are no tasks', run(function* () {
-      requestGet.returns(FAKE_CLIENT_REQUEST);
-      couchRequest.returns(Effect.succeed({
+      mockHttpRequest.get.returns(FAKE_CLIENT_REQUEST);
+      mockChtClient.request.returns(Effect.succeed({
         json: Effect.succeed([]),
       }));
-      scheduleSpaced.returns(Schedule.once);
+      mockSchedule.spaced.returns(Schedule.once);
 
       const taskStream = streamActiveTasks();
 
-      expect(scheduleSpaced.calledOnceWithExactly(1000)).to.be.true;
-      expect(requestGet.notCalled).to.be.true;
+      expect(mockSchedule.spaced.calledOnceWithExactly(1000)).to.be.true;
+      expect(mockHttpRequest.get.notCalled).to.be.true;
 
       const streamedTasks = Chunk.toReadonlyArray(yield* Stream.runCollect(taskStream));
 
+
       expect(streamedTasks).to.deep.equal([[], []]);
-      expect(requestGet.callCount).to.equal(2);
-      expect(requestGet.args).to.deep.equal([['/_active_tasks'], ['/_active_tasks']]);
-      expect(couchRequest.args).to.deep.equal([[FAKE_CLIENT_REQUEST], [FAKE_CLIENT_REQUEST]]);
+      expect(mockHttpRequest.get.callCount).to.equal(2);
+      expect(mockHttpRequest.get.args).to.deep.equal([['/_active_tasks'], ['/_active_tasks']]);
+      expect(mockChtClient.request.args).to.deep.equal([[FAKE_CLIENT_REQUEST], [FAKE_CLIENT_REQUEST]]);
     }));
   });
 
