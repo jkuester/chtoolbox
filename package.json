@@ -30,7 +30,7 @@
     "@types/pouchdb-adapter-http": "^6.1.6",
     "@types/pouchdb-core": "^7.0.15",
     "@types/pouchdb-mapreduce": "^6.1.10",
-    "@types/sinon": "^10.0.20",
+    "@types/sinon": "^17.0.3",
     "@typescript-eslint/eslint-plugin": "^8.13.0",
     "@typescript-eslint/parser": "^8.19.1",
     "c8": "^10.1.3",
@@ -42,7 +42,7 @@
     "globals": "^15.14.0",
     "knip": "^5.42.2",
     "mocha": "^11.0.1",
-    "sinon": "^16.1.3",
+    "sinon": "^19.0.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0"
