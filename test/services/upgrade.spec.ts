@@ -1,13 +1,12 @@
 import { describe, it } from 'mocha';
 import { Array, Chunk, Effect, Either, Layer, Stream } from 'effect';
-import sinon, { SinonStub } from 'sinon';
-import * as pouchDbService from '../../src/services/pouchdb';
-import { PouchDBService } from '../../src/services/pouchdb';
+import sinon from 'sinon';
+import { PouchDBService } from '../../src/services/pouchdb.js';
 import { expect } from 'chai';
-import { UpgradeService } from '../../src/services/upgrade';
-import * as ChtUpgradeLib from '../../src/libs/cht/upgrade';
-import { genWithLayer, sandbox } from '../utils/base';
-import { ChtClientService } from '../../src/services/cht-client';
+import * as UpgradeSvc from '../../src/services/upgrade.js';
+import { genWithLayer, sandbox } from '../utils/base.js';
+import { ChtClientService } from '../../src/services/cht-client.js';
+import esmock from 'esmock';
 
 const version = '3.7.0';
 const EXPECTED_ALL_DOCS_OPTS = {
@@ -27,7 +26,17 @@ const createUpgradeLog = ({ idMillis = 0, state = '', state_history = [] } = {})
 
 const pouchGet = sandbox.stub();
 const dbAllDocs = sandbox.stub();
+const mockPouchSvc = { streamChanges: sandbox.stub() };
+const mockUpgradeLib = {
+  upgradeCht: sandbox.stub(),
+  stageChtUpgrade: sandbox.stub(),
+  completeChtUpgrade: sandbox.stub(),
+}
 
+const { UpgradeService } = await esmock<typeof UpgradeSvc>('../../src/services/upgrade.js', {
+  '../../src/services/pouchdb.js': mockPouchSvc,
+  '../../src/libs/cht/upgrade.js': mockUpgradeLib,
+});
 const run = UpgradeService.Default.pipe(
   Layer.provide(Layer.succeed(PouchDBService, {
     get: pouchGet,
@@ -37,25 +46,14 @@ const run = UpgradeService.Default.pipe(
 );
 
 describe('Upgrade Service', () => {
-  let chtUpgrade: SinonStub;
-  let chtStage: SinonStub;
-  let chtComplete: SinonStub;
-  let streamChanges: SinonStub;
-
-  beforeEach(() => {
-    chtUpgrade = sinon.stub(ChtUpgradeLib, 'upgradeCht');
-    chtStage = sinon.stub(ChtUpgradeLib, 'stageChtUpgrade');
-    chtComplete = sinon.stub(ChtUpgradeLib, 'completeChtUpgrade');
-    streamChanges = sinon.stub(pouchDbService, 'streamChanges');
-    pouchGet.returns(Effect.succeed({ allDocs: dbAllDocs, }));
-  });
+  beforeEach(() => pouchGet.returns(Effect.succeed({ allDocs: dbAllDocs, })));
 
   describe('upgrade', () => {
     COMPLETED_STATES.forEach(state => {
       it(`triggers upgrade when existing upgrade log completed with state ${state}`, run(function* () {
         const upgradeLog = createUpgradeLog({ idMillis: 1, state });
         dbAllDocs.resolves({ rows: [{ doc: upgradeLog }] });
-        streamChanges.returns(sinon.stub().returns(Stream.empty));
+        mockPouchSvc.streamChanges.returns(sinon.stub().returns(Stream.empty));
 
         yield* UpgradeService.upgrade(version);
 
@@ -63,10 +61,10 @@ describe('Upgrade Service', () => {
         expect(dbAllDocs.calledTwice).to.be.true;
         expect(dbAllDocs.args[0][0]).to.deep.include(EXPECTED_ALL_DOCS_OPTS);
         expect(dbAllDocs.args[1][0]).to.deep.include(EXPECTED_ALL_DOCS_OPTS);
-        expect(chtUpgrade.calledOnceWithExactly(version)).to.be.true;
-        expect(chtStage.notCalled).to.be.true;
-        expect(chtComplete.notCalled).to.be.true;
-        expect(streamChanges.calledOnceWithExactly({
+        expect(mockUpgradeLib.upgradeCht.calledOnceWithExactly(version)).to.be.true;
+        expect(mockUpgradeLib.stageChtUpgrade.notCalled).to.be.true;
+        expect(mockUpgradeLib.completeChtUpgrade.notCalled).to.be.true;
+        expect(mockPouchSvc.streamChanges.calledOnceWithExactly({
           include_docs: true,
           doc_ids: [upgradeLog._id],
         })).to.be.true;
@@ -86,10 +84,10 @@ describe('Upgrade Service', () => {
           expect(pouchGet.args).to.deep.equal([['medic-logs']]);
           expect(dbAllDocs.calledOnce).to.be.true;
           expect(dbAllDocs.args[0][0]).to.deep.include(EXPECTED_ALL_DOCS_OPTS);
-          expect(chtUpgrade.calledOnceWithExactly(version)).to.be.true;
-          expect(chtStage.notCalled).to.be.true;
-          expect(chtComplete.notCalled).to.be.true;
-          expect(streamChanges.notCalled).to.be.true;
+          expect(mockUpgradeLib.upgradeCht.calledOnceWithExactly(version)).to.be.true;
+          expect(mockUpgradeLib.stageChtUpgrade.notCalled).to.be.true;
+          expect(mockUpgradeLib.completeChtUpgrade.notCalled).to.be.true;
+          expect(mockPouchSvc.streamChanges.notCalled).to.be.true;
         } else {
           expect.fail('Expected error to be thrown');
         }
@@ -114,14 +112,14 @@ describe('Upgrade Service', () => {
       const changesStream = Stream
         .fromIterable(expectedUpgradeLogs)
         .pipe(Stream.map(log => ({ doc: log })));
-      streamChanges.returns(sinon.stub().returns(changesStream));
+      mockPouchSvc.streamChanges.returns(sinon.stub().returns(changesStream));
 
       const stream = yield* UpgradeService.upgrade(version);
       const results = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
       expect(results).to.deep.equal(expectedUpgradeLogs);
       expect(pouchGet.args).to.deep.equal(Array.replicate(['medic-logs'], 3));
-      expect(streamChanges.calledOnceWithExactly({
+      expect(mockPouchSvc.streamChanges.calledOnceWithExactly({
         include_docs: true,
         doc_ids: [initUpgradeLog._id],
       })).to.be.true;
@@ -138,9 +136,9 @@ describe('Upgrade Service', () => {
         limit: 1,
         include_docs: true
       });
-      expect(chtUpgrade.calledOnceWithExactly(version)).to.be.true;
-      expect(chtStage.notCalled).to.be.true;
-      expect(chtComplete.notCalled).to.be.true;
+      expect(mockUpgradeLib.upgradeCht.calledOnceWithExactly(version)).to.be.true;
+      expect(mockUpgradeLib.stageChtUpgrade.notCalled).to.be.true;
+      expect(mockUpgradeLib.completeChtUpgrade.notCalled).to.be.true;
     }));
 
     COMPLETED_STATES.forEach(state => {
@@ -155,14 +153,14 @@ describe('Upgrade Service', () => {
         const changesStream = Stream
           .fromIterable(expectedUpgradeLogs)
           .pipe(Stream.map(log => ({ doc: log })));
-        streamChanges.returns(sinon.stub().returns(changesStream));
+        mockPouchSvc.streamChanges.returns(sinon.stub().returns(changesStream));
 
         const stream = yield* UpgradeService.upgrade(version);
         const results = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
         expect(results).to.deep.equal([initUpgradeLog]);
         expect(pouchGet.args).to.deep.equal(Array.replicate(['medic-logs'], 3));
-        expect(streamChanges.calledOnceWithExactly({
+        expect(mockPouchSvc.streamChanges.calledOnceWithExactly({
           include_docs: true,
           doc_ids: [initUpgradeLog._id],
         })).to.be.true;
@@ -179,9 +177,9 @@ describe('Upgrade Service', () => {
           limit: 1,
           include_docs: true
         });
-        expect(chtUpgrade.calledOnceWithExactly(version)).to.be.true;
-        expect(chtStage.notCalled).to.be.true;
-        expect(chtComplete.notCalled).to.be.true;
+        expect(mockUpgradeLib.upgradeCht.calledOnceWithExactly(version)).to.be.true;
+        expect(mockUpgradeLib.stageChtUpgrade.notCalled).to.be.true;
+        expect(mockUpgradeLib.completeChtUpgrade.notCalled).to.be.true;
       }));
     });
 
@@ -212,10 +210,10 @@ describe('Upgrade Service', () => {
           limit: 1,
           include_docs: true
         });
-        expect(chtUpgrade.calledOnceWithExactly(version)).to.be.true;
-        expect(chtStage.notCalled).to.be.true;
-        expect(chtComplete.notCalled).to.be.true;
-        expect(streamChanges.notCalled).to.be.true;
+        expect(mockUpgradeLib.upgradeCht.calledOnceWithExactly(version)).to.be.true;
+        expect(mockUpgradeLib.stageChtUpgrade.notCalled).to.be.true;
+        expect(mockUpgradeLib.completeChtUpgrade.notCalled).to.be.true;
+        expect(mockPouchSvc.streamChanges.notCalled).to.be.true;
       } else {
         expect.fail('Expected error to be thrown');
       }
@@ -227,7 +225,7 @@ describe('Upgrade Service', () => {
       it(`stages upgrade when existing upgrade log completed with state ${state}`, run(function* () {
         const upgradeLog = createUpgradeLog({ idMillis: 1, state });
         dbAllDocs.resolves({ rows: [{ doc: upgradeLog }] });
-        streamChanges.returns(sinon.stub().returns(Stream.empty));
+        mockPouchSvc.streamChanges.returns(sinon.stub().returns(Stream.empty));
 
         yield* UpgradeService.stage(version);
 
@@ -235,10 +233,10 @@ describe('Upgrade Service', () => {
         expect(dbAllDocs.calledTwice).to.be.true;
         expect(dbAllDocs.args[0][0]).to.deep.include(EXPECTED_ALL_DOCS_OPTS);
         expect(dbAllDocs.args[1][0]).to.deep.include(EXPECTED_ALL_DOCS_OPTS);
-        expect(chtUpgrade.notCalled).to.be.true;
-        expect(chtStage.calledOnceWithExactly(version)).to.be.true;
-        expect(chtComplete.notCalled).to.be.true;
-        expect(streamChanges.calledOnceWithExactly({
+        expect(mockUpgradeLib.upgradeCht.notCalled).to.be.true;
+        expect(mockUpgradeLib.stageChtUpgrade.calledOnceWithExactly(version)).to.be.true;
+        expect(mockUpgradeLib.completeChtUpgrade.notCalled).to.be.true;
+        expect(mockPouchSvc.streamChanges.calledOnceWithExactly({
           include_docs: true,
           doc_ids: [upgradeLog._id],
         })).to.be.true;
@@ -258,10 +256,10 @@ describe('Upgrade Service', () => {
           expect(pouchGet.args).to.deep.equal([['medic-logs']]);
           expect(dbAllDocs.calledOnce).to.be.true;
           expect(dbAllDocs.args[0][0]).to.deep.include(EXPECTED_ALL_DOCS_OPTS);
-          expect(chtUpgrade.notCalled).to.be.true;
-          expect(chtStage.calledOnceWithExactly(version)).to.be.true;
-          expect(chtComplete.notCalled).to.be.true;
-          expect(streamChanges.notCalled).to.be.true;
+          expect(mockUpgradeLib.upgradeCht.notCalled).to.be.true;
+          expect(mockUpgradeLib.stageChtUpgrade.calledOnceWithExactly(version)).to.be.true;
+          expect(mockUpgradeLib.completeChtUpgrade.notCalled).to.be.true;
+          expect(mockPouchSvc.streamChanges.notCalled).to.be.true;
         } else {
           expect.fail('Expected error to be thrown');
         }
@@ -285,14 +283,14 @@ describe('Upgrade Service', () => {
       const changesStream = Stream
         .fromIterable(expectedUpgradeLogs)
         .pipe(Stream.map(log => ({ doc: log })));
-      streamChanges.returns(sinon.stub().returns(changesStream));
+      mockPouchSvc.streamChanges.returns(sinon.stub().returns(changesStream));
 
       const stream = yield* UpgradeService.stage(version);
       const results = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
       expect(results).to.deep.equal(expectedUpgradeLogs);
       expect(pouchGet.args).to.deep.equal(Array.replicate(['medic-logs'], 3));
-      expect(streamChanges.calledOnceWithExactly({
+      expect(mockPouchSvc.streamChanges.calledOnceWithExactly({
         include_docs: true,
         doc_ids: [initUpgradeLog._id],
       })).to.be.true;
@@ -309,9 +307,9 @@ describe('Upgrade Service', () => {
         limit: 1,
         include_docs: true
       });
-      expect(chtUpgrade.notCalled).to.be.true;
-      expect(chtStage.calledOnceWithExactly(version)).to.be.true;
-      expect(chtComplete.notCalled).to.be.true;
+      expect(mockUpgradeLib.upgradeCht.notCalled).to.be.true;
+      expect(mockUpgradeLib.stageChtUpgrade.calledOnceWithExactly(version)).to.be.true;
+      expect(mockUpgradeLib.completeChtUpgrade.notCalled).to.be.true;
     }));
 
     ['indexed', ...COMPLETED_STATES].forEach(state => {
@@ -326,14 +324,14 @@ describe('Upgrade Service', () => {
         const changesStream = Stream
           .fromIterable(expectedUpgradeLogs)
           .pipe(Stream.map(log => ({ doc: log })));
-        streamChanges.returns(sinon.stub().returns(changesStream));
+        mockPouchSvc.streamChanges.returns(sinon.stub().returns(changesStream));
 
         const stream = yield* UpgradeService.stage(version);
         const results = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
         expect(results).to.deep.equal([initUpgradeLog]);
         expect(pouchGet.args).to.deep.equal(Array.replicate(['medic-logs'], 3));
-        expect(streamChanges.calledOnceWithExactly({
+        expect(mockPouchSvc.streamChanges.calledOnceWithExactly({
           include_docs: true,
           doc_ids: [initUpgradeLog._id],
         })).to.be.true;
@@ -350,9 +348,9 @@ describe('Upgrade Service', () => {
           limit: 1,
           include_docs: true
         });
-        expect(chtUpgrade.notCalled).to.be.true;
-        expect(chtStage.calledOnceWithExactly(version)).to.be.true;
-        expect(chtComplete.notCalled).to.be.true;
+        expect(mockUpgradeLib.upgradeCht.notCalled).to.be.true;
+        expect(mockUpgradeLib.stageChtUpgrade.calledOnceWithExactly(version)).to.be.true;
+        expect(mockUpgradeLib.completeChtUpgrade.notCalled).to.be.true;
       }));
     });
   });
@@ -361,7 +359,7 @@ describe('Upgrade Service', () => {
     it('completes upgrade when existing upgrade log has state indexed', run(function* () {
       const upgradeLog = createUpgradeLog({ idMillis: 1, state: 'indexed' });
       dbAllDocs.resolves({ rows: [{ doc: upgradeLog }] });
-      streamChanges.returns(sinon.stub().returns(Stream.empty));
+      mockPouchSvc.streamChanges.returns(sinon.stub().returns(Stream.empty));
 
       yield* UpgradeService.complete(version);
 
@@ -369,10 +367,10 @@ describe('Upgrade Service', () => {
       expect(dbAllDocs.calledTwice).to.be.true;
       expect(dbAllDocs.args[0][0]).to.deep.include(EXPECTED_ALL_DOCS_OPTS);
       expect(dbAllDocs.args[1][0]).to.deep.include(EXPECTED_ALL_DOCS_OPTS);
-      expect(chtUpgrade.notCalled).to.be.true;
-      expect(chtStage.notCalled).to.be.true;
-      expect(chtComplete.calledOnceWithExactly(version)).to.be.true;
-      expect(streamChanges.calledOnceWithExactly({
+      expect(mockUpgradeLib.upgradeCht.notCalled).to.be.true;
+      expect(mockUpgradeLib.stageChtUpgrade.notCalled).to.be.true;
+      expect(mockUpgradeLib.completeChtUpgrade.calledOnceWithExactly(version)).to.be.true;
+      expect(mockPouchSvc.streamChanges.calledOnceWithExactly({
         include_docs: true,
         doc_ids: [upgradeLog._id],
       })).to.be.true;
@@ -391,10 +389,10 @@ describe('Upgrade Service', () => {
           expect(pouchGet.args).to.deep.equal([['medic-logs']]);
           expect(dbAllDocs.calledOnce).to.be.true;
           expect(dbAllDocs.args[0][0]).to.deep.include(EXPECTED_ALL_DOCS_OPTS);
-          expect(chtUpgrade.notCalled).to.be.true;
-          expect(chtStage.notCalled).to.be.true;
-          expect(chtComplete.calledOnceWithExactly(version)).to.be.true;
-          expect(streamChanges.notCalled).to.be.true;
+          expect(mockUpgradeLib.upgradeCht.notCalled).to.be.true;
+          expect(mockUpgradeLib.stageChtUpgrade.notCalled).to.be.true;
+          expect(mockUpgradeLib.completeChtUpgrade.calledOnceWithExactly(version)).to.be.true;
+          expect(mockPouchSvc.streamChanges.notCalled).to.be.true;
         } else {
           expect.fail('Expected error to be thrown');
         }
@@ -418,14 +416,14 @@ describe('Upgrade Service', () => {
       const changesStream = Stream
         .fromIterable(expectedUpgradeLogs)
         .pipe(Stream.map(log => ({ doc: log })));
-      streamChanges.returns(sinon.stub().returns(changesStream));
+      mockPouchSvc.streamChanges.returns(sinon.stub().returns(changesStream));
 
       const stream = yield* UpgradeService.complete(version);
       const results = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
       expect(results).to.deep.equal(expectedUpgradeLogs);
       expect(pouchGet.args).to.deep.equal(Array.replicate(['medic-logs'], 3));
-      expect(streamChanges.calledOnceWithExactly({
+      expect(mockPouchSvc.streamChanges.calledOnceWithExactly({
         include_docs: true,
         doc_ids: [initUpgradeLog._id],
       })).to.be.true;
@@ -442,9 +440,9 @@ describe('Upgrade Service', () => {
         limit: 1,
         include_docs: true
       });
-      expect(chtUpgrade.notCalled).to.be.true;
-      expect(chtStage.notCalled).to.be.true;
-      expect(chtComplete.calledOnceWithExactly(version)).to.be.true;
+      expect(mockUpgradeLib.upgradeCht.notCalled).to.be.true;
+      expect(mockUpgradeLib.stageChtUpgrade.notCalled).to.be.true;
+      expect(mockUpgradeLib.completeChtUpgrade.calledOnceWithExactly(version)).to.be.true;
     }));
 
     COMPLETED_STATES.forEach(state => {
@@ -458,14 +456,14 @@ describe('Upgrade Service', () => {
         const changesStream = Stream
           .fromIterable(expectedUpgradeLogs)
           .pipe(Stream.map(log => ({ doc: log })));
-        streamChanges.returns(sinon.stub().returns(changesStream));
+        mockPouchSvc.streamChanges.returns(sinon.stub().returns(changesStream));
 
         const stream = yield* UpgradeService.complete(version);
         const results = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
         expect(results).to.deep.equal([{ ...initUpgradeLog, state }]);
         expect(pouchGet.args).to.deep.equal(Array.replicate(['medic-logs'], 3));
-        expect(streamChanges.calledOnceWithExactly({
+        expect(mockPouchSvc.streamChanges.calledOnceWithExactly({
           include_docs: true,
           doc_ids: [initUpgradeLog._id],
         })).to.be.true;
@@ -482,9 +480,9 @@ describe('Upgrade Service', () => {
           limit: 1,
           include_docs: true
         });
-        expect(chtUpgrade.notCalled).to.be.true;
-        expect(chtStage.notCalled).to.be.true;
-        expect(chtComplete.calledOnceWithExactly(version)).to.be.true;
+        expect(mockUpgradeLib.upgradeCht.notCalled).to.be.true;
+        expect(mockUpgradeLib.stageChtUpgrade.notCalled).to.be.true;
+        expect(mockUpgradeLib.completeChtUpgrade.calledOnceWithExactly(version)).to.be.true;
       }));
     });
   });

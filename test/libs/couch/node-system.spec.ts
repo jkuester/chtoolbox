@@ -1,42 +1,38 @@
 import { describe, it } from 'mocha';
 import { Effect, Layer } from 'effect';
 import { expect } from 'chai';
-import sinon, { SinonStub } from 'sinon';
-import { ChtClientService } from '../../../src/services/cht-client';
-import { HttpClientRequest } from '@effect/platform';
-import { createNodeSystem } from '../../utils/data-models';
-import { getCouchNodeSystem } from '../../../src/libs/couch/node-system';
-import { genWithLayer, sandbox } from '../../utils/base';
+import { ChtClientService } from '../../../src/services/cht-client.js';
+import { createNodeSystem } from '../../utils/data-models.js';
+import * as NodeSystemLibs from '../../../src/libs/couch/node-system.js';
+import { genWithLayer, sandbox } from '../../utils/base.js';
+import esmock from 'esmock';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
-
-const couchRequest = sandbox.stub();
+const mockChtClient = { request: sandbox.stub() };
+const mockHttpRequest = { get: sandbox.stub() };
 
 const run = Layer
-  .succeed(ChtClientService, { request: couchRequest } as unknown as ChtClientService)
+  .succeed(ChtClientService, mockChtClient as unknown as ChtClientService)
   .pipe(genWithLayer);
+const { getCouchNodeSystem } = await esmock<typeof NodeSystemLibs>('../../../src/libs/couch/node-system.js', {
+  '@effect/platform': { HttpClientRequest: mockHttpRequest }
+});
 
 describe('Couch Node System libs', () => {
-  let requestGet: SinonStub;
-
-  beforeEach(() => {
-    requestGet = sinon.stub(HttpClientRequest, 'get');
-  });
-
   it('gets node system data', run(function* () {
-    requestGet.returns(FAKE_CLIENT_REQUEST);
+    mockHttpRequest.get.returns(FAKE_CLIENT_REQUEST);
     const expectedNodeSystem = createNodeSystem({
       processes_used: 324116345634,
       binary: 34,
     });
-    couchRequest.returns(Effect.succeed({
+    mockChtClient.request.returns(Effect.succeed({
       json: Effect.succeed(expectedNodeSystem),
     }));
 
     const nodeSystem = yield* getCouchNodeSystem();
 
     expect(nodeSystem).to.deep.equal(expectedNodeSystem);
-    expect(requestGet.calledOnceWithExactly('/_node/_local/_system')).to.be.true;
-    expect(couchRequest.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
+    expect(mockHttpRequest.get.calledOnceWithExactly('/_node/_local/_system')).to.be.true;
+    expect(mockChtClient.request.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
   }));
 });

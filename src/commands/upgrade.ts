@@ -1,9 +1,9 @@
 import { Args, Command, Options } from '@effect/cli';
 import { Array, Console, DateTime, Effect, Match, Option, pipe, Stream } from 'effect';
-import { initializeUrl } from '../index';
-import { UpgradeLog, UpgradeService } from '../services/upgrade';
+import { initializeUrl } from '../index.js';
+import { UpgradeLog, UpgradeService } from '../services/upgrade.js';
 
-import { clearThen } from '../libs/console';
+import { clearThen } from '../libs/console.js';
 
 const getUpgradeLogDisplay = ({ state_history }: UpgradeLog) => pipe(
   state_history,
@@ -45,21 +45,18 @@ const follow = Options
   .pipe(
     Options.withAlias('f'),
     Options.withDescription('After triggering upgrade, wait for it to complete.'),
-    Options.withDefault(false),
   );
 
 const stage = Options
   .boolean('stage')
   .pipe(
     Options.withDescription('Stage the upgrade without actually running it.'),
-    Options.withDefault(false),
   );
 
 const complete = Options
   .boolean('complete')
   .pipe(
     Options.withDescription('Complete a staged upgrade.'),
-    Options.withDefault(false),
   );
 
 const version = Args

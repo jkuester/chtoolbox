@@ -1,10 +1,10 @@
 import { Args, Command } from '@effect/cli';
 import { Array, Effect, Option, pipe, Record } from 'effect';
-import { initializeUrl } from '../../index';
-import { getDesignDocNames } from '../../libs/couch/design-docs';
-import { getDbNames } from '../../libs/couch/dbs-info';
+import { initializeUrl } from '../../index.js';
+import { getDesignDocNames } from '../../libs/couch/design-docs.js';
+import { getDbNames } from '../../libs/couch/dbs-info.js';
 
-import { logJson } from '../../libs/console';
+import { logJson } from '../../libs/console.js';
 
 const printDesignDocNames = (dbName: string) => getDesignDocNames(dbName)
   .pipe(Effect.flatMap(logJson));

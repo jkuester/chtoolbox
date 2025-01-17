@@ -1,12 +1,12 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { Array } from 'effect';
-import { getDbNames } from '../libs/couch/dbs-info';
-import { getDesignDocNames } from '../libs/couch/design-docs';
-import { getViewNames } from '../libs/couch/design';
-import { warmView } from '../libs/couch/view';
-import { getDesignInfo } from '../libs/couch/design-info';
-import { ChtClientService } from './cht-client';
+import { getDbNames } from '../libs/couch/dbs-info.js';
+import { getDesignDocNames } from '../libs/couch/design-docs.js';
+import { getViewNames } from '../libs/couch/design.js';
+import { warmView } from '../libs/couch/view.js';
+import { getDesignInfo } from '../libs/couch/design-info.js';
+import { ChtClientService } from './cht-client.js';
 
 const warmCouchView = (dbName: string, designId: string) => (
   viewName: string

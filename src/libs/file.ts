@@ -1,4 +1,5 @@
 import { FileSystem, HttpClient, HttpClientRequest } from '@effect/platform';
+import { filterStatusOk } from '@effect/platform/HttpClient';
 import { Effect } from 'effect';
 import { Scope } from 'effect/Scope';
 import { PlatformError } from '@effect/platform/Error';
@@ -12,7 +13,7 @@ export const createTmpDir = (): Effect.Effect<
 export const getRemoteFile = (
   url: string
 ): Effect.Effect<string, Error, HttpClient.HttpClient> => HttpClient.HttpClient.pipe(
-  Effect.map(HttpClient.filterStatusOk),
+  Effect.map(filterStatusOk),
   Effect.flatMap(client => client.execute(HttpClientRequest.get(url))),
   Effect.flatMap(({ text }) => text),
   Effect.scoped,

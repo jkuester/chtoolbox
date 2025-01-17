@@ -28,12 +28,6 @@ export const pouchDB = (
   options?: PouchDB.Configuration.DatabaseConfiguration
 ): PouchDB.Database<object> => new PouchDB(name, options);
 
-/**
- * Wrapper for `get-port` ES Module.
- */
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export const promisedGetPort = () => import('get-port');
-
 const zipArrayStreams = <T, Q>(
   self: Stream.Stream<T[], Error, Q>,
   other: Stream.Stream<T[], Error, Q>

@@ -1,8 +1,8 @@
 import { Args, Command, Options } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe, Stream, String } from 'effect';
-import { initializeUrl } from '../../index';
-import { CompactService } from '../../services/compact';
-import { mergeArrayStreams } from '../../libs/core';
+import { initializeUrl } from '../../index.js';
+import { CompactService } from '../../services/compact.js';
+import { mergeArrayStreams } from '../../libs/core.js';
 import {
   CouchActiveTask, CouchActiveTaskStream,
   getDbName,
@@ -10,8 +10,8 @@ import {
   getDisplayDictByPid,
   getPid,
   getProgressPct
-} from '../../libs/couch/active-tasks';
-import { ChtClientService } from '../../services/cht-client';
+} from '../../libs/couch/active-tasks.js';
+import { ChtClientService } from '../../services/cht-client.js';
 
 const getDesignDisplayName = (task: CouchActiveTask) => getDesignName(task)
   .pipe(
@@ -64,7 +64,6 @@ const all = Options
   .pipe(
     Options.withAlias('a'),
     Options.withDescription('Also compact all of the designs for the database(s).'),
-    Options.withDefault(false),
   );
 
 const follow = Options
@@ -72,7 +71,6 @@ const follow = Options
   .pipe(
     Options.withAlias('f'),
     Options.withDescription('After triggering compaction, wait for all compacting jobs to complete.'),
-    Options.withDefault(false),
   );
 
 export const compact = Command

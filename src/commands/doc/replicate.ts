@@ -1,10 +1,10 @@
 import { Args, Command, Options } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe, Predicate, Stream } from 'effect';
-import { initializeUrl } from '../../index';
-import { ReplicateService, ReplicationDoc } from '../../services/replicate';
-import { CouchActiveTask, streamActiveTasks } from '../../libs/couch/active-tasks';
+import { initializeUrl } from '../../index.js';
+import { ReplicateService, ReplicationDoc } from '../../services/replicate.js';
+import { CouchActiveTask, streamActiveTasks } from '../../libs/couch/active-tasks.js';
 import { ParseError } from 'effect/Cron';
-import { clearThen } from '../../libs/console';
+import { clearThen } from '../../libs/console.js';
 
 const isRepTask = (id: string): Predicate.Predicate<CouchActiveTask> => pipe(
   ({ type }: CouchActiveTask) => type === 'replication',
@@ -49,14 +49,10 @@ const follow = Options
   .pipe(
     Options.withAlias('f'),
     Options.withDescription('After triggering replication, wait for job to complete.'),
-    Options.withDefault(false),
   );
 const all = Options
   .boolean('all')
-  .pipe(
-    Options.withDescription('Replicate everything including design documents'),
-    Options.withDefault(false),
-  );
+  .pipe(Options.withDescription('Replicate everything including design documents'));
 const source = Args
   .text({ name: 'source' })
   .pipe(Args.withDescription('The source database name.'));

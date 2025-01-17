@@ -2,27 +2,27 @@
 import { Command, Options } from '@effect/cli';
 import { NodeContext, NodeHttpClient, NodeRuntime } from '@effect/platform-node';
 import { Effect, Layer, Option, Redacted, String } from 'effect';
-import { ChtClientService } from './services/cht-client';
-import { monitor } from './commands/monitor';
-import packageJson from '../package.json';
-import { EnvironmentService, } from './services/environment';
-import { MonitorService } from './services/monitor';
-import { LocalDiskUsageService } from './services/local-disk-usage';
-import { WarmViewsService } from './services/warm-views';
-import { warmViews } from './commands/warm-views';
-import { CompactService } from './services/compact';
-import { activeTasks } from './commands/active-tasks';
-import { PouchDBService } from './services/pouchdb';
-import { ReplicateService } from './services/replicate';
-import { db } from './commands/db';
-import { design } from './commands/design';
-import { doc } from './commands/doc';
-import { PurgeService } from './services/purge';
-import { upgrade } from './commands/upgrade';
-import { UpgradeService } from './services/upgrade';
-import { TestDataGeneratorService } from './services/test-data-generator';
-import { instance } from './commands/instance';
-import { LocalInstanceService } from './services/local-instance';
+import { ChtClientService } from './services/cht-client.js';
+import { monitor } from './commands/monitor.js';
+import packageJson from '../package.json' with { type: 'json' };
+import { EnvironmentService, } from './services/environment.js';
+import { MonitorService } from './services/monitor.js';
+import { LocalDiskUsageService } from './services/local-disk-usage.js';
+import { WarmViewsService } from './services/warm-views.js';
+import { warmViews } from './commands/warm-views.js';
+import { CompactService } from './services/compact.js';
+import { activeTasks } from './commands/active-tasks.js';
+import { PouchDBService } from './services/pouchdb.js';
+import { ReplicateService } from './services/replicate.js';
+import { db } from './commands/db/index.js';
+import { design } from './commands/design/index.js';
+import { doc } from './commands/doc/index.js';
+import { PurgeService } from './services/purge.js';
+import { upgrade } from './commands/upgrade.js';
+import { UpgradeService } from './services/upgrade.js';
+import { TestDataGeneratorService } from './services/test-data-generator.js';
+import { instance } from './commands/instance/index.js';
+import { LocalInstanceService } from './services/local-instance.js';
 
 const url = Options
   .text('url')
@@ -57,7 +57,6 @@ const command = chtx.pipe(Command.withSubcommands([
 
 const cli = Command.run(command, {
   name: 'CHT Toolbox',
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-assignment
   version: packageJson.version
 });
 

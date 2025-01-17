@@ -1,28 +1,24 @@
 import { describe, it } from 'mocha';
 import { Effect, Layer } from 'effect';
 import { expect } from 'chai';
-import sinon, { SinonStub } from 'sinon';
-import { ChtClientService } from '../../../src/services/cht-client';
-import { HttpClientRequest } from '@effect/platform';
-import { getDesignInfo } from '../../../src/libs/couch/design-info';
-import { createDesignInfo } from '../../utils/data-models';
-import { genWithLayer, sandbox } from '../../utils/base';
+import { ChtClientService } from '../../../src/services/cht-client.js';
+import * as DesignInfoLibs from '../../../src/libs/couch/design-info.js';
+import { createDesignInfo } from '../../utils/data-models.js';
+import { genWithLayer, sandbox } from '../../utils/base.js';
+import esmock from 'esmock';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
-
-const couchRequest = sandbox.stub();
+const mockChtClient = { request: sandbox.stub() };
+const mockHttpRequest = { get: sandbox.stub() };
 
 const run = Layer
-  .succeed(ChtClientService, { request: couchRequest } as unknown as ChtClientService)
+  .succeed(ChtClientService, mockChtClient as unknown as ChtClientService)
   .pipe(genWithLayer);
+const { getDesignInfo } = await esmock<typeof DesignInfoLibs>('../../../src/libs/couch/design-info.js', {
+  '@effect/platform': { HttpClientRequest: mockHttpRequest }
+});
 
 describe('Couch Design Info libs', () => {
-  let requestGet: SinonStub;
-
-  beforeEach(() => {
-    requestGet = sinon.stub(HttpClientRequest, 'get');
-  });
-
   [
     createDesignInfo({
       name: 'medic-client',
@@ -45,16 +41,16 @@ describe('Couch Design Info libs', () => {
   ].forEach(expectedDesignInfo => {
     it('gets design info for a database', run(function* () {
       const db = 'medic';
-      requestGet.returns(FAKE_CLIENT_REQUEST);
-      couchRequest.returns(Effect.succeed({
+      mockHttpRequest.get.returns(FAKE_CLIENT_REQUEST);
+      mockChtClient.request.returns(Effect.succeed({
         json: Effect.succeed(expectedDesignInfo),
       }));
 
       const designInfo = yield* getDesignInfo(db, expectedDesignInfo.name);
 
       expect(designInfo).to.deep.equal(expectedDesignInfo);
-      expect(requestGet.calledOnceWithExactly(`/${db}/_design/${expectedDesignInfo.name}/_info`)).to.be.true;
-      expect(couchRequest.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
+      expect(mockHttpRequest.get.calledOnceWithExactly(`/${db}/_design/${expectedDesignInfo.name}/_info`)).to.be.true;
+      expect(mockChtClient.request.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
     }));
   });
 });

@@ -1,40 +1,38 @@
 import { describe, it } from 'mocha';
-import { Effect, Layer } from 'effect';
+import { Effect, Layer, pipe } from 'effect';
 import { expect } from 'chai';
-import sinon, { SinonSpy, SinonStub } from 'sinon';
-import { ChtClientService } from '../../../src/services/cht-client';
-import { HttpClientRequest } from '@effect/platform';
-import { warmView } from '../../../src/libs/couch/view';
-import { genWithLayer, sandbox } from '../../utils/base';
+import { ChtClientService } from '../../../src/services/cht-client.js';
+import * as ViewLib from '../../../src/libs/couch/view.js';
+import { genWithLayer, sandbox } from '../../utils/base.js';
+import esmock from 'esmock'
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
-
-const couchRequest = sandbox.stub();
+const mockChtClient = { request: sandbox.stub() };
+const mockHttpRequest = {
+  get: sandbox.stub(),
+  setUrlParam: sandbox.stub()
+};
 
 const run = Layer
-  .succeed(ChtClientService, { request: couchRequest } as unknown as ChtClientService)
+  .succeed(ChtClientService, mockChtClient as unknown as ChtClientService)
   .pipe(genWithLayer);
+const { warmView } = await esmock<typeof ViewLib>('../../../src/libs/couch/view.js', {
+  '@effect/platform': { HttpClientRequest: mockHttpRequest }
+});
 
 describe('Couch View lib', () => {
-  let requestGet: SinonSpy;
-  let requestSetUrlParam: SinonStub;
-
-  beforeEach(() => {
-    requestGet = sinon.spy(HttpClientRequest, 'get');
-    requestSetUrlParam = sinon.stub(HttpClientRequest, 'setUrlParam');
-  });
-
   it('warms given database view', run(function* () {
     const dbName = 'test-db';
     const designName = 'test-design';
     const viewName = 'test-view';
-    requestSetUrlParam.returns(sinon.stub().returns(FAKE_CLIENT_REQUEST));
-    couchRequest.returns(Effect.void);
+    mockHttpRequest.setUrlParam.returns(FAKE_CLIENT_REQUEST);
+    mockChtClient.request.returns(Effect.void);
+    mockHttpRequest.get.returns({ pipe });
 
     yield* warmView(dbName, designName, viewName);
 
-    expect(requestGet.calledOnceWithExactly(`/${dbName}/_design/${designName}/_view/${viewName}`)).to.be.true;
-    expect(requestSetUrlParam.calledOnceWithExactly('limit', '0')).to.be.true;
-    expect(couchRequest.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
+    expect(mockHttpRequest.get.calledOnceWithExactly(`/${dbName}/_design/${designName}/_view/${viewName}`)).to.be.true;
+    expect(mockHttpRequest.setUrlParam.calledOnceWithExactly('limit', '0')).to.be.true;
+    expect(mockChtClient.request.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
   }));
 });

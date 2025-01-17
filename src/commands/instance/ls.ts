@@ -1,8 +1,8 @@
 import { Command } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe } from 'effect';
-import { LocalInstanceService } from '../../services/local-instance';
-import { getLocalIpUrl } from '../../libs/local-network';
-import { color } from '../../libs/console';
+import { LocalInstanceService } from '../../services/local-instance.js';
+import { getLocalIpUrl } from '../../libs/local-network.js';
+import { color } from '../../libs/console.js';
 
 const getUrl = (port: Option.Option<`${number}`>) => port.pipe(
   Option.map(getLocalIpUrl),

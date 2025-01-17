@@ -1,5 +1,5 @@
 import { Effect } from 'effect';
-import { EnvironmentService } from './environment';
+import { EnvironmentService } from './environment.js';
 import { CommandExecutor, ExitCode } from '@effect/platform/CommandExecutor';
 declare const TestDataGeneratorService_base: Effect.Service.Class<TestDataGeneratorService, "chtoolbox/TestDataGeneratorService", {
     readonly effect: Effect.Effect<{

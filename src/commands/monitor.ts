@@ -1,7 +1,7 @@
 import { Command, Options } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe, Schedule } from 'effect';
-import { initializeUrl } from '../index';
-import { MonitorService } from '../services/monitor';
+import { initializeUrl } from '../index.js';
+import { MonitorService } from '../services/monitor.js';
 
 const printCsvRow = (row: readonly (string | number | boolean)[]) => pipe(
   row,

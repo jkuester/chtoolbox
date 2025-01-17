@@ -1,7 +1,7 @@
 import { Args, Command, Options, Prompt } from '@effect/cli';
 import { Array, Console, Effect, Match, Option, pipe } from 'effect';
-import { initializeUrl } from '../../index';
-import { PouchDBService } from '../../services/pouchdb';
+import { initializeUrl } from '../../index.js';
+import { PouchDBService } from '../../services/pouchdb.js';
 
 const destroyDbs = (dbs: string[]) => pipe(
   dbs,
@@ -28,7 +28,6 @@ const yes = Options
   .pipe(
     Options.withAlias('y'),
     Options.withDescription('Do not prompt for confirmation.'),
-    Options.withDefault(false),
   );
 
 const databases = Args

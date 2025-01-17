@@ -1,10 +1,11 @@
-import { EnvironmentService } from './environment';
+import { EnvironmentService } from './environment.js';
 import { HttpClientResponse } from '@effect/platform/HttpClientResponse';
 import { Scope } from 'effect/Scope';
 import * as Effect from 'effect/Effect';
 import { HttpClient, HttpClientRequest } from '@effect/platform';
 import * as Context from 'effect/Context';
 import { pipe, Redacted } from 'effect';
+import { filterStatusOk, mapRequest } from '@effect/platform/HttpClient';
 
 const couchUrl = EnvironmentService
   .get()
@@ -12,8 +13,8 @@ const couchUrl = EnvironmentService
 
 const clientWithUrl = couchUrl.pipe(
   Effect.flatMap(url => HttpClient.HttpClient.pipe(
-    Effect.map(HttpClient.filterStatusOk),
-    Effect.map(HttpClient.mapRequest(HttpClientRequest.prependUrl(Redacted.value(url)))),
+    Effect.map(filterStatusOk),
+    Effect.map(mapRequest(HttpClientRequest.prependUrl(Redacted.value(url)))),
   )),
 );
 

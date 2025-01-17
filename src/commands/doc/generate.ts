@@ -1,7 +1,7 @@
 import { Args, Command } from '@effect/cli';
 import { Effect } from 'effect';
-import { initializeUrl } from '../../index';
-import { TestDataGeneratorService } from '../../services/test-data-generator';
+import { initializeUrl } from '../../index.js';
+import { TestDataGeneratorService } from '../../services/test-data-generator.js';
 
 const designScriptPath = Args
   .path({ name: 'designScriptPath', exists: 'yes' })

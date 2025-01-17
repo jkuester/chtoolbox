@@ -1,7 +1,7 @@
 import { Command } from '@effect/cli';
-import { inspect } from './inspect';
-import { compact } from './compact';
-import { ls } from './ls';
+import { inspect } from './inspect.js';
+import { compact } from './compact.js';
+import { ls } from './ls.js';
 
 export const design = Command
   .make('design', {})

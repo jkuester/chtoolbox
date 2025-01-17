@@ -1,7 +1,7 @@
 import { Command } from '@effect/cli';
-import { generate } from './generate';
-import { purge } from './purge';
-import { replicate } from './replicate';
+import { generate } from './generate.js';
+import { purge } from './purge.js';
+import { replicate } from './replicate.js';
 
 export const doc = Command
   .make('doc', {})

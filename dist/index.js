@@ -1,51 +1,44 @@
 #!/usr/bin/env node
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.initializeUrl = void 0;
-const cli_1 = require("@effect/cli");
-const platform_node_1 = require("@effect/platform-node");
-const effect_1 = require("effect");
-const cht_client_1 = require("./services/cht-client");
-const monitor_1 = require("./commands/monitor");
-const package_json_1 = __importDefault(require("../package.json"));
-const environment_1 = require("./services/environment");
-const monitor_2 = require("./services/monitor");
-const local_disk_usage_1 = require("./services/local-disk-usage");
-const warm_views_1 = require("./services/warm-views");
-const warm_views_2 = require("./commands/warm-views");
-const compact_1 = require("./services/compact");
-const active_tasks_1 = require("./commands/active-tasks");
-const pouchdb_1 = require("./services/pouchdb");
-const replicate_1 = require("./services/replicate");
-const db_1 = require("./commands/db");
-const design_1 = require("./commands/design");
-const doc_1 = require("./commands/doc");
-const purge_1 = require("./services/purge");
-const upgrade_1 = require("./commands/upgrade");
-const upgrade_2 = require("./services/upgrade");
-const test_data_generator_1 = require("./services/test-data-generator");
-const instance_1 = require("./commands/instance");
-const local_instance_1 = require("./services/local-instance");
-const url = cli_1.Options
+import { Command, Options } from '@effect/cli';
+import { NodeContext, NodeHttpClient, NodeRuntime } from '@effect/platform-node';
+import { Effect, Layer, Option, Redacted, String } from 'effect';
+import { ChtClientService } from './services/cht-client.js';
+import { monitor } from './commands/monitor.js';
+import packageJson from '../package.json' with { type: 'json' };
+import { EnvironmentService, } from './services/environment.js';
+import { MonitorService } from './services/monitor.js';
+import { LocalDiskUsageService } from './services/local-disk-usage.js';
+import { WarmViewsService } from './services/warm-views.js';
+import { warmViews } from './commands/warm-views.js';
+import { CompactService } from './services/compact.js';
+import { activeTasks } from './commands/active-tasks.js';
+import { PouchDBService } from './services/pouchdb.js';
+import { ReplicateService } from './services/replicate.js';
+import { db } from './commands/db/index.js';
+import { design } from './commands/design/index.js';
+import { doc } from './commands/doc/index.js';
+import { PurgeService } from './services/purge.js';
+import { upgrade } from './commands/upgrade.js';
+import { UpgradeService } from './services/upgrade.js';
+import { TestDataGeneratorService } from './services/test-data-generator.js';
+import { instance } from './commands/instance/index.js';
+import { LocalInstanceService } from './services/local-instance.js';
+const url = Options
     .text('url')
-    .pipe(cli_1.Options.withDescription('The URL of the CouchDB server. Defaults to the COUCH_URL environment variable. Note that since this tool is ' +
-    'intended for testing/development usage, invalid SSL certificates (e.g. self-signed) are allowed by default.'), cli_1.Options.optional);
-const chtx = cli_1.Command.make('chtx', { url });
-const setEnv = (url) => effect_1.Effect.flatMap(environment_1.EnvironmentService, envSvc => envSvc.setUrl(url));
-const getEnv = effect_1.Effect.flatMap(environment_1.EnvironmentService, envSvc => envSvc.get());
-exports.initializeUrl = chtx.pipe(effect_1.Effect.map(({ url }) => url), effect_1.Effect.map(effect_1.Option.map(effect_1.Redacted.make)), effect_1.Effect.map(effect_1.Option.map(setEnv)), effect_1.Effect.flatMap(effect_1.Option.getOrElse(() => getEnv)), effect_1.Effect.map(({ url }) => effect_1.Redacted.value(url)), effect_1.Effect.map(effect_1.Option.liftPredicate(effect_1.String.isNonEmpty)), effect_1.Effect.map(effect_1.Option.getOrThrowWith(() => new Error('A value must be set for the COUCH_URL envar or the --url option.'))));
-const command = chtx.pipe(cli_1.Command.withSubcommands([
-    design_1.design, doc_1.doc, monitor_1.monitor, warm_views_2.warmViews, active_tasks_1.activeTasks, db_1.db, upgrade_1.upgrade, instance_1.instance
+    .pipe(Options.withDescription('The URL of the CouchDB server. Defaults to the COUCH_URL environment variable. Note that since this tool is ' +
+    'intended for testing/development usage, invalid SSL certificates (e.g. self-signed) are allowed by default.'), Options.optional);
+const chtx = Command.make('chtx', { url });
+const setEnv = (url) => Effect.flatMap(EnvironmentService, envSvc => envSvc.setUrl(url));
+const getEnv = Effect.flatMap(EnvironmentService, envSvc => envSvc.get());
+export const initializeUrl = chtx.pipe(Effect.map(({ url }) => url), Effect.map(Option.map(Redacted.make)), Effect.map(Option.map(setEnv)), Effect.flatMap(Option.getOrElse(() => getEnv)), Effect.map(({ url }) => Redacted.value(url)), Effect.map(Option.liftPredicate(String.isNonEmpty)), Effect.map(Option.getOrThrowWith(() => new Error('A value must be set for the COUCH_URL envar or the --url option.'))));
+const command = chtx.pipe(Command.withSubcommands([
+    design, doc, monitor, warmViews, activeTasks, db, upgrade, instance
 ]));
-const cli = cli_1.Command.run(command, {
+const cli = Command.run(command, {
     name: 'CHT Toolbox',
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-assignment
-    version: package_json_1.default.version
+    version: packageJson.version
 });
-const httpClientNoSslVerify = effect_1.Layer.provide(platform_node_1.NodeHttpClient.layerWithoutAgent.pipe(effect_1.Layer.provide(platform_node_1.NodeHttpClient.makeAgentLayer({ rejectUnauthorized: false }))));
+const httpClientNoSslVerify = Layer.provide(NodeHttpClient.layerWithoutAgent.pipe(Layer.provide(NodeHttpClient.makeAgentLayer({ rejectUnauthorized: false }))));
 cli(process.argv)
-    .pipe(effect_1.Effect.provide(compact_1.CompactService.Default), effect_1.Effect.provide(monitor_2.MonitorService.Default), effect_1.Effect.provide(local_disk_usage_1.LocalDiskUsageService.Default), effect_1.Effect.provide(local_instance_1.LocalInstanceService.Default.pipe(httpClientNoSslVerify)), effect_1.Effect.provide(purge_1.PurgeService.Default), effect_1.Effect.provide(upgrade_2.UpgradeService.Default), effect_1.Effect.provide(warm_views_1.WarmViewsService.Default), effect_1.Effect.provide(replicate_1.ReplicateService.Default), effect_1.Effect.provide(test_data_generator_1.TestDataGeneratorService.Default), effect_1.Effect.provide(pouchdb_1.PouchDBService.Default), effect_1.Effect.provide(cht_client_1.ChtClientService.Default.pipe(httpClientNoSslVerify)), effect_1.Effect.provide(environment_1.EnvironmentService.Default), effect_1.Effect.provide(platform_node_1.NodeContext.layer), platform_node_1.NodeRuntime.runMain);
+    .pipe(Effect.provide(CompactService.Default), Effect.provide(MonitorService.Default), Effect.provide(LocalDiskUsageService.Default), Effect.provide(LocalInstanceService.Default.pipe(httpClientNoSslVerify)), Effect.provide(PurgeService.Default), Effect.provide(UpgradeService.Default), Effect.provide(WarmViewsService.Default), Effect.provide(ReplicateService.Default), Effect.provide(TestDataGeneratorService.Default), Effect.provide(PouchDBService.Default), Effect.provide(ChtClientService.Default.pipe(httpClientNoSslVerify)), Effect.provide(EnvironmentService.Default), Effect.provide(NodeContext.layer), NodeRuntime.runMain);
 //# sourceMappingURL=index.js.map

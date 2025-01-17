@@ -1,39 +1,13 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.MonitorService = void 0;
-const Effect = __importStar(require("effect/Effect"));
-const Context = __importStar(require("effect/Context"));
-const dbs_info_1 = require("../libs/couch/dbs-info");
-const design_info_1 = require("../libs/couch/design-info");
-const node_system_1 = require("../libs/couch/node-system");
-const effect_1 = require("effect");
-const local_disk_usage_1 = require("./local-disk-usage");
-const HttpClientError_1 = require("@effect/platform/HttpClientError");
-const cht_client_1 = require("./cht-client");
-const currentTimeSec = effect_1.Clock.currentTimeMillis.pipe(Effect.map(effect_1.Number.unsafeDivide(1000)), Effect.map(Math.floor));
+import * as Effect from 'effect/Effect';
+import * as Context from 'effect/Context';
+import { getDbsInfoByName } from '../libs/couch/dbs-info.js';
+import { getDesignInfo } from '../libs/couch/design-info.js';
+import { getCouchNodeSystem } from '../libs/couch/node-system.js';
+import { Array, Clock, Number, Option, pipe } from 'effect';
+import { LocalDiskUsageService } from './local-disk-usage.js';
+import { ResponseError } from '@effect/platform/HttpClientError';
+import { ChtClientService } from './cht-client.js';
+const currentTimeSec = Clock.currentTimeMillis.pipe(Effect.map(Number.unsafeDivide(1000)), Effect.map(Math.floor));
 const DB_NAMES = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 const VIEW_INDEXES_BY_DB = {
     medic: [
@@ -74,13 +48,13 @@ const emptyDesignInfo = {
         },
     },
 };
-const getCouchDesignInfosForDb = (dbName) => Effect.all((0, effect_1.pipe)(VIEW_INDEXES_BY_DB[dbName], effect_1.Array.map(designName => (0, design_info_1.getDesignInfo)(dbName, designName)), effect_1.Array.map(Effect.catchIf((error) => error instanceof HttpClientError_1.ResponseError && error.response.status === 404, () => Effect.succeed(emptyDesignInfo)))));
-const getCouchDesignInfos = () => (0, effect_1.pipe)(DB_NAMES, effect_1.Array.map(getCouchDesignInfosForDb), Effect.all);
-const getDirectorySize = (directory) => local_disk_usage_1.LocalDiskUsageService.pipe(Effect.flatMap(service => directory.pipe(effect_1.Option.map(dir => service.getSize(dir)), effect_1.Option.getOrElse(() => Effect.succeed(null)))), Effect.map(effect_1.Option.fromNullable));
-const getMonitoringData = (directory) => (0, effect_1.pipe)(Effect.all([
+const getCouchDesignInfosForDb = (dbName) => Effect.all(pipe(VIEW_INDEXES_BY_DB[dbName], Array.map(designName => getDesignInfo(dbName, designName)), Array.map(Effect.catchIf((error) => error instanceof ResponseError && error.response.status === 404, () => Effect.succeed(emptyDesignInfo)))));
+const getCouchDesignInfos = () => pipe(DB_NAMES, Array.map(getCouchDesignInfosForDb), Effect.all);
+const getDirectorySize = (directory) => LocalDiskUsageService.pipe(Effect.flatMap(service => directory.pipe(Option.map(dir => service.getSize(dir)), Option.getOrElse(() => Effect.succeed(null)))), Effect.map(Option.fromNullable));
+const getMonitoringData = (directory) => pipe(Effect.all([
     currentTimeSec,
-    (0, node_system_1.getCouchNodeSystem)(),
-    (0, dbs_info_1.getDbsInfoByName)(DB_NAMES),
+    getCouchNodeSystem(),
+    getDbsInfoByName(DB_NAMES),
     getCouchDesignInfos(),
     getDirectorySize(directory),
 ]), Effect.map(([unixTime, nodeSystem, dbsInfo, designInfos, directory_size]) => ({
@@ -107,9 +81,9 @@ const getCsvHeader = (directory) => [
     ]),
     'memory_processes_used',
     'memory_binary',
-    ...(directory.pipe(effect_1.Option.map(() => 'directory_size'), effect_1.Option.map(effect_1.Array.of), effect_1.Option.getOrElse(() => [])))
+    ...(directory.pipe(Option.map(() => 'directory_size'), Option.map(Array.of), Option.getOrElse(() => [])))
 ];
-const getAsCsv = (directory) => (0, effect_1.pipe)(getMonitoringData(directory), Effect.map(data => [
+const getAsCsv = (directory) => pipe(getMonitoringData(directory), Effect.map(data => [
     data.unix_time.toString(),
     ...data.databases.flatMap(db => [
         db.info.sizes.file.toString(),
@@ -124,17 +98,17 @@ const getAsCsv = (directory) => (0, effect_1.pipe)(getMonitoringData(directory),
     ]),
     data.memory.processes_used.toString(),
     data.memory.binary.toString(),
-    ...(data.directory_size.pipe(effect_1.Option.map(value => value.toString()), effect_1.Option.map(effect_1.Array.of), effect_1.Option.getOrElse(() => []))),
+    ...(data.directory_size.pipe(Option.map(value => value.toString()), Option.map(Array.of), Option.getOrElse(() => []))),
 ]));
 const serviceContext = Effect
     .all([
-    local_disk_usage_1.LocalDiskUsageService,
-    cht_client_1.ChtClientService,
+    LocalDiskUsageService,
+    ChtClientService,
 ])
     .pipe(Effect.map(([localDiskUsage, chtClient,]) => Context
-    .make(local_disk_usage_1.LocalDiskUsageService, localDiskUsage)
-    .pipe(Context.add(cht_client_1.ChtClientService, chtClient))));
-class MonitorService extends Effect.Service()('chtoolbox/MonitorService', {
+    .make(LocalDiskUsageService, localDiskUsage)
+    .pipe(Context.add(ChtClientService, chtClient))));
+export class MonitorService extends Effect.Service()('chtoolbox/MonitorService', {
     effect: serviceContext.pipe(Effect.map(context => ({
         get: (directory) => getMonitoringData(directory)
             .pipe(Effect.provide(context)),
@@ -145,5 +119,4 @@ class MonitorService extends Effect.Service()('chtoolbox/MonitorService', {
     accessors: true,
 }) {
 }
-exports.MonitorService = MonitorService;
 //# sourceMappingURL=monitor.js.map

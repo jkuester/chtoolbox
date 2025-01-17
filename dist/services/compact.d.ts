@@ -1,6 +1,6 @@
 import * as Effect from 'effect/Effect';
-import { CouchActiveTaskStream } from '../libs/couch/active-tasks';
-import { ChtClientService } from './cht-client';
+import { CouchActiveTaskStream } from '../libs/couch/active-tasks.js';
+import { ChtClientService } from './cht-client.js';
 declare const CompactService_base: Effect.Service.Class<CompactService, "chtoolbox/CompactService", {
     readonly effect: Effect.Effect<{
         compactAll: (compactDesigns: boolean) => Effect.Effect<CouchActiveTaskStream, Error>;

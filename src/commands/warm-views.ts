@@ -1,7 +1,7 @@
 import { Command, Options } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe, Schedule } from 'effect';
-import { initializeUrl } from '../index';
-import { WarmViewsService } from '../services/warm-views';
+import { initializeUrl } from '../index.js';
+import { WarmViewsService } from '../services/warm-views.js';
 
 const designsCurrentlyUpdating = WarmViewsService
   .designsCurrentlyUpdating()
@@ -34,7 +34,6 @@ const follow = Options
   .pipe(
     Options.withAlias('f'),
     Options.withDescription('After triggering warming, wait for all indexing jobs to complete.'),
-    Options.withDefault(false),
   );
 
 export const warmViews = Command

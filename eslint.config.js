@@ -1,11 +1,12 @@
 import globals from 'globals';
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
-import node from 'eslint-plugin-node';
+import node from 'eslint-plugin-n';
 import promise from 'eslint-plugin-promise';
+import medic from '@medic/eslint-config';
 
 export default tseslint.config(
-  { ignores: ['**/nyc.config.js', '**/eslint.config.mjs', '**/.mocharc.js', '**/dist/', '**/node_modules/', '**/.nyc_output/'] },
+  { ignores: ['**/eslint.config.js', '**/.mocharc.cjs', '**/dist/', '**/node_modules/', '**/.c8_output/'] },
   {
     plugins: {
       '@typescript-eslint': tseslint.plugin,
@@ -16,6 +17,8 @@ export default tseslint.config(
       eslint.configs.recommended,
       tseslint.configs.strictTypeChecked,
       tseslint.configs.stylisticTypeChecked,
+      // TODO Cannot use medic with eslint 9+ because its format is unsupported
+      // medic
     ],
     languageOptions: {
       globals: globals.node,

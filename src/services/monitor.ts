@@ -1,14 +1,14 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { CouchDbInfo, getDbsInfoByName } from '../libs/couch/dbs-info';
-import { CouchDesignInfo, getDesignInfo } from '../libs/couch/design-info';
-import { CouchNodeSystem, getCouchNodeSystem } from '../libs/couch/node-system';
+import { CouchDbInfo, getDbsInfoByName } from '../libs/couch/dbs-info.js';
+import { CouchDesignInfo, getDesignInfo } from '../libs/couch/design-info.js';
+import { CouchNodeSystem, getCouchNodeSystem } from '../libs/couch/node-system.js';
 import { Array, Clock, Number, Option, pipe } from 'effect';
-import { LocalDiskUsageService } from './local-disk-usage';
+import { LocalDiskUsageService } from './local-disk-usage.js';
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { NonEmptyArray } from 'effect/Array';
 import { PlatformError } from '@effect/platform/Error';
-import { ChtClientService } from './cht-client';
+import { ChtClientService } from './cht-client.js';
 
 interface DatabaseInfo extends CouchDbInfo {
   designs: CouchDesignInfo[]

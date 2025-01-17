@@ -1,6 +1,6 @@
 import { Args, Command, Options, Prompt } from '@effect/cli';
 import { Array, Console, Effect, Match, Option, pipe } from 'effect';
-import { LocalInstanceService } from '../../services/local-instance';
+import { LocalInstanceService } from '../../services/local-instance.js';
 
 const getConfirmationPrompt = (names: string[]) => Prompt.confirm({
   message: `Are you sure you want to permanently remove ${Array.join(names, ', ')}?`,
@@ -26,7 +26,6 @@ const yes = Options
   .pipe(
     Options.withAlias('y'),
     Options.withDescription('Do not prompt for confirmation.'),
-    Options.withDefault(false),
   );
 
 const names = Args

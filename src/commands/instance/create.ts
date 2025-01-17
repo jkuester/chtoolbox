@@ -1,8 +1,8 @@
 import { Args, Command, Options } from '@effect/cli';
 import { Array, Console, Effect, pipe } from 'effect';
-import { LocalInstanceService } from '../../services/local-instance';
-import { getLocalIpUrl } from '../../libs/local-network';
-import { clearThen, color } from '../../libs/console';
+import { LocalInstanceService } from '../../services/local-instance.js';
+import { getLocalIpUrl } from '../../libs/local-network.js';
+import { clearThen, color } from '../../libs/console.js';
 
 const createChtInstances = (names: string[], version: string) => pipe(
   names,

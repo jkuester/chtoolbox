@@ -1,21 +1,19 @@
 import { afterEach, describe, it } from 'mocha';
 import { Effect, Either, Layer, Option, TestClock } from 'effect';
 import { expect } from 'chai';
-import { MonitorService } from '../../src/services/monitor';
-import * as CouchNodeSystemLib from '../../src/libs/couch/node-system';
-import { CouchNodeSystem } from '../../src/libs/couch/node-system';
-import sinon, { SinonStub } from 'sinon';
-import * as CouchDbsInfo from '../../src/libs/couch/dbs-info';
-import { CouchDbInfo } from '../../src/libs/couch/dbs-info';
-import * as CouchDesignInfoLib from '../../src/libs/couch/design-info';
-import { CouchDesignInfo } from '../../src/libs/couch/design-info';
-import { LocalDiskUsageService } from '../../src/services/local-disk-usage';
-import { createDbInfo, createDesignInfo, createNodeSystem } from '../utils/data-models';
+import * as MonitorSvc from '../../src/services/monitor.js';
+import { CouchNodeSystem } from '../../src/libs/couch/node-system.js';
+import { SinonStub } from 'sinon';
+import { CouchDbInfo } from '../../src/libs/couch/dbs-info.js';
+import { CouchDesignInfo } from '../../src/libs/couch/design-info.js';
+import { LocalDiskUsageService } from '../../src/services/local-disk-usage.js';
+import { createDbInfo, createDesignInfo, createNodeSystem } from '../utils/data-models.js';
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import { NonEmptyArray } from 'effect/Array';
-import { genWithLayer, sandbox } from '../utils/base';
-import { ChtClientService } from '../../src/services/cht-client';
+import { genWithLayer, sandbox } from '../utils/base.js';
+import { ChtClientService } from '../../src/services/cht-client.js';
+import esmock from 'esmock';
 
 const DB_NAMES: NonEmptyArray<string> = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 const EXPECTED_DESIGN_INFO_ARGS = [
@@ -132,8 +130,16 @@ const initializeDesignInfoServiceGet = (designInfoServiceGet: SinonStub) => {
   designInfoServiceGet.withArgs('_users', ':staged:users').returns(Effect.succeed(usersStagedDesignInfo));
 };
 
+const mockNodeSystemLib = { getCouchNodeSystem: sandbox.stub() };
+const mockDesignInfoLib = { getDesignInfo: sandbox.stub() };
+const mockDbsInfoLib = { getDbsInfoByName: sandbox.stub() };
 const diskUsageServiceGetSize = sandbox.stub();
 
+const { MonitorService } = await esmock<typeof MonitorSvc>('../../src/services/monitor.js', {
+  '../../src/libs/couch/node-system.js': mockNodeSystemLib,
+  '../../src/libs/couch/dbs-info.js': mockDbsInfoLib,
+  '../../src/libs/couch/design-info.js': mockDesignInfoLib,
+});
 const run = MonitorService.Default.pipe(
   Layer.provide(Layer.succeed(ChtClientService, {} as unknown as ChtClientService)),
   Layer.provide(Layer.succeed(LocalDiskUsageService, {
@@ -143,22 +149,13 @@ const run = MonitorService.Default.pipe(
 );
 
 describe('Monitor service', () => {
-  let nodeSystemServiceGet: SinonStub;
-  let designInfoServiceGet: SinonStub;
-  let dbsInfoServicePost: SinonStub;
-
-  beforeEach(() => {
-    nodeSystemServiceGet = sinon.stub(CouchNodeSystemLib, 'getCouchNodeSystem');
-    designInfoServiceGet = sinon.stub(CouchDesignInfoLib, 'getDesignInfo');
-    dbsInfoServicePost = sinon.stub(CouchDbsInfo, 'getDbsInfoByName');
-  });
 
   describe('get', () => {
     it('returns empty monitoring data', run(function* () {
       const nodeSystem = createNodeSystem();
-      nodeSystemServiceGet.returns(Effect.succeed(nodeSystem));
-      dbsInfoServicePost.returns(Effect.succeed([]));
-      designInfoServiceGet.returns(Effect.void);
+      mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
+      mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([]));
+      mockDesignInfoLib.getDesignInfo.returns(Effect.void);
       diskUsageServiceGetSize.returns(Effect.succeed(0));
 
       const data = yield* MonitorService.get(Option.none());
@@ -169,18 +166,18 @@ describe('Monitor service', () => {
         databases: [],
         directory_size: Option.none(),
       });
-      expect(nodeSystemServiceGet.calledOnceWithExactly()).to.be.true;
-      expect(dbsInfoServicePost.calledOnceWithExactly(DB_NAMES)).to.be.true;
-      expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
+      expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
+      expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
+      expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(diskUsageServiceGetSize.notCalled).to.be.true;
     }));
 
     it('returns complete monitoring data', run(function* () {
-      nodeSystemServiceGet.returns(Effect.succeed(nodeSystem));
+      mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(unix_time * 1000);
-      dbsInfoServicePost.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
-      initializeDesignInfoServiceGet(designInfoServiceGet);
+      mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
+      initializeDesignInfoServiceGet(mockDesignInfoLib.getDesignInfo);
       const directory = 'directory';
       const directorySize = 444444;
       diskUsageServiceGetSize.returns(Effect.succeed(directorySize));
@@ -213,27 +210,27 @@ describe('Monitor service', () => {
         ],
         directory_size: Option.some(directorySize),
       });
-      expect(nodeSystemServiceGet.calledOnceWithExactly()).to.be.true;
-      expect(dbsInfoServicePost.calledOnceWithExactly(DB_NAMES)).to.be.true;
-      expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
+      expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
+      expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
+      expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
     }));
 
     it('includes empty data for designs that do not exist', run(function* () {
-      nodeSystemServiceGet.returns(Effect.succeed(nodeSystem));
+      mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(unix_time * 1000);
-      dbsInfoServicePost.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
-      designInfoServiceGet.withArgs('medic', 'medic').returns(Effect.succeed(medicDesignInfo));
-      designInfoServiceGet.withArgs('medic', 'medic-admin').returns(Effect.succeed(medicAdminDesignInfo));
-      designInfoServiceGet.withArgs('medic', 'medic-client').returns(Effect.succeed(medicClientDesignInfo));
-      designInfoServiceGet.withArgs('medic', 'medic-conflicts').returns(Effect.succeed(medicConflictsDesignInfo));
-      designInfoServiceGet.withArgs('medic', 'medic-scripts').returns(Effect.succeed(medicScriptsDesignInfo));
-      designInfoServiceGet.withArgs('medic', 'medic-sms').returns(Effect.succeed(medicSmsDesignInfo));
-      designInfoServiceGet.withArgs('medic-sentinel', 'sentinel').returns(Effect.succeed(sentinelDesignInfo));
-      designInfoServiceGet.withArgs('medic-users-meta', 'users-meta').returns(Effect.succeed(usersMetaDesignInfo));
-      designInfoServiceGet.withArgs('_users', 'users').returns(Effect.succeed(usersDesignInfo));
-      designInfoServiceGet.returns(Effect.fail(new ResponseError({
+      mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
+      mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic').returns(Effect.succeed(medicDesignInfo));
+      mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-admin').returns(Effect.succeed(medicAdminDesignInfo));
+      mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-client').returns(Effect.succeed(medicClientDesignInfo));
+      mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-conflicts').returns(Effect.succeed(medicConflictsDesignInfo));
+      mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-scripts').returns(Effect.succeed(medicScriptsDesignInfo));
+      mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-sms').returns(Effect.succeed(medicSmsDesignInfo));
+      mockDesignInfoLib.getDesignInfo.withArgs('medic-sentinel', 'sentinel').returns(Effect.succeed(sentinelDesignInfo));
+      mockDesignInfoLib.getDesignInfo.withArgs('medic-users-meta', 'users-meta').returns(Effect.succeed(usersMetaDesignInfo));
+      mockDesignInfoLib.getDesignInfo.withArgs('_users', 'users').returns(Effect.succeed(usersDesignInfo));
+      mockDesignInfoLib.getDesignInfo.returns(Effect.fail(new ResponseError({
         request: {} as unknown as HttpClientRequest.HttpClientRequest,
         response: { status: 404 } as unknown as HttpClientResponse.HttpClientResponse,
         reason: 'StatusCode'
@@ -270,32 +267,32 @@ describe('Monitor service', () => {
         ],
         directory_size: Option.some(directorySize),
       });
-      expect(nodeSystemServiceGet.calledOnceWithExactly()).to.be.true;
-      expect(dbsInfoServicePost.calledOnceWithExactly(DB_NAMES)).to.be.true;
-      expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
+      expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
+      expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
+      expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
     }));
 
     it('fails when any other error is experienced', run(function* () {
-      nodeSystemServiceGet.returns(Effect.succeed(nodeSystem));
+      mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(unix_time * 1000);
-      dbsInfoServicePost.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
-      designInfoServiceGet.withArgs('medic', 'medic').returns(Effect.succeed(medicDesignInfo));
-      designInfoServiceGet.withArgs('medic', 'medic-admin').returns(Effect.succeed(medicAdminDesignInfo));
-      designInfoServiceGet.withArgs('medic', 'medic-client').returns(Effect.succeed(medicClientDesignInfo));
-      designInfoServiceGet.withArgs('medic', 'medic-conflicts').returns(Effect.succeed(medicConflictsDesignInfo));
-      designInfoServiceGet.withArgs('medic', 'medic-scripts').returns(Effect.succeed(medicScriptsDesignInfo));
-      designInfoServiceGet.withArgs('medic', 'medic-sms').returns(Effect.succeed(medicSmsDesignInfo));
-      designInfoServiceGet.withArgs('medic-sentinel', 'sentinel').returns(Effect.succeed(sentinelDesignInfo));
-      designInfoServiceGet.withArgs('medic-users-meta', 'users-meta').returns(Effect.succeed(usersMetaDesignInfo));
-      designInfoServiceGet.withArgs('_users', 'users').returns(Effect.succeed(usersDesignInfo));
+      mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
+      mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic').returns(Effect.succeed(medicDesignInfo));
+      mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-admin').returns(Effect.succeed(medicAdminDesignInfo));
+      mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-client').returns(Effect.succeed(medicClientDesignInfo));
+      mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-conflicts').returns(Effect.succeed(medicConflictsDesignInfo));
+      mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-scripts').returns(Effect.succeed(medicScriptsDesignInfo));
+      mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-sms').returns(Effect.succeed(medicSmsDesignInfo));
+      mockDesignInfoLib.getDesignInfo.withArgs('medic-sentinel', 'sentinel').returns(Effect.succeed(sentinelDesignInfo));
+      mockDesignInfoLib.getDesignInfo.withArgs('medic-users-meta', 'users-meta').returns(Effect.succeed(usersMetaDesignInfo));
+      mockDesignInfoLib.getDesignInfo.withArgs('_users', 'users').returns(Effect.succeed(usersDesignInfo));
       const expectedError = new ResponseError({
         request: {} as unknown as HttpClientRequest.HttpClientRequest,
         response: { status: 500 } as unknown as HttpClientResponse.HttpClientResponse,
         reason: 'StatusCode'
       });
-      designInfoServiceGet.returns(Effect.fail(expectedError));
+      mockDesignInfoLib.getDesignInfo.returns(Effect.fail(expectedError));
       const directory = 'directory';
       const directorySize = 444444;
       diskUsageServiceGetSize.returns(Effect.succeed(directorySize));
@@ -306,9 +303,9 @@ describe('Monitor service', () => {
         const error = failureOrSuccess.left;
         expect(error).to.equal(expectedError);
 
-        expect(nodeSystemServiceGet.calledOnceWithExactly()).to.be.true;
-        expect(dbsInfoServicePost.calledOnceWithExactly(DB_NAMES)).to.be.true;
-        expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
+        expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
+        expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
+        expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
         expect(diskUsageServiceGetSize.notCalled).to.be.true;
       } else {
         expect.fail('Expected error to be thrown');
@@ -317,11 +314,11 @@ describe('Monitor service', () => {
 
     it('trims milliseconds from unix_time value', run(function* () {
       const nodeSystem = createNodeSystem();
-      nodeSystemServiceGet.returns(Effect.succeed(nodeSystem));
+      mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(123456789458);
-      dbsInfoServicePost.returns(Effect.succeed([]));
-      designInfoServiceGet.returns(Effect.void);
+      mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([]));
+      mockDesignInfoLib.getDesignInfo.returns(Effect.void);
       diskUsageServiceGetSize.returns(Effect.succeed(0));
 
       const data = yield* MonitorService.get(Option.none());
@@ -332,9 +329,9 @@ describe('Monitor service', () => {
         databases: [],
         directory_size: Option.none(),
       });
-      expect(nodeSystemServiceGet.calledOnceWithExactly()).to.be.true;
-      expect(dbsInfoServicePost.calledOnceWithExactly(DB_NAMES)).to.be.true;
-      expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
+      expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
+      expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
+      expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(diskUsageServiceGetSize.notCalled).to.be.true;
     }));
   });
@@ -385,11 +382,11 @@ describe('Monitor service', () => {
     ];
 
     it('returns complete monitoring data', run(function* () {
-      nodeSystemServiceGet.returns(Effect.succeed(nodeSystem));
+      mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(unix_time * 1000);
-      dbsInfoServicePost.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
-      initializeDesignInfoServiceGet(designInfoServiceGet);
+      mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
+      initializeDesignInfoServiceGet(mockDesignInfoLib.getDesignInfo);
       const directory = 'directory';
       const directorySize = 444444;
       diskUsageServiceGetSize.returns(Effect.succeed(directorySize));
@@ -397,27 +394,27 @@ describe('Monitor service', () => {
       const data = yield* MonitorService.getAsCsv(Option.some(directory));
 
       expect(data).to.deep.equal([unix_time.toString(), ...expectedCsvData, directorySize.toString()]);
-      expect(nodeSystemServiceGet.calledOnceWithExactly()).to.be.true;
-      expect(dbsInfoServicePost.calledOnceWithExactly(DB_NAMES)).to.be.true;
-      expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
+      expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
+      expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
+      expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
     }));
 
     it('includes empty data for designs that do not exist', run(function* () {
-      nodeSystemServiceGet.returns(Effect.succeed(nodeSystem));
+      mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(unix_time * 1000);
-      dbsInfoServicePost.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
-      designInfoServiceGet.withArgs('medic', 'medic').returns(Effect.succeed(medicDesignInfo));
-      designInfoServiceGet.withArgs('medic', 'medic-admin').returns(Effect.succeed(medicAdminDesignInfo));
-      designInfoServiceGet.withArgs('medic', 'medic-client').returns(Effect.succeed(medicClientDesignInfo));
-      designInfoServiceGet.withArgs('medic', 'medic-conflicts').returns(Effect.succeed(medicConflictsDesignInfo));
-      designInfoServiceGet.withArgs('medic', 'medic-scripts').returns(Effect.succeed(medicScriptsDesignInfo));
-      designInfoServiceGet.withArgs('medic', 'medic-sms').returns(Effect.succeed(medicSmsDesignInfo));
-      designInfoServiceGet.withArgs('medic-sentinel', 'sentinel').returns(Effect.succeed(sentinelDesignInfo));
-      designInfoServiceGet.withArgs('medic-users-meta', 'users-meta').returns(Effect.succeed(usersMetaDesignInfo));
-      designInfoServiceGet.withArgs('_users', 'users').returns(Effect.succeed(usersDesignInfo));
-      designInfoServiceGet.returns(Effect.fail(new ResponseError({
+      mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
+      mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic').returns(Effect.succeed(medicDesignInfo));
+      mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-admin').returns(Effect.succeed(medicAdminDesignInfo));
+      mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-client').returns(Effect.succeed(medicClientDesignInfo));
+      mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-conflicts').returns(Effect.succeed(medicConflictsDesignInfo));
+      mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-scripts').returns(Effect.succeed(medicScriptsDesignInfo));
+      mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-sms').returns(Effect.succeed(medicSmsDesignInfo));
+      mockDesignInfoLib.getDesignInfo.withArgs('medic-sentinel', 'sentinel').returns(Effect.succeed(sentinelDesignInfo));
+      mockDesignInfoLib.getDesignInfo.withArgs('medic-users-meta', 'users-meta').returns(Effect.succeed(usersMetaDesignInfo));
+      mockDesignInfoLib.getDesignInfo.withArgs('_users', 'users').returns(Effect.succeed(usersDesignInfo));
+      mockDesignInfoLib.getDesignInfo.returns(Effect.fail(new ResponseError({
         request: {} as unknown as HttpClientRequest.HttpClientRequest,
         response: { status: 404 } as unknown as HttpClientResponse.HttpClientResponse,
         reason: 'StatusCode'
@@ -456,25 +453,25 @@ describe('Monitor service', () => {
         directorySize.toString(),
       ];
       expect(data).to.deep.equal(expectedCsvData);
-      expect(nodeSystemServiceGet.calledOnceWithExactly()).to.be.true;
-      expect(dbsInfoServicePost.calledOnceWithExactly(DB_NAMES)).to.be.true;
-      expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
+      expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
+      expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
+      expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
     }));
 
     it('does not include directory_size column when no directory provided', run(function* () {
-      nodeSystemServiceGet.returns(Effect.succeed(nodeSystem));
+      mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(123456789458);
-      dbsInfoServicePost.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
-      initializeDesignInfoServiceGet(designInfoServiceGet);
+      mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
+      initializeDesignInfoServiceGet(mockDesignInfoLib.getDesignInfo);
 
       const data = yield* MonitorService.getAsCsv(Option.none());
 
       expect(data).to.deep.equal([unix_time.toString(), ...expectedCsvData]);
-      expect(nodeSystemServiceGet.calledOnceWithExactly()).to.be.true;
-      expect(dbsInfoServicePost.calledOnceWithExactly(DB_NAMES)).to.be.true;
-      expect(designInfoServiceGet.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
+      expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
+      expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
+      expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(diskUsageServiceGetSize.notCalled).to.be.true;
     }));
   });
@@ -572,9 +569,9 @@ describe('Monitor service', () => {
     ];
 
     afterEach(() => {
-      expect(nodeSystemServiceGet.notCalled).to.be.true;
-      expect(dbsInfoServicePost.notCalled).to.be.true;
-      expect(designInfoServiceGet.notCalled).to.be.true;
+      expect(mockNodeSystemLib.getCouchNodeSystem.notCalled).to.be.true;
+      expect(mockDbsInfoLib.getDbsInfoByName.notCalled).to.be.true;
+      expect(mockDesignInfoLib.getDesignInfo.notCalled).to.be.true;
       expect(diskUsageServiceGetSize.notCalled).to.be.true;
     });
 

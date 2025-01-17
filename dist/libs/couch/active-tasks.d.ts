@@ -1,4 +1,4 @@
-import { ChtClientService } from '../../services/cht-client';
+import { ChtClientService } from '../../services/cht-client.js';
 import { Effect, Option, Schema, Stream } from 'effect';
 declare const CouchActiveTask_base: Schema.Class<CouchActiveTask, {
     database: typeof Schema.String;

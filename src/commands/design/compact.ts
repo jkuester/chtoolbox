@@ -1,9 +1,9 @@
 import { Args, Command, Options } from '@effect/cli';
 import { Array, Console, Effect, Option } from 'effect';
-import { initializeUrl } from '../../index';
-import { CompactService } from '../../services/compact';
-import { mergeArrayStreams } from '../../libs/core';
-import { streamActiveTasks } from '../db/compact';
+import { initializeUrl } from '../../index.js';
+import { CompactService } from '../../services/compact.js';
+import { mergeArrayStreams } from '../../libs/core.js';
+import { streamActiveTasks } from '../db/compact.js';
 
 const database = Args
   .text({ name: 'database' })
@@ -23,7 +23,6 @@ const follow = Options
   .pipe(
     Options.withAlias('f'),
     Options.withDescription('After triggering compaction, wait for all compacting jobs to complete.'),
-    Options.withDefault(false),
   );
 
 export const compact = Command

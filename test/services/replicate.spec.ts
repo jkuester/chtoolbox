@@ -1,20 +1,26 @@
 import { describe, it } from 'mocha';
 import { Chunk, Effect, Layer, Redacted, Stream } from 'effect';
-import sinon, { SinonStub } from 'sinon';
-import * as PouchSvc from '../../src/services/pouchdb';
-import * as pouchDbService from '../../src/services/pouchdb';
-import { PouchDBService } from '../../src/services/pouchdb';
-import { EnvironmentService } from '../../src/services/environment';
+import sinon from 'sinon';
+import { PouchDBService } from '../../src/services/pouchdb.js';
+import { EnvironmentService } from '../../src/services/environment.js';
 import { expect } from 'chai';
-import { ReplicateService } from '../../src/services/replicate';
-import { genWithLayer, sandbox } from '../utils/base';
+import * as ReplicateSvc from '../../src/services/replicate.js';
+import { genWithLayer, sandbox } from '../utils/base.js';
+import esmock from 'esmock';
 
 const FAKE_RESPONSE = { id: 'world' } as const;
+const mockPouchSvc = {
+  assertPouchResponse: sandbox.stub(),
+  streamChanges: sandbox.stub(),
+};
 
 const environmentGet = sandbox.stub();
 const pouchGet = sandbox.stub();
 const bulkDocs = sandbox.stub();
 
+const { ReplicateService } = await esmock<typeof ReplicateSvc>('../../src/services/replicate.js', {
+  '../../src/services/pouchdb.js': mockPouchSvc,
+});
 const run = ReplicateService.Default.pipe(
   Layer.provide(Layer.succeed(PouchDBService, {
     get: pouchGet,
@@ -26,14 +32,8 @@ const run = ReplicateService.Default.pipe(
 );
 
 describe('Replicate Service', () => {
-  let assertPouchResponse: SinonStub;
-  let streamChanges: SinonStub;
 
-  beforeEach(() => {
-    pouchGet.returns(Effect.succeed({ bulkDocs }));
-    assertPouchResponse = sinon.stub(PouchSvc, 'assertPouchResponse');
-    streamChanges = sinon.stub(pouchDbService, 'streamChanges');
-  });
+  beforeEach(() => pouchGet.returns(Effect.succeed({ bulkDocs })));
 
   it('creates a doc in the _replication database', run(function* () {
     const owner = 'medic';
@@ -43,8 +43,8 @@ describe('Replicate Service', () => {
     const source = 'source';
     const target = 'target';
     bulkDocs.resolves([FAKE_RESPONSE]);
-    assertPouchResponse.returns(FAKE_RESPONSE);
-    streamChanges.returns(sinon.stub().returns(Stream.empty));
+    mockPouchSvc.assertPouchResponse.returns(FAKE_RESPONSE);
+    mockPouchSvc.streamChanges.returns(sinon.stub().returns(Stream.empty));
 
     yield* ReplicateService.replicate(source, target);
 
@@ -64,8 +64,8 @@ describe('Replicate Service', () => {
         _id: { '$regex': '^(?!_design/)' },
       },
     }])).to.be.true;
-    expect(assertPouchResponse.calledOnceWithExactly(FAKE_RESPONSE)).to.be.true;
-    expect(streamChanges.calledOnceWithExactly({
+    expect(mockPouchSvc.assertPouchResponse.calledOnceWithExactly(FAKE_RESPONSE)).to.be.true;
+    expect(mockPouchSvc.streamChanges.calledOnceWithExactly({
       include_docs: true,
       doc_ids: [FAKE_RESPONSE.id],
     })).to.be.true;
@@ -79,8 +79,8 @@ describe('Replicate Service', () => {
     const source = 'source';
     const target = 'target';
     bulkDocs.resolves([FAKE_RESPONSE]);
-    assertPouchResponse.returns(FAKE_RESPONSE);
-    streamChanges.returns(sinon.stub().returns(Stream.empty));
+    mockPouchSvc.assertPouchResponse.returns(FAKE_RESPONSE);
+    mockPouchSvc.streamChanges.returns(sinon.stub().returns(Stream.empty));
 
     yield* ReplicateService.replicate(source, target, true);
 
@@ -98,8 +98,8 @@ describe('Replicate Service', () => {
       owner,
       selector: undefined,
     }])).to.be.true;
-    expect(assertPouchResponse.calledOnceWithExactly(FAKE_RESPONSE)).to.be.true;
-    expect(streamChanges.calledOnceWithExactly({
+    expect(mockPouchSvc.assertPouchResponse.calledOnceWithExactly(FAKE_RESPONSE)).to.be.true;
+    expect(mockPouchSvc.streamChanges.calledOnceWithExactly({
       include_docs: true,
       doc_ids: [FAKE_RESPONSE.id],
     })).to.be.true;
@@ -113,7 +113,7 @@ describe('Replicate Service', () => {
     const source = 'source';
     const target = 'target';
     bulkDocs.resolves([FAKE_RESPONSE]);
-    assertPouchResponse.returns(FAKE_RESPONSE);
+    mockPouchSvc.assertPouchResponse.returns(FAKE_RESPONSE);
     const repDocInitial = {
       user_ctx: {
         name: owner,
@@ -147,7 +147,7 @@ describe('Replicate Service', () => {
     const changesStream = Stream
       .fromIterable(repDocChanges)
       .pipe(Stream.map(doc => ({ doc })));
-    streamChanges.returns(sinon.stub().returns(changesStream));
+    mockPouchSvc.streamChanges.returns(sinon.stub().returns(changesStream));
 
     const stream = yield* ReplicateService.replicate(source, target);
     const results = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
@@ -156,8 +156,8 @@ describe('Replicate Service', () => {
     expect(pouchGet.args).to.deep.equal([['_replicator'], ['_replicator']]);
     expect(environmentGet.calledOnceWithExactly()).to.be.true;
     expect(bulkDocs.calledOnceWithExactly([repDocInitial])).to.be.true;
-    expect(assertPouchResponse.calledOnceWithExactly(FAKE_RESPONSE)).to.be.true;
-    expect(streamChanges.calledOnceWithExactly({
+    expect(mockPouchSvc.assertPouchResponse.calledOnceWithExactly(FAKE_RESPONSE)).to.be.true;
+    expect(mockPouchSvc.streamChanges.calledOnceWithExactly({
       include_docs: true,
       doc_ids: [FAKE_RESPONSE.id],
     })).to.be.true;

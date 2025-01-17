@@ -1,7 +1,7 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { assertPouchResponse, PouchDBService, streamChanges } from './pouchdb';
-import { EnvironmentService } from './environment';
+import { assertPouchResponse, PouchDBService, streamChanges } from './pouchdb.js';
+import { EnvironmentService } from './environment.js';
 import { Redacted, Schema, Stream } from 'effect';
 
 const SKIP_DDOC_SELECTOR = {

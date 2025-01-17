@@ -5,6 +5,8 @@
     "composite": true,
     "declarationMap": true,
     "exactOptionalPropertyTypes": true,
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
     "outDir": "dist",
     "resolveJsonModule": true,
     "sourceMap": true,

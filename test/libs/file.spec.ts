@@ -3,9 +3,12 @@ import { describe, it } from 'mocha';
 import { Effect, Layer } from 'effect';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { genWithLayer, sandbox } from '../utils/base';
-import { createTmpDir, getRemoteFile, readJsonFile, writeFile, writeJsonFile } from '../../src/libs/file';
+import { genWithLayer, sandbox } from '../utils/base.js';
+import * as FileLibs from '../../src/libs/file.js';
+import esmock from 'esmock';
 
+const mockHttpClient = { filterStatusOk: sandbox.stub() };
+const mockHttpRequest = { get: sandbox.stub() };
 const httpClientExecute = sandbox.stub();
 const fsMakeTempDirectoryScoped = sandbox.stub();
 const fsWriteFileString = sandbox.stub();
@@ -23,6 +26,16 @@ const run = Layer
     } as unknown as FileSystem.FileSystem)),
     genWithLayer
   );
+const {
+  createTmpDir,
+  getRemoteFile,
+  readJsonFile,
+  writeFile,
+  writeJsonFile
+} = await esmock<typeof FileLibs>('../../src/libs/file.js', {
+  '@effect/platform': { HttpClientRequest: mockHttpRequest },
+  '@effect/platform/HttpClient': mockHttpClient
+});
 
 describe('file libs', () => {
   it('createTmpDir', run(function* () {
@@ -39,22 +52,18 @@ describe('file libs', () => {
   }));
 
   it('getRemoteFile', run(function* () {
-    const filterStatusOk = sinon
-      .stub(HttpClient, 'filterStatusOk')
-      .returnsArg(0);
+    mockHttpClient.filterStatusOk.returnsArg(0);
     const url = 'myURL';
     const expectedRequest = { url };
-    const httpClientRequestGet = sinon
-      .stub(HttpClientRequest, 'get')
-      .returns(expectedRequest as HttpClientRequest.HttpClientRequest);
+    mockHttpRequest.get.returns(expectedRequest as HttpClientRequest.HttpClientRequest);
     const remoteFileText = 'myText';
     httpClientExecute.returns(Effect.succeed({ text: Effect.succeed(remoteFileText) }));
 
     const result = yield* getRemoteFile(url);
 
     expect(result).to.deep.equal(remoteFileText);
-    expect(filterStatusOk.calledOnce).to.be.true;
-    expect(httpClientRequestGet.calledOnceWithExactly(url)).to.be.true;
+    expect(mockHttpClient.filterStatusOk.calledOnce).to.be.true;
+    expect(mockHttpRequest.get.calledOnceWithExactly(url)).to.be.true;
     expect(fsMakeTempDirectoryScoped.notCalled).to.be.true;
     expect(fsWriteFileString.notCalled).to.be.true;
     expect(fsReadFileString.notCalled).to.be.true;

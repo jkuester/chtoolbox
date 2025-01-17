@@ -1,19 +1,27 @@
 import { describe, it } from 'mocha';
 import { Array, Chunk, Effect, Layer, Option, Stream } from 'effect';
 import sinon, { SinonStub } from 'sinon';
-import * as pouchDBService from '../../src/services/pouchdb';
-import { PouchDBService } from '../../src/services/pouchdb';
+import { PouchDBService } from '../../src/services/pouchdb.js';
 import { expect } from 'chai';
-import { PurgeService } from '../../src/services/purge';
-import * as couchPurgeService from '../../src/libs/couch/purge';
-import { genWithLayer, sandbox } from '../utils/base';
-import { ChtClientService } from '../../src/services/cht-client';
+import * as PurgeSvc from '../../src/services/purge.js';
+import { genWithLayer, sandbox } from '../utils/base.js';
+import { ChtClientService } from '../../src/services/cht-client.js';
+import esmock from 'esmock';
 
 const FAKE_DB = { name: 'test-db', allDocs: () => null } as const;
 
+const mockPurgeLib = { purgeFrom: sandbox.stub() };
+const mockPouchSvc = {
+  streamAllDocPages: sandbox.stub(),
+  streamQueryPages: sandbox.stub(),
+};
 const pouchGet = sandbox.stub();
 const purgeFromInner = sandbox.stub();
 
+const { PurgeService } = await esmock<typeof PurgeSvc>('../../src/services/purge.js', {
+  '../../src/libs/couch/purge.js': mockPurgeLib,
+  '../../src/services/pouchdb.js': mockPouchSvc,
+});
 const run = PurgeService.Default.pipe(
   Layer.provide(Layer.succeed(PouchDBService, {
     get: pouchGet,
@@ -23,21 +31,18 @@ const run = PurgeService.Default.pipe(
 );
 
 describe('Purge Service', () => {
-  let purgeFrom: SinonStub;
-
   beforeEach(() => {
     purgeFromInner.returns(Effect.void);
-    purgeFrom = sinon.stub(couchPurgeService, 'purgeFrom').returns(purgeFromInner);
+    mockPurgeLib.purgeFrom.returns(purgeFromInner);
     pouchGet.returns(Effect.succeed(FAKE_DB));
   });
 
   describe('purgeAll', () => {
     let streamAllDocPagesInner: SinonStub;
-    let streamAllDocPages: SinonStub;
 
     beforeEach(() => {
       streamAllDocPagesInner = sinon.stub();
-      streamAllDocPages = sinon.stub(pouchDBService, 'streamAllDocPages').returns(streamAllDocPagesInner);
+      mockPouchSvc.streamAllDocPages.returns(streamAllDocPagesInner);
     });
 
     it('purges all rows except ddocs', run(function* () {
@@ -53,9 +58,9 @@ describe('Purge Service', () => {
 
       expect(pages).to.deep.equal(expectedResponses);
       expect(pouchGet.calledOnceWithExactly(FAKE_DB.name)).to.be.true;
-      expect(streamAllDocPages.calledOnceWithExactly({ limit: 100, skip: 0 })).to.be.true;
+      expect(mockPouchSvc.streamAllDocPages.calledOnceWithExactly({ limit: 100, skip: 0 })).to.be.true;
       expect(streamAllDocPagesInner.calledOnceWithExactly(FAKE_DB)).to.be.true;
-      expect(purgeFrom.args).to.deep.equal(Array.replicate([FAKE_DB.name], 3));
+      expect(mockPurgeLib.purgeFrom.args).to.deep.equal(Array.replicate([FAKE_DB.name], 3));
       expect(purgeFromInner.args).to.deep.equal([
         [[{ _id: '1', _rev: 'a' }]],
         [[{ _id: '2', _rev: 'b' }]],
@@ -74,9 +79,9 @@ describe('Purge Service', () => {
 
       expect(pages).to.deep.equal(expectedResponses);
       expect(pouchGet.calledOnceWithExactly(FAKE_DB.name)).to.be.true;
-      expect(streamAllDocPages.calledOnceWithExactly({ limit: 100, skip: 0 })).to.be.true;
+      expect(mockPouchSvc.streamAllDocPages.calledOnceWithExactly({ limit: 100, skip: 0 })).to.be.true;
       expect(streamAllDocPagesInner.calledOnceWithExactly(FAKE_DB)).to.be.true;
-      expect(purgeFrom.args).to.deep.equal(Array.replicate([FAKE_DB.name], 2));
+      expect(mockPurgeLib.purgeFrom.args).to.deep.equal(Array.replicate([FAKE_DB.name], 2));
       expect(purgeFromInner.args).to.deep.equal([
         [[{ _id: '1', _rev: 'a' }, { _id: '_design/3', _rev: 'c' }]],
         [[{ _id: '2', _rev: 'b' }]],
@@ -91,9 +96,9 @@ describe('Purge Service', () => {
 
       expect(pages).to.deep.equal([]);
       expect(pouchGet.calledOnceWithExactly(FAKE_DB.name)).to.be.true;
-      expect(streamAllDocPages.calledOnceWithExactly({ limit: 100, skip: 0 })).to.be.true;
+      expect(mockPouchSvc.streamAllDocPages.calledOnceWithExactly({ limit: 100, skip: 0 })).to.be.true;
       expect(streamAllDocPagesInner.calledOnceWithExactly(FAKE_DB)).to.be.true;
-      expect(purgeFrom.notCalled).to.be.true;
+      expect(mockPurgeLib.purgeFrom.notCalled).to.be.true;
       expect(purgeFromInner.notCalled).to.be.true;
     }));
   });
@@ -101,12 +106,11 @@ describe('Purge Service', () => {
   describe('purgeReports', () => {
     const viewName = 'medic-client/reports_by_date';
     let streamQueryPagesInner: SinonStub;
-    let streamQueryPages: SinonStub;
     let dbAllDocs: SinonStub;
 
     beforeEach(() => {
       streamQueryPagesInner = sinon.stub();
-      streamQueryPages = sinon.stub(pouchDBService, 'streamQueryPages').returns(streamQueryPagesInner);
+      mockPouchSvc.streamQueryPages.returns(streamQueryPagesInner);
       dbAllDocs = sinon.stub(FAKE_DB, 'allDocs');
     });
 
@@ -127,7 +131,7 @@ describe('Purge Service', () => {
 
       expect(pages).to.deep.equal(streamQueryResponses);
       expect(pouchGet.args).to.deep.equal(Array.replicate([FAKE_DB.name], 4));
-      expect(streamQueryPages.calledOnceWithExactly(
+      expect(mockPouchSvc.streamQueryPages.calledOnceWithExactly(
         viewName,
         { limit: 100, skip: 0, startkey: undefined, endkey: undefined }
       )).to.be.true;
@@ -137,7 +141,7 @@ describe('Purge Service', () => {
         [{ keys: ['2'] }],
         [{ keys: ['4'] }],
       ]);
-      expect(purgeFrom.args).to.deep.equal(Array.replicate([FAKE_DB.name], 3));
+      expect(mockPurgeLib.purgeFrom.args).to.deep.equal(Array.replicate([FAKE_DB.name], 3));
       expect(purgeFromInner.args).to.deep.equal([
         [[{ _id: '1', _rev: 'a' }, { _id: '3', _rev: 'b' }]],
         [[{ _id: '2', _rev: 'c' }]],
@@ -154,13 +158,13 @@ describe('Purge Service', () => {
 
       expect(pages).to.deep.equal([]);
       expect(pouchGet.calledOnceWithExactly(FAKE_DB.name)).to.be.true;
-      expect(streamQueryPages.calledOnceWithExactly(
+      expect(mockPouchSvc.streamQueryPages.calledOnceWithExactly(
         viewName,
         { limit: 100, skip: 0, startkey: undefined, endkey: undefined }
       )).to.be.true;
       expect(streamQueryPagesInner.calledOnceWithExactly(FAKE_DB)).to.be.true;
       expect(dbAllDocs.notCalled).to.be.true;
-      expect(purgeFrom.notCalled).to.be.true;
+      expect(mockPurgeLib.purgeFrom.notCalled).to.be.true;
       expect(purgeFromInner.notCalled).to.be.true;
     }));
 
@@ -181,7 +185,7 @@ describe('Purge Service', () => {
 
       expect(pages).to.deep.equal(streamQueryResponses);
       expect(pouchGet.args).to.deep.equal(Array.replicate([FAKE_DB.name], 4));
-      expect(streamQueryPages.calledOnceWithExactly(
+      expect(mockPouchSvc.streamQueryPages.calledOnceWithExactly(
         viewName,
         { limit: 100, skip: 0, startkey: undefined, endkey: undefined }
       )).to.be.true;
@@ -191,7 +195,7 @@ describe('Purge Service', () => {
         [{ keys: ['2'] }],
         [{ keys: ['4'] }],
       ]);
-      expect(purgeFrom.args).to.deep.equal(Array.replicate([FAKE_DB.name], 3));
+      expect(mockPurgeLib.purgeFrom.args).to.deep.equal(Array.replicate([FAKE_DB.name], 3));
       expect(purgeFromInner.notCalled).to.be.true;
     }));
 
@@ -210,13 +214,13 @@ describe('Purge Service', () => {
 
       expect(pages).to.deep.equal(streamQueryResponses);
       expect(pouchGet.args).to.deep.equal(Array.replicate([FAKE_DB.name], 2));
-      expect(streamQueryPages.calledOnceWithExactly(
+      expect(mockPouchSvc.streamQueryPages.calledOnceWithExactly(
         viewName,
         { limit: 100, skip: 0, startkey: [sinceDate.getTime()], endkey: [beforeDate.getTime()] }
       )).to.be.true;
       expect(streamQueryPagesInner.calledOnceWithExactly(FAKE_DB)).to.be.true;
       expect(dbAllDocs.args).to.deep.equal([[{ keys: ['1'] }]]);
-      expect(purgeFrom.args).to.deep.equal(Array.replicate([FAKE_DB.name], 1));
+      expect(mockPurgeLib.purgeFrom.args).to.deep.equal(Array.replicate([FAKE_DB.name], 1));
       expect(purgeFromInner.args).to.deep.equal([[[{ _id: '1', _rev: 'a' }]]]);
     }));
   });
@@ -224,12 +228,11 @@ describe('Purge Service', () => {
   describe('purgeContacts', () => {
     const viewName = 'medic-client/contacts_by_type';
     let streamQueryPagesInner: SinonStub;
-    let streamQueryPages: SinonStub;
     let dbAllDocs: SinonStub;
 
     beforeEach(() => {
       streamQueryPagesInner = sinon.stub();
-      streamQueryPages = sinon.stub(pouchDBService, 'streamQueryPages').returns(streamQueryPagesInner);
+      mockPouchSvc.streamQueryPages.returns(streamQueryPagesInner);
       dbAllDocs = sinon.stub(FAKE_DB, 'allDocs');
     });
 
@@ -250,7 +253,7 @@ describe('Purge Service', () => {
 
       expect(pages).to.deep.equal(streamQueryResponses);
       expect(pouchGet.args).to.deep.equal(Array.replicate([FAKE_DB.name], 4));
-      expect(streamQueryPages.calledOnceWithExactly(
+      expect(mockPouchSvc.streamQueryPages.calledOnceWithExactly(
         viewName,
         { limit: 100, skip: 0, key: [contactType] }
       )).to.be.true;
@@ -260,7 +263,7 @@ describe('Purge Service', () => {
         [{ keys: ['2'] }],
         [{ keys: ['4'] }],
       ]);
-      expect(purgeFrom.args).to.deep.equal(Array.replicate([FAKE_DB.name], 3));
+      expect(mockPurgeLib.purgeFrom.args).to.deep.equal(Array.replicate([FAKE_DB.name], 3));
       expect(purgeFromInner.args).to.deep.equal([
         [[{ _id: '1', _rev: 'a' }, { _id: '3', _rev: 'b' }]],
         [[{ _id: '2', _rev: 'c' }]],
@@ -277,13 +280,13 @@ describe('Purge Service', () => {
 
       expect(pages).to.deep.equal([]);
       expect(pouchGet.calledOnceWithExactly(FAKE_DB.name)).to.be.true;
-      expect(streamQueryPages.calledOnceWithExactly(
+      expect(mockPouchSvc.streamQueryPages.calledOnceWithExactly(
         viewName,
         { limit: 100, skip: 0, key: [contactType] }
       )).to.be.true;
       expect(streamQueryPagesInner.calledOnceWithExactly(FAKE_DB)).to.be.true;
       expect(dbAllDocs.notCalled).to.be.true;
-      expect(purgeFrom.notCalled).to.be.true;
+      expect(mockPurgeLib.purgeFrom.notCalled).to.be.true;
       expect(purgeFromInner.notCalled).to.be.true;
     }));
 
@@ -304,7 +307,7 @@ describe('Purge Service', () => {
 
       expect(pages).to.deep.equal(streamQueryResponses);
       expect(pouchGet.args).to.deep.equal(Array.replicate([FAKE_DB.name], 4));
-      expect(streamQueryPages.calledOnceWithExactly(
+      expect(mockPouchSvc.streamQueryPages.calledOnceWithExactly(
         viewName,
         { limit: 100, skip: 0, key: [contactType] }
       )).to.be.true;
@@ -314,7 +317,7 @@ describe('Purge Service', () => {
         [{ keys: ['2'] }],
         [{ keys: ['4'] }],
       ]);
-      expect(purgeFrom.args).to.deep.equal(Array.replicate([FAKE_DB.name], 3));
+      expect(mockPurgeLib.purgeFrom.args).to.deep.equal(Array.replicate([FAKE_DB.name], 3));
       expect(purgeFromInner.notCalled).to.be.true;
     }));
   });

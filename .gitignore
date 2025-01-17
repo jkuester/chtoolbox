@@ -1,4 +1,4 @@
 .eslintcache
 .idea
 node_modules
-.nyc_output
+.c8_output
