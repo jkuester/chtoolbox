@@ -1,7 +1,7 @@
 import { describe, it } from 'mocha';
 import { Chunk, Effect, Stream, TestContext } from 'effect';
 import { expect } from 'chai';
-import { mergeArrayStreams, pouchDB, promisedGetPort, untilEmptyCount } from '../../src/libs/core.js';
+import { mergeArrayStreams, pouchDB, untilEmptyCount } from '../../src/libs/core.js';
 import PouchDB from 'pouchdb-core';
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
 
@@ -27,11 +27,6 @@ describe('Core libs', () => {
     const db = pouchDB('http://test.db');
 
     expect(db).to.be.an.instanceOf(PouchDB);
-  });
-
-  it('promisedGetPort', async () => {
-    const getPortLib = await promisedGetPort();
-    expect(getPortLib.default).to.be.an.instanceOf(Function);
   });
 
   it('mergeArrayStreams', run(Effect.gen(function* () {

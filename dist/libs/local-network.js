@@ -1,10 +1,9 @@
 import OS from 'node:os';
 import { Array, Effect, Option, pipe, Predicate, String } from 'effect';
-import { promisedGetPort } from './core.js';
+import getPort from 'get-port';
 const IPV4_FAMILY_VALUES = ['IPv4', 4];
 const LOCALHOST_IP = '127.0.0.1';
-const getFreePort = (...exclude) => Effect.promise(() => promisedGetPort()
-    .then(lib => lib.default({ exclude })));
+const getFreePort = (...exclude) => Effect.promise(() => getPort({ exclude }));
 export const getFreePorts = () => getFreePort()
     .pipe(Effect.flatMap(port => getFreePort(port)
     .pipe(Effect.tap(secondPort => Effect.logDebug(`Found free ports: ${port.toString()}, ${secondPort.toString()}`)), Effect.map(secondPort => [port, secondPort]))));

@@ -5,7 +5,7 @@ import node from 'eslint-plugin-node';
 import promise from 'eslint-plugin-promise';
 
 export default tseslint.config(
-  { ignores: ['**/nyc.config.js', '**/eslint.config.mjs', '**/.mocharc.cjs', '**/dist/', '**/node_modules/', '**/.nyc_output/'] },
+  { ignores: ['**/eslint.config.mjs', '**/.mocharc.cjs', '**/dist/', '**/node_modules/', '**/.c8_output/'] },
   {
     plugins: {
       '@typescript-eslint': tseslint.plugin,

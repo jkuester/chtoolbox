@@ -13,11 +13,6 @@ export const untilEmptyCount = (target) => Ref
  * Shim to make PouchDB easier to mock.
  */
 export const pouchDB = (name, options) => new PouchDB(name, options);
-/**
- * Wrapper for `get-port` ES Module.
- */
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export const promisedGetPort = () => import('get-port');
 const zipArrayStreams = (self, other) => Stream.zipAllWith(self, {
     other,
     onSelf: Function.identity,
