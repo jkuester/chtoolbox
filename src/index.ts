@@ -57,7 +57,6 @@ const command = chtx.pipe(Command.withSubcommands([
 
 const cli = Command.run(command, {
   name: 'CHT Toolbox',
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-assignment
   version: packageJson.version
 });
 
