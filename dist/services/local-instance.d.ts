@@ -18,7 +18,7 @@ declare const LocalInstanceService_base: Effect.Service.Class<LocalInstanceServi
             name: string;
             port: Option.Option<`${number}`>;
         }[], Error>;
-    }, never, HttpClient.HttpClient<import("@effect/platform/HttpClientError").HttpClientError, import("effect/Scope").Scope> | CommandExecutor | FileSystem.FileSystem>;
+    }, never, HttpClient.HttpClient | CommandExecutor | FileSystem.FileSystem>;
     readonly accessors: true;
 }>;
 export declare class LocalInstanceService extends LocalInstanceService_base {
