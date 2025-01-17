@@ -4,25 +4,29 @@ import { expect } from 'chai';
 import sinon from 'sinon';
 import { genWithLayer, sandbox } from '../utils/base.js';
 import OS from 'node:os';
-import { getFreePorts, getLocalIpUrl } from '../../src/libs/local-network.js';
-import * as Core from '../../src/libs/core.js';
+import * as LocalNetworkLibs from '../../src/libs/local-network.js';
+import esmock from 'esmock';
+
+const mockCore = { promisedGetPort: sandbox.stub() };
 
 const run = TestContext.TestContext.pipe(genWithLayer);
+const { getFreePorts, getLocalIpUrl } = await esmock<typeof LocalNetworkLibs>('../../src/libs/local-network.js', {
+  '../../src/libs/core.js': mockCore
+});
 
 describe('local network libs', () => {
   it('getFreePorts', run(function* () {
-    const promisedGetPort = sandbox.stub(Core, 'promisedGetPort');
     const getPortStub = sinon.stub();
     // Types + ES Modules gets weird here
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
-    promisedGetPort.resolves({ default: getPortStub } as any);
+    mockCore.promisedGetPort.resolves({ default: getPortStub } as any);
     getPortStub.onFirstCall().resolves(1234);
     getPortStub.onSecondCall().resolves(5678);
 
     const result = yield* getFreePorts();
 
     expect(result).to.deep.equal([1234, 5678]);
-    expect(promisedGetPort.calledTwice).to.be.true;
+    expect(mockCore.promisedGetPort.calledTwice).to.be.true;
     expect(getPortStub.calledTwice).to.be.true;
     expect(getPortStub.firstCall.calledWithExactly({ exclude: [] })).to.be.true;
     expect(getPortStub.secondCall.calledWithExactly({ exclude: [1234] })).to.be.true;

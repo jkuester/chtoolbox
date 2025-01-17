@@ -22,6 +22,7 @@ import {
 } from '../libs/docker.js';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
 import { getFreePorts } from '../libs/local-network.js';
+import { filterStatusOk } from '@effect/platform/HttpClient';
 
 const CHTX_LABEL_NAME = 'chtx.instance';
 const UPGRADE_SVC_NAME = 'cht-upgrade-service';
@@ -244,7 +245,7 @@ const getPortForInstance = (instanceName: string) => pipe(
 );
 
 const waitForInstance = (port: string) => HttpClient.HttpClient.pipe(
-  Effect.map(HttpClient.filterStatusOk),
+  Effect.map(filterStatusOk),
   Effect.tap(Effect.logDebug(`Checking if local instance is up on port ${port}`)),
   Effect.flatMap(client => client.execute(HttpClientRequest.get(`https://localhost:${port}/api/info`))),
   Effect.retry({

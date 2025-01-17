@@ -3,10 +3,11 @@ import * as Effect from 'effect/Effect';
 import { HttpClient, HttpClientRequest } from '@effect/platform';
 import * as Context from 'effect/Context';
 import { pipe, Redacted } from 'effect';
+import { filterStatusOk, mapRequest } from '@effect/platform/HttpClient';
 const couchUrl = EnvironmentService
     .get()
     .pipe(Effect.map(({ url }) => url));
-const clientWithUrl = couchUrl.pipe(Effect.flatMap(url => HttpClient.HttpClient.pipe(Effect.map(HttpClient.filterStatusOk), Effect.map(HttpClient.mapRequest(HttpClientRequest.prependUrl(Redacted.value(url)))))));
+const clientWithUrl = couchUrl.pipe(Effect.flatMap(url => HttpClient.HttpClient.pipe(Effect.map(filterStatusOk), Effect.map(mapRequest(HttpClientRequest.prependUrl(Redacted.value(url)))))));
 const serviceContext = Effect
     .all([
     EnvironmentService,

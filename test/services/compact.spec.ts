@@ -1,17 +1,36 @@
 import { describe, it } from 'mocha';
 import { Chunk, Effect, Layer, Stream } from 'effect';
 import { expect } from 'chai';
-import sinon, { SinonStub } from 'sinon';
-import * as CouchDbsInfo from '../../src/libs/couch/dbs-info.js';
-import * as CouchDesignInfo from '../../src/libs/couch/design-info.js';
-import { CompactService } from '../../src/services/compact.js';
-import * as CouchDesignDocs from '../../src/libs/couch/design-docs.js';
-import * as CouchActiveTasksSvc from '../../src/libs/couch/active-tasks.js';
-import * as CouchCompactService from '../../src/libs/couch/compact.js';
-import * as core from '../../src/libs/core.js';
-import { genWithLayer } from '../utils/base.js';
+import sinon from 'sinon';
+import * as CompactSvc from '../../src/services/compact.js';
+import { genWithLayer, sandbox } from '../utils/base.js';
 import { ChtClientService } from '../../src/services/cht-client.js';
+import esmock from 'esmock';
 
+const mockActiveTasksLib = {
+  filterStreamByType: sandbox.stub(),
+  streamActiveTasks: sandbox.stub(),
+}
+const mockDesignInfoLib = { getDesignInfo: sandbox.stub() };
+const mockDesignDocsLib = { getDesignDocNames: sandbox.stub() };
+const mockDbsInfoLib = {
+  getDbNames: sandbox.stub(),
+  getAllDbsInfo: sandbox.stub(),
+};
+const mockCompactLib = {
+  compactDb: sandbox.stub(),
+  compactDesign: sandbox.stub(),
+};
+const mockCore = { untilEmptyCount: sandbox.stub() };
+
+const { CompactService } = await esmock<typeof CompactSvc>('../../src/services/compact.js', {
+  '../../src/libs/couch/dbs-info.js': mockDbsInfoLib,
+  '../../src/libs/couch/design-info.js': mockDesignInfoLib,
+  '../../src/libs/couch/design-docs.js': mockDesignDocsLib,
+  '../../src/libs/couch/active-tasks.js': mockActiveTasksLib,
+  '../../src/libs/couch/compact.js': mockCompactLib,
+  '../../src/libs/core.js': mockCore,
+});
 const run = CompactService.Default
   .pipe(
     Layer.provideMerge(Layer.succeed(ChtClientService, {} as unknown as ChtClientService)),
@@ -19,188 +38,167 @@ const run = CompactService.Default
   );
 
 describe('Compact service', () => {
-  let activeTasksStream: SinonStub;
-  let designInfoSvcGet: SinonStub;
-  let designDocsSvcGetNames: SinonStub;
-  let dbsInfoSvcGetDbNames: SinonStub;
-  let dbInfoSvcGet: SinonStub;
-  let compactSvcCompactDb: SinonStub;
-  let compactSvcCompactDesign: SinonStub;
-  let filterStreamByType: SinonStub;
-  let untilEmptyCount: SinonStub;
 
-  beforeEach(() => {
-    activeTasksStream = sinon.stub(CouchActiveTasksSvc, 'streamActiveTasks');
-    designInfoSvcGet = sinon.stub(CouchDesignInfo, 'getDesignInfo');
-    designDocsSvcGetNames = sinon.stub(CouchDesignDocs, 'getDesignDocNames');
-    dbsInfoSvcGetDbNames = sinon.stub(CouchDbsInfo, 'getDbNames');
-    dbInfoSvcGet = sinon.stub(CouchDbsInfo, 'getAllDbsInfo');
-    compactSvcCompactDb = sinon.stub(CouchCompactService, 'compactDb');
-    compactSvcCompactDesign = sinon.stub(CouchCompactService, 'compactDesign');
-    filterStreamByType = sinon
-      .stub(CouchActiveTasksSvc, 'filterStreamByType')
-      .returns(sinon.stub().returnsArg(0));
-    untilEmptyCount = sinon.stub(core, 'untilEmptyCount');
-  });
+  beforeEach(() => mockActiveTasksLib.filterStreamByType.returns(sinon.stub().returnsArg(0)));
 
   describe('compactAll', () => {
     it('compacts all databases and views', run(function* () {
-      dbsInfoSvcGetDbNames.returns(Effect.succeed(['medic', 'test']));
-      compactSvcCompactDb.returns(Effect.void);
-      compactSvcCompactDesign.returns(Effect.void);
-      designDocsSvcGetNames.withArgs('medic').returns(Effect.succeed(['medic-client', 'medic-sms']));
-      designDocsSvcGetNames.withArgs('test').returns(Effect.succeed(['test-client']));
+      mockDbsInfoLib.getDbNames.returns(Effect.succeed(['medic', 'test']));
+      mockCompactLib.compactDb.returns(Effect.void);
+      mockCompactLib.compactDesign.returns(Effect.void);
+      mockDesignDocsLib.getDesignDocNames.withArgs('medic').returns(Effect.succeed(['medic-client', 'medic-sms']));
+      mockDesignDocsLib.getDesignDocNames.withArgs('test').returns(Effect.succeed(['test-client']));
       const expectedTasks = [{ hello: 'world' }];
-      activeTasksStream.returns(Stream.succeed(expectedTasks));
-      untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
+      mockActiveTasksLib.streamActiveTasks.returns(Stream.succeed(expectedTasks));
+      mockCore.untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
 
       const taskStream = yield* CompactService.compactAll(true);
       const tasks = Chunk.toReadonlyArray(yield* Stream.runCollect(taskStream));
 
       expect(tasks).to.deep.equal([expectedTasks]);
-      expect(dbsInfoSvcGetDbNames.calledOnceWithExactly()).to.be.true;
-      expect(dbInfoSvcGet.notCalled).to.be.true;
-      expect(compactSvcCompactDb.args).to.deep.equal([['medic'], ['test']]);
-      expect(compactSvcCompactDesign.args).to.deep.equal([
+      expect(mockDbsInfoLib.getDbNames.calledOnceWithExactly()).to.be.true;
+      expect(mockDbsInfoLib.getAllDbsInfo.notCalled).to.be.true;
+      expect(mockCompactLib.compactDb.args).to.deep.equal([['medic'], ['test']]);
+      expect(mockCompactLib.compactDesign.args).to.deep.equal([
         ['medic', 'medic-client'],
         ['medic', 'medic-sms'],
         ['test', 'test-client'],
       ]);
-      expect(designDocsSvcGetNames.args).to.deep.equal([['medic'], ['test']]);
-      expect(designInfoSvcGet.notCalled).to.be.true;
-      expect(activeTasksStream.calledOnceWithExactly()).to.be.true;
-      expect(filterStreamByType.calledOnceWithExactly('database_compaction', 'view_compaction')).to.be.true;
-      expect(untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
+      expect(mockDesignDocsLib.getDesignDocNames.args).to.deep.equal([['medic'], ['test']]);
+      expect(mockDesignInfoLib.getDesignInfo.notCalled).to.be.true;
+      expect(mockActiveTasksLib.streamActiveTasks.calledOnceWithExactly()).to.be.true;
+      expect(mockActiveTasksLib.filterStreamByType.calledOnceWithExactly('database_compaction', 'view_compaction')).to.be.true;
+      expect(mockCore.untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
     }));
 
     it('compacts only databases when no views found', run(function* () {
-      dbsInfoSvcGetDbNames.returns(Effect.succeed(['medic', 'test']));
-      compactSvcCompactDb.returns(Effect.void);
-      designDocsSvcGetNames.withArgs('medic').returns(Effect.succeed([]));
-      designDocsSvcGetNames.withArgs('test').returns(Effect.succeed([]));
-      activeTasksStream.returns(Stream.succeed([]));
-      untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
+      mockDbsInfoLib.getDbNames.returns(Effect.succeed(['medic', 'test']));
+      mockCompactLib.compactDb.returns(Effect.void);
+      mockDesignDocsLib.getDesignDocNames.withArgs('medic').returns(Effect.succeed([]));
+      mockDesignDocsLib.getDesignDocNames.withArgs('test').returns(Effect.succeed([]));
+      mockActiveTasksLib.streamActiveTasks.returns(Stream.succeed([]));
+      mockCore.untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
 
       yield* CompactService.compactAll(true);
 
-      expect(dbsInfoSvcGetDbNames.calledOnceWithExactly()).to.be.true;
-      expect(dbInfoSvcGet.notCalled).to.be.true;
-      expect(compactSvcCompactDb.args).to.deep.equal([['medic'], ['test']]);
-      expect(compactSvcCompactDesign.notCalled).to.be.true;
-      expect(designDocsSvcGetNames.args).to.deep.equal([['medic'], ['test']]);
-      expect(designInfoSvcGet.notCalled).to.be.true;
-      expect(activeTasksStream.calledOnceWithExactly()).to.be.true;
-      expect(filterStreamByType.calledOnceWithExactly('database_compaction', 'view_compaction')).to.be.true;
-      expect(untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
+      expect(mockDbsInfoLib.getDbNames.calledOnceWithExactly()).to.be.true;
+      expect(mockDbsInfoLib.getAllDbsInfo.notCalled).to.be.true;
+      expect(mockCompactLib.compactDb.args).to.deep.equal([['medic'], ['test']]);
+      expect(mockCompactLib.compactDesign.notCalled).to.be.true;
+      expect(mockDesignDocsLib.getDesignDocNames.args).to.deep.equal([['medic'], ['test']]);
+      expect(mockDesignInfoLib.getDesignInfo.notCalled).to.be.true;
+      expect(mockActiveTasksLib.streamActiveTasks.calledOnceWithExactly()).to.be.true;
+      expect(mockActiveTasksLib.filterStreamByType.calledOnceWithExactly('database_compaction', 'view_compaction')).to.be.true;
+      expect(mockCore.untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
     }));
 
     it('compacts nothing if no databases found', run(function* () {
-      dbsInfoSvcGetDbNames.returns(Effect.succeed([]));
-      activeTasksStream.returns(Stream.succeed([]));
-      untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
+      mockDbsInfoLib.getDbNames.returns(Effect.succeed([]));
+      mockActiveTasksLib.streamActiveTasks.returns(Stream.succeed([]));
+      mockCore.untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
 
       yield* CompactService.compactAll(true);
 
-      expect(dbsInfoSvcGetDbNames.calledOnceWithExactly()).to.be.true;
-      expect(dbInfoSvcGet.notCalled).to.be.true;
-      expect(compactSvcCompactDb.notCalled).to.be.true;
-      expect(compactSvcCompactDesign.notCalled).to.be.true;
-      expect(designDocsSvcGetNames.notCalled).to.be.true;
-      expect(designInfoSvcGet.notCalled).to.be.true;
-      expect(activeTasksStream.calledOnceWithExactly()).to.be.true;
-      expect(filterStreamByType.calledOnceWithExactly('database_compaction', 'view_compaction')).to.be.true;
-      expect(untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
+      expect(mockDbsInfoLib.getDbNames.calledOnceWithExactly()).to.be.true;
+      expect(mockDbsInfoLib.getAllDbsInfo.notCalled).to.be.true;
+      expect(mockCompactLib.compactDb.notCalled).to.be.true;
+      expect(mockCompactLib.compactDesign.notCalled).to.be.true;
+      expect(mockDesignDocsLib.getDesignDocNames.notCalled).to.be.true;
+      expect(mockDesignInfoLib.getDesignInfo.notCalled).to.be.true;
+      expect(mockActiveTasksLib.streamActiveTasks.calledOnceWithExactly()).to.be.true;
+      expect(mockActiveTasksLib.filterStreamByType.calledOnceWithExactly('database_compaction', 'view_compaction')).to.be.true;
+      expect(mockCore.untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
     }));
 
     it('compacts databases but not designs when indicated', run(function* () {
-      dbsInfoSvcGetDbNames.returns(Effect.succeed(['medic', 'test']));
-      compactSvcCompactDb.returns(Effect.void);
+      mockDbsInfoLib.getDbNames.returns(Effect.succeed(['medic', 'test']));
+      mockCompactLib.compactDb.returns(Effect.void);
       const expectedTasks = [{ hello: 'world' }];
-      activeTasksStream.returns(Stream.succeed(expectedTasks));
-      untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
+      mockActiveTasksLib.streamActiveTasks.returns(Stream.succeed(expectedTasks));
+      mockCore.untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
 
       const taskStream = yield* CompactService.compactAll(false);
       const tasks = Chunk.toReadonlyArray(yield* Stream.runCollect(taskStream));
 
       expect(tasks).to.deep.equal([expectedTasks]);
-      expect(dbsInfoSvcGetDbNames.calledOnceWithExactly()).to.be.true;
-      expect(dbInfoSvcGet.notCalled).to.be.true;
-      expect(compactSvcCompactDb.args).to.deep.equal([['medic'], ['test']]);
-      expect(compactSvcCompactDesign.notCalled).to.be.true;
-      expect(designDocsSvcGetNames.notCalled).to.be.true;
-      expect(designInfoSvcGet.notCalled).to.be.true;
-      expect(activeTasksStream.calledOnceWithExactly()).to.be.true;
-      expect(filterStreamByType.calledOnceWithExactly('database_compaction')).to.be.true;
-      expect(untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
+      expect(mockDbsInfoLib.getDbNames.calledOnceWithExactly()).to.be.true;
+      expect(mockDbsInfoLib.getAllDbsInfo.notCalled).to.be.true;
+      expect(mockCompactLib.compactDb.args).to.deep.equal([['medic'], ['test']]);
+      expect(mockCompactLib.compactDesign.notCalled).to.be.true;
+      expect(mockDesignDocsLib.getDesignDocNames.notCalled).to.be.true;
+      expect(mockDesignInfoLib.getDesignInfo.notCalled).to.be.true;
+      expect(mockActiveTasksLib.streamActiveTasks.calledOnceWithExactly()).to.be.true;
+      expect(mockActiveTasksLib.filterStreamByType.calledOnceWithExactly('database_compaction')).to.be.true;
+      expect(mockCore.untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
     }));
   });
 
   describe('compactDb', () => {
     it('compacts database but not designs when indicated', run(function* () {
-      compactSvcCompactDb.returns(Effect.void);
+      mockCompactLib.compactDb.returns(Effect.void);
       const expectedTasks = [{ database: 'shards/aaaaaaa8-bffffffc/medic.1727212895' }];
-      activeTasksStream.returns(Stream.succeed(expectedTasks));
-      untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
+      mockActiveTasksLib.streamActiveTasks.returns(Stream.succeed(expectedTasks));
+      mockCore.untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
       const dbName = 'medic';
 
       const taskStream = yield* CompactService.compactDb(dbName, false);
       const tasks = Chunk.toReadonlyArray(yield* Stream.runCollect(taskStream));
 
       expect(tasks).to.deep.equal([expectedTasks]);
-      expect(dbsInfoSvcGetDbNames.notCalled).to.be.true;
-      expect(dbInfoSvcGet.notCalled).to.be.true;
-      expect(compactSvcCompactDb.calledOnceWithExactly(dbName)).to.be.true;
-      expect(compactSvcCompactDesign.notCalled).to.be.true;
-      expect(designDocsSvcGetNames.notCalled).to.be.true;
-      expect(designInfoSvcGet.notCalled).to.be.true;
-      expect(activeTasksStream.calledOnceWithExactly()).to.be.true;
-      expect(filterStreamByType.calledOnceWithExactly('database_compaction')).to.be.true;
-      expect(untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
+      expect(mockDbsInfoLib.getDbNames.notCalled).to.be.true;
+      expect(mockDbsInfoLib.getAllDbsInfo.notCalled).to.be.true;
+      expect(mockCompactLib.compactDb.calledOnceWithExactly(dbName)).to.be.true;
+      expect(mockCompactLib.compactDesign.notCalled).to.be.true;
+      expect(mockDesignDocsLib.getDesignDocNames.notCalled).to.be.true;
+      expect(mockDesignInfoLib.getDesignInfo.notCalled).to.be.true;
+      expect(mockActiveTasksLib.streamActiveTasks.calledOnceWithExactly()).to.be.true;
+      expect(mockActiveTasksLib.filterStreamByType.calledOnceWithExactly('database_compaction')).to.be.true;
+      expect(mockCore.untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
     }));
 
 
     it('compacts database and all its views when indicated', run(function* () {
-      compactSvcCompactDb.returns(Effect.void);
-      compactSvcCompactDesign.returns(Effect.void);
-      designDocsSvcGetNames.withArgs('medic').returns(Effect.succeed(['medic-client', 'medic-sms']));
+      mockCompactLib.compactDb.returns(Effect.void);
+      mockCompactLib.compactDesign.returns(Effect.void);
+      mockDesignDocsLib.getDesignDocNames.withArgs('medic').returns(Effect.succeed(['medic-client', 'medic-sms']));
       const expectedTasks = [{
         database: 'shards/aaaaaaa8-bffffffc/medic.1727212895',
         design_document: '_design/medic-client',
       }];
-      activeTasksStream.returns(Stream.succeed(expectedTasks));
-      untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
+      mockActiveTasksLib.streamActiveTasks.returns(Stream.succeed(expectedTasks));
+      mockCore.untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
       const dbName = 'medic';
 
       const taskStream = yield* CompactService.compactDb(dbName, true);
       const tasks = Chunk.toReadonlyArray(yield* Stream.runCollect(taskStream));
 
       expect(tasks).to.deep.equal([expectedTasks]);
-      expect(dbsInfoSvcGetDbNames.notCalled).to.be.true;
-      expect(dbInfoSvcGet.notCalled).to.be.true;
-      expect(compactSvcCompactDb.calledOnceWithExactly(dbName)).to.be.true;
-      expect(compactSvcCompactDesign.args).to.deep.equal([
+      expect(mockDbsInfoLib.getDbNames.notCalled).to.be.true;
+      expect(mockDbsInfoLib.getAllDbsInfo.notCalled).to.be.true;
+      expect(mockCompactLib.compactDb.calledOnceWithExactly(dbName)).to.be.true;
+      expect(mockCompactLib.compactDesign.args).to.deep.equal([
         ['medic', 'medic-client'],
         ['medic', 'medic-sms'],
       ]);
-      expect(designDocsSvcGetNames.args).to.deep.equal([['medic']]);
-      expect(designInfoSvcGet.notCalled).to.be.true;
-      expect(activeTasksStream.calledOnceWithExactly()).to.be.true;
-      expect(filterStreamByType.calledOnceWithExactly('database_compaction', 'view_compaction')).to.be.true;
-      expect(untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
+      expect(mockDesignDocsLib.getDesignDocNames.args).to.deep.equal([['medic']]);
+      expect(mockDesignInfoLib.getDesignInfo.notCalled).to.be.true;
+      expect(mockActiveTasksLib.streamActiveTasks.calledOnceWithExactly()).to.be.true;
+      expect(mockActiveTasksLib.filterStreamByType.calledOnceWithExactly('database_compaction', 'view_compaction')).to.be.true;
+      expect(mockCore.untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
     }));
   });
 
   it('compactDesign', run(function* () {
-    compactSvcCompactDesign.returns(Effect.void);
+    mockCompactLib.compactDesign.returns(Effect.void);
     const expectedTasks = [{
       database: 'shards/aaaaaaa8-bffffffc/medic.1727212895',
       design_document: '_design/medic-client',
     }];
-    activeTasksStream.returns(Stream.succeed([
+    mockActiveTasksLib.streamActiveTasks.returns(Stream.succeed([
       ...expectedTasks,
       {  database: 'shards/no_design/medic.17272234234' }
     ]));
-    untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
+    mockCore.untilEmptyCount.returns(sinon.stub().returns(Effect.succeed(false)));
     const dbName = 'medic';
     const designName = 'medic-client';
 
@@ -209,14 +207,14 @@ describe('Compact service', () => {
     const tasks = Chunk.toReadonlyArray(yield* Stream.runCollect(taskStream));
 
     expect(tasks).to.deep.equal([expectedTasks]);
-    expect(dbsInfoSvcGetDbNames.notCalled).to.be.true;
-    expect(dbInfoSvcGet.notCalled).to.be.true;
-    expect(compactSvcCompactDb.notCalled).to.be.true;
-    expect(compactSvcCompactDesign.calledOnceWithExactly(dbName, designName)).to.be.true;
-    expect(designDocsSvcGetNames.notCalled).to.be.true;
-    expect(designInfoSvcGet.notCalled).to.be.true;
-    expect(activeTasksStream.calledOnceWithExactly()).to.be.true;
-    expect(filterStreamByType.calledOnceWithExactly('view_compaction')).to.be.true;
-    expect(untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
+    expect(mockDbsInfoLib.getDbNames.notCalled).to.be.true;
+    expect(mockDbsInfoLib.getAllDbsInfo.notCalled).to.be.true;
+    expect(mockCompactLib.compactDb.notCalled).to.be.true;
+    expect(mockCompactLib.compactDesign.calledOnceWithExactly(dbName, designName)).to.be.true;
+    expect(mockDesignDocsLib.getDesignDocNames.notCalled).to.be.true;
+    expect(mockDesignInfoLib.getDesignInfo.notCalled).to.be.true;
+    expect(mockActiveTasksLib.streamActiveTasks.calledOnceWithExactly()).to.be.true;
+    expect(mockActiveTasksLib.filterStreamByType.calledOnceWithExactly('view_compaction')).to.be.true;
+    expect(mockCore.untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
   }));
 });

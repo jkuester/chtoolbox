@@ -6,6 +6,7 @@ import { createTmpDir, getRemoteFile, readJsonFile, writeFile, writeJsonFile, } 
 import { copyFileFromComposeContainer, copyFileToComposeContainer, createComposeContainers, destroyCompose, doesComposeProjectHaveContainers, doesVolumeExistWithLabel, getEnvarFromComposeContainer, getVolumeLabelValue, getVolumeNamesWithLabel, pullComposeImages, restartCompose, restartComposeService, rmComposeContainer, startCompose, stopCompose } from '../libs/docker.js';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
 import { getFreePorts } from '../libs/local-network.js';
+import { filterStatusOk } from '@effect/platform/HttpClient';
 const CHTX_LABEL_NAME = 'chtx.instance';
 const UPGRADE_SVC_NAME = 'cht-upgrade-service';
 const NGINX_SVC_NAME = 'nginx';
@@ -130,7 +131,7 @@ const copyEnvFileFromDanglingVolume = (tempDir, instanceName) => Effect
 const getPortForInstance = (instanceName) => pipe(upgradeSvcProjectName(instanceName), getEnvarFromComposeContainer(UPGRADE_SVC_NAME, 'NGINX_HTTPS_PORT'), Effect.map(Number.parseInt), Effect.flatMap(value => Match
     .value(value)
     .pipe(Match.when(Number.isInteger, () => Effect.succeed(value.toString())), Match.orElse(() => Effect.fail(new Error(`Could not get port for instance ${instanceName}`))))));
-const waitForInstance = (port) => HttpClient.HttpClient.pipe(Effect.map(HttpClient.filterStatusOk), Effect.tap(Effect.logDebug(`Checking if local instance is up on port ${port}`)), Effect.flatMap(client => client.execute(HttpClientRequest.get(`https://localhost:${port}/api/info`))), Effect.retry({
+const waitForInstance = (port) => HttpClient.HttpClient.pipe(Effect.map(filterStatusOk), Effect.tap(Effect.logDebug(`Checking if local instance is up on port ${port}`)), Effect.flatMap(client => client.execute(HttpClientRequest.get(`https://localhost:${port}/api/info`))), Effect.retry({
     times: 180,
     schedule: Schedule.spaced(1000),
 }), Effect.scoped);

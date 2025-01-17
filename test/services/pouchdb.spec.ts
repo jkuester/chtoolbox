@@ -1,35 +1,35 @@
 import { describe, it } from 'mocha';
 import { Array, Chunk, Effect, Either, Layer, Option, Redacted, Stream } from 'effect';
 import sinon, { SinonStub } from 'sinon';
-import * as core from '../../src/libs/core.js';
 import PouchDB from 'pouchdb-core';
-import {
+import * as PouchDbSvc from '../../src/services/pouchdb.js';
+import { EnvironmentService } from '../../src/services/environment.js';
+import { expect } from 'chai';
+import { genWithLayer, sandbox } from '../utils/base.js';
+import esmock from 'esmock';
+
+const FAKE_POUCHDB = { hello: 'world' } as const;
+
+const mockCore = { pouchDB: sandbox.stub() };
+const mockStream = { async: sandbox.stub() };
+const environmentGet = sandbox.stub();
+
+const {
   assertPouchResponse,
   PouchDBService,
   streamAllDocPages,
   streamChanges,
   streamQueryPages
-} from '../../src/services/pouchdb.js';
-import { EnvironmentService } from '../../src/services/environment.js';
-import { expect } from 'chai';
-import { genWithLayer, sandbox } from '../utils/base.js';
-
-const FAKE_POUCHDB = { hello: 'world' } as const;
-
-const environmentGet = sandbox.stub();
-
+} = await esmock<typeof PouchDbSvc>('../../src/services/pouchdb.js', {
+  '../../src/libs/core.js': mockCore,
+  'effect': { Stream: { ...Stream, ...mockStream } },
+});
 const run = PouchDBService.Default.pipe(
   Layer.provide(Layer.succeed(EnvironmentService, { get: environmentGet } as unknown as EnvironmentService)),
   genWithLayer,
 );
 
 describe('PouchDB Service', () => {
-  let pouchDB: SinonStub;
-
-  beforeEach(() => {
-    pouchDB = sinon.stub(core, 'pouchDB');
-  });
-
   describe('streamChanges', () => {
     class FakeChangeEmitter {
       public on = sinon.stub().returns(this);
@@ -37,13 +37,11 @@ describe('PouchDB Service', () => {
     }
     const fakeDdb = { changes: () => null } as unknown as PouchDB.Database;
 
-    let streamAsync: SinonStub;
     let dbChanges: SinonStub;
     let fakeChangeEmitter: FakeChangeEmitter;
 
     beforeEach(() => {
       fakeChangeEmitter = new FakeChangeEmitter();
-      streamAsync = sinon.stub(Stream, 'async');
       dbChanges = sinon
         .stub(fakeDdb, 'changes')
         .returns(fakeChangeEmitter as unknown as PouchDB.Core.Changes<object>);
@@ -52,10 +50,10 @@ describe('PouchDB Service', () => {
     it('builds stream from changes feed event emitter', run(function* () {
       streamChanges()(fakeDdb);
 
-      expect(streamAsync.calledOnce).to.be.true;
+      expect(mockStream.async.calledOnce).to.be.true;
       const emit = sinon.stub();
-      expect(streamAsync.calledOnce).to.be.true;
-      const buildStreamFn = streamAsync.args[0][0] as (emit: unknown) => Effect.Effect<void>;
+      expect(mockStream.async.calledOnce).to.be.true;
+      const buildStreamFn = mockStream.async.args[0][0] as (emit: unknown) => Effect.Effect<void>;
       const cancelStreamEffect = buildStreamFn(emit);
 
       expect(emit.notCalled).to.be.true;
@@ -91,8 +89,8 @@ describe('PouchDB Service', () => {
       streamChanges({ since: 100 })(fakeDdb);
 
       const emit = sinon.stub();
-      expect(streamAsync.calledOnce).to.be.true;
-      const buildStreamFn = streamAsync.args[0][0] as (emit: unknown) => Effect.Effect<void>;
+      expect(mockStream.async.calledOnce).to.be.true;
+      const buildStreamFn = mockStream.async.args[0][0] as (emit: unknown) => Effect.Effect<void>;
       buildStreamFn(emit);
 
       // First call to changes has since value from options
@@ -121,7 +119,7 @@ describe('PouchDB Service', () => {
       const url = 'https://localhost:5984/';
       const env = Redacted.make(url).pipe(url => ({ url }));
       environmentGet.returns(Effect.succeed(env));
-      pouchDB.returns(FAKE_POUCHDB);
+      mockCore.pouchDB.returns(FAKE_POUCHDB);
       const fakeRequest = { fake: 'request' };
       const pouchFetch = sinon.stub(PouchDB, 'fetch').returns(fakeRequest as unknown as Promise<Response>);
 
@@ -129,12 +127,12 @@ describe('PouchDB Service', () => {
 
       expect(testDb).to.equal(FAKE_POUCHDB);
       expect(environmentGet.calledOnceWithExactly()).to.be.true;
-      expect(pouchDB.calledOnce).to.be.true;
-      expect(pouchDB.args[0][0]).to.equal(`${url}${dbName}`);
-      expect(pouchDB.args[0][1]).to.haveOwnProperty('fetch');
+      expect(mockCore.pouchDB.calledOnce).to.be.true;
+      expect(mockCore.pouchDB.args[0][0]).to.equal(`${url}${dbName}`);
+      expect(mockCore.pouchDB.args[0][1]).to.haveOwnProperty('fetch');
 
       // Verify the fetch is overridden with the agent option
-      const fetch = (pouchDB.args[0][1] as { fetch: (url: string, opts: unknown) => unknown }).fetch;
+      const fetch = (mockCore.pouchDB.args[0][1] as { fetch: (url: string, opts: unknown) => unknown }).fetch;
       const fakeOptions = { hello: 'world' };
       const req = fetch(url, fakeOptions);
       expect(req).to.equal(fakeRequest);
@@ -149,7 +147,7 @@ describe('PouchDB Service', () => {
       const url = 'http://localhost:5984/';
       const env = Redacted.make(url).pipe(url => ({ url }));
       environmentGet.returns(Effect.succeed(env));
-      pouchDB.returns(FAKE_POUCHDB);
+      mockCore.pouchDB.returns(FAKE_POUCHDB);
       const fakeRequest = { fake: 'request' };
       const pouchFetch = sinon.stub(PouchDB, 'fetch').returns(fakeRequest as unknown as Promise<Response>);
 
@@ -157,12 +155,12 @@ describe('PouchDB Service', () => {
 
       expect(testDb).to.equal(FAKE_POUCHDB);
       expect(environmentGet.calledOnceWithExactly()).to.be.true;
-      expect(pouchDB.calledOnce).to.be.true;
-      expect(pouchDB.args[0][0]).to.equal(`${url}${dbName}`);
-      expect(pouchDB.args[0][1]).to.haveOwnProperty('fetch');
+      expect(mockCore.pouchDB.calledOnce).to.be.true;
+      expect(mockCore.pouchDB.args[0][0]).to.equal(`${url}${dbName}`);
+      expect(mockCore.pouchDB.args[0][1]).to.haveOwnProperty('fetch');
 
       // Verify the fetch is overridden with the agent option
-      const fetch = (pouchDB.args[0][1] as { fetch: (url: string, opts: unknown) => unknown }).fetch;
+      const fetch = (mockCore.pouchDB.args[0][1] as { fetch: (url: string, opts: unknown) => unknown }).fetch;
       const fakeOptions = { hello: 'world' };
       const req = fetch(url, fakeOptions);
       expect(req).to.equal(fakeRequest);
@@ -178,9 +176,9 @@ describe('PouchDB Service', () => {
       const medicDbName = 'medic';
       const env = Redacted.make(url).pipe(url => ({ url }));
       environmentGet.returns(Effect.succeed(env));
-      pouchDB.onFirstCall().returns(FAKE_POUCHDB);
+      mockCore.pouchDB.onFirstCall().returns(FAKE_POUCHDB);
       const fakeMedicDb = { medic: 'db' };
-      pouchDB.onSecondCall().returns(fakeMedicDb);
+      mockCore.pouchDB.onSecondCall().returns(fakeMedicDb);
 
       const testDb = yield* PouchDBService.get(testDbName);
       const medicDb = yield* PouchDBService.get(medicDbName);
@@ -189,11 +187,11 @@ describe('PouchDB Service', () => {
       expect(medicDb).to.equal(fakeMedicDb);
       expect(environmentGet.calledTwice).to.be.true;
 
-      expect(pouchDB.calledTwice).to.be.true;
-      expect(pouchDB.args[0][0]).to.equal(`${url}${testDbName}`);
-      expect(pouchDB.args[0][1]).to.haveOwnProperty('fetch');
-      expect(pouchDB.args[1][0]).to.equal(`${url}${medicDbName}`);
-      expect(pouchDB.args[1][1]).to.haveOwnProperty('fetch');
+      expect(mockCore.pouchDB.calledTwice).to.be.true;
+      expect(mockCore.pouchDB.args[0][0]).to.equal(`${url}${testDbName}`);
+      expect(mockCore.pouchDB.args[0][1]).to.haveOwnProperty('fetch');
+      expect(mockCore.pouchDB.args[1][0]).to.equal(`${url}${medicDbName}`);
+      expect(mockCore.pouchDB.args[1][1]).to.haveOwnProperty('fetch');
     }));
 
     it('returns the same PouchDB instance when called multiple times with the same name', run(function* () {
@@ -201,9 +199,9 @@ describe('PouchDB Service', () => {
       const dbName = 'test-db';
       const env = Redacted.make(url).pipe(url => ({ url }));
       environmentGet.returns(Effect.succeed(env));
-      pouchDB.onFirstCall().returns(FAKE_POUCHDB);
+      mockCore.pouchDB.onFirstCall().returns(FAKE_POUCHDB);
       const fakeMedicDb = { medic: 'db' };
-      pouchDB.onSecondCall().returns(fakeMedicDb);
+      mockCore.pouchDB.onSecondCall().returns(fakeMedicDb);
 
       const testDb = yield* PouchDBService.get(dbName);
       const testDb1 = yield* PouchDBService.get(dbName);
@@ -211,9 +209,9 @@ describe('PouchDB Service', () => {
       expect(testDb).to.equal(FAKE_POUCHDB);
       expect(testDb1).to.equal(FAKE_POUCHDB);
       expect(environmentGet.calledOnceWithExactly()).to.be.true;
-      expect(pouchDB.calledOnce).to.be.true;
-      expect(pouchDB.args[0][0]).to.equal(`${url}${dbName}`);
-      expect(pouchDB.args[0][1]).to.haveOwnProperty('fetch');
+      expect(mockCore.pouchDB.calledOnce).to.be.true;
+      expect(mockCore.pouchDB.args[0][0]).to.equal(`${url}${dbName}`);
+      expect(mockCore.pouchDB.args[0][1]).to.haveOwnProperty('fetch');
     }));
   });
 
