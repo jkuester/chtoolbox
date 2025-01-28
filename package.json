@@ -58,5 +58,8 @@
     "pouchdb-mapreduce": "^9.0.0",
     "pouchdb-session-authentication": "^1.1.0",
     "test-data-generator": "git+https://github.com/medic/test-data-generator.git#chtoolbox"
+  },
+  "overrides": {
+    "whatwg-url": "^14.1.0"
   }
 }
