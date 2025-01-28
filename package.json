@@ -60,8 +60,6 @@
     "test-data-generator": "git+https://github.com/medic/test-data-generator.git#chtoolbox"
   },
   "overrides": {
-    "ajv": "^8.17.1",
-    "tough-cookie": "^5.1.0",
     "whatwg-url": "^14.1.0"
   }
 }
