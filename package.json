@@ -26,7 +26,7 @@
     "@tsconfig/node20": "^20.1.4",
     "@types/chai": "^5.0.1",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^22.10.7",
+    "@types/node": "^22.13.0",
     "@types/pouchdb-adapter-http": "^6.1.6",
     "@types/pouchdb-core": "^7.0.15",
     "@types/pouchdb-mapreduce": "^6.1.10",
