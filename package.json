@@ -49,7 +49,7 @@
   },
   "dependencies": {
     "@effect/cli": "^0.53.0",
-    "@effect/platform": "^0.74.0",
+    "@effect/platform": "^0.75.1",
     "@effect/platform-node": "^0.70.0",
     "effect": "^3.12.5",
     "get-port": "^7.1.0",
