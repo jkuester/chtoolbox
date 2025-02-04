@@ -18,7 +18,7 @@ export default tseslint.config(
       tseslint.configs.strictTypeChecked,
       tseslint.configs.stylisticTypeChecked,
       // TODO Cannot use medic with eslint 9+ because its format is unsupported
-      // medic
+      medic
     ],
     languageOptions: {
       globals: globals.node,
