@@ -1,4 +1,4 @@
-import { Array, Effect, Logger, LogLevel, Match, Option, pipe, Redacted, Schedule, Schema } from 'effect';
+import { Array, Effect, Logger, LogLevel, Match, pipe, Schedule, Schema, Option } from 'effect';
 import * as Context from 'effect/Context';
 import { FileSystem, HttpClient, HttpClientRequest } from '@effect/platform';
 import crypto from 'crypto';
@@ -23,7 +23,6 @@ import {
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
 import { getFreePorts } from '../libs/local-network.js';
 import { filterStatusOk } from '@effect/platform/HttpClient';
-import { PlatformError } from '@effect/platform/Error';
 
 const CHTX_LABEL_NAME = 'chtx.instance';
 const UPGRADE_SVC_NAME = 'cht-upgrade-service';
@@ -233,11 +232,6 @@ const copyEnvFileFromDanglingVolume = (
   )
   .pipe(Effect.scoped);
 
-const getEnvarFromUpgradeSvcContainer = (instanceName: string, envar: string) => pipe(
-  upgradeSvcProjectName(instanceName),
-  getEnvarFromComposeContainer(UPGRADE_SVC_NAME, envar),
-);
-
 const getPortForInstance = (instanceName: string) => pipe(
   upgradeSvcProjectName(instanceName),
   getEnvarFromComposeContainer(UPGRADE_SVC_NAME, 'NGINX_HTTPS_PORT'),
@@ -249,19 +243,6 @@ const getPortForInstance = (instanceName: string) => pipe(
       Match.orElse(() => Effect.fail(new Error(`Could not get port for instance ${instanceName}`))),
     ))
 );
-
-const getLocalChtInstanceInfo = (instanceName: string): Effect.Effect<LocalChtInstance, PlatformError, CommandExecutor> => Effect
-    .all([
-      getEnvarFromUpgradeSvcContainer(instanceName, 'COUCHDB_USER'),
-      getEnvarFromUpgradeSvcContainer(instanceName, 'COUCHDB_PASSWORD'),
-      getPortForInstance(instanceName).pipe(Effect.catchAll(() => Effect.succeed(null))),
-    ])
-    .pipe(Effect.map(([username, password, port]) => ({
-      name: instanceName,
-      username,
-      password: Redacted.make(password),
-      port: Option.fromNullable(port)
-    })));
 
 const waitForInstance = (port: string) => HttpClient.HttpClient.pipe(
   Effect.map(filterStatusOk),
@@ -315,13 +296,6 @@ const serviceContext = Effect
       Context.add(FileSystem.FileSystem, fileSystem),
       Context.add(CommandExecutor, executor),
     )));
-
-export interface LocalChtInstance {
-  name: string,
-  username: string,
-  password: Redacted.Redacted,
-  port: Option.Option<`${number}`>
-}
 
 export class LocalInstanceService extends Effect.Service<LocalInstanceService>()('chtoolbox/LocalInstanceService', {
   effect: serviceContext.pipe(Effect.map(context => ({
@@ -396,11 +370,16 @@ export class LocalInstanceService extends Effect.Service<LocalInstanceService>()
         Effect.provide(context),
         Effect.scoped,
       ),
-    ls: (): Effect.Effect<LocalChtInstance[], Error> => getVolumeNamesWithLabel(CHTX_LABEL_NAME)
+    ls: (): Effect.Effect<
+      { name: string, port: Option.Option<`${number}`> }[], Error
+    > => getVolumeNamesWithLabel(CHTX_LABEL_NAME)
       .pipe(
         Effect.map(Array.map(getVolumeLabelValue(CHTX_LABEL_NAME))),
         Effect.flatMap(Effect.all),
-        Effect.map(Array.map(getLocalChtInstanceInfo)),
+        Effect.map(Array.map(name => getPortForInstance(name).pipe(
+          Effect.catchAll(() => Effect.succeed(null)),
+          Effect.map(portVal => ({ name, port: Option.fromNullable(portVal) })),
+        ))),
         Effect.flatMap(Effect.all),
         Effect.mapError(x => x as unknown as Error),
         Effect.provide(context),

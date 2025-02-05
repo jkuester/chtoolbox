@@ -1,4 +1,4 @@
-import { Array, Effect, Logger, LogLevel, Match, Option, pipe, Redacted, Schedule, Schema } from 'effect';
+import { Array, Effect, Logger, LogLevel, Match, pipe, Schedule, Schema, Option } from 'effect';
 import * as Context from 'effect/Context';
 import { FileSystem, HttpClient, HttpClientRequest } from '@effect/platform';
 import crypto from 'crypto';
@@ -128,22 +128,9 @@ const copyEnvFileFromDanglingVolume = (tempDir, instanceName) => Effect
     .acquireUseRelease(writeUpgradeServiceCompose(tempDir)
     .pipe(Effect.andThen(createUpgradeSvcContainer(instanceName, {}, tempDir))), () => copyEnvFileFromUpgradeSvcContainer(instanceName, tempDir), () => rmTempUpgradeServiceContainer(instanceName))
     .pipe(Effect.scoped);
-const getEnvarFromUpgradeSvcContainer = (instanceName, envar) => pipe(upgradeSvcProjectName(instanceName), getEnvarFromComposeContainer(UPGRADE_SVC_NAME, envar));
 const getPortForInstance = (instanceName) => pipe(upgradeSvcProjectName(instanceName), getEnvarFromComposeContainer(UPGRADE_SVC_NAME, 'NGINX_HTTPS_PORT'), Effect.map(Number.parseInt), Effect.flatMap(value => Match
     .value(value)
     .pipe(Match.when(Number.isInteger, () => Effect.succeed(value.toString())), Match.orElse(() => Effect.fail(new Error(`Could not get port for instance ${instanceName}`))))));
-const getLocalChtInstanceInfo = (instanceName) => Effect
-    .all([
-    getEnvarFromUpgradeSvcContainer(instanceName, 'COUCHDB_USER'),
-    getEnvarFromUpgradeSvcContainer(instanceName, 'COUCHDB_PASSWORD'),
-    getPortForInstance(instanceName).pipe(Effect.catchAll(() => Effect.succeed(null))),
-])
-    .pipe(Effect.map(([username, password, port]) => ({
-    name: instanceName,
-    username,
-    password: Redacted.make(password),
-    port: Option.fromNullable(port)
-})));
 const waitForInstance = (port) => HttpClient.HttpClient.pipe(Effect.map(filterStatusOk), Effect.tap(Effect.logDebug(`Checking if local instance is up on port ${port}`)), Effect.flatMap(client => client.execute(HttpClientRequest.get(`https://localhost:${port}/api/info`))), Effect.retry({
     times: 180,
     schedule: Schedule.spaced(1000),
@@ -192,7 +179,7 @@ export class LocalInstanceService extends Effect.Service()('chtoolbox/LocalInsta
         setSSLCerts: (instanceName, sslType) => ensureUpgradeServiceExists(instanceName)
             .pipe(Effect.andThen(startCompose(upgradeSvcProjectName(instanceName))), Effect.andThen(getPortForInstance(instanceName)), Effect.tap(waitForInstance), Effect.andThen(createTmpDir()), Effect.tap(writeSSLFiles(sslType)), Effect.flatMap(copySSLFilesToNginxContainer(instanceName)), Effect.andThen(restartComposeService(instanceName, NGINX_SVC_NAME)), Effect.mapError(x => x), Effect.provide(context), Effect.scoped),
         ls: () => getVolumeNamesWithLabel(CHTX_LABEL_NAME)
-            .pipe(Effect.map(Array.map(getVolumeLabelValue(CHTX_LABEL_NAME))), Effect.flatMap(Effect.all), Effect.map(Array.map(getLocalChtInstanceInfo)), Effect.flatMap(Effect.all), Effect.mapError(x => x), Effect.provide(context)),
+            .pipe(Effect.map(Array.map(getVolumeLabelValue(CHTX_LABEL_NAME))), Effect.flatMap(Effect.all), Effect.map(Array.map(name => getPortForInstance(name).pipe(Effect.catchAll(() => Effect.succeed(null)), Effect.map(portVal => ({ name, port: Option.fromNullable(portVal) }))))), Effect.flatMap(Effect.all), Effect.mapError(x => x), Effect.provide(context)),
     }))),
     accessors: true,
 }) {
