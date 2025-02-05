@@ -1,4 +1,4 @@
-import { Effect, Option } from 'effect';
+import { Effect, Option, Redacted } from 'effect';
 import { FileSystem, HttpClient } from '@effect/platform';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
 declare const SSL_URL_DICT: {
@@ -7,6 +7,12 @@ declare const SSL_URL_DICT: {
     'self-signed': string[][];
 };
 export type SSLType = keyof typeof SSL_URL_DICT;
+export interface LocalChtInstance {
+    name: string;
+    username: string;
+    password: Redacted.Redacted;
+    port: Option.Option<`${number}`>;
+}
 declare const LocalInstanceService_base: Effect.Service.Class<LocalInstanceService, "chtoolbox/LocalInstanceService", {
     readonly effect: Effect.Effect<{
         create: (instanceName: string, version: string) => Effect.Effect<void, Error>;
@@ -14,10 +20,7 @@ declare const LocalInstanceService_base: Effect.Service.Class<LocalInstanceServi
         stop: (instanceName: string) => Effect.Effect<void, Error>;
         rm: (instanceName: string) => Effect.Effect<void, Error>;
         setSSLCerts: (instanceName: string, sslType: SSLType) => Effect.Effect<void, Error>;
-        ls: () => Effect.Effect<{
-            name: string;
-            port: Option.Option<`${number}`>;
-        }[], Error>;
+        ls: () => Effect.Effect<LocalChtInstance[], Error>;
     }, never, HttpClient.HttpClient | CommandExecutor | FileSystem.FileSystem>;
     readonly accessors: true;
 }>;
