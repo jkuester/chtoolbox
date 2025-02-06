@@ -1,8 +1,8 @@
 import { Args, Command, Options } from '@effect/cli';
 import { Array, Console, Effect, pipe } from 'effect';
 import { LocalInstanceService } from '../../services/local-instance.js';
-import { getLocalIpUrl } from '../../libs/local-network.js';
-import { clearThen, color } from '../../libs/console.js';
+import { clearThen } from '../../libs/console.js';
+import { printInstanceTable } from './ls.js';
 
 const createChtInstances = (names: string[], version: string) => pipe(
   names,
@@ -22,29 +22,10 @@ const setLocalIpSSLCerts = (names: string[]) => pipe(
   Effect.all,
 );
 
-export const printInstanceInfo = (names: string[]) => (
-  ports: `${number}`[]
-): Effect.Effect<void> => clearThen(Console
-  .log(`
-Instance(s) started!
-
-  Username: ${pipe('medic', color('green'))}
-  Password: ${pipe('password', color('green'))}
-
-`))
-  .pipe(Effect.andThen(pipe(
-    ports,
-    Array.map(getLocalIpUrl),
-    Array.map(color('blue')),
-    Array.zip(names),
-    Array.map(([url, name]) => Console.log(`${name} - ${url}`)),
-    Effect.all,
-  )));
-
 const names = Args
   .text({ name: 'name' })
   .pipe(
-    Args.withDescription('The name of the database to create'),
+    Args.withDescription('The name of the instance to create'),
     Args.atLeast(1),
   );
 
@@ -66,7 +47,7 @@ export const create = Command
       Effect.andThen(clearThen(Console.log('Starting instance(s)...'))),
       Effect.andThen(startChtInstances(names)),
       Effect.tap(setLocalIpSSLCerts(names)),
-      Effect.flatMap(printInstanceInfo(names))
+      Effect.flatMap(printInstanceTable),
     ))
   .pipe(Command.withDescription(
     `LOCAL ONLY: Create (and start) a new local CHT instance. Requires Docker and Docker Compose.`

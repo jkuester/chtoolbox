@@ -1,4 +1,8 @@
 import { Command } from '@effect/cli';
-import { LocalInstanceService } from '../../services/local-instance.js';
-export declare const ls: Command.Command<"ls", LocalInstanceService, Error, {}>;
+import { Effect } from 'effect';
+import { LocalChtInstance, LocalInstanceService } from '../../services/local-instance.js';
+export declare const printInstanceTable: (instances: LocalChtInstance[]) => Effect.Effect<void>;
+export declare const ls: Command.Command<"ls", LocalInstanceService, Error, {
+    readonly names: string[];
+}>;
 //# sourceMappingURL=ls.d.ts.map

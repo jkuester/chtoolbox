@@ -42,6 +42,6 @@ export const destroyCompose = (projectName) => dockerCompose(projectName, 'kill'
     .pipe(runForExitCode)));
 export const rmComposeContainer = (serviceName) => (projectName) => dockerCompose(projectName, 'rm', '-f', serviceName)
     .pipe(runForExitCode);
-export const getEnvarFromComposeContainer = (containerServiceName, envar) => (projectName) => dockerCompose(projectName, 'exec', containerServiceName, 'printenv', envar)
+export const getEnvarFromComposeContainer = (containerServiceName, envar, projectName) => dockerCompose(projectName, 'exec', containerServiceName, 'printenv', envar)
     .pipe(runForString);
 //# sourceMappingURL=docker.js.map

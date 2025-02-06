@@ -15,5 +15,5 @@ export declare const restartComposeService: (projectName: string, serviceName: s
 export declare const stopCompose: (projectName: string) => Effect.Effect<void, Error | PlatformError, CommandExecutor>;
 export declare const destroyCompose: (projectName: string) => Effect.Effect<void, Error | PlatformError, CommandExecutor>;
 export declare const rmComposeContainer: (serviceName: string) => (projectName: string) => Effect.Effect<void, Error | PlatformError, CommandExecutor>;
-export declare const getEnvarFromComposeContainer: (containerServiceName: string, envar: string) => (projectName: string) => Effect.Effect<string, PlatformError, CommandExecutor>;
+export declare const getEnvarFromComposeContainer: (containerServiceName: string, envar: string, projectName: string) => Effect.Effect<string, PlatformError, CommandExecutor>;
 //# sourceMappingURL=docker.d.ts.map

@@ -341,7 +341,7 @@ describe('docker libs', () => {
     const envar = 'HTTPS_PORT';
     const containerServiceName = 'containerServiceName';
 
-    const result = yield* getEnvarFromComposeContainer(containerServiceName, envar)(PROJECT_NAME);
+    const result = yield* getEnvarFromComposeContainer(containerServiceName, envar, PROJECT_NAME);
 
     expect(result).to.equal(output);
     expect(mockCommand.make.calledOnceWithExactly(

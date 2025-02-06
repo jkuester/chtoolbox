@@ -1,5 +1,5 @@
 import { describe, it } from 'mocha';
-import { Array, Effect, Either, Layer, Option, pipe, Schedule } from 'effect';
+import { Array, Effect, Either, Layer, Option, pipe, Redacted, Schedule } from 'effect';
 import sinon, { SinonStub } from 'sinon';
 import { expect } from 'chai';
 import { genWithLayer, sandbox } from '../utils/base.js';
@@ -63,10 +63,13 @@ const run = LocalInstanceService.Default.pipe(
   genWithLayer,
 );
 
+const getEnvarFromComposeArgs = (envar: string) => (
+  projectName: string
+) => ['cht-upgrade-service', envar, `${projectName}-up`];
+
 describe('Local Instance Service', () => {
   let writeFileInner: SinonStub;
-  let createComposeContainersInner: SinonStub;  
-  let getEnvarFromComposeContainerInner: SinonStub;
+  let createComposeContainersInner: SinonStub;
   let copyFileToComposeContainerInner: SinonStub;
 
   beforeEach(() => {
@@ -78,9 +81,7 @@ describe('Local Instance Service', () => {
       .stub()
       .returns(Effect.void);
     mockDockerLib.createComposeContainers.returns(createComposeContainersInner);
-    getEnvarFromComposeContainerInner = sinon.stub();
-    mockDockerLib.getEnvarFromComposeContainer.returns(getEnvarFromComposeContainerInner);
-    mockHttpClient.filterStatusOk.returnsArg(0);    
+    mockHttpClient.filterStatusOk.returnsArg(0);
     mockHttpRequest.get.returns(HTTP_CLIENT_REQUEST);
     copyFileToComposeContainerInner = sinon
       .stub()
@@ -199,10 +200,29 @@ describe('Local Instance Service', () => {
   });
 
   describe('start', () => {
+    const argsForGetEnvarForPorts = getEnvarFromComposeArgs('NGINX_HTTPS_PORT')(INSTANCE_NAME);
+    const argsForGetEnvarForUsernames = getEnvarFromComposeArgs('COUCHDB_USER')(INSTANCE_NAME);
+    const argsForGetEnvarForPasswords = getEnvarFromComposeArgs('COUCHDB_PASSWORD')(INSTANCE_NAME);
+    const expectedLocalInstanceInfo = {
+      name: INSTANCE_NAME, port: Option.some(PORT), username: 'medic', password: Redacted.make('password')
+    };
+
     let copyFileFromComposeContainerInner: SinonStub;
     let rmComposeContainerInner: SinonStub;
 
     beforeEach(() => {
+      mockDockerLib
+        .getEnvarFromComposeContainer
+        .withArgs(...argsForGetEnvarForPorts)
+        .returns(Effect.succeed(PORT));
+      mockDockerLib
+        .getEnvarFromComposeContainer
+        .withArgs(...argsForGetEnvarForUsernames)
+        .returns(Effect.succeed('medic'));
+      mockDockerLib
+        .getEnvarFromComposeContainer
+        .withArgs(...argsForGetEnvarForPasswords)
+        .returns(Effect.succeed('password'));
       mockDockerLib.restartCompose.returns(Effect.void);
       copyFileFromComposeContainerInner = sinon
         .stub()
@@ -214,14 +234,22 @@ describe('Local Instance Service', () => {
       mockDockerLib.rmComposeContainer.returns(rmComposeContainerInner);
     });
 
+    afterEach(() => {
+      expect(mockDockerLib.getEnvarFromComposeContainer.args).to.deep.equalInAnyOrder([
+        argsForGetEnvarForPorts,
+        argsForGetEnvarForUsernames,
+        argsForGetEnvarForPasswords,
+      ]);
+    });
+
     it('starts existing CHT instance', run(function* () {
       mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(true));
       mockDockerLib.doesComposeProjectHaveContainers.returns(Effect.succeed(true));
-      getEnvarFromComposeContainerInner.returns(Effect.succeed(PORT));
       httpClientExecute.returns(Effect.void);
 
-      yield* LocalInstanceService.start(INSTANCE_NAME);
+      const result = yield* LocalInstanceService.start(INSTANCE_NAME);
 
+      expect(result).to.deep.equal(expectedLocalInstanceInfo);
       expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
       expect(mockDockerLib.doesComposeProjectHaveContainers.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
       expect(mockFileLib.writeFile.notCalled).to.be.true;
@@ -233,10 +261,6 @@ describe('Local Instance Service', () => {
       expect(mockDockerLib.rmComposeContainer.notCalled).to.be.true;
       expect(rmComposeContainerInner.notCalled).to.be.true;
       expect(mockDockerLib.restartCompose.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
-      expect(mockDockerLib.getEnvarFromComposeContainer.calledOnceWithExactly(
-        'cht-upgrade-service', 'NGINX_HTTPS_PORT'
-      )).to.be.true;
-      expect(getEnvarFromComposeContainerInner.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
       expect(mockHttpClient.filterStatusOk.calledOnce).to.be.true;
       expect(mockHttpRequest.get.calledOnceWithExactly(`https://localhost:${PORT}/api/info`)).to.be.true;
       expect(httpClientExecute.calledOnceWithExactly(HTTP_CLIENT_REQUEST)).to.be.true;
@@ -245,13 +269,13 @@ describe('Local Instance Service', () => {
     it('waits for instance to be up and responsive', run(function* () {
       mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(true));
       mockDockerLib.doesComposeProjectHaveContainers.returns(Effect.succeed(true));
-      getEnvarFromComposeContainerInner.returns(Effect.succeed(PORT));
       httpClientExecute.onFirstCall().returns(Effect.fail('Service not ready'));
       httpClientExecute.onSecondCall().returns(Effect.void);
       mockSchedule.spaced.returns(Schedule.forever); // Avoid waiting in tests
 
-      yield* LocalInstanceService.start(INSTANCE_NAME);
+      const result = yield* LocalInstanceService.start(INSTANCE_NAME);
 
+      expect(result).to.deep.equal(expectedLocalInstanceInfo);
       expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
       expect(mockDockerLib.doesComposeProjectHaveContainers.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
       expect(mockFileLib.writeFile.notCalled).to.be.true;
@@ -263,10 +287,6 @@ describe('Local Instance Service', () => {
       expect(mockDockerLib.rmComposeContainer.notCalled).to.be.true;
       expect(rmComposeContainerInner.notCalled).to.be.true;
       expect(mockDockerLib.restartCompose.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
-      expect(mockDockerLib.getEnvarFromComposeContainer.calledOnceWithExactly(
-        'cht-upgrade-service', 'NGINX_HTTPS_PORT'
-      )).to.be.true;
-      expect(getEnvarFromComposeContainerInner.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
       expect(mockHttpClient.filterStatusOk.calledTwice).to.be.true;
       expect(mockHttpRequest.get.args).to.deep.equal(
         [[`https://localhost:${PORT}/api/info`], [`https://localhost:${PORT}/api/info`]]
@@ -291,11 +311,11 @@ describe('Local Instance Service', () => {
         NGINX_HTTPS_PORT: Number(PORT),
       };
       mockFileLib.readJsonFile.returns(Effect.succeed(env));
-      getEnvarFromComposeContainerInner.returns(Effect.succeed(PORT));
       httpClientExecute.returns(Effect.void);
 
-      yield* LocalInstanceService.start(INSTANCE_NAME);
+      const result = yield* LocalInstanceService.start(INSTANCE_NAME);
 
+      expect(result).to.deep.equal(expectedLocalInstanceInfo);
       expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
       expect(mockDockerLib.doesComposeProjectHaveContainers.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
       expect(mockFileLib.writeFile.calledOnceWithExactly(`${tmpDir}/docker-compose.yml`)).to.be.true;
@@ -313,10 +333,6 @@ describe('Local Instance Service', () => {
       expect(mockDockerLib.rmComposeContainer.calledOnceWithExactly('cht-upgrade-service')).to.be.true;
       expect(rmComposeContainerInner.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
       expect(mockDockerLib.restartCompose.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
-      expect(mockDockerLib.getEnvarFromComposeContainer.calledOnceWithExactly(
-        'cht-upgrade-service', 'NGINX_HTTPS_PORT'
-      )).to.be.true;
-      expect(getEnvarFromComposeContainerInner.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
       expect(mockHttpClient.filterStatusOk.calledOnce).to.be.true;
       expect(mockHttpRequest.get.calledOnceWithExactly(`https://localhost:${PORT}/api/info`)).to.be.true;
       expect(httpClientExecute.calledOnceWithExactly(HTTP_CLIENT_REQUEST)).to.be.true;
@@ -325,7 +341,6 @@ describe('Local Instance Service', () => {
     it('returns error when no volume exists for project name', run(function* () {
       mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(false));
       mockDockerLib.doesComposeProjectHaveContainers.returns(Effect.succeed(true));
-      getEnvarFromComposeContainerInner.returns(Effect.succeed(PORT));
 
       const either = yield* LocalInstanceService
         .start(INSTANCE_NAME)
@@ -344,10 +359,6 @@ describe('Local Instance Service', () => {
         expect(mockDockerLib.rmComposeContainer.notCalled).to.be.true;
         expect(rmComposeContainerInner.notCalled).to.be.true;
         expect(mockDockerLib.restartCompose.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
-        expect(mockDockerLib.getEnvarFromComposeContainer.calledOnceWithExactly(
-          'cht-upgrade-service', 'NGINX_HTTPS_PORT'
-        )).to.be.true;
-        expect(getEnvarFromComposeContainerInner.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
         expect(mockHttpClient.filterStatusOk.notCalled).to.be.true;
         expect(mockHttpRequest.get.notCalled).to.be.true;
         expect(httpClientExecute.notCalled).to.be.true;
@@ -372,12 +383,12 @@ describe('Local Instance Service', () => {
         NGINX_HTTPS_PORT: Number(PORT),
       };
       mockFileLib.readJsonFile.returns(Effect.succeed(env));
-      getEnvarFromComposeContainerInner.returns(Effect.succeed(PORT));
       httpClientExecute.returns(Effect.void);
       rmComposeContainerInner.returns(Effect.fail('Failed to remove container'));
 
-      yield* LocalInstanceService.start(INSTANCE_NAME);
+      const result = yield* LocalInstanceService.start(INSTANCE_NAME);
 
+      expect(result).to.deep.equal(expectedLocalInstanceInfo);
       expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
       expect(mockDockerLib.doesComposeProjectHaveContainers.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
       expect(mockFileLib.writeFile.calledOnceWithExactly(`${tmpDir}/docker-compose.yml`)).to.be.true;
@@ -395,10 +406,6 @@ describe('Local Instance Service', () => {
       expect(mockDockerLib.rmComposeContainer.calledOnceWithExactly('cht-upgrade-service')).to.be.true;
       expect(rmComposeContainerInner.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
       expect(mockDockerLib.restartCompose.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
-      expect(mockDockerLib.getEnvarFromComposeContainer.calledOnceWithExactly(
-        'cht-upgrade-service', 'NGINX_HTTPS_PORT'
-      )).to.be.true;
-      expect(getEnvarFromComposeContainerInner.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
       expect(mockHttpClient.filterStatusOk.calledOnce).to.be.true;
       expect(mockHttpRequest.get.calledOnceWithExactly(`https://localhost:${PORT}/api/info`)).to.be.true;
       expect(httpClientExecute.calledOnceWithExactly(HTTP_CLIENT_REQUEST)).to.be.true;
@@ -484,7 +491,7 @@ describe('Local Instance Service', () => {
       it(`sets the ${sslType} SSL certs for the given project`, run(function* () {
         mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(true));
         mockDockerLib.doesComposeProjectHaveContainers.returns(Effect.succeed(true));
-        getEnvarFromComposeContainerInner.returns(Effect.succeed(PORT));
+        mockDockerLib.getEnvarFromComposeContainer.returns(Effect.succeed(PORT));
         httpClientExecute.returns(Effect.void);
         const tmpDir = '/tmp/asdfasdfas';
         mockFileLib.createTmpDir.returns(Effect.succeed(tmpDir));
@@ -497,9 +504,8 @@ describe('Local Instance Service', () => {
         expect(mockDockerLib.doesComposeProjectHaveContainers.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
         expect(mockDockerLib.startCompose.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
         expect(mockDockerLib.getEnvarFromComposeContainer.calledOnceWithExactly(
-          'cht-upgrade-service', 'NGINX_HTTPS_PORT'
+          'cht-upgrade-service', 'NGINX_HTTPS_PORT', `${INSTANCE_NAME}-up`
         )).to.be.true;
-        expect(getEnvarFromComposeContainerInner.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
         expect(mockHttpClient.filterStatusOk.calledOnce).to.be.true;
         expect(mockHttpRequest.get.calledOnceWithExactly(`https://localhost:${PORT}/api/info`)).to.be.true;
         expect(httpClientExecute.calledOnceWithExactly(HTTP_CLIENT_REQUEST)).to.be.true;
@@ -522,7 +528,7 @@ describe('Local Instance Service', () => {
     it('returns error if invalid port value found for project', run(function* () {
       mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(true));
       mockDockerLib.doesComposeProjectHaveContainers.returns(Effect.succeed(true));
-      getEnvarFromComposeContainerInner.returns(Effect.succeed('invalid_port'));
+      mockDockerLib.getEnvarFromComposeContainer.returns(Effect.succeed('invalid_port'));
       const tmpDir = '/tmp/asdfasdfas';
       mockFileLib.createTmpDir.returns(Effect.succeed(tmpDir));
 
@@ -536,9 +542,8 @@ describe('Local Instance Service', () => {
         expect(mockDockerLib.doesComposeProjectHaveContainers.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
         expect(mockDockerLib.startCompose.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
         expect(mockDockerLib.getEnvarFromComposeContainer.calledOnceWithExactly(
-          'cht-upgrade-service', 'NGINX_HTTPS_PORT'
+          'cht-upgrade-service', 'NGINX_HTTPS_PORT', `${INSTANCE_NAME}-up`
         )).to.be.true;
-        expect(getEnvarFromComposeContainerInner.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
         expect(mockHttpClient.filterStatusOk.notCalled).to.be.true;
         expect(mockHttpRequest.get.notCalled).to.be.true;
         expect(httpClientExecute.notCalled).to.be.true;
@@ -567,25 +572,43 @@ describe('Local Instance Service', () => {
       const volumeNames = ['chtx-instance-1', 'chtx-instance-2', 'chtx-instance-3'];
       const projectNames = ['myfirstinstance', 'mysecondinstance', 'mythirdinstance'];
       const ports = ['1111', '2222', '3333'];
+      const usernames = ['medic1', 'medic2', 'medic3'];
+      const passwords = ['password1', 'password2', 'password3'];
       mockDockerLib.getVolumeNamesWithLabel.returns(Effect.succeed(volumeNames));
       projectNames.forEach((name, i) => getVolumeLabelValueInner.onCall(i).returns(Effect.succeed(name)));
-      ports.forEach((port, i) => getEnvarFromComposeContainerInner.onCall(i).returns(Effect.succeed(port)));
+      const argsForGetEnvarForPorts = Array.map(projectNames, getEnvarFromComposeArgs('NGINX_HTTPS_PORT'));
+      const argsForGetEnvarForUsernames = Array.map(projectNames, getEnvarFromComposeArgs('COUCHDB_USER'));
+      const argsForGetEnvarForPasswords = Array.map(projectNames, getEnvarFromComposeArgs('COUCHDB_PASSWORD'));
+      argsForGetEnvarForPorts.forEach((args, i) => mockDockerLib
+        .getEnvarFromComposeContainer
+        .withArgs(...args)
+        .returns(Effect.succeed(ports[i])));
+      argsForGetEnvarForUsernames.forEach((args, i) => mockDockerLib
+        .getEnvarFromComposeContainer
+        .withArgs(...args)
+        .returns(Effect.succeed(usernames[i])));
+      argsForGetEnvarForPasswords.forEach((args, i) => mockDockerLib
+        .getEnvarFromComposeContainer
+        .withArgs(...args)
+        .returns(Effect.succeed(passwords[i])));
 
       const results = yield* LocalInstanceService.ls();
 
       const expectedResults = pipe(
         Array.map(ports, Option.some),
         Array.zipWith(projectNames, (port, name) => ({ name, port })),
+        Array.zipWith(usernames, (info, username) => ({ ...info, username })),
+        Array.zipWith(passwords, (info, password) => ({ ...info, password: Redacted.make(password) })),
       );
       expect(results).to.deep.equal(expectedResults);
       expect(mockDockerLib.getVolumeNamesWithLabel.calledOnceWithExactly('chtx.instance')).to.be.true;
       expect(mockDockerLib.getVolumeLabelValue.calledOnceWithExactly('chtx.instance')).to.be.true;
       expect(getVolumeLabelValueInner.args).to.deep.equal(Array.map(volumeNames, Array.make));
-      const expectedGetEnvarParams = pipe(
-        Array.map(projectNames, name => `${name}-up`),
-        Array.map(names => [names]),
-      );
-      expect(getEnvarFromComposeContainerInner.args).to.deep.equal(expectedGetEnvarParams);
+      expect(mockDockerLib.getEnvarFromComposeContainer.args).to.deep.equalInAnyOrder([
+        ...argsForGetEnvarForUsernames,
+        ...argsForGetEnvarForPasswords,
+        ...argsForGetEnvarForPorts,
+      ]);
     }));
 
     it('does not include port when it cannot be found', run(function* () {
@@ -593,16 +616,36 @@ describe('Local Instance Service', () => {
       const projectName = 'myfirstinstance';
       mockDockerLib.getVolumeNamesWithLabel.returns(Effect.succeed([volumeName]));
       getVolumeLabelValueInner.returns(Effect.succeed(projectName));
-      getEnvarFromComposeContainerInner.returns(Effect.succeed('invalid port'));
+      const argsForGetEnvarForPorts = getEnvarFromComposeArgs('NGINX_HTTPS_PORT')(projectName);
+      const argsForGetEnvarForUsernames = getEnvarFromComposeArgs('COUCHDB_USER')(projectName);
+      const argsForGetEnvarForPasswords = getEnvarFromComposeArgs('COUCHDB_PASSWORD')(projectName);
+      mockDockerLib.getEnvarFromComposeContainer
+        .withArgs(...argsForGetEnvarForPorts)
+        .returns(Effect.succeed('invalid port'));
+      mockDockerLib.getEnvarFromComposeContainer
+        .withArgs(...argsForGetEnvarForUsernames)
+        .returns(Effect.succeed('medic'));
+      mockDockerLib.getEnvarFromComposeContainer
+        .withArgs(...argsForGetEnvarForPasswords)
+        .returns(Effect.succeed('password'));
 
       const results = yield* LocalInstanceService.ls();
 
-      const expectedResults = [{ name: projectName, port: Option.none() }];
+      const expectedResults = [{
+        name: projectName,
+        port: Option.none(),
+        username: 'medic',
+        password: Redacted.make('password'),
+      }];
       expect(results).to.deep.equal(expectedResults);
       expect(mockDockerLib.getVolumeNamesWithLabel.calledOnceWithExactly('chtx.instance')).to.be.true;
       expect(mockDockerLib.getVolumeLabelValue.calledOnceWithExactly('chtx.instance')).to.be.true;
       expect(getVolumeLabelValueInner.args).to.deep.equal(Array.map([volumeName], Array.make));
-      expect(getEnvarFromComposeContainerInner.calledOnceWithExactly(`${projectName}-up`)).to.be.true;
+      expect(mockDockerLib.getEnvarFromComposeContainer.args).to.deep.equalInAnyOrder([
+        argsForGetEnvarForUsernames,
+        argsForGetEnvarForPasswords,
+        argsForGetEnvarForPorts,
+      ]);
     }));
 
     it('returns error when there is a problem getting volume names', run(function* () {

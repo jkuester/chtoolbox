@@ -158,8 +158,10 @@ export const rmComposeContainer = (serviceName: string) => (
   .pipe(runForExitCode);
 
 export const getEnvarFromComposeContainer = (
-  containerServiceName: string, envar: string
-) => (projectName: string): Effect.Effect<string, PlatformError, CommandExecutor> => dockerCompose(
+  containerServiceName: string,
+  envar: string,
+  projectName: string
+): Effect.Effect<string, PlatformError, CommandExecutor> => dockerCompose(
   projectName, 'exec', containerServiceName, 'printenv', envar
 )
   .pipe(runForString);
