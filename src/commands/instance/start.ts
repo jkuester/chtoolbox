@@ -1,7 +1,7 @@
 import { Args, Command } from '@effect/cli';
 import { Array, Effect, pipe } from 'effect';
 import { LocalInstanceService } from '../../services/local-instance.js';
-import { printInstanceInfo } from './create.js';
+import { printInstanceTable } from './ls.js';
 
 const startChtInstances = (names: string[]) => pipe(
   names,
@@ -18,7 +18,7 @@ const names = Args
 
 export const start = Command
   .make('start', { names }, ({ names }) => startChtInstances(names)
-    .pipe(Effect.flatMap(printInstanceInfo(names))))
+    .pipe(Effect.flatMap(printInstanceTable)))
   .pipe(Command.withDescription(
     'LOCAL ONLY: Start a local CHT instance. The instance must already have been created. ' +
     'Requires Docker and Docker Compose.'
