@@ -128,7 +128,7 @@ const copyEnvFileFromDanglingVolume = (tempDir, instanceName) => Effect
     .acquireUseRelease(writeUpgradeServiceCompose(tempDir)
     .pipe(Effect.andThen(createUpgradeSvcContainer(instanceName, {}, tempDir))), () => copyEnvFileFromUpgradeSvcContainer(instanceName, tempDir), () => rmTempUpgradeServiceContainer(instanceName))
     .pipe(Effect.scoped);
-const getEnvarFromUpgradeSvcContainer = (instanceName, envar) => pipe(upgradeSvcProjectName(instanceName), getEnvarFromComposeContainer(UPGRADE_SVC_NAME, envar));
+const getEnvarFromUpgradeSvcContainer = (instanceName, envar) => pipe(upgradeSvcProjectName(instanceName), serviceName => getEnvarFromComposeContainer(UPGRADE_SVC_NAME, envar, serviceName));
 const getPortForInstance = (instanceName) => pipe(getEnvarFromUpgradeSvcContainer(instanceName, 'NGINX_HTTPS_PORT'), Effect.map(Number.parseInt), Effect.flatMap(value => Match
     .value(value)
     .pipe(Match.when(Number.isInteger, () => Effect.succeed(value.toString())), Match.orElse(() => Effect.fail(new Error(`Could not get port for instance ${instanceName}`))))));

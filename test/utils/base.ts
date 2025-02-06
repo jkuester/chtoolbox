@@ -2,6 +2,10 @@ import sinon from 'sinon';
 import { Effect, Layer, TestContext } from 'effect';
 import { YieldWrap } from 'effect/Utils';
 import { Scope } from 'effect/Scope';
+import { use } from 'chai';
+import deepEqualInAnyOrder from 'deep-equal-in-any-order';
+
+use(deepEqualInAnyOrder);
 
 /**
  * Sandbox to use when creating stand-alone stubs. This sandbox will be `reset` after each test, but not `restore`d.

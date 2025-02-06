@@ -1,11 +1,12 @@
 import { describe, it } from 'mocha';
-import { TestContext } from 'effect';
+import { TestContext, Redacted, Option } from 'effect';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import { genWithLayer, sandbox } from '../utils/base.js';
 import OS from 'node:os';
 import * as LocalNetworkLibs from '../../src/libs/local-network.js';
 import esmock from 'esmock';
+import { getLocalIpUrlBasicAuth } from '../../src/libs/local-network.js';
 
 const mockGetPort = sandbox.stub();
 
@@ -75,5 +76,20 @@ describe('local network libs', () => {
       expect(result).to.equal('https://127-0-0-1.local-ip.medicmobile.org:1234');
       expect(networkInterfaces.calledOnceWithExactly()).to.be.true;
     });
+  });
+
+  it('getLocalIpUrlBasicAuth', () => {
+    const networkInterfaces: sinon.SinonStub = sinon.stub(OS, 'networkInterfaces');
+    networkInterfaces.returns({ eth_ipv4: [{ family: 'IPv4', address: '192.168.1.111' }] });
+
+    const result = getLocalIpUrlBasicAuth({
+      name: 'myInst',
+      username: 'medic',
+      password: Redacted.make('password'),
+      port: Option.some('1234')
+    });
+
+    expect(result).to.deep.equal(Option.some('https://medic:password@192-168-1-111.local-ip.medicmobile.org:1234'));
+    expect(networkInterfaces.calledOnceWithExactly()).to.be.true;
   });
 });

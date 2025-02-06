@@ -235,7 +235,7 @@ const copyEnvFileFromDanglingVolume = (
 
 const getEnvarFromUpgradeSvcContainer = (instanceName: string, envar: string) => pipe(
   upgradeSvcProjectName(instanceName),
-  getEnvarFromComposeContainer(UPGRADE_SVC_NAME, envar),
+  serviceName => getEnvarFromComposeContainer(UPGRADE_SVC_NAME, envar, serviceName),
 );
 
 const getPortForInstance = (instanceName: string) => pipe(
