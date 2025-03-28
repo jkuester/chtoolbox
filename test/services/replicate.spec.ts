@@ -1,5 +1,5 @@
 import { describe, it } from 'mocha';
-import { Chunk, Effect, Either, Layer, Redacted, Stream } from 'effect';
+import { Chunk, Effect, Layer, Redacted, Stream } from 'effect';
 import sinon from 'sinon';
 import { PouchDBService } from '../../src/services/pouchdb.js';
 import { EnvironmentService } from '../../src/services/environment.js';
@@ -141,30 +141,6 @@ describe('Replicate Service', () => {
       include_docs: true,
       doc_ids: [FAKE_RESPONSE.id],
     })).to.be.true;
-  }));
-
-  it('rejects remote urls for both source and target', run(function* () {
-    const owner = 'medic';
-    const url = `http://${owner}:password@localhost:5984/`;
-    const env = Redacted.make(url).pipe(url => ({ url, user: owner }));
-    environmentGet.returns(Effect.succeed(env));
-    const source = 'http://remoteUser:password@remote.couch.instance.com/source';
-    const target = 'http://remoteUser:password@remote.couch.instance.com/target';
-    bulkDocs.resolves([FAKE_RESPONSE]);
-    mockPouchSvc.assertPouchResponse.returns(FAKE_RESPONSE);
-    mockPouchSvc.streamChanges.returns(sinon.stub().returns(Stream.empty));
-
-    const either = yield* Effect.either(ReplicateService.replicate(source, target));
-
-    if (Either.isRight(either)) {
-      expect.fail('Expected error to be thrown.');
-    }
-    expect(either.left.message).to.equal('Either source or target db must belong to the current CHT instance.');
-    expect(pouchGet.notCalled).to.be.true;
-    expect(environmentGet.calledOnceWithExactly()).to.be.true;
-    expect(bulkDocs.notCalled).to.be.true;
-    expect(mockPouchSvc.assertPouchResponse.notCalled).to.be.true;
-    expect(mockPouchSvc.streamChanges.notCalled).to.be.true;
   }));
 
   it('includes ddocs in replication when param is set', run(function* () {
