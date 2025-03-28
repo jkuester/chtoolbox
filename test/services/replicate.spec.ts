@@ -49,7 +49,7 @@ describe('Replicate Service', () => {
     yield* ReplicateService.replicate(source, target);
 
     expect(pouchGet.args).to.deep.equal([['_replicator'], ['_replicator']]);
-    expect(environmentGet.args).to.deep.equal([[], []]);
+    expect(environmentGet.calledOnceWithExactly()).to.be.true;
     expect(bulkDocs.calledOnceWithExactly([{
       user_ctx: {
         name: owner,
@@ -85,7 +85,7 @@ describe('Replicate Service', () => {
     yield* ReplicateService.replicate(source, target);
 
     expect(pouchGet.args).to.deep.equal([['_replicator'], ['_replicator']]);
-    expect(environmentGet.args).to.deep.equal([[], []]);
+    expect(environmentGet.calledOnceWithExactly()).to.be.true;
     expect(bulkDocs.calledOnceWithExactly([{
       user_ctx: {
         name: owner,
@@ -121,7 +121,7 @@ describe('Replicate Service', () => {
     yield* ReplicateService.replicate(source, target);
 
     expect(pouchGet.args).to.deep.equal([['_replicator'], ['_replicator']]);
-    expect(environmentGet.args).to.deep.equal([[], []]);
+    expect(environmentGet.calledOnceWithExactly()).to.be.true;
     expect(bulkDocs.calledOnceWithExactly([{
       user_ctx: {
         name: owner,
@@ -157,7 +157,7 @@ describe('Replicate Service', () => {
     yield* ReplicateService.replicate(source, target, true);
 
     expect(pouchGet.args).to.deep.equal([['_replicator'], ['_replicator']]);
-    expect(environmentGet.args).to.deep.equal([[], []]);
+    expect(environmentGet.calledOnceWithExactly()).to.be.true;
     expect(bulkDocs.calledOnceWithExactly([{
       user_ctx: {
         name: owner,
@@ -226,7 +226,7 @@ describe('Replicate Service', () => {
 
     expect(results).to.deep.equal(repDocChanges);
     expect(pouchGet.args).to.deep.equal([['_replicator'], ['_replicator']]);
-    expect(environmentGet.args).to.deep.equal([[], []]);
+    expect(environmentGet.calledOnceWithExactly()).to.be.true;
     expect(bulkDocs.calledOnceWithExactly([repDocInitial])).to.be.true;
     expect(mockPouchSvc.assertPouchResponse.calledOnceWithExactly(FAKE_RESPONSE)).to.be.true;
     expect(mockPouchSvc.streamChanges.calledOnceWithExactly({
