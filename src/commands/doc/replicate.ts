@@ -6,6 +6,10 @@ import { CouchActiveTask, streamActiveTasks } from '../../libs/couch/active-task
 import { ParseError } from 'effect/Cron';
 import { clearThen } from '../../libs/console.js';
 
+const DB_SPECIFIER_DESCRIPTION = `This can either be a database name for the current instance (e.g. 'medic') .`
+  + `or a full URL to a remote Couch database (including username/password). `
+  + `E.g. 'https://medic:password@192-168-1-80.local-ip.medicmobile.org:38593/medic'`;
+
 const isRepTask = (id: string): Predicate.Predicate<CouchActiveTask> => pipe(
   ({ type }: CouchActiveTask) => type === 'replication',
   Predicate.and(({ doc_id }) => doc_id === id),
@@ -55,10 +59,10 @@ const all = Options
   .pipe(Options.withDescription('Replicate everything including design documents'));
 const source = Args
   .text({ name: 'source' })
-  .pipe(Args.withDescription('The source database name.'));
+  .pipe(Args.withDescription(`The replication source. ${DB_SPECIFIER_DESCRIPTION}`));
 const target = Args
   .text({ name: 'target' })
-  .pipe(Args.withDescription('The target database name.'));
+  .pipe(Args.withDescription(`The replication target. ${DB_SPECIFIER_DESCRIPTION}`));
 
 export const replicate = Command
   .make('replicate', { follow, source, target, all }, ({ follow, source, target, all }) => initializeUrl.pipe(

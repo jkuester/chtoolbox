@@ -2,19 +2,24 @@ import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { assertPouchResponse, PouchDBService, streamChanges } from './pouchdb.js';
 import { EnvironmentService } from './environment.js';
-import { Redacted, Schema, Stream } from 'effect';
+import { Redacted, Schema, Stream, pipe, Option, Array, Match, String } from 'effect';
 const SKIP_DDOC_SELECTOR = {
     _id: { '$regex': '^(?!_design/)' },
 };
-const createReplicationDoc = (source, target, includeDdocs) => EnvironmentService
+const getCouchDbUrl = (env) => (name) => pipe(name, Schema.decodeOption(Schema.URL), Option.map(url => url.toString()), Option.getOrElse(() => `${Redacted.value(env.url)}${name}`));
+const noneStartWith = (prefix) => (values) => pipe(values, Array.findFirst(String.startsWith(prefix)), Option.map(() => false), Option.getOrElse(() => true));
+const getSourceTargetUrls = (source, target) => EnvironmentService
+    .get()
+    .pipe(Effect.flatMap(env => pipe([source, target], Array.map(getCouchDbUrl(env)), Match.value, Match.when(noneStartWith(Redacted.value(env.url)), () => Effect.fail(new Error('Either source or target db must belong to the current CHT instance.'))), Match.orElse(urls => Effect.succeed(urls)))));
+const createReplicationDoc = (sourceUrl, targetUrl, includeDdocs) => EnvironmentService
     .get()
     .pipe(Effect.map(env => ({
     user_ctx: {
         name: env.user,
         roles: ['_admin', '_reader', '_writer'],
     },
-    source: { url: `${Redacted.value(env.url)}${source}` },
-    target: { url: `${Redacted.value(env.url)}${target}` },
+    source: { url: sourceUrl },
+    target: { url: targetUrl },
     create_target: false,
     continuous: false,
     owner: env.user,
@@ -44,9 +49,10 @@ const serviceContext = Effect
     .pipe(Context.add(EnvironmentService, env))));
 export class ReplicateService extends Effect.Service()('chtoolbox/ReplicateService', {
     effect: serviceContext.pipe(Effect.map(context => ({
-        replicate: (source, target, includeDdocs = false) => Effect
-            .all([PouchDBService.get('_replicator'), createReplicationDoc(source, target, includeDdocs)])
-            .pipe(Effect.flatMap(([db, doc]) => Effect.promise(() => db.bulkDocs([doc]))), Effect.map(([resp]) => resp), Effect.map(assertPouchResponse), Effect.map(({ id }) => id), Effect.flatMap(streamReplicationDocChanges), Effect.provide(context)),
+        replicate: (source, target, includeDdocs = false) => getSourceTargetUrls(source, target).pipe(Effect.flatMap(([sourceUrl, targetUrl]) => Effect.all([
+            PouchDBService.get('_replicator'),
+            createReplicationDoc(sourceUrl, targetUrl, includeDdocs)
+        ])), Effect.flatMap(([db, doc]) => Effect.promise(() => db.bulkDocs([doc]))), Effect.map(([resp]) => resp), Effect.map(assertPouchResponse), Effect.map(({ id }) => id), Effect.flatMap(streamReplicationDocChanges), Effect.provide(context))
     }))),
     accessors: true,
 }) {
