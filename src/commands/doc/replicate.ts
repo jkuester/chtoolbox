@@ -6,7 +6,7 @@ import { CouchActiveTask, streamActiveTasks } from '../../libs/couch/active-task
 import { ParseError } from 'effect/Cron';
 import { clearThen } from '../../libs/console.js';
 
-const DB_SPECIFIER_DESCRIPTION = `This can either be a database name for the current instance (e.g. 'medic') .`
+const DB_SPECIFIER_DESCRIPTION = `This can either be a database name for the current instance (e.g. 'medic') `
   + `or a full URL to a remote Couch database (including username/password). `
   + `E.g. 'https://medic:password@192-168-1-80.local-ip.medicmobile.org:38593/medic'`;
 
