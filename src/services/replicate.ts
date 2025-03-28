@@ -74,12 +74,12 @@ export class ReplicateService extends Effect.Service<ReplicateService>()('chtool
     ): Effect.Effect<Stream.Stream<ReplicationDoc, Error>, Error> => Effect
       .all([PouchDBService.get('_replicator'), createReplicationDoc(source, target, includeDdocs)])
       .pipe(
-      Effect.flatMap(([db, doc]) => Effect.promise(() => db.bulkDocs([doc]))),
-      Effect.map(([resp]) => resp),
-      Effect.map(assertPouchResponse),
-      Effect.map(({ id }) => id),
-      Effect.flatMap(streamReplicationDocChanges),
-      Effect.provide(context),
+        Effect.flatMap(([db, doc]) => Effect.promise(() => db.bulkDocs([doc]))),
+        Effect.map(([resp]) => resp),
+        Effect.map(assertPouchResponse),
+        Effect.map(({ id }) => id),
+        Effect.flatMap(streamReplicationDocChanges),
+        Effect.provide(context),
       ),
   }))),
   accessors: true,
