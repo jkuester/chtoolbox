@@ -1,12 +1,19 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { assertPouchResponse, PouchDBService, streamChanges } from './pouchdb.js';
-import { EnvironmentService } from './environment.js';
-import { Redacted, Schema, Stream } from 'effect';
+import { Environment, EnvironmentService } from './environment.js';
+import { Option, pipe, Redacted, Schema, Stream } from 'effect';
 
 const SKIP_DDOC_SELECTOR = {
   _id: { '$regex': '^(?!_design/)' },
 };
+
+const getCouchDbUrl = (env: Environment, name: string) => pipe(
+  name,
+  Schema.decodeOption(Schema.URL),
+  Option.map(url => url.toString()),
+  Option.getOrElse(() => `${Redacted.value(env.url)}${name}`)
+);
 
 const createReplicationDoc = (source: string, target: string, includeDdocs: boolean) => EnvironmentService
   .get()
@@ -16,8 +23,8 @@ const createReplicationDoc = (source: string, target: string, includeDdocs: bool
         name: env.user,
         roles: ['_admin', '_reader', '_writer'],
       },
-      source: { url: `${Redacted.value(env.url)}${source}` },
-      target: { url: `${Redacted.value(env.url)}${target}` },
+      source: { url: getCouchDbUrl(env, source) },
+      target: { url: getCouchDbUrl(env, target) },
       create_target: false,
       continuous: false,
       owner: env.user,

@@ -1,5 +1,5 @@
 import { Effect, Redacted } from 'effect';
-interface Environment {
+export interface Environment {
     readonly url: Redacted.Redacted;
     readonly user: string;
 }
