@@ -40,14 +40,14 @@
     "eslint": "^9.23.0",
     "eslint-plugin-n": "^17.17.0",
     "eslint-plugin-promise": "^7.2.1",
-    "esmock": "^2.6.9",
+    "esmock": "^2.7.0",
     "globals": "^16.0.0",
-    "knip": "^5.44.5",
+    "knip": "^5.46.2",
     "mocha": "^11.1.0",
-    "sinon": "^19.0.2",
+    "sinon": "^20.0.0",
     "tsx": "^4.19.3",
-    "typescript": "^5.7.3",
-    "typescript-eslint": "^8.25.0"
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.28.0"
   },
   "dependencies": {
     "@effect/cli": "^0.59.2",
@@ -58,7 +58,7 @@
     "pouchdb-adapter-http": "^9.0.0",
     "pouchdb-core": "^9.0.0",
     "pouchdb-mapreduce": "^9.0.0",
-    "pouchdb-session-authentication": "^1.1.0",
+    "pouchdb-session-authentication": "^1.4.0",
     "test-data-generator": "git+https://github.com/medic/test-data-generator.git#chtoolbox"
   },
   "overrides": {
