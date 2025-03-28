@@ -57,6 +57,13 @@ const follow = Options
 const all = Options
   .boolean('all')
   .pipe(Options.withDescription('Replicate everything including design documents'));
+const contacts = Options
+  .text('contacts')
+  .pipe(
+    Options.withAlias('c'),
+    Options.withDescription('Replicate contacts with the given contact type'),
+    Options.atLeast(0)
+  );
 const source = Args
   .text({ name: 'source' })
   .pipe(Args.withDescription(`The replication source. ${DB_SPECIFIER_DESCRIPTION}`));
@@ -65,8 +72,11 @@ const target = Args
   .pipe(Args.withDescription(`The replication target. ${DB_SPECIFIER_DESCRIPTION}`));
 
 export const replicate = Command
-  .make('replicate', { follow, source, target, all }, ({ follow, source, target, all }) => initializeUrl.pipe(
-    Effect.andThen(ReplicateService.replicate(source, target, all)),
+  .make('replicate', { follow, contacts, source, target, all }, ({ follow, contacts, source, target, all }) => initializeUrl.pipe(
+    Effect.andThen(ReplicateService.replicate(source, target, {
+      includeDdocs: all,
+      contactTypes: contacts
+    })),
     Effect.map(completionStream => Option.liftPredicate(completionStream, () => follow)),
     Effect.map(Option.map(watchReplication)),
     Effect.flatMap(Option.getOrElse(() => Console.clear.pipe(

@@ -1,5 +1,5 @@
 import { describe, it } from 'mocha';
-import { Chunk, Effect, Layer, Redacted, Stream } from 'effect';
+import { Chunk, Effect, Either, Layer, Redacted, Stream } from 'effect';
 import sinon from 'sinon';
 import { PouchDBService } from '../../src/services/pouchdb.js';
 import { EnvironmentService } from '../../src/services/environment.js';
@@ -154,7 +154,7 @@ describe('Replicate Service', () => {
     mockPouchSvc.assertPouchResponse.returns(FAKE_RESPONSE);
     mockPouchSvc.streamChanges.returns(sinon.stub().returns(Stream.empty));
 
-    yield* ReplicateService.replicate(source, target, true);
+    yield* ReplicateService.replicate(source, target, { includeDdocs: true });
 
     expect(pouchGet.args).to.deep.equal([['_replicator'], ['_replicator']]);
     expect(environmentGet.calledOnceWithExactly()).to.be.true;
@@ -168,13 +168,81 @@ describe('Replicate Service', () => {
       create_target: false,
       continuous: false,
       owner,
-      selector: undefined,
+      selector: { },
     }])).to.be.true;
     expect(mockPouchSvc.assertPouchResponse.calledOnceWithExactly(FAKE_RESPONSE)).to.be.true;
     expect(mockPouchSvc.streamChanges.calledOnceWithExactly({
       include_docs: true,
       doc_ids: [FAKE_RESPONSE.id],
     })).to.be.true;
+  }));
+
+  it('replicates only contact types when param is set', run(function* () {
+    const owner = 'medic';
+    const url = `http://${owner}:password@localhost:5984/`;
+    const env = Redacted.make(url).pipe(url => ({ url, user: owner }));
+    environmentGet.returns(Effect.succeed(env));
+    const source = 'source';
+    const target = 'target';
+    bulkDocs.resolves([FAKE_RESPONSE]);
+    mockPouchSvc.assertPouchResponse.returns(FAKE_RESPONSE);
+    mockPouchSvc.streamChanges.returns(sinon.stub().returns(Stream.empty));
+    const contactTypes = ['person', 'clinic'];
+
+    yield* ReplicateService.replicate(source, target, { contactTypes });
+
+    expect(pouchGet.args).to.deep.equal([['_replicator'], ['_replicator']]);
+    expect(environmentGet.calledOnceWithExactly()).to.be.true;
+    expect(bulkDocs.calledOnceWithExactly([{
+      user_ctx: {
+        name: owner,
+        roles: ['_admin', '_reader', '_writer'],
+      },
+      source: { url: `${url}${source}` },
+      target: { url: `${url}${target}` },
+      create_target: false,
+      continuous: false,
+      owner,
+      selector: {
+        $or: [
+          { type: { $in: contactTypes } },
+          { $and: [
+              { type: 'contact', },
+              { contact_type: { $in: contactTypes } }
+            ] }
+        ]
+      },
+    }])).to.be.true;
+    expect(mockPouchSvc.assertPouchResponse.calledOnceWithExactly(FAKE_RESPONSE)).to.be.true;
+    expect(mockPouchSvc.streamChanges.calledOnceWithExactly({
+      include_docs: true,
+      doc_ids: [FAKE_RESPONSE.id],
+    })).to.be.true;
+  }));
+
+  it('fails when replicating ddocs and filtering by contact type', run(function* () {
+    const owner = 'medic';
+    const url = `http://${owner}:password@localhost:5984/`;
+    const env = Redacted.make(url).pipe(url => ({ url, user: owner }));
+    environmentGet.returns(Effect.succeed(env));
+    const source = 'source';
+    const target = 'target';
+
+    const either = yield* Effect.either(ReplicateService.replicate(source, target, {
+      includeDdocs: true,
+      contactTypes: ['person', 'clinic']
+    }));
+
+    if (Either.isRight(either)) {
+      expect.fail('Expected error to be thrown.')
+    }
+
+    expect(either.left.message).to.equal('Cannot replicate ddocs while also filtering by contact type.');
+    expect(pouchGet.calledOnceWithExactly('_replicator')).to.be.true;
+    expect(environmentGet.calledOnceWithExactly()).to.be.true;
+    expect(bulkDocs.notCalled).to.be.true;
+    expect(mockPouchSvc.assertPouchResponse.notCalled).to.be.true;
+    expect(mockPouchSvc.streamChanges.notCalled).to.be.true;
   }));
 
   it('streams updates to the replication doc until the replication state is completed', run(function* () {

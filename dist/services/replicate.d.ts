@@ -25,9 +25,13 @@ declare const ReplicationDoc_base: Schema.Class<ReplicationDoc, {
 }, {}, {}>;
 export declare class ReplicationDoc extends ReplicationDoc_base {
 }
+interface ReplicationOptions {
+    readonly includeDdocs?: boolean;
+    readonly contactTypes?: string[];
+}
 declare const ReplicateService_base: Effect.Service.Class<ReplicateService, "chtoolbox/ReplicateService", {
     readonly effect: Effect.Effect<{
-        replicate: (source: string, target: string, includeDdocs?: boolean) => Effect.Effect<Stream.Stream<ReplicationDoc, Error>, Error>;
+        replicate: (source: string, target: string, opts?: ReplicationOptions) => Effect.Effect<Stream.Stream<ReplicationDoc, Error>, Error>;
     }, never, EnvironmentService | PouchDBService>;
     readonly accessors: true;
 }>;

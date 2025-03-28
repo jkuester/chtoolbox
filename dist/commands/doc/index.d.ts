@@ -12,6 +12,7 @@ export declare const doc: Command.Command<"doc", import("../../services/environm
         readonly since: import("effect/Option").Option<Date>;
     } | {
         readonly follow: boolean;
+        readonly contacts: string[];
         readonly source: string;
         readonly target: string;
         readonly all: boolean;
