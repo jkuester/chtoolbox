@@ -1,10 +1,11 @@
 import { Args, Command, Options } from '@effect/cli';
-import { Array, Console, Effect, Option, pipe, Predicate, Stream } from 'effect';
+import { Array, Console, Effect, Option, pipe, Predicate, Schema, Stream } from 'effect';
 import { initializeUrl } from '../../index.js';
 import { ReplicateService, ReplicationDoc } from '../../services/replicate.js';
 import { CouchActiveTask, streamActiveTasks } from '../../libs/couch/active-tasks.js';
 import { ParseError } from 'effect/Cron';
 import { clearThen } from '../../libs/console.js';
+import { PouchDBService } from '../../services/pouchdb.js';
 
 const DB_SPECIFIER_DESCRIPTION = `This can either be a database name for the current instance (e.g. 'medic') `
   + `or a full URL to a remote Couch database (including username/password). `
@@ -39,14 +40,26 @@ const getReplicationDocId = (completionStream: Stream.Stream<ReplicationDoc, Err
     Effect.map(({ _id }) => _id),
   );
 
-const watchReplication = (completionStream: Stream.Stream<ReplicationDoc, Error | ParseError>) => Stream
-  .runDrain(completionStream)
+const getFinalDocCount = (repDocId: string) => PouchDBService
+  .get('_replicator')
   .pipe(
-    Effect.race(
-      getReplicationDocId(completionStream)
-        .pipe(Effect.flatMap(streamReplicationTasks))
-    ),
+    Effect.flatMap(db => Effect.promise(() => db.get(repDocId))),
+    Effect.flatMap(Schema.decodeUnknown(ReplicationDoc)),
+    Effect.map(({ _replication_stats }) => Option.fromNullable(_replication_stats?.docs_written)),
+    Effect.map(Option.getOrElse(() => 0)),
   );
+
+const watchReplication = (
+  completionStream: Stream.Stream<ReplicationDoc, Error | ParseError>
+) => getReplicationDocId(completionStream).pipe(
+  Effect.flatMap(repDocId => Stream
+    .runDrain(completionStream)
+    .pipe(
+      Effect.race(streamReplicationTasks(repDocId)),
+      Effect.andThen(getFinalDocCount(repDocId)),
+      Effect.tap(finalDocCount => clearThen(Console.log(`Replication complete. Final doc count: ${finalDocCount.toString()}`))),
+    )),
+);
 
 const follow = Options
   .boolean('follow')
