@@ -10,8 +10,8 @@ const printCsvRow = (row: readonly (string | number | boolean)[]) => pipe(
   Console.log
 );
 
-const monitorData = (trackCouchDbDirSize: Option.Option<string>, trackNouveauDirSize: Option.Option<string>) => pipe(
-  MonitorService.getAsCsv(trackCouchDbDirSize, trackNouveauDirSize),
+const monitorData = (trackDirSize: Option.Option<string>) => pipe(
+  MonitorService.getAsCsv(trackDirSize),
   Effect.tap(printCsvRow),
   Effect.catchAll(Console.error),
 );
@@ -24,7 +24,7 @@ const interval = Options
     Options.withDefault(1),
   );
 
-const trackCouchDbDirSize = Options
+const trackDirSize = Options
   .directory('track-dir-size', { exists: 'yes' })
   .pipe(
     Options.withDescription(
@@ -33,24 +33,11 @@ const trackCouchDbDirSize = Options
     Options.optional,
   );
 
-const trackNouveauDirSize = Options
-  .directory('track-nouveau-dir-size', { exists: 'yes' })
-  .pipe(
-    Options.withDescription(
-      'The local Nouveau directory to monitor disk usage. (Useful when monitoring a locally deployed CHT instance.)'
-    ),
-    Options.optional,
-  );
-
-export const monitor = Command.make(
-  'monitor',
-  { interval, trackCouchDbDirSize, trackNouveauDirSize },
-  ({ interval, trackCouchDbDirSize, trackNouveauDirSize }) => pipe(
+export const monitor = Command
+  .make('monitor', { interval, trackDirSize }, ({ interval, trackDirSize }) => pipe(
     initializeUrl,
-    Effect.andThen(MonitorService.getCsvHeader(trackCouchDbDirSize, trackNouveauDirSize)),
+    Effect.andThen(MonitorService.getCsvHeader(trackDirSize)),
     Effect.tap(printCsvRow),
-    Effect.andThen(
-      Effect.repeat(monitorData(trackCouchDbDirSize, trackNouveauDirSize), Schedule.spaced(interval * 1000)),
-    ),
-  ),
-).pipe(Command.withDescription(`Poll CHT metrics.`));
+    Effect.andThen(Effect.repeat(monitorData(trackDirSize), Schedule.spaced(interval * 1000))),
+  ))
+  .pipe(Command.withDescription(`Poll CHT metrics.`));

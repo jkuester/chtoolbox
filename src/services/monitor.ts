@@ -19,8 +19,7 @@ interface MonitoringData extends CouchNodeSystem {
   unix_time: number,
   databases: DatabaseInfo[]
   nouveau: NouveauInfo[]
-  couchdb_directory_size: Option.Option<number>
-  nouveau_directory_size: Option.Option<number>
+  directory_size: Option.Option<number>
 }
 
 const currentTimeSec = Clock.currentTimeMillis.pipe(
@@ -109,23 +108,22 @@ const getNouveauInfos = () => pipe(
   Effect.all,
 );
 
-const getDirectorySize = (couchDbDirectory: Option.Option<string>) => LocalDiskUsageService.pipe(
-  Effect.flatMap(service => couchDbDirectory.pipe(
+const getDirectorySize = (directory: Option.Option<string>) => LocalDiskUsageService.pipe(
+  Effect.flatMap(service => directory.pipe(
     Option.map(dir => service.getSize(dir)),
     Option.getOrElse(() => Effect.succeed(null))
   )),
   Effect.map(Option.fromNullable),
 );
 
-const getMonitoringData = (couchDbDirectory: Option.Option<string>, nouveauDirectory: Option.Option<string>) => pipe(
+const getMonitoringData = (directory: Option.Option<string>) => pipe(
   Effect.all([
     currentTimeSec,
     getCouchNodeSystem(),
     getDbsInfoByName(DB_NAMES),
     getCouchDesignInfos(),
     getNouveauInfos(),
-    getDirectorySize(couchDbDirectory),
-    getDirectorySize(nouveauDirectory),
+    getDirectorySize(directory),
   ]),
   Effect.map(([
     unixTime,
@@ -133,8 +131,7 @@ const getMonitoringData = (couchDbDirectory: Option.Option<string>, nouveauDirec
     dbsInfo,
     designInfos,
     nouveauInfos,
-    couchdb_directory_size,
-    nouveau_directory_size,
+    directory_size
   ]): MonitoringData => ({
     ...nodeSystem,
     unix_time: unixTime,
@@ -143,12 +140,11 @@ const getMonitoringData = (couchDbDirectory: Option.Option<string>, nouveauDirec
       designs: designInfos[i]
     })),
     nouveau: nouveauInfos,
-    couchdb_directory_size,
-    nouveau_directory_size,
+    directory_size
   })),
 );
 
-const getCsvHeader = (couchDbDirectory: Option.Option<string>, nouveauDirectory: Option.Option<string>): string[] => [
+const getCsvHeader = (directory: Option.Option<string>): string[] => [
   'unix_time',
   ...DB_NAMES.flatMap(dbName => [
     `${dbName}_sizes_file`,
@@ -163,13 +159,8 @@ const getCsvHeader = (couchDbDirectory: Option.Option<string>, nouveauDirectory:
   ]),
   'memory_processes_used',
   'memory_binary',
-  ...(couchDbDirectory.pipe(
-    Option.map(() => 'couchdb_directory_size'),
-    Option.map(Array.of),
-    Option.getOrElse(() => []),
-  )),
-  ...(nouveauDirectory.pipe(
-    Option.map(() => 'nouveau_directory_size'),
+  ...(directory.pipe(
+    Option.map(() => 'directory_size'),
     Option.map(Array.of),
     Option.getOrElse(() => []),
   )),
@@ -179,8 +170,8 @@ const getCsvHeader = (couchDbDirectory: Option.Option<string>, nouveauDirectory:
   ]),
 ];
 
-const getAsCsv = (couchDbDirectory: Option.Option<string>, nouveauDirectory: Option.Option<string>) => pipe(
-  getMonitoringData(couchDbDirectory, nouveauDirectory),
+const getAsCsv = (directory: Option.Option<string>) => pipe(
+  getMonitoringData(directory),
   Effect.map(data => [
     data.unix_time.toString(),
     ...data.databases.flatMap(db => [
@@ -196,19 +187,14 @@ const getAsCsv = (couchDbDirectory: Option.Option<string>, nouveauDirectory: Opt
     ]),
     data.memory.processes_used.toString(),
     data.memory.binary.toString(),
-    ...(data.couchdb_directory_size.pipe(
-      Option.map(value => value.toString()),
-      Option.map(Array.of),
-      Option.getOrElse(() => []),
-    )),
-    ...(data.nouveau_directory_size.pipe(
+    ...(data.directory_size.pipe(
       Option.map(value => value.toString()),
       Option.map(Array.of),
       Option.getOrElse(() => []),
     )),
     ...data.nouveau.flatMap(nouveauInfo => [
-      nouveauInfo.search_index.num_docs,
-      nouveauInfo.search_index.disk_size,
+      nouveauInfo.search_index.num_docs.toString(),
+      nouveauInfo.search_index.disk_size.toString(),
     ]),
   ]),
 );
@@ -228,15 +214,11 @@ const serviceContext = Effect
 export class MonitorService extends Effect.Service<MonitorService>()('chtoolbox/MonitorService', {
   effect: serviceContext.pipe(Effect.map(context => ({
     get: (
-      couchDbDirectory: Option.Option<string>,
-      nouveauDirectory: Option.Option<string>,
-    ): Effect.Effect<MonitoringData, Error | PlatformError> => getMonitoringData(couchDbDirectory, nouveauDirectory)
+      directory: Option.Option<string>
+    ): Effect.Effect<MonitoringData, Error | PlatformError> => getMonitoringData(directory)
       .pipe(Effect.provide(context)),
     getCsvHeader,
-    getAsCsv: (
-      couchDbDirectory: Option.Option<string>,
-      nouveauDirectory: Option.Option<string>,
-    ): Effect.Effect<(string | number)[], Error | PlatformError> => getAsCsv(couchDbDirectory, nouveauDirectory)
+    getAsCsv: (directory: Option.Option<string>): Effect.Effect<string[], Error | PlatformError> => getAsCsv(directory)
       .pipe(Effect.provide(context)),
   }))),
   accessors: true,

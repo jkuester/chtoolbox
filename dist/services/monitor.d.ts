@@ -14,14 +14,13 @@ interface MonitoringData extends CouchNodeSystem {
     unix_time: number;
     databases: DatabaseInfo[];
     nouveau: NouveauInfo[];
-    couchdb_directory_size: Option.Option<number>;
-    nouveau_directory_size: Option.Option<number>;
+    directory_size: Option.Option<number>;
 }
 declare const MonitorService_base: Effect.Service.Class<MonitorService, "chtoolbox/MonitorService", {
     readonly effect: Effect.Effect<{
-        get: (couchDbDirectory: Option.Option<string>, nouveauDirectory: Option.Option<string>) => Effect.Effect<MonitoringData, Error | PlatformError>;
-        getCsvHeader: (couchDbDirectory: Option.Option<string>, nouveauDirectory: Option.Option<string>) => string[];
-        getAsCsv: (couchDbDirectory: Option.Option<string>, nouveauDirectory: Option.Option<string>) => Effect.Effect<(string | number)[], Error | PlatformError>;
+        get: (directory: Option.Option<string>) => Effect.Effect<MonitoringData, Error | PlatformError>;
+        getCsvHeader: (directory: Option.Option<string>) => string[];
+        getAsCsv: (directory: Option.Option<string>) => Effect.Effect<string[], Error | PlatformError>;
     }, never, ChtClientService | LocalDiskUsageService>;
     readonly accessors: true;
 }>;
