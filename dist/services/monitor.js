@@ -7,6 +7,7 @@ import { Array, Clock, Number, Option, pipe } from 'effect';
 import { LocalDiskUsageService } from './local-disk-usage.js';
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { ChtClientService } from './cht-client.js';
+import { getNouveauInfo } from '../libs/couch/nouveau-info.js';
 const currentTimeSec = Clock.currentTimeMillis.pipe(Effect.map(Number.unsafeDivide(1000)), Effect.map(Math.floor));
 const DB_NAMES = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 const VIEW_INDEXES_BY_DB = {
@@ -50,23 +51,41 @@ const emptyDesignInfo = {
 };
 const getCouchDesignInfosForDb = (dbName) => Effect.all(pipe(VIEW_INDEXES_BY_DB[dbName], Array.map(designName => getDesignInfo(dbName, designName)), Array.map(Effect.catchIf((error) => error instanceof ResponseError && error.response.status === 404, () => Effect.succeed(emptyDesignInfo)))));
 const getCouchDesignInfos = () => pipe(DB_NAMES, Array.map(getCouchDesignInfosForDb), Effect.all);
-const getDirectorySize = (directory) => LocalDiskUsageService.pipe(Effect.flatMap(service => directory.pipe(Option.map(dir => service.getSize(dir)), Option.getOrElse(() => Effect.succeed(null)))), Effect.map(Option.fromNullable));
-const getMonitoringData = (directory) => pipe(Effect.all([
+const NOUVEAU_INDEXES = [
+    'contacts_by_freetext',
+    'reports_by_freetext',
+];
+const emptyNouveauInfo = {
+    name: '',
+    search_index: {
+        purge_seq: 0,
+        update_seq: 0,
+        disk_size: 0,
+        num_docs: 0,
+    },
+};
+const getNouveauInfos = () => pipe(NOUVEAU_INDEXES, Array.map(indexName => getNouveauInfo('medic', 'medic', indexName)), Array.map(Effect.catchIf((error) => error instanceof ResponseError && error.response.status === 404, () => Effect.succeed(emptyNouveauInfo))), Effect.all);
+const getDirectorySize = (couchDbDirectory) => LocalDiskUsageService.pipe(Effect.flatMap(service => couchDbDirectory.pipe(Option.map(dir => service.getSize(dir)), Option.getOrElse(() => Effect.succeed(null)))), Effect.map(Option.fromNullable));
+const getMonitoringData = (couchDbDirectory, nouveauDirectory) => pipe(Effect.all([
     currentTimeSec,
     getCouchNodeSystem(),
     getDbsInfoByName(DB_NAMES),
     getCouchDesignInfos(),
-    getDirectorySize(directory),
-]), Effect.map(([unixTime, nodeSystem, dbsInfo, designInfos, directory_size]) => ({
+    getNouveauInfos(),
+    getDirectorySize(couchDbDirectory),
+    getDirectorySize(nouveauDirectory),
+]), Effect.map(([unixTime, nodeSystem, dbsInfo, designInfos, nouveauInfos, couchdb_directory_size, nouveau_directory_size,]) => ({
     ...nodeSystem,
     unix_time: unixTime,
     databases: dbsInfo.map((dbInfo, i) => ({
         ...dbInfo,
         designs: designInfos[i]
     })),
-    directory_size
+    nouveau: nouveauInfos,
+    couchdb_directory_size,
+    nouveau_directory_size,
 })));
-const getCsvHeader = (directory) => [
+const getCsvHeader = (couchDbDirectory, nouveauDirectory) => [
     'unix_time',
     ...DB_NAMES.flatMap(dbName => [
         `${dbName}_sizes_file`,
@@ -81,9 +100,14 @@ const getCsvHeader = (directory) => [
     ]),
     'memory_processes_used',
     'memory_binary',
-    ...(directory.pipe(Option.map(() => 'directory_size'), Option.map(Array.of), Option.getOrElse(() => [])))
+    ...(couchDbDirectory.pipe(Option.map(() => 'couchdb_directory_size'), Option.map(Array.of), Option.getOrElse(() => []))),
+    ...(nouveauDirectory.pipe(Option.map(() => 'nouveau_directory_size'), Option.map(Array.of), Option.getOrElse(() => []))),
+    ...NOUVEAU_INDEXES.flatMap(indexName => [
+        `medic_medic-nouveau_${indexName}_num_docs`,
+        `medic_medic-nouveau_${indexName}_disk_size`,
+    ]),
 ];
-const getAsCsv = (directory) => pipe(getMonitoringData(directory), Effect.map(data => [
+const getAsCsv = (couchDbDirectory, nouveauDirectory) => pipe(getMonitoringData(couchDbDirectory, nouveauDirectory), Effect.map(data => [
     data.unix_time.toString(),
     ...data.databases.flatMap(db => [
         db.info.sizes.file.toString(),
@@ -98,7 +122,12 @@ const getAsCsv = (directory) => pipe(getMonitoringData(directory), Effect.map(da
     ]),
     data.memory.processes_used.toString(),
     data.memory.binary.toString(),
-    ...(data.directory_size.pipe(Option.map(value => value.toString()), Option.map(Array.of), Option.getOrElse(() => []))),
+    ...(data.couchdb_directory_size.pipe(Option.map(value => value.toString()), Option.map(Array.of), Option.getOrElse(() => []))),
+    ...(data.nouveau_directory_size.pipe(Option.map(value => value.toString()), Option.map(Array.of), Option.getOrElse(() => []))),
+    ...data.nouveau.flatMap(nouveauInfo => [
+        nouveauInfo.search_index.num_docs,
+        nouveauInfo.search_index.disk_size,
+    ]),
 ]));
 const serviceContext = Effect
     .all([
@@ -110,10 +139,10 @@ const serviceContext = Effect
     .pipe(Context.add(ChtClientService, chtClient))));
 export class MonitorService extends Effect.Service()('chtoolbox/MonitorService', {
     effect: serviceContext.pipe(Effect.map(context => ({
-        get: (directory) => getMonitoringData(directory)
+        get: (couchDbDirectory, nouveauDirectory) => getMonitoringData(couchDbDirectory, nouveauDirectory)
             .pipe(Effect.provide(context)),
         getCsvHeader,
-        getAsCsv: (directory) => getAsCsv(directory)
+        getAsCsv: (couchDbDirectory, nouveauDirectory) => getAsCsv(couchDbDirectory, nouveauDirectory)
             .pipe(Effect.provide(context)),
     }))),
     accessors: true,

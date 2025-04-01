@@ -9,6 +9,7 @@ import { ResponseError } from '@effect/platform/HttpClientError';
 import { NonEmptyArray } from 'effect/Array';
 import { PlatformError } from '@effect/platform/Error';
 import { ChtClientService } from './cht-client.js';
+import { getNouveauInfo, NouveauInfo } from '../libs/couch/nouveau-info.js';
 
 interface DatabaseInfo extends CouchDbInfo {
   designs: CouchDesignInfo[]
@@ -98,9 +99,9 @@ const emptyNouveauInfo: NouveauInfo = {
   },
 };
 
-const getNouveauInfos = pipe(
+const getNouveauInfos = () => pipe(
   NOUVEAU_INDEXES,
-  Array.map(indexName => NouveauInfoService.get('medic', 'medic-nouveau', indexName)),
+  Array.map(indexName => getNouveauInfo('medic', 'medic', indexName)),
   Array.map(Effect.catchIf(
     (error) => error instanceof ResponseError && error.response.status === 404,
     () => Effect.succeed(emptyNouveauInfo),
@@ -122,7 +123,7 @@ const getMonitoringData = (couchDbDirectory: Option.Option<string>, nouveauDirec
     getCouchNodeSystem(),
     getDbsInfoByName(DB_NAMES),
     getCouchDesignInfos(),
-    getNouveauInfos,
+    getNouveauInfos(),
     getDirectorySize(couchDbDirectory),
     getDirectorySize(nouveauDirectory),
   ]),
