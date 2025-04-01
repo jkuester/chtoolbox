@@ -13,12 +13,12 @@ import { getNouveauInfo, NouveauInfo } from '../libs/couch/nouveau-info.js';
 
 interface DatabaseInfo extends CouchDbInfo {
   designs: CouchDesignInfo[]
+  nouveau_indexes: NouveauInfo[]
 }
 
 interface MonitoringData extends CouchNodeSystem {
   unix_time: number,
   databases: DatabaseInfo[]
-  nouveau: NouveauInfo[]
   directory_size: Option.Option<number>
 }
 
@@ -83,10 +83,15 @@ const getCouchDesignInfos = () => pipe(
   Effect.all,
 );
 
-const NOUVEAU_INDEXES = [
-  'contacts_by_freetext',
-  'reports_by_freetext',
-];
+const NOUVEAU_INDEXES_BY_DB: Record<typeof DB_NAMES[number], [string, string][]> = {
+  medic: [
+    ['medic', 'contacts_by_freetext'],
+    ['medic', 'reports_by_freetext'],
+  ],
+  'medic-sentinel': [],
+  'medic-users-meta': [],
+  '_users': [],
+};
 
 const emptyNouveauInfo: NouveauInfo = {
   name: '',
@@ -98,13 +103,17 @@ const emptyNouveauInfo: NouveauInfo = {
   },
 };
 
-const getNouveauInfos = () => pipe(
-  NOUVEAU_INDEXES,
-  Array.map(indexName => getNouveauInfo('medic', 'medic', indexName)),
+const getNouveauInfosForDb = (dbName: string) => Effect.all(pipe(
+  NOUVEAU_INDEXES_BY_DB[dbName],
+  Array.map(([ddoc, index]) => getNouveauInfo(dbName, ddoc, index)),
   Array.map(Effect.catchIf(
     (error) => error instanceof ResponseError && error.response.status === 404,
     () => Effect.succeed(emptyNouveauInfo),
   )),
+));
+const getNouveauInfos = () => pipe(
+  DB_NAMES,
+  Array.map(getNouveauInfosForDb),
   Effect.all,
 );
 
@@ -137,9 +146,9 @@ const getMonitoringData = (directory: Option.Option<string>) => pipe(
     unix_time: unixTime,
     databases: dbsInfo.map((dbInfo, i) => ({
       ...dbInfo,
-      designs: designInfos[i]
+      designs: designInfos[i],
+      nouveau_indexes: nouveauInfos[i],
     })),
-    nouveau: nouveauInfos,
     directory_size
   })),
 );
@@ -155,7 +164,11 @@ const getCsvHeader = (directory: Option.Option<string>): string[] => [
       `${dbName}_${designName}_updater_running`,
       `${dbName}_${designName}_sizes_file`,
       `${dbName}_${designName}_sizes_active`,
-    ])
+    ]),
+    ...NOUVEAU_INDEXES_BY_DB[dbName].flatMap(([ddoc, index]) => [
+      `${dbName}_${ddoc}_${index}_num_docs`,
+      `${dbName}_${ddoc}_${index}_disk_size`,
+    ]),
   ]),
   'memory_processes_used',
   'memory_binary',
@@ -164,10 +177,6 @@ const getCsvHeader = (directory: Option.Option<string>): string[] => [
     Option.map(Array.of),
     Option.getOrElse(() => []),
   )),
-  ...NOUVEAU_INDEXES.flatMap(indexName => [
-    `medic_medic-nouveau_${indexName}_num_docs`,
-    `medic_medic-nouveau_${indexName}_disk_size`,
-  ]),
 ];
 
 const getAsCsv = (directory: Option.Option<string>) => pipe(
@@ -183,7 +192,11 @@ const getAsCsv = (directory: Option.Option<string>) => pipe(
         design.view_index.updater_running.toString(),
         design.view_index.sizes.file.toString(),
         design.view_index.sizes.active.toString(),
-      ])
+      ]),
+      ...db.nouveau_indexes.flatMap(nouveauInfo => [
+        nouveauInfo.search_index.num_docs.toString(),
+        nouveauInfo.search_index.disk_size.toString(),
+      ]),
     ]),
     data.memory.processes_used.toString(),
     data.memory.binary.toString(),
@@ -192,10 +205,6 @@ const getAsCsv = (directory: Option.Option<string>) => pipe(
       Option.map(Array.of),
       Option.getOrElse(() => []),
     )),
-    ...data.nouveau.flatMap(nouveauInfo => [
-      nouveauInfo.search_index.num_docs.toString(),
-      nouveauInfo.search_index.disk_size.toString(),
-    ]),
   ]),
 );
 

@@ -9,11 +9,11 @@ import { ChtClientService } from './cht-client.js';
 import { NouveauInfo } from '../libs/couch/nouveau-info.js';
 interface DatabaseInfo extends CouchDbInfo {
     designs: CouchDesignInfo[];
+    nouveau_indexes: NouveauInfo[];
 }
 interface MonitoringData extends CouchNodeSystem {
     unix_time: number;
     databases: DatabaseInfo[];
-    nouveau: NouveauInfo[];
     directory_size: Option.Option<number>;
 }
 declare const MonitorService_base: Effect.Service.Class<MonitorService, "chtoolbox/MonitorService", {
