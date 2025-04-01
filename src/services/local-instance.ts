@@ -31,6 +31,7 @@ const NGINX_SVC_NAME = 'nginx';
 
 const ENV_FILE_NAME = 'env.json';
 const UPGRADE_SVC_COMPOSE_FILE_NAME = 'docker-compose.yml';
+const CHTX_COMPOSE_OVERRIDE_FILE_NAME = 'chtx-override.yml';
 const CHT_COMPOSE_FILE_NAMES = [
   'cht-core.yml',
   'cht-couchdb.yml',
@@ -40,9 +41,12 @@ const SSL_KEY_FILE_NAME = 'key.pem';
 
 const COUCHDB_USER = 'medic';
 const COUCHDB_PASSWORD = 'password';
-const COUCHDB_DATA = 'cht-credentials'; // This is a hack to put data in named volume instead of mapping it to host
 
 const UPGRADE_SERVICE_COMPOSE = `
+configs:
+  dockerfile_scratch:
+    content: FROM tianon/true:latest
+
 services:
   ${UPGRADE_SVC_NAME}:
     restart: always
@@ -50,13 +54,15 @@ services:
     volumes:
       - \${DOCKER_HOST:-/var/run/docker.sock}:/var/run/docker.sock
       - chtx-compose-files:/docker-compose
+    configs:
+      - source: dockerfile_scratch
+        target: /docker-compose/Dockerfile.scratch
     networks:
       - cht-net
     environment:
       - COUCHDB_USER
       - COUCHDB_PASSWORD
       - COUCHDB_SECRET
-      - COUCHDB_DATA
       - NGINX_HTTP_PORT
       - NGINX_HTTPS_PORT
       - CHT_COMPOSE_PROJECT_NAME
@@ -68,6 +74,26 @@ volumes:
   chtx-compose-files:
     labels:
       - "${CHTX_LABEL_NAME}=\${CHT_COMPOSE_PROJECT_NAME}"
+`;
+
+// The contents of this file have to pass `docker compose config` validation
+const CHTX_COMPOSE_OVERRIDE = `
+services:
+  couchdb:
+    # Not used - only here to appease config validation
+    build: { context: . }
+    volumes:
+      - cht-credentials:/opt/couchdb/etc/local.d/
+      - cht-couchdb-data:/opt/couchdb/data
+  nouveau:
+    # Used when running pre-nouveau instances
+    build: { dockerfile: Dockerfile.scratch }
+    volumes:
+      - cht-nouveau-data:/data/nouveau
+volumes:
+  cht-credentials:
+  cht-couchdb-data:
+  cht-nouveau-data:
 `;
 
 const SSL_URL_DICT = {
@@ -101,7 +127,6 @@ export type SSLType = keyof typeof SSL_URL_DICT;
 class ChtInstanceConfig extends Schema.Class<ChtInstanceConfig>('ChtInstanceConfig')({
   CHT_COMPOSE_PROJECT_NAME: Schema.NonEmptyString,
   CHT_NETWORK: Schema.NonEmptyString,
-  COUCHDB_DATA: Schema.Literal('cht-credentials'),
   COUCHDB_PASSWORD: Schema.NonEmptyString,
   COUCHDB_SECRET: Schema.NonEmptyString,
   COUCHDB_USER: Schema.NonEmptyString,
@@ -113,7 +138,6 @@ class ChtInstanceConfig extends Schema.Class<ChtInstanceConfig>('ChtInstanceConf
       Effect.map(([NGINX_HTTPS_PORT, NGINX_HTTP_PORT]) => ({
         CHT_COMPOSE_PROJECT_NAME: instanceName,
         CHT_NETWORK: instanceName,
-        COUCHDB_DATA,
         COUCHDB_PASSWORD,
         COUCHDB_SECRET: crypto
           .randomBytes(16)
@@ -141,6 +165,10 @@ const writeUpgradeServiceCompose = (dirPath: string) => pipe(
   UPGRADE_SERVICE_COMPOSE,
   writeFile(`${dirPath}/${UPGRADE_SVC_COMPOSE_FILE_NAME}`),
 );
+const writeChtxOverrideCompose = (dirPath: string) => pipe(
+  CHTX_COMPOSE_OVERRIDE,
+  writeFile(`${dirPath}/${CHTX_COMPOSE_OVERRIDE_FILE_NAME}`),
+);
 const writeChtCompose = (dirPath: string, version: string) => (fileName: string) => pipe(
   chtComposeUrl(version, fileName),
   getRemoteFile,
@@ -150,6 +178,7 @@ const writeComposeFiles = (dirPath: string, version: string) => pipe(
   CHT_COMPOSE_FILE_NAMES,
   Array.map(writeChtCompose(dirPath, version)),
   Array.append(writeUpgradeServiceCompose(dirPath)),
+  Array.append(writeChtxOverrideCompose(dirPath)),
   Effect.all,
 );
 const writeSSLFiles = (sslType: SSLType) => (dirPath: string) => pipe(
@@ -181,7 +210,7 @@ const assertChtxVolumeExists = (instanceName: string) => doesChtxVolumeExist(ins
     )));
 
 const pullAllChtImages = (instanceName: string, env: ChtInstanceConfig, tmpDir: string) => pipe(
-  [...CHT_COMPOSE_FILE_NAMES, UPGRADE_SVC_COMPOSE_FILE_NAME],
+  [...CHT_COMPOSE_FILE_NAMES, UPGRADE_SVC_COMPOSE_FILE_NAME, CHTX_COMPOSE_OVERRIDE_FILE_NAME],
   Array.map(fileName => `${tmpDir}/${fileName}`),
   pullComposeImages(instanceName, ChtInstanceConfig.asRecord(env)),
   // Log the output of the docker pull because this could take a very long time
@@ -206,7 +235,7 @@ const rmTempUpgradeServiceContainer = (
 );
 
 const copyFilesToUpgradeSvcContainer = (instanceName: string, tmpDir: string) => pipe(
-  [...CHT_COMPOSE_FILE_NAMES, ENV_FILE_NAME],
+  [...CHT_COMPOSE_FILE_NAMES, CHTX_COMPOSE_OVERRIDE_FILE_NAME, ENV_FILE_NAME],
   Array.map((fileName): [string, string] => [`${tmpDir}/${fileName}`, `/docker-compose/${fileName}`]),
   Array.map(copyFileToComposeContainer(upgradeSvcProjectName(instanceName), UPGRADE_SVC_NAME)),
   Effect.all,

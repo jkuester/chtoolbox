@@ -123,17 +123,18 @@ describe('Local Instance Service', () => {
       expect(mockFileLib.getRemoteFile.args).to.deep.equal([[coreComposeURL], [couchComposeURL]]);
       expect(mockFileLib.writeFile.args).to.deep.equal([
         [`${tmpDir}/docker-compose.yml`],
+        [`${tmpDir}/chtx-override.yml`],
         [`${tmpDir}/${coreComposeName}`],
         [`${tmpDir}/${couchComposeName}`],
       ]);
-      expect(writeFileInner.calledThrice).to.be.true;
+      expect(writeFileInner.callCount).to.equal(4);
       expect(writeFileInner.args[0][0]).to.include('image: public.ecr.aws/s5s3h4s7/cht-upgrade-service:latest');
-      expect(writeFileInner.args[1]).to.deep.equal(['core-compose-file']);
-      expect(writeFileInner.args[2]).to.deep.equal(['couch-compose-file']);
+      expect(writeFileInner.args[1][0]).to.include('cht-couchdb-data:/opt/couchdb/data');
+      expect(writeFileInner.args[2]).to.deep.equal(['core-compose-file']);
+      expect(writeFileInner.args[3]).to.deep.equal(['couch-compose-file']);
       const expectedEnv = {
         CHT_COMPOSE_PROJECT_NAME: INSTANCE_NAME,
         CHT_NETWORK: INSTANCE_NAME,
-        COUCHDB_DATA: 'cht-credentials',
         COUCHDB_PASSWORD: 'password',
         COUCHDB_USER: 'medic',
         NGINX_HTTP_PORT: httpPort,
@@ -149,6 +150,7 @@ describe('Local Instance Service', () => {
         `${tmpDir}/${coreComposeName}`,
         `${tmpDir}/${couchComposeName}`,
         `${tmpDir}/docker-compose.yml`,
+        `${tmpDir}/chtx-override.yml`,
       ])).to.be.true;
       expect(mockDockerLib.createComposeContainers.calledOnceWithExactly(
         actualEnv, `${tmpDir}/docker-compose.yml`
@@ -157,7 +159,7 @@ describe('Local Instance Service', () => {
       expect(mockDockerLib.copyFileToComposeContainer.calledOnceWithExactly(
         `${INSTANCE_NAME}-up`, 'cht-upgrade-service'
       )).to.be.true;
-      expect(copyFileToComposeContainerInner.calledThrice).to.be.true;
+      expect(copyFileToComposeContainerInner.callCount).to.equal(4);
       expect(copyFileToComposeContainerInner.args[0][0]).to.deep.equal(
         [`${tmpDir}/${coreComposeName}`, `/docker-compose/${coreComposeName}`]
       );
@@ -165,6 +167,9 @@ describe('Local Instance Service', () => {
         [`${tmpDir}/${couchComposeName}`, `/docker-compose/${couchComposeName}`]
       );
       expect(copyFileToComposeContainerInner.args[2][0]).to.deep.equal(
+        [`${tmpDir}/chtx-override.yml`, `/docker-compose/chtx-override.yml`]
+      );
+      expect(copyFileToComposeContainerInner.args[3][0]).to.deep.equal(
         [`${tmpDir}/env.json`, `/docker-compose/env.json`]
       );
     }));
@@ -303,7 +308,6 @@ describe('Local Instance Service', () => {
       const env = {
         CHT_COMPOSE_PROJECT_NAME: INSTANCE_NAME,
         CHT_NETWORK: INSTANCE_NAME,
-        COUCHDB_DATA: 'cht-credentials',
         COUCHDB_PASSWORD: 'password',
         COUCHDB_SECRET: 'secret',
         COUCHDB_USER: 'medic',
@@ -375,7 +379,6 @@ describe('Local Instance Service', () => {
       const env = {
         CHT_COMPOSE_PROJECT_NAME: INSTANCE_NAME,
         CHT_NETWORK: INSTANCE_NAME,
-        COUCHDB_DATA: 'cht-credentials',
         COUCHDB_PASSWORD: 'password',
         COUCHDB_SECRET: 'secret',
         COUCHDB_USER: 'medic',

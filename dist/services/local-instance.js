@@ -12,6 +12,7 @@ const UPGRADE_SVC_NAME = 'cht-upgrade-service';
 const NGINX_SVC_NAME = 'nginx';
 const ENV_FILE_NAME = 'env.json';
 const UPGRADE_SVC_COMPOSE_FILE_NAME = 'docker-compose.yml';
+const CHTX_COMPOSE_OVERRIDE_FILE_NAME = 'chtx-override.yml';
 const CHT_COMPOSE_FILE_NAMES = [
     'cht-core.yml',
     'cht-couchdb.yml',
@@ -20,8 +21,11 @@ const SSL_CERT_FILE_NAME = 'cert.pem';
 const SSL_KEY_FILE_NAME = 'key.pem';
 const COUCHDB_USER = 'medic';
 const COUCHDB_PASSWORD = 'password';
-const COUCHDB_DATA = 'cht-credentials'; // This is a hack to put data in named volume instead of mapping it to host
 const UPGRADE_SERVICE_COMPOSE = `
+configs:
+  dockerfile_scratch:
+    content: FROM tianon/true:latest
+
 services:
   ${UPGRADE_SVC_NAME}:
     restart: always
@@ -29,13 +33,15 @@ services:
     volumes:
       - \${DOCKER_HOST:-/var/run/docker.sock}:/var/run/docker.sock
       - chtx-compose-files:/docker-compose
+    configs:
+      - source: dockerfile_scratch
+        target: /docker-compose/Dockerfile.scratch
     networks:
       - cht-net
     environment:
       - COUCHDB_USER
       - COUCHDB_PASSWORD
       - COUCHDB_SECRET
-      - COUCHDB_DATA
       - NGINX_HTTP_PORT
       - NGINX_HTTPS_PORT
       - CHT_COMPOSE_PROJECT_NAME
@@ -47,6 +53,25 @@ volumes:
   chtx-compose-files:
     labels:
       - "${CHTX_LABEL_NAME}=\${CHT_COMPOSE_PROJECT_NAME}"
+`;
+// The contents of this file have to pass `docker compose config` validation
+const CHTX_COMPOSE_OVERRIDE = `
+services:
+  couchdb:
+    # Not used - only here to appease config validation
+    build: { context: . }
+    volumes:
+      - cht-credentials:/opt/couchdb/etc/local.d/
+      - cht-couchdb-data:/opt/couchdb/data
+  nouveau:
+    # Used when running pre-nouveau instances
+    build: { dockerfile: Dockerfile.scratch }
+    volumes:
+      - cht-nouveau-data:/data/nouveau
+volumes:
+  cht-credentials:
+  cht-couchdb-data:
+  cht-nouveau-data:
 `;
 const SSL_URL_DICT = {
     'local-ip': [
@@ -77,7 +102,6 @@ const SSL_URL_DICT = {
 class ChtInstanceConfig extends Schema.Class('ChtInstanceConfig')({
     CHT_COMPOSE_PROJECT_NAME: Schema.NonEmptyString,
     CHT_NETWORK: Schema.NonEmptyString,
-    COUCHDB_DATA: Schema.Literal('cht-credentials'),
     COUCHDB_PASSWORD: Schema.NonEmptyString,
     COUCHDB_SECRET: Schema.NonEmptyString,
     COUCHDB_USER: Schema.NonEmptyString,
@@ -88,7 +112,6 @@ class ChtInstanceConfig extends Schema.Class('ChtInstanceConfig')({
         .pipe(Effect.map(([NGINX_HTTPS_PORT, NGINX_HTTP_PORT]) => ({
         CHT_COMPOSE_PROJECT_NAME: instanceName,
         CHT_NETWORK: instanceName,
-        COUCHDB_DATA,
         COUCHDB_PASSWORD,
         COUCHDB_SECRET: crypto
             .randomBytes(16)
@@ -102,8 +125,9 @@ class ChtInstanceConfig extends Schema.Class('ChtInstanceConfig')({
 const upgradeSvcProjectName = (instanceName) => `${instanceName}-up`;
 const chtComposeUrl = (version, fileName) => `https://staging.dev.medicmobile.org/_couch/builds_4/medic%3Amedic%3A${version}/docker-compose/${fileName}`;
 const writeUpgradeServiceCompose = (dirPath) => pipe(UPGRADE_SERVICE_COMPOSE, writeFile(`${dirPath}/${UPGRADE_SVC_COMPOSE_FILE_NAME}`));
+const writeChtxOverrideCompose = (dirPath) => pipe(CHTX_COMPOSE_OVERRIDE, writeFile(`${dirPath}/${CHTX_COMPOSE_OVERRIDE_FILE_NAME}`));
 const writeChtCompose = (dirPath, version) => (fileName) => pipe(chtComposeUrl(version, fileName), getRemoteFile, Effect.flatMap(writeFile(`${dirPath}/${fileName}`)));
-const writeComposeFiles = (dirPath, version) => pipe(CHT_COMPOSE_FILE_NAMES, Array.map(writeChtCompose(dirPath, version)), Array.append(writeUpgradeServiceCompose(dirPath)), Effect.all);
+const writeComposeFiles = (dirPath, version) => pipe(CHT_COMPOSE_FILE_NAMES, Array.map(writeChtCompose(dirPath, version)), Array.append(writeUpgradeServiceCompose(dirPath)), Array.append(writeChtxOverrideCompose(dirPath)), Effect.all);
 const writeSSLFiles = (sslType) => (dirPath) => pipe(SSL_URL_DICT[sslType], Array.map(([name, url]) => getRemoteFile(url)
     .pipe(Effect.flatMap(writeFile(`${dirPath}/${name}`)))), Effect.all);
 const doesUpgradeServiceExist = (instanceName) => pipe(upgradeSvcProjectName(instanceName), doesComposeProjectHaveContainers);
@@ -116,12 +140,12 @@ const assertChtxVolumeExists = (instanceName) => doesChtxVolumeExist(instanceNam
     .pipe(Effect.flatMap(exists => Match
     .value(exists)
     .pipe(Match.when(false, () => Effect.fail(new Error(`Instance ${instanceName} does not exist`))), Match.orElse(() => Effect.void))));
-const pullAllChtImages = (instanceName, env, tmpDir) => pipe([...CHT_COMPOSE_FILE_NAMES, UPGRADE_SVC_COMPOSE_FILE_NAME], Array.map(fileName => `${tmpDir}/${fileName}`), pullComposeImages(instanceName, ChtInstanceConfig.asRecord(env)), 
+const pullAllChtImages = (instanceName, env, tmpDir) => pipe([...CHT_COMPOSE_FILE_NAMES, UPGRADE_SVC_COMPOSE_FILE_NAME, CHTX_COMPOSE_OVERRIDE_FILE_NAME], Array.map(fileName => `${tmpDir}/${fileName}`), pullComposeImages(instanceName, ChtInstanceConfig.asRecord(env)), 
 // Log the output of the docker pull because this could take a very long time
 Logger.withMinimumLogLevel(LogLevel.Debug));
 const createUpgradeSvcContainer = (instanceName, env, tmpDir) => pipe(upgradeSvcProjectName(instanceName), createComposeContainers(env, `${tmpDir}/${UPGRADE_SVC_COMPOSE_FILE_NAME}`));
 const rmTempUpgradeServiceContainer = (instanceName) => pipe(upgradeSvcProjectName(instanceName), rmComposeContainer(UPGRADE_SVC_NAME), Effect.catchAll(() => Effect.void));
-const copyFilesToUpgradeSvcContainer = (instanceName, tmpDir) => pipe([...CHT_COMPOSE_FILE_NAMES, ENV_FILE_NAME], Array.map((fileName) => [`${tmpDir}/${fileName}`, `/docker-compose/${fileName}`]), Array.map(copyFileToComposeContainer(upgradeSvcProjectName(instanceName), UPGRADE_SVC_NAME)), Effect.all);
+const copyFilesToUpgradeSvcContainer = (instanceName, tmpDir) => pipe([...CHT_COMPOSE_FILE_NAMES, CHTX_COMPOSE_OVERRIDE_FILE_NAME, ENV_FILE_NAME], Array.map((fileName) => [`${tmpDir}/${fileName}`, `/docker-compose/${fileName}`]), Array.map(copyFileToComposeContainer(upgradeSvcProjectName(instanceName), UPGRADE_SVC_NAME)), Effect.all);
 const copySSLFilesToNginxContainer = (instanceName) => (tmpDir) => pipe([SSL_CERT_FILE_NAME, SSL_KEY_FILE_NAME], Array.map((fileName) => [`${tmpDir}/${fileName}`, `/etc/nginx/private/${fileName}`]), Array.map(copyFileToComposeContainer(instanceName, NGINX_SVC_NAME)), Effect.all);
 const copyEnvFileFromUpgradeSvcContainer = (instanceName, tmpDir) => pipe(upgradeSvcProjectName(instanceName), copyFileFromComposeContainer(UPGRADE_SVC_NAME, `/docker-compose/${ENV_FILE_NAME}`, `${tmpDir}/${ENV_FILE_NAME}`));
 const copyEnvFileFromDanglingVolume = (tempDir, instanceName) => Effect
