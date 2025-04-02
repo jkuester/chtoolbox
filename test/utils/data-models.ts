@@ -72,6 +72,22 @@ export const createDesignInfo = ({
   },
 });
 
+export const createNouveauInfo = ({
+  name = '',
+  update_seq = 0,
+  purge_seq = 0,
+  num_docs = 0,
+  disk_size = 0,
+} = {}) => ({
+  name,
+  search_index: {
+    update_seq,
+    purge_seq,
+    num_docs,
+    disk_size,
+  },
+});
+
 export const createNodeSystem = ({
   processes_used = 0,
   binary = 0,

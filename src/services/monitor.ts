@@ -9,9 +9,11 @@ import { ResponseError } from '@effect/platform/HttpClientError';
 import { NonEmptyArray } from 'effect/Array';
 import { PlatformError } from '@effect/platform/Error';
 import { ChtClientService } from './cht-client.js';
+import { getNouveauInfo, NouveauInfo } from '../libs/couch/nouveau-info.js';
 
 interface DatabaseInfo extends CouchDbInfo {
   designs: CouchDesignInfo[]
+  nouveau_indexes: NouveauInfo[]
 }
 
 interface MonitoringData extends CouchNodeSystem {
@@ -81,6 +83,40 @@ const getCouchDesignInfos = () => pipe(
   Effect.all,
 );
 
+const NOUVEAU_INDEXES_BY_DB: Record<typeof DB_NAMES[number], [string, string][]> = {
+  medic: [
+    ['medic', 'contacts_by_freetext'],
+    ['medic', 'reports_by_freetext'],
+  ],
+  'medic-sentinel': [],
+  'medic-users-meta': [],
+  '_users': [],
+};
+
+const emptyNouveauInfo: NouveauInfo = {
+  name: '',
+  search_index: {
+    purge_seq: 0,
+    update_seq: 0,
+    disk_size: 0,
+    num_docs: 0,
+  },
+};
+
+const getNouveauInfosForDb = (dbName: string) => Effect.all(pipe(
+  NOUVEAU_INDEXES_BY_DB[dbName],
+  Array.map(([ddoc, index]) => getNouveauInfo(dbName, ddoc, index)),
+  Array.map(Effect.catchIf(
+    (error) => error instanceof ResponseError && error.response.status === 404,
+    () => Effect.succeed(emptyNouveauInfo),
+  )),
+));
+const getNouveauInfos = () => pipe(
+  DB_NAMES,
+  Array.map(getNouveauInfosForDb),
+  Effect.all,
+);
+
 const getDirectorySize = (directory: Option.Option<string>) => LocalDiskUsageService.pipe(
   Effect.flatMap(service => directory.pipe(
     Option.map(dir => service.getSize(dir)),
@@ -95,6 +131,7 @@ const getMonitoringData = (directory: Option.Option<string>) => pipe(
     getCouchNodeSystem(),
     getDbsInfoByName(DB_NAMES),
     getCouchDesignInfos(),
+    getNouveauInfos(),
     getDirectorySize(directory),
   ]),
   Effect.map(([
@@ -102,13 +139,15 @@ const getMonitoringData = (directory: Option.Option<string>) => pipe(
     nodeSystem,
     dbsInfo,
     designInfos,
+    nouveauInfos,
     directory_size
   ]): MonitoringData => ({
     ...nodeSystem,
     unix_time: unixTime,
     databases: dbsInfo.map((dbInfo, i) => ({
       ...dbInfo,
-      designs: designInfos[i]
+      designs: designInfos[i],
+      nouveau_indexes: nouveauInfos[i],
     })),
     directory_size
   })),
@@ -125,7 +164,11 @@ const getCsvHeader = (directory: Option.Option<string>): string[] => [
       `${dbName}_${designName}_updater_running`,
       `${dbName}_${designName}_sizes_file`,
       `${dbName}_${designName}_sizes_active`,
-    ])
+    ]),
+    ...NOUVEAU_INDEXES_BY_DB[dbName].flatMap(([ddoc, index]) => [
+      `${dbName}_${ddoc}_${index}_num_docs`,
+      `${dbName}_${ddoc}_${index}_disk_size`,
+    ]),
   ]),
   'memory_processes_used',
   'memory_binary',
@@ -133,7 +176,7 @@ const getCsvHeader = (directory: Option.Option<string>): string[] => [
     Option.map(() => 'directory_size'),
     Option.map(Array.of),
     Option.getOrElse(() => []),
-  ))
+  )),
 ];
 
 const getAsCsv = (directory: Option.Option<string>) => pipe(
@@ -149,7 +192,11 @@ const getAsCsv = (directory: Option.Option<string>) => pipe(
         design.view_index.updater_running.toString(),
         design.view_index.sizes.file.toString(),
         design.view_index.sizes.active.toString(),
-      ])
+      ]),
+      ...db.nouveau_indexes.flatMap(nouveauInfo => [
+        nouveauInfo.search_index.num_docs.toString(),
+        nouveauInfo.search_index.disk_size.toString(),
+      ]),
     ]),
     data.memory.processes_used.toString(),
     data.memory.binary.toString(),

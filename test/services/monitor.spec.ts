@@ -7,13 +7,14 @@ import { SinonStub } from 'sinon';
 import { CouchDbInfo } from '../../src/libs/couch/dbs-info.js';
 import { CouchDesignInfo } from '../../src/libs/couch/design-info.js';
 import { LocalDiskUsageService } from '../../src/services/local-disk-usage.js';
-import { createDbInfo, createDesignInfo, createNodeSystem } from '../utils/data-models.js';
+import { createDbInfo, createDesignInfo, createNodeSystem, createNouveauInfo } from '../utils/data-models.js';
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import { NonEmptyArray } from 'effect/Array';
 import { genWithLayer, sandbox } from '../utils/base.js';
 import { ChtClientService } from '../../src/services/cht-client.js';
 import esmock from 'esmock';
+import { NouveauInfo } from '../../src/libs/couch/nouveau-info.js';
 
 const DB_NAMES: NonEmptyArray<string> = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 const EXPECTED_DESIGN_INFO_ARGS = [
@@ -35,6 +36,10 @@ const EXPECTED_DESIGN_INFO_ARGS = [
   ['medic-users-meta', ':staged:users-meta'],
   ['_users', 'users'],
   ['_users', ':staged:users'],
+];
+const EXPECTED_NOUVEAU_INFO_ARGS = [
+  ['medic', 'medic', 'contacts_by_freetext'],
+  ['medic', 'medic', 'reports_by_freetext'],
 ];
 
 const nodeSystem = createNodeSystem({
@@ -130,8 +135,33 @@ const initializeDesignInfoServiceGet = (designInfoServiceGet: SinonStub) => {
   designInfoServiceGet.withArgs('_users', ':staged:users').returns(Effect.succeed(usersStagedDesignInfo));
 };
 
+const contactsByFreetextNouveauInfo = createNouveauInfo({
+  name: '_design/medic/contacts_by_freetext',
+  update_seq: 123,
+  purge_seq: 456,
+  num_docs: 789,
+  disk_size: 1024,
+});
+const reportsByFreetextNouveauInfo = createNouveauInfo({
+  name: '_design/medic/reports_by_freetext',
+  update_seq: 321,
+  purge_seq: 654,
+  num_docs: 987,
+  disk_size: 4201,
+});
+const emptyNouveauInfo = createNouveauInfo();
+const initializeGetNouveauInfo = (getNouveauInfo: SinonStub) => {
+  getNouveauInfo
+    .withArgs('medic', 'medic', 'contacts_by_freetext')
+    .returns(Effect.succeed(contactsByFreetextNouveauInfo));
+  getNouveauInfo
+    .withArgs('medic', 'medic', 'reports_by_freetext')
+    .returns(Effect.succeed(reportsByFreetextNouveauInfo));
+};
+
 const mockNodeSystemLib = { getCouchNodeSystem: sandbox.stub() };
 const mockDesignInfoLib = { getDesignInfo: sandbox.stub() };
+const mockNouveauInfoLib = { getNouveauInfo: sandbox.stub() };
 const mockDbsInfoLib = { getDbsInfoByName: sandbox.stub() };
 const diskUsageServiceGetSize = sandbox.stub();
 
@@ -139,6 +169,7 @@ const { MonitorService } = await esmock<typeof MonitorSvc>('../../src/services/m
   '../../src/libs/couch/node-system.js': mockNodeSystemLib,
   '../../src/libs/couch/dbs-info.js': mockDbsInfoLib,
   '../../src/libs/couch/design-info.js': mockDesignInfoLib,
+  '../../src/libs/couch/nouveau-info.js': mockNouveauInfoLib,
 });
 const run = MonitorService.Default.pipe(
   Layer.provide(Layer.succeed(ChtClientService, {} as unknown as ChtClientService)),
@@ -156,6 +187,7 @@ describe('Monitor service', () => {
       mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
       mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([]));
       mockDesignInfoLib.getDesignInfo.returns(Effect.void);
+      mockNouveauInfoLib.getNouveauInfo.returns(Effect.void);
       diskUsageServiceGetSize.returns(Effect.succeed(0));
 
       const data = yield* MonitorService.get(Option.none());
@@ -169,6 +201,7 @@ describe('Monitor service', () => {
       expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
       expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
+      expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
       expect(diskUsageServiceGetSize.notCalled).to.be.true;
     }));
 
@@ -178,6 +211,7 @@ describe('Monitor service', () => {
       yield* TestClock.setTime(unix_time * 1000);
       mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
       initializeDesignInfoServiceGet(mockDesignInfoLib.getDesignInfo);
+      initializeGetNouveauInfo(mockNouveauInfoLib.getNouveauInfo);
       const directory = 'directory';
       const directorySize = 444444;
       diskUsageServiceGetSize.returns(Effect.succeed(directorySize));
@@ -189,7 +223,8 @@ describe('Monitor service', () => {
         unix_time,
         databases: [
           {
-            ...medicDbInfo, designs: [
+            ...medicDbInfo,
+            designs: [
               medicDesignInfo,
               medicAdminDesignInfo,
               medicClientDesignInfo,
@@ -203,16 +238,21 @@ describe('Monitor service', () => {
               medicScriptsStagedDesignInfo,
               medicSmsStagedDesignInfo,
             ],
+            nouveau_indexes: [
+              contactsByFreetextNouveauInfo,
+              reportsByFreetextNouveauInfo
+            ]
           },
-          { ...sentinelDbInfo, designs: [sentinelDesignInfo, sentinelStagedDesignInfo] },
-          { ...usersMetaDbInfo, designs: [usersMetaDesignInfo, usersMetaStagedDesignInfo] },
-          { ...usersDbInfo, designs: [usersDesignInfo, usersStagedDesignInfo] },
+          { ...sentinelDbInfo, designs: [sentinelDesignInfo, sentinelStagedDesignInfo], nouveau_indexes: [] },
+          { ...usersMetaDbInfo, designs: [usersMetaDesignInfo, usersMetaStagedDesignInfo], nouveau_indexes: [] },
+          { ...usersDbInfo, designs: [usersDesignInfo, usersStagedDesignInfo], nouveau_indexes: [] },
         ],
         directory_size: Option.some(directorySize),
       });
       expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
       expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
+      expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
       expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
     }));
 
@@ -235,6 +275,15 @@ describe('Monitor service', () => {
         response: { status: 404 } as unknown as HttpClientResponse.HttpClientResponse,
         reason: 'StatusCode'
       })));
+      mockNouveauInfoLib.getNouveauInfo
+        .withArgs('medic', 'medic', 'contacts_by_freetext')
+        .returns(Effect.succeed(contactsByFreetextNouveauInfo))
+      mockNouveauInfoLib.getNouveauInfo.returns(Effect.fail(new ResponseError({
+        request: {} as unknown as HttpClientRequest.HttpClientRequest,
+        response: { status: 404 } as unknown as HttpClientResponse.HttpClientResponse,
+        reason: 'StatusCode'
+      })));
+
       const directory = 'directory';
       const directorySize = 444444;
       diskUsageServiceGetSize.returns(Effect.succeed(directorySize));
@@ -246,7 +295,8 @@ describe('Monitor service', () => {
         unix_time,
         databases: [
           {
-            ...medicDbInfo, designs: [
+            ...medicDbInfo,
+            designs: [
               medicDesignInfo,
               medicAdminDesignInfo,
               medicClientDesignInfo,
@@ -260,16 +310,18 @@ describe('Monitor service', () => {
               emptyDesignInfo,
               emptyDesignInfo,
             ],
+            nouveau_indexes: [ contactsByFreetextNouveauInfo, emptyNouveauInfo ]
           },
-          { ...sentinelDbInfo, designs: [sentinelDesignInfo, emptyDesignInfo] },
-          { ...usersMetaDbInfo, designs: [usersMetaDesignInfo, emptyDesignInfo] },
-          { ...usersDbInfo, designs: [usersDesignInfo, emptyDesignInfo] },
+          { ...sentinelDbInfo, designs: [sentinelDesignInfo, emptyDesignInfo], nouveau_indexes: [] },
+          { ...usersMetaDbInfo, designs: [usersMetaDesignInfo, emptyDesignInfo], nouveau_indexes: [] },
+          { ...usersDbInfo, designs: [usersDesignInfo, emptyDesignInfo], nouveau_indexes: [] },
         ],
         directory_size: Option.some(directorySize),
       });
       expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
       expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
+      expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
       expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
     }));
 
@@ -306,6 +358,7 @@ describe('Monitor service', () => {
         expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
         expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
         expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
+        expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
         expect(diskUsageServiceGetSize.notCalled).to.be.true;
       } else {
         expect.fail('Expected error to be thrown');
@@ -319,6 +372,7 @@ describe('Monitor service', () => {
       yield* TestClock.setTime(123456789458);
       mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([]));
       mockDesignInfoLib.getDesignInfo.returns(Effect.void);
+      mockNouveauInfoLib.getNouveauInfo.returns(Effect.void);
       diskUsageServiceGetSize.returns(Effect.succeed(0));
 
       const data = yield* MonitorService.get(Option.none());
@@ -332,6 +386,7 @@ describe('Monitor service', () => {
       expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
       expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
+      expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
       expect(diskUsageServiceGetSize.notCalled).to.be.true;
     }));
   });
@@ -348,6 +403,11 @@ describe('Monitor service', () => {
       designInfo.view_index.updater_running.toString(),
       designInfo.view_index.sizes.file.toString(),
       designInfo.view_index.sizes.active.toString(),
+    ];
+
+    const getNouveauInfoCsvData = (nouveauInfo: NouveauInfo) => [
+      nouveauInfo.search_index.num_docs.toString(),
+      nouveauInfo.search_index.disk_size.toString(),
     ];
 
     const getNodeSystemCsvData = (nodeSystem: CouchNodeSystem) => [
@@ -369,6 +429,8 @@ describe('Monitor service', () => {
       ...getDesignInfoCsvData(medicConflictsStagedDesignInfo),
       ...getDesignInfoCsvData(medicScriptsStagedDesignInfo),
       ...getDesignInfoCsvData(medicSmsStagedDesignInfo),
+      ...getNouveauInfoCsvData(contactsByFreetextNouveauInfo),
+      ...getNouveauInfoCsvData(reportsByFreetextNouveauInfo),
       ...getDbInfoCsvData(sentinelDbInfo),
       ...getDesignInfoCsvData(sentinelDesignInfo),
       ...getDesignInfoCsvData(sentinelStagedDesignInfo),
@@ -387,16 +449,17 @@ describe('Monitor service', () => {
       yield* TestClock.setTime(unix_time * 1000);
       mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
       initializeDesignInfoServiceGet(mockDesignInfoLib.getDesignInfo);
+      initializeGetNouveauInfo(mockNouveauInfoLib.getNouveauInfo);
       const directory = 'directory';
       const directorySize = 444444;
       diskUsageServiceGetSize.returns(Effect.succeed(directorySize));
 
       const data = yield* MonitorService.getAsCsv(Option.some(directory));
-
       expect(data).to.deep.equal([unix_time.toString(), ...expectedCsvData, directorySize.toString()]);
       expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
       expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
+      expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
       expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
     }));
 
@@ -415,6 +478,14 @@ describe('Monitor service', () => {
       mockDesignInfoLib.getDesignInfo.withArgs('medic-users-meta', 'users-meta').returns(Effect.succeed(usersMetaDesignInfo));
       mockDesignInfoLib.getDesignInfo.withArgs('_users', 'users').returns(Effect.succeed(usersDesignInfo));
       mockDesignInfoLib.getDesignInfo.returns(Effect.fail(new ResponseError({
+        request: {} as unknown as HttpClientRequest.HttpClientRequest,
+        response: { status: 404 } as unknown as HttpClientResponse.HttpClientResponse,
+        reason: 'StatusCode'
+      })));
+      mockNouveauInfoLib.getNouveauInfo
+        .withArgs('medic', 'medic', 'contacts_by_freetext')
+        .returns(Effect.succeed(contactsByFreetextNouveauInfo))
+      mockNouveauInfoLib.getNouveauInfo.returns(Effect.fail(new ResponseError({
         request: {} as unknown as HttpClientRequest.HttpClientRequest,
         response: { status: 404 } as unknown as HttpClientResponse.HttpClientResponse,
         reason: 'StatusCode'
@@ -440,6 +511,8 @@ describe('Monitor service', () => {
         ...getDesignInfoCsvData(emptyDesignInfo),
         ...getDesignInfoCsvData(emptyDesignInfo),
         ...getDesignInfoCsvData(emptyDesignInfo),
+        ...getNouveauInfoCsvData(contactsByFreetextNouveauInfo),
+        ...getNouveauInfoCsvData(emptyNouveauInfo),
         ...getDbInfoCsvData(sentinelDbInfo),
         ...getDesignInfoCsvData(sentinelDesignInfo),
         ...getDesignInfoCsvData(emptyDesignInfo),
@@ -456,6 +529,7 @@ describe('Monitor service', () => {
       expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
       expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
+      expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
       expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
     }));
 
@@ -465,6 +539,7 @@ describe('Monitor service', () => {
       yield* TestClock.setTime(123456789458);
       mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
       initializeDesignInfoServiceGet(mockDesignInfoLib.getDesignInfo);
+      initializeGetNouveauInfo(mockNouveauInfoLib.getNouveauInfo);
 
       const data = yield* MonitorService.getAsCsv(Option.none());
 
@@ -472,6 +547,7 @@ describe('Monitor service', () => {
       expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
       expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
+      expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
       expect(diskUsageServiceGetSize.notCalled).to.be.true;
     }));
   });
@@ -530,6 +606,10 @@ describe('Monitor service', () => {
       `medic_:staged:medic-sms_updater_running`,
       `medic_:staged:medic-sms_sizes_file`,
       `medic_:staged:medic-sms_sizes_active`,
+      'medic_medic_contacts_by_freetext_num_docs',
+      'medic_medic_contacts_by_freetext_disk_size',
+      'medic_medic_reports_by_freetext_num_docs',
+      'medic_medic_reports_by_freetext_disk_size',
       'medic-sentinel_sizes_file',
       'medic-sentinel_sizes_active',
       'medic-sentinel_compact_running',

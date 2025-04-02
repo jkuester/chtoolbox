@@ -6,8 +6,10 @@ import { Option } from 'effect';
 import { LocalDiskUsageService } from './local-disk-usage.js';
 import { PlatformError } from '@effect/platform/Error';
 import { ChtClientService } from './cht-client.js';
+import { NouveauInfo } from '../libs/couch/nouveau-info.js';
 interface DatabaseInfo extends CouchDbInfo {
     designs: CouchDesignInfo[];
+    nouveau_indexes: NouveauInfo[];
 }
 interface MonitoringData extends CouchNodeSystem {
     unix_time: number;
