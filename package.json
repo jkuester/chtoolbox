@@ -27,7 +27,7 @@
     "@types/chai": "^5.2.1",
     "@types/deep-equal-in-any-order": "^1.0.4",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^22.13.14",
+    "@types/node": "^22.14.1",
     "@types/pouchdb-adapter-http": "^6.1.6",
     "@types/pouchdb-core": "^7.0.15",
     "@types/pouchdb-mapreduce": "^6.1.10",
