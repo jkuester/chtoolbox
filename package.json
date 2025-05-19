@@ -38,7 +38,7 @@
     "chai": "^5.2.0",
     "deep-equal-in-any-order": "^2.0.6",
     "eslint": "^9.26.0",
-    "eslint-plugin-n": "^17.17.0",
+    "eslint-plugin-n": "^17.18.0",
     "eslint-plugin-promise": "^7.2.1",
     "esmock": "^2.7.0",
     "globals": "^16.1.0",
