@@ -117,3 +117,13 @@ export const createActiveTask = ({
   started_on,
   type,
 });
+
+export const createChtMonitoringData = ({
+  versionApp = '',
+  versionCouchDb = '',
+} = {}) => ({
+  version: {
+    app: versionApp,
+    couchdb: versionCouchDb,
+  }
+});

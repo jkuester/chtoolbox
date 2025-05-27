@@ -13,6 +13,10 @@ interface DatabaseInfo extends CouchDbInfo {
 }
 interface MonitoringData extends CouchNodeSystem {
     unix_time: number;
+    version: {
+        app: string;
+        couchdb: string;
+    };
     databases: DatabaseInfo[];
     directory_size: Option.Option<number>;
 }
