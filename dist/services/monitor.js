@@ -8,6 +8,7 @@ import { LocalDiskUsageService } from './local-disk-usage.js';
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { ChtClientService } from './cht-client.js';
 import { getNouveauInfo } from '../libs/couch/nouveau-info.js';
+import { getChtMonitoringData } from '../libs/cht/monitoring.js';
 const currentTimeSec = Clock.currentTimeMillis.pipe(Effect.map(Number.unsafeDivide(1000)), Effect.map(Math.floor));
 const DB_NAMES = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 const VIEW_INDEXES_BY_DB = {
@@ -79,9 +80,11 @@ const getMonitoringData = (directory) => pipe(Effect.all([
     getCouchDesignInfos(),
     getNouveauInfos(),
     getDirectorySize(directory),
-]), Effect.map(([unixTime, nodeSystem, dbsInfo, designInfos, nouveauInfos, directory_size]) => ({
+    getChtMonitoringData()
+]), Effect.map(([unixTime, nodeSystem, dbsInfo, designInfos, nouveauInfos, directory_size, { version }]) => ({
     ...nodeSystem,
     unix_time: unixTime,
+    version,
     databases: dbsInfo.map((dbInfo, i) => ({
         ...dbInfo,
         designs: designInfos[i],
@@ -91,6 +94,8 @@ const getMonitoringData = (directory) => pipe(Effect.all([
 })));
 const getCsvHeader = (directory) => [
     'unix_time',
+    'version_app',
+    'version_couchdb',
     ...DB_NAMES.flatMap(dbName => [
         `${dbName}_sizes_file`,
         `${dbName}_sizes_active`,
@@ -112,6 +117,8 @@ const getCsvHeader = (directory) => [
 ];
 const getAsCsv = (directory) => pipe(getMonitoringData(directory), Effect.map(data => [
     data.unix_time.toString(),
+    data.version.app,
+    data.version.couchdb,
     ...data.databases.flatMap(db => [
         db.info.sizes.file.toString(),
         db.info.sizes.active.toString(),

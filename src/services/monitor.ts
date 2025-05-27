@@ -10,6 +10,7 @@ import { NonEmptyArray } from 'effect/Array';
 import { PlatformError } from '@effect/platform/Error';
 import { ChtClientService } from './cht-client.js';
 import { getNouveauInfo, NouveauInfo } from '../libs/couch/nouveau-info.js';
+import { getChtMonitoringData } from '../libs/cht/monitoring.js';
 
 interface DatabaseInfo extends CouchDbInfo {
   designs: CouchDesignInfo[]
@@ -18,6 +19,10 @@ interface DatabaseInfo extends CouchDbInfo {
 
 interface MonitoringData extends CouchNodeSystem {
   unix_time: number,
+  version: {
+    app: string,
+    couchdb: string,
+  },
   databases: DatabaseInfo[]
   directory_size: Option.Option<number>
 }
@@ -133,6 +138,7 @@ const getMonitoringData = (directory: Option.Option<string>) => pipe(
     getCouchDesignInfos(),
     getNouveauInfos(),
     getDirectorySize(directory),
+    getChtMonitoringData()
   ]),
   Effect.map(([
     unixTime,
@@ -140,10 +146,12 @@ const getMonitoringData = (directory: Option.Option<string>) => pipe(
     dbsInfo,
     designInfos,
     nouveauInfos,
-    directory_size
+    directory_size,
+    { version }
   ]): MonitoringData => ({
     ...nodeSystem,
     unix_time: unixTime,
+    version,
     databases: dbsInfo.map((dbInfo, i) => ({
       ...dbInfo,
       designs: designInfos[i],
@@ -155,6 +163,8 @@ const getMonitoringData = (directory: Option.Option<string>) => pipe(
 
 const getCsvHeader = (directory: Option.Option<string>): string[] => [
   'unix_time',
+  'version_app',
+  'version_couchdb',
   ...DB_NAMES.flatMap(dbName => [
     `${dbName}_sizes_file`,
     `${dbName}_sizes_active`,
@@ -183,6 +193,8 @@ const getAsCsv = (directory: Option.Option<string>) => pipe(
   getMonitoringData(directory),
   Effect.map(data => [
     data.unix_time.toString(),
+    data.version.app,
+    data.version.couchdb,
     ...data.databases.flatMap(db => [
       db.info.sizes.file.toString(),
       db.info.sizes.active.toString(),
