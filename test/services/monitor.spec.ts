@@ -7,7 +7,7 @@ import { SinonStub } from 'sinon';
 import { CouchDbInfo } from '../../src/libs/couch/dbs-info.js';
 import { CouchDesignInfo } from '../../src/libs/couch/design-info.js';
 import { LocalDiskUsageService } from '../../src/services/local-disk-usage.js';
-import { createDbInfo, createDesignInfo, createNodeSystem, createNouveauInfo } from '../utils/data-models.js';
+import { createDbInfo, createDesignInfo, createNodeSystem, createNouveauInfo, createChtMonitoringData } from '../utils/data-models.js';
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import { NonEmptyArray } from 'effect/Array';
@@ -15,6 +15,7 @@ import { genWithLayer, sandbox } from '../utils/base.js';
 import { ChtClientService } from '../../src/services/cht-client.js';
 import esmock from 'esmock';
 import { NouveauInfo } from '../../src/libs/couch/nouveau-info.js';
+import { ChtMonitoringData } from '../../src/libs/cht/monitoring.js';
 
 const DB_NAMES: NonEmptyArray<string> = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 const EXPECTED_DESIGN_INFO_ARGS = [
@@ -158,11 +159,16 @@ const initializeGetNouveauInfo = (getNouveauInfo: SinonStub) => {
     .withArgs('medic', 'medic', 'reports_by_freetext')
     .returns(Effect.succeed(reportsByFreetextNouveauInfo));
 };
+const chtMonitoringData = createChtMonitoringData({
+  versionApp: 'app-version',
+  versionCouchDb: 'couchdb-version',
+});
 
 const mockNodeSystemLib = { getCouchNodeSystem: sandbox.stub() };
 const mockDesignInfoLib = { getDesignInfo: sandbox.stub() };
 const mockNouveauInfoLib = { getNouveauInfo: sandbox.stub() };
 const mockDbsInfoLib = { getDbsInfoByName: sandbox.stub() };
+const mockChtMonitoringLib = { getChtMonitoringData: sandbox.stub() };
 const diskUsageServiceGetSize = sandbox.stub();
 
 const { MonitorService } = await esmock<typeof MonitorSvc>('../../src/services/monitor.js', {
@@ -170,6 +176,7 @@ const { MonitorService } = await esmock<typeof MonitorSvc>('../../src/services/m
   '../../src/libs/couch/dbs-info.js': mockDbsInfoLib,
   '../../src/libs/couch/design-info.js': mockDesignInfoLib,
   '../../src/libs/couch/nouveau-info.js': mockNouveauInfoLib,
+  '../../src/libs/cht/monitoring.js': mockChtMonitoringLib,
 });
 const run = MonitorService.Default.pipe(
   Layer.provide(Layer.succeed(ChtClientService, {} as unknown as ChtClientService)),
@@ -188,6 +195,7 @@ describe('Monitor service', () => {
       mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([]));
       mockDesignInfoLib.getDesignInfo.returns(Effect.void);
       mockNouveauInfoLib.getNouveauInfo.returns(Effect.void);
+      mockChtMonitoringLib.getChtMonitoringData.returns(Effect.succeed(createChtMonitoringData()));
       diskUsageServiceGetSize.returns(Effect.succeed(0));
 
       const data = yield* MonitorService.get(Option.none());
@@ -195,6 +203,10 @@ describe('Monitor service', () => {
       expect(data).to.deep.equal({
         ...nodeSystem,
         unix_time: yield* TestClock.currentTimeMillis,
+        version: {
+          app: '',
+          couchdb: '',
+        },
         databases: [],
         directory_size: Option.none(),
       });
@@ -202,6 +214,7 @@ describe('Monitor service', () => {
       expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
+      expect(mockChtMonitoringLib.getChtMonitoringData.calledOnceWithExactly()).to.be.true;
       expect(diskUsageServiceGetSize.notCalled).to.be.true;
     }));
 
@@ -215,12 +228,14 @@ describe('Monitor service', () => {
       const directory = 'directory';
       const directorySize = 444444;
       diskUsageServiceGetSize.returns(Effect.succeed(directorySize));
+      mockChtMonitoringLib.getChtMonitoringData.returns(Effect.succeed(chtMonitoringData));
 
       const data = yield* MonitorService.get(Option.some(directory));
 
       expect(data).to.deep.equal({
         ...nodeSystem,
         unix_time,
+        version: chtMonitoringData.version,
         databases: [
           {
             ...medicDbInfo,
@@ -253,10 +268,11 @@ describe('Monitor service', () => {
       expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
+      expect(mockChtMonitoringLib.getChtMonitoringData.calledOnceWithExactly()).to.be.true;
       expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
     }));
 
-    it('includes empty data for designs that do not exist', run(function* () {
+    it('includes empty data for calls that 404', run(function* () {
       mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(unix_time * 1000);
@@ -283,6 +299,11 @@ describe('Monitor service', () => {
         response: { status: 404 } as unknown as HttpClientResponse.HttpClientResponse,
         reason: 'StatusCode'
       })));
+      mockChtMonitoringLib.getChtMonitoringData.returns(Effect.fail(new ResponseError({
+        request: {} as unknown as HttpClientRequest.HttpClientRequest,
+        response: { status: 404 } as unknown as HttpClientResponse.HttpClientResponse,
+        reason: 'StatusCode'
+      })));
 
       const directory = 'directory';
       const directorySize = 444444;
@@ -293,6 +314,10 @@ describe('Monitor service', () => {
       expect(data).to.deep.equal({
         ...nodeSystem,
         unix_time,
+        version: {
+          app: '',
+          couchdb: '',
+        },
         databases: [
           {
             ...medicDbInfo,
@@ -322,10 +347,11 @@ describe('Monitor service', () => {
       expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
+      expect(mockChtMonitoringLib.getChtMonitoringData.calledOnceWithExactly()).to.be.true;
       expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
     }));
 
-    it('fails when any other error is experienced', run(function* () {
+    it('fails when a non-404 error is thrown getting design infos', run(function* () {
       mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(unix_time * 1000);
@@ -347,6 +373,7 @@ describe('Monitor service', () => {
       mockDesignInfoLib.getDesignInfo.returns(Effect.fail(expectedError));
       const directory = 'directory';
       const directorySize = 444444;
+      mockChtMonitoringLib.getChtMonitoringData.returns(Effect.succeed(chtMonitoringData));
       diskUsageServiceGetSize.returns(Effect.succeed(directorySize));
 
       const failureOrSuccess = yield* Effect.either(MonitorService.get(Option.some(directory)));
@@ -359,10 +386,43 @@ describe('Monitor service', () => {
         expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
         expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
         expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
+        expect(mockChtMonitoringLib.getChtMonitoringData.calledOnceWithExactly()).to.be.true;
         expect(diskUsageServiceGetSize.notCalled).to.be.true;
       } else {
         expect.fail('Expected error to be thrown');
       }
+    }));
+
+    it('fails when a non-404 error is thrown getting CHT monitoring data', run(function* () {
+      mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
+      const unix_time = 123456789;
+      yield* TestClock.setTime(unix_time * 1000);
+      mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
+      initializeDesignInfoServiceGet(mockDesignInfoLib.getDesignInfo);
+      initializeGetNouveauInfo(mockNouveauInfoLib.getNouveauInfo);
+      const directory = 'directory';
+      const directorySize = 444444;
+      diskUsageServiceGetSize.returns(Effect.succeed(directorySize));
+      const expectedError = new ResponseError({
+        request: {} as unknown as HttpClientRequest.HttpClientRequest,
+        response: { status: 500 } as unknown as HttpClientResponse.HttpClientResponse,
+        reason: 'StatusCode'
+      });
+      mockChtMonitoringLib.getChtMonitoringData.returns(Effect.fail(expectedError));
+
+      const failureOrSuccess = yield* Effect.either(MonitorService.get(Option.some(directory)));
+      if (Either.isRight(failureOrSuccess)) {
+        expect.fail('Expected error to be thrown');
+      }
+
+      const error = failureOrSuccess.left;
+      expect(error).to.equal(expectedError);
+      expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
+      expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
+      expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
+      expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
+      expect(mockChtMonitoringLib.getChtMonitoringData.calledOnceWithExactly()).to.be.true;
+      expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
     }));
 
     it('trims milliseconds from unix_time value', run(function* () {
@@ -373,6 +433,7 @@ describe('Monitor service', () => {
       mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([]));
       mockDesignInfoLib.getDesignInfo.returns(Effect.void);
       mockNouveauInfoLib.getNouveauInfo.returns(Effect.void);
+      mockChtMonitoringLib.getChtMonitoringData.returns(Effect.succeed(createChtMonitoringData()));
       diskUsageServiceGetSize.returns(Effect.succeed(0));
 
       const data = yield* MonitorService.get(Option.none());
@@ -380,6 +441,10 @@ describe('Monitor service', () => {
       expect(data).to.deep.equal({
         ...nodeSystem,
         unix_time,
+        version: {
+          app: '',
+          couchdb: '',
+        },
         databases: [],
         directory_size: Option.none(),
       });
@@ -387,6 +452,7 @@ describe('Monitor service', () => {
       expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
+      expect(mockChtMonitoringLib.getChtMonitoringData.calledOnceWithExactly()).to.be.true;
       expect(diskUsageServiceGetSize.notCalled).to.be.true;
     }));
   });
@@ -415,7 +481,13 @@ describe('Monitor service', () => {
       nodeSystem.memory.binary.toString(),
     ];
 
+    const getChtMonitoringCsvData = (chtMonitoringData: ChtMonitoringData) => [
+      chtMonitoringData.version.app,
+      chtMonitoringData.version.couchdb,
+    ];
+
     const expectedCsvData = [
+      ...getChtMonitoringCsvData(chtMonitoringData),
       ...getDbInfoCsvData(medicDbInfo),
       ...getDesignInfoCsvData(medicDesignInfo),
       ...getDesignInfoCsvData(medicAdminDesignInfo),
@@ -450,6 +522,7 @@ describe('Monitor service', () => {
       mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
       initializeDesignInfoServiceGet(mockDesignInfoLib.getDesignInfo);
       initializeGetNouveauInfo(mockNouveauInfoLib.getNouveauInfo);
+      mockChtMonitoringLib.getChtMonitoringData.returns(Effect.succeed(chtMonitoringData));
       const directory = 'directory';
       const directorySize = 444444;
       diskUsageServiceGetSize.returns(Effect.succeed(directorySize));
@@ -460,6 +533,7 @@ describe('Monitor service', () => {
       expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
+      expect(mockChtMonitoringLib.getChtMonitoringData.calledOnceWithExactly()).to.be.true;
       expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
     }));
 
@@ -490,6 +564,11 @@ describe('Monitor service', () => {
         response: { status: 404 } as unknown as HttpClientResponse.HttpClientResponse,
         reason: 'StatusCode'
       })));
+      mockChtMonitoringLib.getChtMonitoringData.returns(Effect.fail(new ResponseError({
+        request: {} as unknown as HttpClientRequest.HttpClientRequest,
+        response: { status: 404 } as unknown as HttpClientResponse.HttpClientResponse,
+        reason: 'StatusCode'
+      })));
       const directory = 'directory';
       const directorySize = 444444;
       diskUsageServiceGetSize.returns(Effect.succeed(directorySize));
@@ -498,6 +577,7 @@ describe('Monitor service', () => {
 
       const expectedCsvData = [
         unix_time.toString(),
+        ...getChtMonitoringCsvData(createChtMonitoringData()),
         ...getDbInfoCsvData(medicDbInfo),
         ...getDesignInfoCsvData(medicDesignInfo),
         ...getDesignInfoCsvData(medicAdminDesignInfo),
@@ -538,6 +618,7 @@ describe('Monitor service', () => {
       const unix_time = 123456789;
       yield* TestClock.setTime(123456789458);
       mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
+      mockChtMonitoringLib.getChtMonitoringData.returns(Effect.succeed(chtMonitoringData));
       initializeDesignInfoServiceGet(mockDesignInfoLib.getDesignInfo);
       initializeGetNouveauInfo(mockNouveauInfoLib.getNouveauInfo);
 
@@ -548,6 +629,7 @@ describe('Monitor service', () => {
       expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
+      expect(mockChtMonitoringLib.getChtMonitoringData.calledOnceWithExactly()).to.be.true;
       expect(diskUsageServiceGetSize.notCalled).to.be.true;
     }));
   });
@@ -555,6 +637,8 @@ describe('Monitor service', () => {
   describe('getCsvHeader', () => {
     const expectedCsvHeader = [
       'unix_time',
+      'version_app',
+      'version_couchdb',
       'medic_sizes_file',
       'medic_sizes_active',
       'medic_compact_running',

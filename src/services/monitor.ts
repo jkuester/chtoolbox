@@ -130,6 +130,15 @@ const getDirectorySize = (directory: Option.Option<string>) => LocalDiskUsageSer
   Effect.map(Option.fromNullable),
 );
 
+const getChtMonitoring = () => getChtMonitoringData().pipe(
+  Effect.catchAll((error) => {
+    if (error instanceof ResponseError && error.response.status === 404) {
+      return Effect.succeed({ version: { app: '', couchdb: '' } });
+    }
+    return Effect.fail(error);
+  }),
+);
+
 const getMonitoringData = (directory: Option.Option<string>) => pipe(
   Effect.all([
     currentTimeSec,
@@ -138,7 +147,7 @@ const getMonitoringData = (directory: Option.Option<string>) => pipe(
     getCouchDesignInfos(),
     getNouveauInfos(),
     getDirectorySize(directory),
-    getChtMonitoringData()
+    getChtMonitoring()
   ]),
   Effect.map(([
     unixTime,
