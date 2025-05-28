@@ -3,8 +3,9 @@ import { Command } from '@effect/platform';
 import { EnvironmentService } from './environment.js';
 import { CommandExecutor, ExitCode } from '@effect/platform/CommandExecutor';
 import * as Context from 'effect/Context';
+import { fileURLToPath } from 'node:url';
 
-const tdgPath = import.meta.resolve('test-data-generator');
+const tdgPath = fileURLToPath(import.meta.resolve('test-data-generator'));
 
 const tdgCommand = (designScriptPath: string) => EnvironmentService
   .get()

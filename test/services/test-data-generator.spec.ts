@@ -8,11 +8,12 @@ import { CommandExecutor } from '@effect/platform/CommandExecutor';
 import { Command } from '@effect/platform';
 import { genWithLayer, sandbox } from '../utils/base.js';
 import esmock from 'esmock';
+import { fileURLToPath } from 'node:url';
 
 const DESIGN_PATH = '/my/design/path';
 const COUCH_URL = 'http://localhost:5984';
 const ENV = Redacted.make(COUCH_URL).pipe(url => ({ url }));
-const TDG_PATH = import.meta.resolve('test-data-generator');
+const TDG_PATH = fileURLToPath(import.meta.resolve('test-data-generator'));
 
 const mockCommand = {
   make: sandbox.stub(),
