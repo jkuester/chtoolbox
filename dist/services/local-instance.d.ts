@@ -15,7 +15,7 @@ export interface LocalChtInstance {
 }
 declare const LocalInstanceService_base: Effect.Service.Class<LocalInstanceService, "chtoolbox/LocalInstanceService", {
     readonly effect: Effect.Effect<{
-        create: (instanceName: string, version: string) => Effect.Effect<void, Error>;
+        create: (instanceName: string, version: string, localVolumePath: Option.Option<string>) => Effect.Effect<void, Error>;
         start: (instanceName: string) => Effect.Effect<LocalChtInstance, Error>;
         stop: (instanceName: string) => Effect.Effect<void, Error>;
         rm: (instanceName: string) => Effect.Effect<void, Error>;

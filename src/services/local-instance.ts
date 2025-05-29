@@ -76,8 +76,23 @@ volumes:
       - "${CHTX_LABEL_NAME}=\${CHT_COMPOSE_PROJECT_NAME}"
 `;
 
+const getLocalVolumeConfig = (subDirectory: string) => (devicePath: string) => `
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${devicePath}/${subDirectory}`;
+const getVolumeConfig = (subDirectory: string) => (localVolumePath: Option.Option<string>) => localVolumePath.pipe(
+  Option.map(getLocalVolumeConfig(subDirectory)),
+  Option.getOrElse(() => ''),
+);
+
+const SUB_DIR_CREDENTIALS = 'credentials';
+const SUB_DIR_COUCHDB = 'couchdb';
+const SUB_DIR_NOUVEAU = 'nouveau';
+
 // The contents of this file have to pass `docker compose config` validation
-const CHTX_COMPOSE_OVERRIDE = `
+const getChtxComposeOverride = (localVolumePath: Option.Option<string>) => `
 services:
   couchdb:
     # Not used - only here to appease config validation
@@ -91,9 +106,9 @@ services:
     volumes:
       - cht-nouveau-data:/data/nouveau
 volumes:
-  cht-credentials:
-  cht-couchdb-data:
-  cht-nouveau-data:
+  cht-credentials:${localVolumePath.pipe(getVolumeConfig(SUB_DIR_CREDENTIALS))}
+  cht-couchdb-data:${localVolumePath.pipe(getVolumeConfig(SUB_DIR_COUCHDB))}
+  cht-nouveau-data:${localVolumePath.pipe(getVolumeConfig(SUB_DIR_NOUVEAU))}
 `;
 
 const SSL_URL_DICT = {
@@ -156,6 +171,17 @@ class ChtInstanceConfig extends Schema.Class<ChtInstanceConfig>('ChtInstanceConf
 
 const upgradeSvcProjectName = (instanceName: string) => `${instanceName}-up`;
 
+const makeDir = (dirPath: string) => FileSystem.FileSystem.pipe(Effect.flatMap(fs => fs.makeDirectory(dirPath, { recursive: true })));
+const createLocalVolumeDirs = (localVolumePath: Option.Option<string>) => localVolumePath.pipe(
+  Option.map(path => pipe(
+    Array.make(SUB_DIR_CREDENTIALS, SUB_DIR_COUCHDB, SUB_DIR_NOUVEAU),
+    Array.map(subDir => `${path}/${subDir}`),
+    Array.map(makeDir),
+    Effect.all,
+  )),
+  Option.getOrElse(() => Effect.void),
+);
+
 const chtComposeUrl = (
   version: string,
   fileName: string
@@ -165,8 +191,8 @@ const writeUpgradeServiceCompose = (dirPath: string) => pipe(
   UPGRADE_SERVICE_COMPOSE,
   writeFile(`${dirPath}/${UPGRADE_SVC_COMPOSE_FILE_NAME}`),
 );
-const writeChtxOverrideCompose = (dirPath: string) => pipe(
-  CHTX_COMPOSE_OVERRIDE,
+const writeChtxOverrideCompose = (dirPath: string, localVolumePath: Option.Option<string>) => pipe(
+  getChtxComposeOverride(localVolumePath),
   writeFile(`${dirPath}/${CHTX_COMPOSE_OVERRIDE_FILE_NAME}`),
 );
 const writeChtCompose = (dirPath: string, version: string) => (fileName: string) => pipe(
@@ -174,11 +200,11 @@ const writeChtCompose = (dirPath: string, version: string) => (fileName: string)
   getRemoteFile,
   Effect.flatMap(writeFile(`${dirPath}/${fileName}`)),
 );
-const writeComposeFiles = (dirPath: string, version: string) => pipe(
+const writeComposeFiles = (dirPath: string, version: string, localVolumePath: Option.Option<string>) => pipe(
   CHT_COMPOSE_FILE_NAMES,
   Array.map(writeChtCompose(dirPath, version)),
   Array.append(writeUpgradeServiceCompose(dirPath)),
-  Array.append(writeChtxOverrideCompose(dirPath)),
+  Array.append(writeChtxOverrideCompose(dirPath, localVolumePath)),
   Effect.all,
 );
 const writeSSLFiles = (sslType: SSLType) => (dirPath: string) => pipe(
@@ -355,7 +381,8 @@ export class LocalInstanceService extends Effect.Service<LocalInstanceService>()
   effect: serviceContext.pipe(Effect.map(context => ({
     create: (
       instanceName: string,
-      version: string
+      version: string,
+      localVolumePath: Option.Option<string>
     ): Effect.Effect<void, Error> => assertChtxVolumeDoesNotExist(instanceName)
       .pipe(
         Effect.andThen(Effect.all([
@@ -364,7 +391,8 @@ export class LocalInstanceService extends Effect.Service<LocalInstanceService>()
         ])),
         Effect.flatMap(([env, tmpDir]) => Effect
           .all([
-            writeComposeFiles(tmpDir, version),
+            createLocalVolumeDirs(localVolumePath),
+            writeComposeFiles(tmpDir, version, localVolumePath),
             writeJsonFile(`${tmpDir}/${ENV_FILE_NAME}`, env),
           ])
           .pipe(
