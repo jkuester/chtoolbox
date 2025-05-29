@@ -1,13 +1,18 @@
+import { FileSystem } from '@effect/platform';
 import { Args, Command, Options } from '@effect/cli';
-import { Array, Console, Effect, pipe } from 'effect';
+import { Array, Console, Effect, Option, pipe } from 'effect';
 import { LocalInstanceService } from '../../services/local-instance.js';
 import { clearThen } from '../../libs/console.js';
 import { printInstanceTable } from './ls.js';
 
-const createChtInstances = (names: string[], version: string) => pipe(
-  names,
-  Array.map(name => LocalInstanceService.create(name, version)),
-  Effect.allWith({ concurrency: 0 }), // Avoid port conflicts
+const createChtInstances = (names: string[], version: string, directory: Option.Option<string>) =>  directory.pipe(
+  Option.map(dir => FileSystem.FileSystem.pipe(Effect.flatMap(fs => fs.realPath(dir)))),
+  Effect.transposeOption,
+  Effect.flatMap(dirPath => pipe(
+    names,
+    Array.map(name => LocalInstanceService.create(name, version, dirPath.pipe(Option.map(path => `${path}/${name}`)))),
+    Effect.allWith({ concurrency: 0 }), // Avoid port conflicts
+  )),
 );
 
 const startChtInstances = (names: string[]) => pipe(
@@ -39,11 +44,22 @@ const version = Options
     Options.withDefault('master'),
   );
 
+const directory = Options
+  .directory('directory', { exists: 'yes' })
+  .pipe(
+    Options.withAlias('d'),
+    Options.withDescription(
+      'The local directory to store the instance data. If not specified, data will be stored in a Docker named volume.'
+      + ' Data in this directory will NOT be automatically deleted when the instance is remove.'
+    ),
+    Options.optional,
+  )
+
 export const create = Command
-  .make('create', { names, version }, ({ names, version }) => Console
+  .make('create', { names, version, directory }, ({ names, version, directory }) => Console
     .log('Pulling Docker images (this may take awhile depending on network speeds)...')
     .pipe(
-      Effect.andThen(createChtInstances(names, version)),
+      Effect.andThen(createChtInstances(names, version, directory)),
       Effect.andThen(clearThen(Console.log('Starting instance(s)...'))),
       Effect.andThen(startChtInstances(names)),
       Effect.tap(setLocalIpSSLCerts(names)),

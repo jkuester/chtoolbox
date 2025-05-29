@@ -6,7 +6,7 @@ import { genWithLayer, sandbox } from '../utils/base.js';
 import * as LocalInstanceSvc from '../../src/services/local-instance.js';
 import { SSLType } from '../../src/services/local-instance.js';
 import { NodeContext } from '@effect/platform-node';
-import { HttpClient, HttpClientRequest } from '@effect/platform';
+import { HttpClient, HttpClientRequest, FileSystem } from '@effect/platform';
 import esmock from 'esmock';
 
 const INSTANCE_NAME = 'myinstance';
@@ -43,6 +43,7 @@ const mockFileLib = {
 }
 const mockHttpClient = { filterStatusOk: sandbox.stub() };
 const mockHttpRequest = { get: sandbox.stub() };
+const mockFileSystem = { makeDirectory: sandbox.stub() };
 const mockNetworkLib = { getFreePorts: sandbox.stub() };
 const mockSchedule = { spaced: sandbox.stub() };
 const httpClientExecute = sandbox.stub();
@@ -56,6 +57,7 @@ const { LocalInstanceService } = await esmock<typeof LocalInstanceSvc>('../../sr
   'effect': { Schedule: mockSchedule },
 });
 const run = LocalInstanceService.Default.pipe(
+  Layer.provide(Layer.succeed(FileSystem.FileSystem, mockFileSystem as unknown as FileSystem.FileSystem)),
   Layer.provide(NodeContext.layer),
   Layer.provide(Layer.succeed(HttpClient.HttpClient, {
     execute: httpClientExecute,
@@ -98,6 +100,7 @@ describe('Local Instance Service', () => {
         .stub()
         .returns(Effect.void);
       mockDockerLib.pullComposeImages.returns(pullComposeImagesInner);
+      mockFileSystem.makeDirectory.returns(Effect.void);
     });
 
     it('creates a new instance with the given name and version', run(function* () {
@@ -115,12 +118,13 @@ describe('Local Instance Service', () => {
       mockFileLib.getRemoteFile.withArgs(coreComposeURL).returns(Effect.succeed('core-compose-file'));
       mockFileLib.getRemoteFile.withArgs(couchComposeURL).returns(Effect.succeed('couch-compose-file'));
 
-      yield* LocalInstanceService.create(INSTANCE_NAME, version);
+      yield* LocalInstanceService.create(INSTANCE_NAME, version, Option.none());
 
       expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
       expect(mockNetworkLib.getFreePorts.calledOnceWithExactly()).to.be.true;
       expect(mockFileLib.createTmpDir.calledOnceWithExactly()).to.be.true;
       expect(mockFileLib.getRemoteFile.args).to.deep.equal([[coreComposeURL], [couchComposeURL]]);
+      expect(mockFileSystem.makeDirectory.notCalled).to.be.true;
       expect(mockFileLib.writeFile.args).to.deep.equal([
         [`${tmpDir}/docker-compose.yml`],
         [`${tmpDir}/chtx-override.yml`],
@@ -130,6 +134,94 @@ describe('Local Instance Service', () => {
       expect(writeFileInner.callCount).to.equal(4);
       expect(writeFileInner.args[0][0]).to.include('image: public.ecr.aws/s5s3h4s7/cht-upgrade-service:latest');
       expect(writeFileInner.args[1][0]).to.include('cht-couchdb-data:/opt/couchdb/data');
+      expect(writeFileInner.args[1][0]).to.not.include(`device: /data/credentials`);
+      expect(writeFileInner.args[2]).to.deep.equal(['core-compose-file']);
+      expect(writeFileInner.args[3]).to.deep.equal(['couch-compose-file']);
+      const expectedEnv = {
+        CHT_COMPOSE_PROJECT_NAME: INSTANCE_NAME,
+        CHT_NETWORK: INSTANCE_NAME,
+        COUCHDB_PASSWORD: 'password',
+        COUCHDB_USER: 'medic',
+        NGINX_HTTP_PORT: httpPort,
+        NGINX_HTTPS_PORT: httpsPort,
+      };
+      expect(mockFileLib.writeJsonFile.calledOnce).to.be.true;
+      expect(mockFileLib.writeJsonFile.args[0][0]).to.equal(`${tmpDir}/env.json`);
+      const actualEnv = mockFileLib.writeJsonFile.args[0][1] as Record<string, string>;
+      expect(actualEnv).to.deep.include(expectedEnv);
+      expect(actualEnv).to.have.property('COUCHDB_SECRET').that.is.a('string').that.has.length(32);
+      expect(mockDockerLib.pullComposeImages.calledOnceWithExactly(INSTANCE_NAME, actualEnv)).to.be.true;
+      expect(pullComposeImagesInner.calledOnceWithExactly([
+        `${tmpDir}/${coreComposeName}`,
+        `${tmpDir}/${couchComposeName}`,
+        `${tmpDir}/docker-compose.yml`,
+        `${tmpDir}/chtx-override.yml`,
+      ])).to.be.true;
+      expect(mockDockerLib.createComposeContainers.calledOnceWithExactly(
+        actualEnv, `${tmpDir}/docker-compose.yml`
+      )).to.be.true;
+      expect(createComposeContainersInner.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
+      expect(mockDockerLib.copyFileToComposeContainer.calledOnceWithExactly(
+        `${INSTANCE_NAME}-up`, 'cht-upgrade-service'
+      )).to.be.true;
+      expect(copyFileToComposeContainerInner.callCount).to.equal(4);
+      expect(copyFileToComposeContainerInner.args[0][0]).to.deep.equal(
+        [`${tmpDir}/${coreComposeName}`, `/docker-compose/${coreComposeName}`]
+      );
+      expect(copyFileToComposeContainerInner.args[1][0]).to.deep.equal(
+        [`${tmpDir}/${couchComposeName}`, `/docker-compose/${couchComposeName}`]
+      );
+      expect(copyFileToComposeContainerInner.args[2][0]).to.deep.equal(
+        [`${tmpDir}/chtx-override.yml`, `/docker-compose/chtx-override.yml`]
+      );
+      expect(copyFileToComposeContainerInner.args[3][0]).to.deep.equal(
+        [`${tmpDir}/env.json`, `/docker-compose/env.json`]
+      );
+    }));
+
+    it('creates a new instance with the data mapped to the given local directory', run(function* () {
+      const version = '3.7.0';
+      mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(false));
+      const httpsPort = 1234;
+      const httpPort = 5678;
+      mockNetworkLib.getFreePorts.returns(Effect.succeed([httpsPort, httpPort]));
+      const tmpDir = '/tmp/asdfasdfas';
+      mockFileLib.createTmpDir.returns(Effect.succeed(tmpDir));
+      const coreComposeName = 'cht-core.yml';
+      const couchComposeName = 'cht-couchdb.yml';
+      const coreComposeURL = chtComposeUrl(version, coreComposeName);
+      const couchComposeURL = chtComposeUrl(version, couchComposeName);
+      mockFileLib.getRemoteFile.withArgs(coreComposeURL).returns(Effect.succeed('core-compose-file'));
+      mockFileLib.getRemoteFile.withArgs(couchComposeURL).returns(Effect.succeed('couch-compose-file'));
+      const dataDir = '/data/directory';
+
+      yield* LocalInstanceService.create(INSTANCE_NAME, version, Option.some(dataDir));
+
+      expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
+      expect(mockNetworkLib.getFreePorts.calledOnceWithExactly()).to.be.true;
+      expect(mockFileLib.createTmpDir.calledOnceWithExactly()).to.be.true;
+      expect(mockFileLib.getRemoteFile.args).to.deep.equal([[coreComposeURL], [couchComposeURL]]);
+      const expectedDataDirs = pipe(
+        Array.make('credentials', 'couchdb', 'nouveau'),
+        Array.map(dir => `${dataDir}/${dir}`),
+      );
+      expect(mockFileSystem.makeDirectory.args).to.deep.equal(pipe(
+        expectedDataDirs,
+        Array.map(dir => [dir, { recursive: true }]),
+      ));
+      expect(mockFileLib.writeFile.args).to.deep.equal([
+        [`${tmpDir}/docker-compose.yml`],
+        [`${tmpDir}/chtx-override.yml`],
+        [`${tmpDir}/${coreComposeName}`],
+        [`${tmpDir}/${couchComposeName}`],
+      ]);
+      expect(writeFileInner.callCount).to.equal(4);
+      expect(writeFileInner.args[0][0]).to.include('image: public.ecr.aws/s5s3h4s7/cht-upgrade-service:latest');
+      expect(writeFileInner.args[1][0]).to.include('cht-couchdb-data:/opt/couchdb/data');
+      pipe(
+        expectedDataDirs,
+        Array.forEach(dir => expect(writeFileInner.args[1][0]).to.include(`device: ${dir}`))
+      );
       expect(writeFileInner.args[2]).to.deep.equal(['core-compose-file']);
       expect(writeFileInner.args[3]).to.deep.equal(['couch-compose-file']);
       const expectedEnv = {
@@ -181,7 +273,7 @@ describe('Local Instance Service', () => {
       mockFileLib.createTmpDir.returns(Effect.succeed('/tmp/asdfasdfas'));
 
       const either = yield* LocalInstanceService
-        .create(INSTANCE_NAME, version)
+        .create(INSTANCE_NAME, version, Option.none())
         .pipe(Effect.either);
 
       if (Either.isLeft(either)) {
