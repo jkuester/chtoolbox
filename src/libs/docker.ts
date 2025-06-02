@@ -45,6 +45,10 @@ const runForString = (command: Command.Command) => command.pipe(
   Effect.map(String.trim),
 );
 
+export const pullImage = (image: string): Effect.Effect<void, Error | PlatformError, CommandExecutor> => Command
+  .make('docker', 'pull', image)
+  .pipe(runForExitCode);
+
 export const pullComposeImages = (projectName: string, env: Record<string, string>) => (
   composeFilePaths: string[]
 ): Effect.Effect<void, Error | PlatformError, CommandExecutor> => pipe(

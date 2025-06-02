@@ -1,7 +1,7 @@
 import { Array, Effect, Number, Option, pipe, String } from 'effect';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
 import * as Context from 'effect/Context';
-import { doesContainerExist, getContainerLabelValue, getContainerNamesWithLabel, rmContainer, runContainer } from '../libs/docker.js';
+import { doesContainerExist, getContainerLabelValue, getContainerNamesWithLabel, pullImage, rmContainer, runContainer } from '../libs/docker.js';
 import { getFreePort, getLANIPAddress } from '../libs/local-network.js';
 const NGINX_LOCAL_IP_IMAGE = 'medicmobile/nginx-local-ip';
 const CHTX_LOCAL_IP_PREFIX = 'chtx_local_ip';
@@ -19,11 +19,14 @@ const createLocalIpContainer = (toPort) => (fromPort) => runContainer({
     labels: [`${CHTX_LOCAL_IP_LABEL}=${fromPort.toString()}:${toPort.toString()}`],
 });
 const getPortsFromLabel = (label) => pipe(label, String.split(':'), Array.map(Number.parse), Array.map(Option.getOrThrow), ([from, to]) => ({ from, to }));
+// Continue even if the image pull fails, as it might exist locally.
+const pullLocalIpImage = () => pullImage(NGINX_LOCAL_IP_IMAGE)
+    .pipe(Effect.catchAll(() => Effect.log(`Failed to pull Docker image: ${NGINX_LOCAL_IP_IMAGE}`)));
 const serviceContext = CommandExecutor.pipe(Effect.map(executor => Context.make(CommandExecutor, executor)));
 export class LocalIpService extends Effect.Service()('chtoolbox/LocalIpService', {
     effect: serviceContext.pipe(Effect.map(context => ({
         create: (toPort, fromPort) => assertLocalIpContainerDoesNotExist(toPort)
-            .pipe(Effect.andThen(getFromPort(fromPort)), Effect.tap(createLocalIpContainer(toPort)), Effect.mapError(x => x), Effect.provide(context)),
+            .pipe(Effect.andThen(pullLocalIpImage), Effect.andThen(getFromPort(fromPort)), Effect.tap(createLocalIpContainer(toPort)), Effect.mapError(x => x), Effect.provide(context)),
         rm: (toPort) => rmContainer(getLocalIpContainerName(toPort))
             .pipe(Effect.mapError(x => x), Effect.provide(context)),
         ls: () => getContainerNamesWithLabel(CHTX_LOCAL_IP_LABEL)

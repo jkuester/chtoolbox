@@ -38,6 +38,7 @@ const {
   getContainerLabelValue,
   getVolumeNamesWithLabel,
   getContainerNamesWithLabel,
+  pullImage,
   pullComposeImages,
   restartCompose,
   restartComposeService,
@@ -102,6 +103,17 @@ describe('docker libs', () => {
       expect(mockCommand.stderr.notCalled).to.be.true;
     }));
   });
+
+  it('pullImage', run(function* () {
+    mockCommand.exitCode.returns(Effect.succeed(0));
+
+    yield* pullImage(PROJECT_NAME);
+
+    expect(mockCommand.make.calledOnceWithExactly('docker', 'pull', PROJECT_NAME,)).to.be.true;
+    expect(mockCommand.exitCode.calledOnceWithExactly(FAKE_COMMAND)).to.be.true;
+    expect(mockCommand.string.notCalled).to.be.true;
+    expect(mockCommand.lines.notCalled).to.be.true;
+  }));
 
   describe('pullComposeImages', () => {
     const composeFilePaths = ['path1', 'path2'];

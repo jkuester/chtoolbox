@@ -14,6 +14,9 @@ const printCommandWhenDebugLogging = (command) => Effect
 const runForExitCode = (command) => printCommandWhenDebugLogging(command)
     .pipe(Effect.flatMap(command => command.pipe(Command.exitCode)), Effect.filterOrFail(exitCode => exitCode === 0, exitCode => new Error(`Docker command failed. Exit code: ${exitCode.toString()}`)));
 const runForString = (command) => command.pipe(Command.string, Effect.tap(Effect.logDebug), Effect.map(String.trim));
+export const pullImage = (image) => Command
+    .make('docker', 'pull', image)
+    .pipe(runForExitCode);
 export const pullComposeImages = (projectName, env) => (composeFilePaths) => pipe(getComposeFileParams(composeFilePaths), composeFileParams => dockerCompose(projectName, ...composeFileParams, 'pull'), Command.env(env), runForExitCode, 
 // Pulling all the images at once can result in rate limiting
 Effect.retry({ schedule: Schedule.spaced(2000) }));

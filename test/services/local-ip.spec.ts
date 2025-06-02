@@ -8,6 +8,7 @@ import { NodeContext } from '@effect/platform-node';
 import esmock from 'esmock';
 
 const mockDockerLib = {
+  pullImage: sandbox.stub(),
   doesContainerExist: sandbox.stub(),
   getContainerLabelValue: sandbox.stub(),
   getContainerNamesWithLabel: sandbox.stub(),
@@ -42,11 +43,13 @@ describe('Local IP Service', () => {
 
     it('creates a new instance with the given TO and FROM ports', run(function* () {
       mockDockerLib.doesContainerExist.returns(Effect.succeed(false));
+      mockDockerLib.pullImage.returns(Effect.void);
 
       const result = yield* LocalIpService.create(TO_PORT, Option.some(FROM_PORT));
 
       expect(result).to.equal(FROM_PORT);
       expect(mockDockerLib.doesContainerExist.calledOnceWithExactly(`chtx_local_ip_${TO_PORT.toString()}`)).to.be.true;
+      expect(mockDockerLib.pullImage.calledOnceWithExactly('medicmobile/nginx-local-ip')).to.be.true;
       expect(mockNetworkLib.getFreePort.calledOnceWithExactly({ port: FROM_PORT })).to.be.true;
       expect(mockNetworkLib.getLANIPAddress.calledOnceWithExactly()).to.be.true;
       expect(mockDockerLib.runContainer.calledOnceWithExactly({
@@ -60,11 +63,13 @@ describe('Local IP Service', () => {
 
     it('creates a new instance with a random FROM port', run(function* () {
       mockDockerLib.doesContainerExist.returns(Effect.succeed(false));
+      mockDockerLib.pullImage.returns(Effect.void);
 
       const result = yield* LocalIpService.create(TO_PORT, Option.none());
 
       expect(result).to.equal(FROM_PORT);
       expect(mockDockerLib.doesContainerExist.calledOnceWithExactly(`chtx_local_ip_${TO_PORT.toString()}`)).to.be.true;
+      expect(mockDockerLib.pullImage.calledOnceWithExactly('medicmobile/nginx-local-ip')).to.be.true;
       expect(mockNetworkLib.getFreePort.calledOnceWithExactly()).to.be.true;
       expect(mockNetworkLib.getLANIPAddress.calledOnceWithExactly()).to.be.true;
       expect(mockDockerLib.runContainer.calledOnceWithExactly({
@@ -78,6 +83,7 @@ describe('Local IP Service', () => {
 
     it('returns error when an instance already exists with the given TO port', run(function* () {
       mockDockerLib.doesContainerExist.returns(Effect.succeed(true));
+      mockDockerLib.pullImage.returns(Effect.void);
 
       const either = yield* LocalIpService
         .create(TO_PORT, Option.none())
@@ -88,6 +94,7 @@ describe('Local IP Service', () => {
       }
       expect(either.left).to.deep.equal(new Error(`Local-ip instance already exists for port [${TO_PORT.toString()}].`));
       expect(mockDockerLib.doesContainerExist.calledOnceWithExactly(`chtx_local_ip_${TO_PORT.toString()}`)).to.be.true;
+      expect(mockDockerLib.pullImage.notCalled).to.be.true;
       expect(mockNetworkLib.getFreePort.calledOnceWithExactly()).to.be.true;
       expect(mockNetworkLib.getLANIPAddress.notCalled).to.be.true;
       expect(mockDockerLib.runContainer.notCalled).to.be.true;
@@ -95,6 +102,7 @@ describe('Local IP Service', () => {
 
     it('returns error when the given FROM port is not available', run(function* () {
       mockDockerLib.doesContainerExist.returns(Effect.succeed(false));
+      mockDockerLib.pullImage.returns(Effect.void);
       const fromPort = 123556;
 
       const either = yield* LocalIpService
@@ -106,9 +114,30 @@ describe('Local IP Service', () => {
       }
       expect(either.left).to.deep.equal(new Error(`Port [${fromPort.toString()}] is not available.`));
       expect(mockDockerLib.doesContainerExist.calledOnceWithExactly(`chtx_local_ip_${TO_PORT.toString()}`)).to.be.true;
+      expect(mockDockerLib.pullImage.calledOnceWithExactly('medicmobile/nginx-local-ip')).to.be.true;
       expect(mockNetworkLib.getFreePort.calledOnceWithExactly({ port: fromPort })).to.be.true;
       expect(mockNetworkLib.getLANIPAddress.notCalled).to.be.true;
       expect(mockDockerLib.runContainer.notCalled).to.be.true;
+    }));
+
+    it('creates a new instance even when error returned pulling image', run(function* () {
+      mockDockerLib.doesContainerExist.returns(Effect.succeed(false));
+      mockDockerLib.pullImage.returns(Effect.fail(new Error('Failed to pull image')));
+
+      const result = yield* LocalIpService.create(TO_PORT, Option.none());
+
+      expect(result).to.equal(FROM_PORT);
+      expect(mockDockerLib.doesContainerExist.calledOnceWithExactly(`chtx_local_ip_${TO_PORT.toString()}`)).to.be.true;
+      expect(mockDockerLib.pullImage.calledOnceWithExactly('medicmobile/nginx-local-ip')).to.be.true;
+      expect(mockNetworkLib.getFreePort.calledOnceWithExactly()).to.be.true;
+      expect(mockNetworkLib.getLANIPAddress.calledOnceWithExactly()).to.be.true;
+      expect(mockDockerLib.runContainer.calledOnceWithExactly({
+        image: 'medicmobile/nginx-local-ip',
+        name: `chtx_local_ip_${TO_PORT.toString()}`,
+        ports: [[FROM_PORT, 443]],
+        env: { APP_URL: `http://${LOCAL_IP_ADDRESS}:${TO_PORT.toString()}` },
+        labels: [`chtx.instance.local-ip=${FROM_PORT.toString()}:${TO_PORT.toString()}`],
+      })).to.be.true;
     }));
   });
 

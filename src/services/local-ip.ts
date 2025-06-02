@@ -4,7 +4,7 @@ import * as Context from 'effect/Context';
 import {
   doesContainerExist,
   getContainerLabelValue,
-  getContainerNamesWithLabel,
+  getContainerNamesWithLabel, pullImage,
   rmContainer,
   runContainer
 } from '../libs/docker.js';
@@ -49,6 +49,10 @@ const getPortsFromLabel = (label: string) => pipe(
   ([from, to]) => ({ from, to })
 );
 
+// Continue even if the image pull fails, as it might exist locally.
+const pullLocalIpImage = () => pullImage(NGINX_LOCAL_IP_IMAGE)
+  .pipe(Effect.catchAll(() => Effect.log(`Failed to pull Docker image: ${NGINX_LOCAL_IP_IMAGE}`)));
+
 const serviceContext = CommandExecutor.pipe(Effect.map(executor => Context.make(CommandExecutor, executor)));
 
 export class LocalIpService extends Effect.Service<LocalIpService>()('chtoolbox/LocalIpService', {
@@ -58,6 +62,7 @@ export class LocalIpService extends Effect.Service<LocalIpService>()('chtoolbox/
       fromPort: Option.Option<number>
     ): Effect.Effect<number, Error> => assertLocalIpContainerDoesNotExist(toPort)
       .pipe(
+        Effect.andThen(pullLocalIpImage),
         Effect.andThen(getFromPort(fromPort)),
         Effect.tap(createLocalIpContainer(toPort)),
         Effect.mapError(x => x as Error),
