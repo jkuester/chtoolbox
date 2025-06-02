@@ -145,13 +145,9 @@ const writeSSLFiles = (sslType) => (dirPath) => pipe(SSL_URL_DICT[sslType], Arra
 const doesUpgradeServiceExist = (instanceName) => pipe(upgradeSvcProjectName(instanceName), doesComposeProjectHaveContainers);
 const doesChtxVolumeExist = (instanceName) => doesVolumeExistWithLabel(`${CHTX_LABEL_NAME}=${instanceName}`);
 const assertChtxVolumeDoesNotExist = (instanceName) => doesChtxVolumeExist(instanceName)
-    .pipe(Effect.flatMap(exists => Match
-    .value(exists)
-    .pipe(Match.when(true, () => Effect.fail(new Error(`Instance ${instanceName} already exists`))), Match.orElse(() => Effect.void))));
+    .pipe(Effect.filterOrFail(exists => !exists, () => new Error(`Instance ${instanceName} already exists`)));
 const assertChtxVolumeExists = (instanceName) => doesChtxVolumeExist(instanceName)
-    .pipe(Effect.flatMap(exists => Match
-    .value(exists)
-    .pipe(Match.when(false, () => Effect.fail(new Error(`Instance ${instanceName} does not exist`))), Match.orElse(() => Effect.void))));
+    .pipe(Effect.filterOrFail(exists => exists, () => new Error(`Instance ${instanceName} does not exist`)));
 const pullAllChtImages = (instanceName, env, tmpDir) => pipe([...CHT_COMPOSE_FILE_NAMES, UPGRADE_SVC_COMPOSE_FILE_NAME, CHTX_COMPOSE_OVERRIDE_FILE_NAME], Array.map(fileName => `${tmpDir}/${fileName}`), pullComposeImages(instanceName, ChtInstanceConfig.asRecord(env)), 
 // Log the output of the docker pull because this could take a very long time
 Logger.withMinimumLogLevel(LogLevel.Debug));
@@ -188,9 +184,10 @@ const createUpgradeServiceFromDanglingVolume = (projectName) => () => createTmpD
     .pipe(Effect.flatMap(tmpDir => copyEnvFileFromDanglingVolume(tmpDir, projectName)
     .pipe(Effect.andThen(readJsonFile(ENV_FILE_NAME, tmpDir)), Effect.flatMap(Schema.decodeUnknown(ChtInstanceConfig)), Effect.flatMap(env => createUpgradeSvcContainer(projectName, ChtInstanceConfig.asRecord(env), tmpDir)))), Effect.scoped);
 const ensureUpgradeServiceExists = (projectName) => assertChtxVolumeExists(projectName)
-    .pipe(Effect.andThen(doesUpgradeServiceExist(projectName)), Effect.flatMap(exists => Match
-    .value(exists)
-    .pipe(Match.when(true, () => Effect.void), Match.orElse(createUpgradeServiceFromDanglingVolume(projectName)))));
+    .pipe(Effect.filterEffectOrElse({
+    predicate: () => doesUpgradeServiceExist(projectName),
+    orElse: createUpgradeServiceFromDanglingVolume(projectName),
+}));
 const serviceContext = Effect
     .all([
     HttpClient.HttpClient,

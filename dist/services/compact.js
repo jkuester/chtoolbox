@@ -1,6 +1,6 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { Array, Match, Option, pipe, Stream } from 'effect';
+import { Array, Option, pipe, Stream } from 'effect';
 import { getDbNames } from '../libs/couch/dbs-info.js';
 import { getDesignDocNames } from '../libs/couch/design-docs.js';
 import { compactDb, compactDesign } from '../libs/couch/compact.js';
@@ -12,9 +12,7 @@ const TYPE_VIEW_COMPACT = 'view_compaction';
 const compactDbViews = (dbName) => getDesignDocNames(dbName)
     .pipe(Effect.map(Array.map(compactCouchDesign(dbName))), Effect.flatMap(Effect.all));
 const compactCouchDb = (dbName, compactDesigns) => compactDb(dbName)
-    .pipe(Effect.andThen(Match
-    .value(compactDesigns)
-    .pipe(Match.when(true, () => compactDbViews(dbName)), Match.orElse(() => Effect.void))));
+    .pipe(Effect.filterOrElse(() => !compactDesigns, () => compactDbViews(dbName)));
 const compactCouchDesign = (dbName) => (designName) => compactDesign(dbName, designName);
 const compactAll = (compactDesigns) => getDbNames()
     .pipe(Effect.map(Array.map(dbName => compactCouchDb(dbName, compactDesigns))), Effect.flatMap(Effect.all));

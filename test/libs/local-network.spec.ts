@@ -1,21 +1,51 @@
 import { describe, it } from 'mocha';
-import { TestContext, Redacted, Option } from 'effect';
+import { Option, Redacted, TestContext } from 'effect';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import { genWithLayer, sandbox } from '../utils/base.js';
 import OS from 'node:os';
 import * as LocalNetworkLibs from '../../src/libs/local-network.js';
 import esmock from 'esmock';
-import { getLocalIpUrlBasicAuth } from '../../src/libs/local-network.js';
 
 const mockGetPort = sandbox.stub();
 
 const run = TestContext.TestContext.pipe(genWithLayer);
-const { getFreePorts, getLocalIpUrl } = await esmock<typeof LocalNetworkLibs>('../../src/libs/local-network.js', {
+const {
+  getFreePort,
+  getFreePorts,
+  getLANIPAddress,
+  getLocalIpUrl,
+  getLocalIpUrlBasicAuth
+} = await esmock<typeof LocalNetworkLibs>('../../src/libs/local-network.js', {
   'get-port': mockGetPort
 });
 
 describe('local network libs', () => {
+  describe('getFreePort', () => {
+    it('returns port when called with all params', run(function* () {
+      const args = {
+        port: 1234,
+        exclude: [5678]
+      }
+      mockGetPort.resolves(args.port);
+
+      const result = yield* getFreePort(args);
+
+      expect(result).to.equal(args.port);
+      expect(mockGetPort.calledWithExactly(args)).to.be.true;
+    }));
+
+    it('returns port when called with no params', run(function* () {
+      const port = 1234;
+      mockGetPort.resolves(port);
+
+      const result = yield* getFreePort();
+
+      expect(result).to.equal(port);
+      expect(mockGetPort.calledWithExactly(undefined)).to.be.true;
+    }));
+  });
+
   it('getFreePorts', run(function* () {
     mockGetPort.onFirstCall().resolves(1234);
     mockGetPort.onSecondCall().resolves(5678);
@@ -24,11 +54,11 @@ describe('local network libs', () => {
 
     expect(result).to.deep.equal([1234, 5678]);
     expect(mockGetPort.calledTwice).to.be.true;
-    expect(mockGetPort.firstCall.calledWithExactly({ exclude: [] })).to.be.true;
+    expect(mockGetPort.firstCall.calledWithExactly(undefined)).to.be.true;
     expect(mockGetPort.secondCall.calledWithExactly({ exclude: [1234] })).to.be.true;
   }));
 
-  describe('getLocalIpUrl', () => {
+  describe('getLANIPAddress', () => {
     let networkInterfaces: sinon.SinonStub;
 
     beforeEach(() => {
@@ -55,12 +85,12 @@ describe('local network libs', () => {
         { family: 4, address: '192.168.1.111' }
       ] },
     ].forEach((interfaces) => {
-      it('returns the local-ip URL with the given port', () => {
+      it('returns the LAN ip address', () => {
         networkInterfaces.returns(interfaces);
 
-        const result = getLocalIpUrl('1234');
+        const result = getLANIPAddress();
 
-        expect(result).to.equal('https://192-168-1-111.local-ip.medicmobile.org:1234');
+        expect(result).to.equal('192.168.1.111');
         expect(networkInterfaces.calledOnceWithExactly()).to.be.true;
       });
     });
@@ -71,11 +101,21 @@ describe('local network libs', () => {
         { family: 6, address: '192.168.1.113' },
       ] });
 
-      const result = getLocalIpUrl('1234');
+      const result = getLANIPAddress();
 
-      expect(result).to.equal('https://127-0-0-1.local-ip.medicmobile.org:1234');
+      expect(result).to.equal('127.0.0.1');
       expect(networkInterfaces.calledOnceWithExactly()).to.be.true;
     });
+  });
+
+  it('getLocalIpUrl', () => {
+    const networkInterfaces: sinon.SinonStub = sinon.stub(OS, 'networkInterfaces');
+    networkInterfaces.returns({ eth_ipv4: [{ family: 'IPv4', address: '192.168.1.111' }] });
+
+    const result = getLocalIpUrl('1234');
+
+    expect(result).to.deep.equal('https://192-168-1-111.local-ip.medicmobile.org:1234');
+    expect(networkInterfaces.calledOnceWithExactly()).to.be.true;
   });
 
   it('getLocalIpUrlBasicAuth', () => {

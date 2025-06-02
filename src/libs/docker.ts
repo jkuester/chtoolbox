@@ -1,5 +1,5 @@
 import { Command } from '@effect/platform';
-import { Array, Effect, FiberRef, LogLevel, Match, pipe, Schedule, String } from 'effect';
+import { Array, Boolean, Effect, FiberRef, LogLevel, Option, pipe, Schedule, String } from 'effect';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
 import { PlatformError } from '@effect/platform/Error';
 
@@ -18,27 +18,25 @@ const debugLoggingEnabled = FiberRef
   .get(FiberRef.currentMinimumLogLevel)
   .pipe(Effect.map(LogLevel.lessThanEqual(LogLevel.Debug)));
 
-const printCommandWhenDebugLogging = (command: Command.Command) => debugLoggingEnabled.pipe(
-  Effect.map(debug => Match
-    .value(debug)
-    .pipe(
-      Match.when(true, () => command.pipe(
+const printCommandWhenDebugLogging = (command: Command.Command) => Effect
+  .succeed(command)
+  .pipe(
+    Effect.filterEffectOrElse({
+      predicate: () => debugLoggingEnabled.pipe(Effect.map(Boolean.not)),
+      orElse: () => Effect.succeed(command.pipe(
         Command.stdout('inherit'),
         Command.stderr('inherit'),
-      )),
-      Match.orElse(() => command),
-    )),
-);
+      ))
+    }),
+  );
 
 const runForExitCode = (command: Command.Command) => printCommandWhenDebugLogging(command)
   .pipe(
     Effect.flatMap(command => command.pipe(Command.exitCode)),
-    Effect.flatMap(exitCode => Match
-      .value(exitCode)
-      .pipe(
-        Match.when(0, () => Effect.void),
-        Match.orElse(() => Effect.fail(new Error(`Docker command failed. Exit code: ${exitCode.toString()}`))),
-      )),
+    Effect.filterOrFail(
+      exitCode => exitCode === 0,
+      exitCode => new Error(`Docker command failed. Exit code: ${exitCode.toString()}`)
+    )
   );
 
 const runForString = (command: Command.Command) => command.pipe(
@@ -66,16 +64,20 @@ export const doesComposeProjectHaveContainers = (
     Effect.map(String.isNonEmpty),
   );
 
-export const getVolumeNamesWithLabel = (
-  label: string
-): Effect.Effect<string[], PlatformError, CommandExecutor> => Command
-  .make('docker', 'volume', 'ls', '--filter', `label=${label}`, '-q',)
+const getEntityWithLabel = (entity: 'volume' | 'container') => (label: string) => Command
+  .make('docker', entity, 'ls', '--filter', `label=${label}`, '-q',)
   .pipe(
     Command.lines,
     Effect.tap(Effect.logDebug),
     Effect.map(Array.map(String.trim)),
     Effect.map(Array.filter(String.isNonEmpty)),
   );
+export const getVolumeNamesWithLabel: (
+  label: string
+) => Effect.Effect<string[], PlatformError, CommandExecutor> = getEntityWithLabel('volume');
+export const getContainerNamesWithLabel: (
+  label: string
+) => Effect.Effect<string[], PlatformError, CommandExecutor> = getEntityWithLabel('container');
 
 export const doesVolumeExistWithLabel = (
   label: string
@@ -86,6 +88,14 @@ export const getVolumeLabelValue = (labelName: string) => (
   volumeName: string,
 ): Effect.Effect<string, PlatformError, CommandExecutor> => Command
   .make('docker', 'volume', 'inspect', volumeName, '--format', `'{{ index .Labels "${labelName}" }}'`)
+  .pipe(
+    runForString,
+    Effect.map(String.slice(1, -1)),
+  );
+export const getContainerLabelValue = (labelName: string) => (
+  container: string,
+): Effect.Effect<string, PlatformError, CommandExecutor> => Command
+  .make('docker', 'container', 'inspect', container, '--format', `'{{ index .Config.Labels "${labelName}" }}'`)
   .pipe(
     runForString,
     Effect.map(String.slice(1, -1)),
@@ -165,3 +175,54 @@ export const getEnvarFromComposeContainer = (
   projectName, 'exec', containerServiceName, 'printenv', envar
 )
   .pipe(runForString);
+
+const getEnvParams = (env?: Record<string, string>) => pipe(
+  Option.fromNullable(env),
+  Option.map(envMap => Object.entries(envMap)),
+  Option.map(Array.map(([key, value]) => ['--env', `${key}=${value}`])),
+  Option.map(Array.flatten),
+  Option.getOrElse(() => [] as string[]),
+);
+
+const getPortParams = (ports: [number, number][]) => pipe(
+  ports,
+  Array.map(([host, container]) => ['--publish', `${host.toString()}:${container.toString()}`]),
+  Array.flatten,
+);
+
+export const runContainer = ({ image, name, env, labels = [], ports = [] }: {
+  image: string,
+  name: string,
+  labels?: string[],
+  ports?: [host: number, container: number][],
+  env?: Record<string, string>,
+}): Effect.Effect<void, Error | PlatformError, CommandExecutor> => pipe(
+  Array.make(
+    'docker',
+    'run',
+    '--detach',
+    '--restart',
+    'always',
+    `--name`,
+    name,
+  ),
+  Array.appendAll(labels.flatMap(label => ['--label', label])),
+  Array.appendAll(getEnvParams(env)),
+  Array.appendAll(getPortParams(ports)),
+  Array.append(image),
+  ([command, ...args]) => Command.make(command, ...args),
+  runForExitCode
+);
+
+export const doesContainerExist = (
+  containerName: string
+): Effect.Effect<boolean, PlatformError, CommandExecutor> => Command
+  .make('docker', 'container', 'ls', '-q', '--filter', `name=${containerName}`)
+  .pipe(
+    runForString,
+    Effect.map(String.isNonEmpty),
+  )
+
+export const rmContainer = (name: string): Effect.Effect<void, Error | PlatformError, CommandExecutor> => Command
+  .make('docker', 'rm', '-f', name)
+  .pipe(runForExitCode);

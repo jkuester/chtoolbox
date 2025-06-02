@@ -221,19 +221,15 @@ const doesUpgradeServiceExist = (instanceName: string) => pipe(
 
 const doesChtxVolumeExist = (instanceName: string) => doesVolumeExistWithLabel(`${CHTX_LABEL_NAME}=${instanceName}`);
 const assertChtxVolumeDoesNotExist = (instanceName: string) => doesChtxVolumeExist(instanceName)
-  .pipe(Effect.flatMap(exists => Match
-    .value(exists)
-    .pipe(
-      Match.when(true, () => Effect.fail(new Error(`Instance ${instanceName} already exists`))),
-      Match.orElse(() => Effect.void),
-    )));
+  .pipe(Effect.filterOrFail(
+    exists => !exists,
+    () => new Error(`Instance ${instanceName} already exists`)
+  ));
 const assertChtxVolumeExists = (instanceName: string) => doesChtxVolumeExist(instanceName)
-  .pipe(Effect.flatMap(exists => Match
-    .value(exists)
-    .pipe(
-      Match.when(false, () => Effect.fail(new Error(`Instance ${instanceName} does not exist`))),
-      Match.orElse(() => Effect.void),
-    )));
+  .pipe(Effect.filterOrFail(
+    exists => exists,
+    () => new Error(`Instance ${instanceName} does not exist`)
+  ));
 
 const pullAllChtImages = (instanceName: string, env: ChtInstanceConfig, tmpDir: string) => pipe(
   [...CHT_COMPOSE_FILE_NAMES, UPGRADE_SVC_COMPOSE_FILE_NAME, CHTX_COMPOSE_OVERRIDE_FILE_NAME],
@@ -343,15 +339,10 @@ const createUpgradeServiceFromDanglingVolume = (projectName: string) => () => cr
     Effect.scoped,
   );
 const ensureUpgradeServiceExists = (projectName: string) => assertChtxVolumeExists(projectName)
-  .pipe(
-    Effect.andThen(doesUpgradeServiceExist(projectName)),
-    Effect.flatMap(exists => Match
-      .value(exists)
-      .pipe(
-        Match.when(true, () => Effect.void),
-        Match.orElse(createUpgradeServiceFromDanglingVolume(projectName)),
-      )),
-  );
+  .pipe(Effect.filterEffectOrElse({
+    predicate: () => doesUpgradeServiceExist(projectName),
+    orElse: createUpgradeServiceFromDanglingVolume(projectName),
+  }));
 
 const serviceContext = Effect
   .all([

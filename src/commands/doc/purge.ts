@@ -61,12 +61,12 @@ const getConfirmationPrompt = ({ database }: PurgeOptions) => Prompt
     initial: false,
   });
 
-const isPurgeConfirmed = (opts: PurgeOptions) => Match
-  .value(opts.yes)
-  .pipe(
-    Match.when(true, () => Effect.succeed(true)),
-    Match.orElse(() => getConfirmationPrompt(opts)),
-  );
+const isPurgeConfirmed = (opts: PurgeOptions) => Effect
+  .succeed(true)
+  .pipe(Effect.filterOrElse(
+    () => opts.yes,
+    () => getConfirmationPrompt(opts),
+  ));
 
 const yes = Options
   .boolean('yes')

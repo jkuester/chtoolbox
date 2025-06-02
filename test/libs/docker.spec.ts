@@ -35,13 +35,18 @@ const {
   doesVolumeExistWithLabel,
   getEnvarFromComposeContainer,
   getVolumeLabelValue,
+  getContainerLabelValue,
   getVolumeNamesWithLabel,
+  getContainerNamesWithLabel,
   pullComposeImages,
   restartCompose,
   restartComposeService,
   rmComposeContainer,
   startCompose,
-  stopCompose
+  stopCompose,
+  runContainer,
+  doesContainerExist,
+  rmContainer
 } = await esmock<typeof DockerLibs>('../../src/libs/docker.js', {
   '@effect/platform': { Command: mockCommand },
   'effect': { Schedule: mockSchedule },
@@ -154,22 +159,29 @@ describe('docker libs', () => {
     }));
   });
 
-  it('getVolumeNamesWithLabel', run(function* () {
-    const volumeNames = ['volume1', 'volume2'];
-    mockCommand.lines.returns(Effect.succeed(['', '   ', ...volumeNames]));
-    const label = 'mylabel';
+  ([
+    ['getVolumeNamesWithLabel', getVolumeNamesWithLabel, 'volume'],
+    ['getContainerNamesWithLabel', getContainerNamesWithLabel, 'container'],
+  ] as [string, (label: string) => Effect.Effect<string[], PlatformError, CommandExecutor>, string][]).forEach((
+    [test, fn, entity]
+  ) => {
+    it(test, run(function* () {
+      const entityNames = ['volume1', 'volume2'];
+      mockCommand.lines.returns(Effect.succeed(['', '   ', ...entityNames]));
+      const label = 'mylabel';
 
-    const result = yield* getVolumeNamesWithLabel(label);
+      const result = yield* fn(label);
 
-    expect(result).to.deep.equal(volumeNames);
-    expect(mockCommand.make.calledOnceWithExactly(
-      'docker', 'volume', 'ls', '--filter', `label=${label}`, '-q'
-    )).to.be.true;
-    expect(mockCommand.env.notCalled).to.be.true;
-    expect(mockCommand.exitCode.notCalled).to.be.true;
-    expect(mockCommand.string.notCalled).to.be.true;
-    expect(mockCommand.lines.calledOnceWithExactly(FAKE_COMMAND)).to.be.true;
-  }));
+      expect(result).to.deep.equal(entityNames);
+      expect(mockCommand.make.calledOnceWithExactly(
+        'docker', entity, 'ls', '--filter', `label=${label}`, '-q'
+      )).to.be.true;
+      expect(mockCommand.env.notCalled).to.be.true;
+      expect(mockCommand.exitCode.notCalled).to.be.true;
+      expect(mockCommand.string.notCalled).to.be.true;
+      expect(mockCommand.lines.calledOnceWithExactly(FAKE_COMMAND)).to.be.true;
+    }));
+  });
 
   [
     [['volume1', 'volume2'], true],
@@ -193,27 +205,37 @@ describe('docker libs', () => {
     }));
   });
 
-  [
-    [`'output'`, 'output'],
-    ['', ''],
-    ['   ', ''],
-  ].forEach(([output, expected]) => {
-    it('getVolumeLabelValue', run(function* () {
-      mockCommand.string.returns(Effect.succeed(output));
-      const label = 'mylabel';
-      const volumeName = 'volumeName';
+  ([
+    ['getVolumeLabelValue', getVolumeLabelValue, 'volume', '.Labels'],
+    ['getContainerLabelValue', getContainerLabelValue, 'container', '.Config.Labels'],
+  ] as [
+    string,
+    (labelName: string) => (name: string) => Effect.Effect<string, PlatformError, CommandExecutor>,
+    string,
+    string
+  ][]).forEach(([test, fn, entity, labelPath]) => {
+    [
+      [`'output'`, 'output'],
+      ['', ''],
+      ['   ', ''],
+    ].forEach(([output, expected]) => {
+      it(test, run(function* () {
+        mockCommand.string.returns(Effect.succeed(output));
+        const label = 'mylabel';
+        const volumeName = 'volumeName';
 
-      const result = yield* getVolumeLabelValue(label)(volumeName);
+        const result = yield* fn(label)(volumeName);
 
-      expect(result).to.equal(expected);
-      expect(mockCommand.make.calledOnceWithExactly(
-        'docker', 'volume', 'inspect', volumeName, '--format', `'{{ index .Labels "${label}" }}'`
-      )).to.be.true;
-      expect(mockCommand.env.notCalled).to.be.true;
-      expect(mockCommand.exitCode.notCalled).to.be.true;
-      expect(mockCommand.string.calledOnceWithExactly(FAKE_COMMAND)).to.be.true;
-      expect(mockCommand.lines.notCalled).to.be.true;
-    }));
+        expect(result).to.equal(expected);
+        expect(mockCommand.make.calledOnceWithExactly(
+          'docker', entity, 'inspect', volumeName, '--format', `'{{ index ${labelPath} "${label}" }}'`
+        )).to.be.true;
+        expect(mockCommand.env.notCalled).to.be.true;
+        expect(mockCommand.exitCode.notCalled).to.be.true;
+        expect(mockCommand.string.calledOnceWithExactly(FAKE_COMMAND)).to.be.true;
+        expect(mockCommand.lines.notCalled).to.be.true;
+      }));
+    });
   });
 
   it('createComposeContainers', run(function* () {
@@ -350,6 +372,108 @@ describe('docker libs', () => {
     expect(mockCommand.env.notCalled).to.be.true;
     expect(mockCommand.exitCode.notCalled).to.be.true;
     expect(mockCommand.string.calledOnceWithExactly(FAKE_COMMAND)).to.be.true;
+    expect(mockCommand.lines.notCalled).to.be.true;
+  }));
+
+  describe('runContainer', () => {
+    it('runs container with all parameters', run(function* () {
+      mockCommand.exitCode.returns(Effect.succeed(0));
+      const opts = {
+        image: 'my-image',
+        name: 'my-container',
+        labels: ['label1=value1', 'label2=value2'],
+        ports: [[8080, 80], [443, 443]] as [number, number][],
+        env: { VAR1: 'value1', VAR2: 'value2' },
+      };
+
+      yield* runContainer(opts);
+
+      expect(mockCommand.make.calledOnceWithExactly(
+        'docker',
+        'run',
+        '--detach',
+        '--restart',
+        'always',
+        `--name`,
+        opts.name,
+        '--label',
+        opts.labels[0],
+        '--label',
+        opts.labels[1],
+        '--env',
+        `VAR1=${opts.env.VAR1}`,
+        '--env',
+        `VAR2=${opts.env.VAR2}`,
+        '--publish',
+        `${opts.ports[0][0].toString()}:${opts.ports[0][1].toString()}`,
+        '--publish',
+        `${opts.ports[1][0].toString()}:${opts.ports[1][1].toString()}`,
+        opts.image
+      )).to.be.true;
+      expect(mockCommand.env.notCalled).to.be.true;
+      expect(mockCommand.exitCode.calledOnceWithExactly(FAKE_COMMAND)).to.be.true;
+      expect(mockCommand.string.notCalled).to.be.true;
+      expect(mockCommand.lines.notCalled).to.be.true;
+    }));
+
+    it('runs container with only the minimum parameters', run(function* () {
+      mockCommand.exitCode.returns(Effect.succeed(0));
+      const opts = {
+        image: 'my-image',
+        name: 'my-container',
+      };
+
+      yield* runContainer(opts);
+
+      expect(mockCommand.make.calledOnceWithExactly(
+        'docker',
+        'run',
+        '--detach',
+        '--restart',
+        'always',
+        `--name`,
+        opts.name,
+        opts.image
+      )).to.be.true;
+      expect(mockCommand.env.notCalled).to.be.true;
+      expect(mockCommand.exitCode.calledOnceWithExactly(FAKE_COMMAND)).to.be.true;
+      expect(mockCommand.string.notCalled).to.be.true;
+      expect(mockCommand.lines.notCalled).to.be.true;
+    }));
+  });
+
+  [
+    ['hello', true],
+    ['', false],
+    ['   ', false]
+  ].forEach(([output, expected]) => {
+    it('doesContainerExist', run(function* () {
+      mockCommand.string.returns(Effect.succeed(output));
+
+      const result = yield* doesContainerExist(PROJECT_NAME);
+
+      expect(result).to.equal(expected);
+      expect(mockCommand.make.calledOnceWithExactly(
+        'docker', 'container', 'ls', '-q', '--filter', `name=${PROJECT_NAME}`
+      )).to.be.true;
+      expect(mockCommand.env.notCalled).to.be.true;
+      expect(mockCommand.exitCode.notCalled).to.be.true;
+      expect(mockCommand.string.calledOnceWithExactly(FAKE_COMMAND)).to.be.true;
+      expect(mockCommand.lines.notCalled).to.be.true;
+    }));
+  });
+
+  it('rmContainer', run(function* () {
+    mockCommand.exitCode.returns(Effect.succeed(0));
+
+    yield* rmContainer(PROJECT_NAME);
+
+    expect(mockCommand.make.calledOnceWithExactly(
+      'docker', 'rm', '-f', PROJECT_NAME
+    )).to.be.true;
+    expect(mockCommand.env.notCalled).to.be.true;
+    expect(mockCommand.exitCode.calledOnceWithExactly(FAKE_COMMAND)).to.be.true;
+    expect(mockCommand.string.notCalled).to.be.true;
     expect(mockCommand.lines.notCalled).to.be.true;
   }));
 });
