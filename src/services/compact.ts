@@ -1,6 +1,6 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { Array, Match, Option, pipe, Stream } from 'effect';
+import { Array, Option, pipe, Stream } from 'effect';
 import { getDbNames } from '../libs/couch/dbs-info.js';
 import { getDesignDocNames } from '../libs/couch/design-docs.js';
 import { compactDb, compactDesign } from '../libs/couch/compact.js';
@@ -24,14 +24,10 @@ const compactDbViews = (dbName: string) => getDesignDocNames(dbName)
   );
 
 const compactCouchDb = (dbName: string, compactDesigns: boolean) => compactDb(dbName)
-  .pipe(
-    Effect.andThen(Match
-      .value(compactDesigns)
-      .pipe(
-        Match.when(true, () => compactDbViews(dbName)),
-        Match.orElse(() => Effect.void),
-      )),
-  );
+  .pipe(Effect.filterOrElse(
+    () => !compactDesigns,
+    () => compactDbViews(dbName),
+  ));
 
 const compactCouchDesign = (dbName: string) => (designName: string) => compactDesign(dbName, designName);
 

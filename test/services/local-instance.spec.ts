@@ -445,7 +445,7 @@ describe('Local Instance Service', () => {
       if (Either.isLeft(either)) {
         expect(either.left).to.deep.equal(new Error(`Instance ${INSTANCE_NAME} does not exist`));
         expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
-        expect(mockDockerLib.doesComposeProjectHaveContainers.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
+        expect(mockDockerLib.doesComposeProjectHaveContainers.notCalled).to.be.true;
         expect(mockFileLib.writeFile.notCalled).to.be.true;
         expect(writeFileInner.notCalled).to.be.true;
         expect(mockDockerLib.createComposeContainers.notCalled).to.be.true;

@@ -23,6 +23,8 @@ import { UpgradeService } from './services/upgrade.js';
 import { TestDataGeneratorService } from './services/test-data-generator.js';
 import { instance } from './commands/instance/index.js';
 import { LocalInstanceService } from './services/local-instance.js';
+import { localIp } from './commands/local-ip/index.js';
+import { LocalIpService } from './services/local-ip.js';
 
 const url = Options
   .text('url')
@@ -52,7 +54,7 @@ export const initializeUrl = chtx.pipe(
 );
 
 const command = chtx.pipe(Command.withSubcommands([
-  design, doc, monitor, warmViews, activeTasks, db, upgrade, instance
+  design, doc, localIp, monitor, warmViews, activeTasks, db, upgrade, instance
 ]));
 
 const cli = Command.run(command, {
@@ -70,6 +72,7 @@ cli(process.argv)
     Effect.provide(MonitorService.Default),
     Effect.provide(LocalDiskUsageService.Default),
     Effect.provide(LocalInstanceService.Default.pipe(httpClientNoSslVerify)),
+    Effect.provide(LocalIpService.Default),
     Effect.provide(PurgeService.Default),
     Effect.provide(UpgradeService.Default),
     Effect.provide(WarmViewsService.Default),

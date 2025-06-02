@@ -1,5 +1,5 @@
 import { Args, Command, Options, Prompt } from '@effect/cli';
-import { Array, Console, Effect, Match, Option, pipe } from 'effect';
+import { Array, Console, Effect, Option, pipe } from 'effect';
 import { initializeUrl } from '../../index.js';
 import { PouchDBService } from '../../services/pouchdb.js';
 
@@ -16,12 +16,12 @@ const getConfirmationPrompt = (dbNames: string[]) => Prompt.confirm({
   initial: false,
 });
 
-const isRemoveConfirmed = (dbNames: string[], yes: boolean) => Match
-  .value(yes)
-  .pipe(
-    Match.when(true, () => Effect.succeed(true)),
-    Match.orElse(() => getConfirmationPrompt(dbNames)),
-  );
+const isRemoveConfirmed = (dbNames: string[], yes: boolean) => Effect
+  .succeed(true)
+  .pipe(Effect.filterOrElse(
+    () => yes,
+    () => getConfirmationPrompt(dbNames),
+  ));
 
 const yes = Options
   .boolean('yes')

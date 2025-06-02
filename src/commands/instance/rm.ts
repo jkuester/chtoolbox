@@ -1,5 +1,5 @@
 import { Args, Command, Options, Prompt } from '@effect/cli';
-import { Array, Console, Effect, Match, Option, pipe } from 'effect';
+import { Array, Console, Effect, Option, pipe } from 'effect';
 import { LocalInstanceService } from '../../services/local-instance.js';
 
 const getConfirmationPrompt = (names: string[]) => Prompt.confirm({
@@ -7,12 +7,12 @@ const getConfirmationPrompt = (names: string[]) => Prompt.confirm({
   initial: false,
 });
 
-const isRemoveConfirmed = (names: string[], yes: boolean) => Match
-  .value(yes)
-  .pipe(
-    Match.when(true, () => Effect.succeed(true)),
-    Match.orElse(() => getConfirmationPrompt(names)),
-  );
+const isRemoveConfirmed = (names: string[], yes: boolean) => Effect
+  .succeed(true)
+  .pipe(Effect.filterOrElse(
+    () => yes,
+    () => getConfirmationPrompt(names),
+  ));
 
 const rmChtInstances = (names: string[]) => pipe(
   names,

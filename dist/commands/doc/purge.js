@@ -18,9 +18,9 @@ const getConfirmationPrompt = ({ database }) => Prompt
     message: `Are you sure you want to permanently purge docs from ${database}?`,
     initial: false,
 });
-const isPurgeConfirmed = (opts) => Match
-    .value(opts.yes)
-    .pipe(Match.when(true, () => Effect.succeed(true)), Match.orElse(() => getConfirmationPrompt(opts)));
+const isPurgeConfirmed = (opts) => Effect
+    .succeed(true)
+    .pipe(Effect.filterOrElse(() => opts.yes, () => getConfirmationPrompt(opts)));
 const yes = Options
     .boolean('yes')
     .pipe(Options.withAlias('y'), Options.withDescription('Do not prompt for confirmation'));
