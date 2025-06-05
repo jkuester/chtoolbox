@@ -1,4 +1,4 @@
-import { Array, Effect, Logger, LogLevel, Match, Option, pipe, Redacted, Schedule, Schema } from 'effect';
+import { Array, Effect, Logger, LogLevel, Match, Option, pipe, Redacted, Schedule, Schema, String } from 'effect';
 import * as Context from 'effect/Context';
 import { FileSystem, HttpClient, HttpClientRequest } from '@effect/platform';
 import crypto from 'crypto';
@@ -10,6 +10,7 @@ import {
   destroyCompose,
   doesComposeProjectHaveContainers,
   doesVolumeExistWithLabel,
+  getContainersForComposeProject,
   getEnvarFromComposeContainer,
   getVolumeLabelValue,
   getVolumeNamesWithLabel,
@@ -32,9 +33,10 @@ const NGINX_SVC_NAME = 'nginx';
 const ENV_FILE_NAME = 'env.json';
 const UPGRADE_SVC_COMPOSE_FILE_NAME = 'docker-compose.yml';
 const CHTX_COMPOSE_OVERRIDE_FILE_NAME = 'chtx-override.yml';
+const CHT_COUCHDB_COMPOSE_FILE_NAME = 'cht-couchdb.yml';
 const CHT_COMPOSE_FILE_NAMES = [
   'cht-core.yml',
-  'cht-couchdb.yml',
+  CHT_COUCHDB_COMPOSE_FILE_NAME,
 ];
 const SSL_CERT_FILE_NAME = 'cert.pem';
 const SSL_KEY_FILE_NAME = 'key.pem';
@@ -43,10 +45,6 @@ const COUCHDB_USER = 'medic';
 const COUCHDB_PASSWORD = 'password';
 
 const UPGRADE_SERVICE_COMPOSE = `
-configs:
-  dockerfile_scratch:
-    content: FROM tianon/true:latest
-
 services:
   ${UPGRADE_SVC_NAME}:
     restart: always
@@ -54,9 +52,6 @@ services:
     volumes:
       - \${DOCKER_HOST:-/var/run/docker.sock}:/var/run/docker.sock
       - chtx-compose-files:/docker-compose
-    configs:
-      - source: dockerfile_scratch
-        target: /docker-compose/Dockerfile.scratch
     networks:
       - cht-net
     environment:
@@ -76,6 +71,13 @@ volumes:
       - "${CHTX_LABEL_NAME}=\${CHT_COMPOSE_PROJECT_NAME}"
 `;
 
+const NOUVEAU_SERVICE_OVERRIDE = `
+  nouveau:
+    # Not used - only here to appease config validation
+    build: { context: . }
+    volumes:
+      - cht-nouveau-data:/data/nouveau
+`;
 const getLocalVolumeConfig = (subDirectory: string) => (devicePath: string) => `
     driver: local
     driver_opts:
@@ -92,7 +94,7 @@ const SUB_DIR_COUCHDB = 'couchdb';
 const SUB_DIR_NOUVEAU = 'nouveau';
 
 // The contents of this file have to pass `docker compose config` validation
-const getChtxComposeOverride = (localVolumePath: Option.Option<string>) => `
+const getChtxComposeOverride = (localVolumePath: Option.Option<string>) => (nouveauOverride: Option.Option<string>) => `
 services:
   couchdb:
     # Not used - only here to appease config validation
@@ -100,11 +102,7 @@ services:
     volumes:
       - cht-credentials:/opt/couchdb/etc/local.d/
       - cht-couchdb-data:/opt/couchdb/data
-  nouveau:
-    # Used when running pre-nouveau instances
-    build: { dockerfile: Dockerfile.scratch }
-    volumes:
-      - cht-nouveau-data:/data/nouveau
+${nouveauOverride.pipe(Option.getOrElse(() => ''))}
 volumes:
   cht-credentials:${localVolumePath.pipe(getVolumeConfig(SUB_DIR_CREDENTIALS))}
   cht-couchdb-data:${localVolumePath.pipe(getVolumeConfig(SUB_DIR_COUCHDB))}
@@ -191,10 +189,16 @@ const writeUpgradeServiceCompose = (dirPath: string) => pipe(
   UPGRADE_SERVICE_COMPOSE,
   writeFile(`${dirPath}/${UPGRADE_SVC_COMPOSE_FILE_NAME}`),
 );
-const writeChtxOverrideCompose = (dirPath: string, localVolumePath: Option.Option<string>) => pipe(
-  getChtxComposeOverride(localVolumePath),
-  writeFile(`${dirPath}/${CHTX_COMPOSE_OVERRIDE_FILE_NAME}`),
+const getNouveauOverride = (dirPath: string) => FileSystem.FileSystem.pipe(
+  Effect.flatMap(fs => fs.readFileString(`${dirPath}/${CHT_COUCHDB_COMPOSE_FILE_NAME}`)),
+  Effect.map(String.includes('nouveau:')),
+  Effect.map(includeNouveau => Option.liftPredicate(NOUVEAU_SERVICE_OVERRIDE, () => includeNouveau)),
 );
+const writeChtxOverrideCompose = (dirPath: string, localVolumePath: Option.Option<string>) => getNouveauOverride(dirPath)
+  .pipe(
+    Effect.map(getChtxComposeOverride(localVolumePath)),
+    Effect.flatMap(writeFile(`${dirPath}/${CHTX_COMPOSE_OVERRIDE_FILE_NAME}`)),
+  );
 const writeChtCompose = (dirPath: string, version: string) => (fileName: string) => pipe(
   chtComposeUrl(version, fileName),
   getRemoteFile,
@@ -300,16 +304,30 @@ const getPortForInstance = (instanceName: string) => pipe(
     ))
 );
 
+const getInstanceStatus = (instanceName: string) => Effect
+  .all([
+    getContainersForComposeProject(instanceName, 'running'),
+    getContainersForComposeProject(instanceName, 'exited', 'created', 'paused', 'restarting', 'removing', 'dead'),
+  ])
+  .pipe(
+    Effect.map(Array.map(Array.isNonEmptyArray)),
+    Effect.map(Match.value),
+    Effect.map(Match.when([true, false], () => 'running' as const)),
+    Effect.map(Match.orElse(() => 'stopped' as const)),
+  );
+
 const getLocalChtInstanceInfo = (instanceName: string): Effect.Effect<LocalChtInstance, PlatformError, CommandExecutor> => Effect
     .all([
+      getInstanceStatus(instanceName),
       getEnvarFromUpgradeSvcContainer(instanceName, 'COUCHDB_USER'),
       getEnvarFromUpgradeSvcContainer(instanceName, 'COUCHDB_PASSWORD'),
       getPortForInstance(instanceName).pipe(Effect.catchAll(() => Effect.succeed(null))),
     ])
-    .pipe(Effect.map(([username, password, port]) => ({
+    .pipe(Effect.map(([status, username, password, port]) => ({
       name: instanceName,
       username,
       password: Redacted.make(password),
+      status,
       port: Option.fromNullable(port)
     })));
 
@@ -365,6 +383,7 @@ export interface LocalChtInstance {
   name: string,
   username: string,
   password: Redacted.Redacted,
+  status: 'running' | 'stopped',
   port: Option.Option<`${number}`>
 }
 
@@ -404,6 +423,13 @@ export class LocalInstanceService extends Effect.Service<LocalInstanceService>()
         Effect.tap(({ port }) => port.pipe(
           Option.getOrThrow,
           waitForInstance
+        )),
+        // Get status again after instance started
+        Effect.flatMap(instanceData => getInstanceStatus(instanceName).pipe(
+          Effect.map(status => ({
+            ...instanceData,
+            status,
+          }))
         )),
         Effect.mapError(x => x as Error),
         Effect.provide(context),

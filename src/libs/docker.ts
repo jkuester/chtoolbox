@@ -68,6 +68,23 @@ export const doesComposeProjectHaveContainers = (
     Effect.map(String.isNonEmpty),
   );
 
+type DockerContainerStatus = 'running' | 'exited' | 'created' | 'paused' | 'restarting' | 'removing' | 'dead';
+
+export const getContainersForComposeProject = (
+  projectName: string,
+  ...statuses: DockerContainerStatus[]
+): Effect.Effect<string[], PlatformError, CommandExecutor> => Option
+  .liftPredicate(statuses, Array.isNonEmptyArray)
+  .pipe(
+    Option.map(Array.flatMap(status => ['--status', status])),
+    Option.getOrElse(() => ['-a']),
+    statusArgs => dockerCompose(projectName, 'ps', '-q', ...statusArgs),
+    runForString,
+    Effect.map(String.split('\n')),
+    Effect.map(Array.map(String.trim)),
+    Effect.map(Array.filter(String.isNonEmpty)),
+  );
+
 const getEntityWithLabel = (entity: 'volume' | 'container') => (label: string) => Command
   .make('docker', entity, 'ls', '--filter', `label=${label}`, '-q',)
   .pipe(
