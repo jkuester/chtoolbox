@@ -12,6 +12,7 @@ const filterInstances = (names: string[]) => Match
 
 const getPrintableInstanceInfo = (instance: LocalChtInstance) => ({
   name: instance.name,
+  status: instance.status,
   credentials: `${instance.username}:${Redacted.value(instance.password)}`,
   url: instance.port.pipe(
     Option.map(getLocalIpUrl),

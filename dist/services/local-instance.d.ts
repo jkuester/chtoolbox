@@ -11,6 +11,7 @@ export interface LocalChtInstance {
     name: string;
     username: string;
     password: Redacted.Redacted;
+    status: 'running' | 'stopped';
     port: Option.Option<`${number}`>;
 }
 declare const LocalInstanceService_base: Effect.Service.Class<LocalInstanceService, "chtoolbox/LocalInstanceService", {
