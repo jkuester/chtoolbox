@@ -8,7 +8,6 @@ import {
   copyFileToComposeContainer,
   createComposeContainers,
   destroyCompose,
-  doesComposeProjectHaveContainers,
   doesVolumeExistWithLabel,
   getContainersForComposeProject,
   getEnvarFromComposeContainer,
@@ -220,7 +219,8 @@ const writeSSLFiles = (sslType: SSLType) => (dirPath: string) => pipe(
 
 const doesUpgradeServiceExist = (instanceName: string) => pipe(
   upgradeSvcProjectName(instanceName),
-  doesComposeProjectHaveContainers,
+  getContainersForComposeProject,
+  Effect.map(Array.isNonEmptyArray)
 );
 
 const doesChtxVolumeExist = (instanceName: string) => doesVolumeExistWithLabel(`${CHTX_LABEL_NAME}=${instanceName}`);

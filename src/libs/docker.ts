@@ -60,14 +60,6 @@ export const pullComposeImages = (projectName: string, env: Record<string, strin
   Effect.retry({ schedule: Schedule.spaced(2000) }),
 );
 
-export const doesComposeProjectHaveContainers = (
-  projectName: string
-): Effect.Effect<boolean, PlatformError | Error, CommandExecutor> => dockerCompose(projectName, 'ps', '-qa')
-  .pipe(
-    runForString,
-    Effect.map(String.isNonEmpty),
-  );
-
 type DockerContainerStatus = 'running' | 'exited' | 'created' | 'paused' | 'restarting' | 'removing' | 'dead';
 
 export const getContainersForComposeProject = (
