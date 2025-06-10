@@ -3,7 +3,8 @@ import { CommandExecutor } from '@effect/platform/CommandExecutor';
 import { PlatformError } from '@effect/platform/Error';
 export declare const pullImage: (image: string) => Effect.Effect<void, Error | PlatformError, CommandExecutor>;
 export declare const pullComposeImages: (projectName: string, env: Record<string, string>) => (composeFilePaths: string[]) => Effect.Effect<void, Error | PlatformError, CommandExecutor>;
-export declare const doesComposeProjectHaveContainers: (projectName: string) => Effect.Effect<boolean, PlatformError | Error, CommandExecutor>;
+type DockerContainerStatus = 'running' | 'exited' | 'created' | 'paused' | 'restarting' | 'removing' | 'dead';
+export declare const getContainersForComposeProject: (projectName: string, ...statuses: DockerContainerStatus[]) => Effect.Effect<string[], PlatformError, CommandExecutor>;
 export declare const getVolumeNamesWithLabel: (label: string) => Effect.Effect<string[], PlatformError, CommandExecutor>;
 export declare const getContainerNamesWithLabel: (label: string) => Effect.Effect<string[], PlatformError, CommandExecutor>;
 export declare const doesVolumeExistWithLabel: (label: string) => Effect.Effect<boolean, PlatformError, CommandExecutor>;
@@ -28,4 +29,5 @@ export declare const runContainer: ({ image, name, env, labels, ports }: {
 }) => Effect.Effect<void, Error | PlatformError, CommandExecutor>;
 export declare const doesContainerExist: (containerName: string) => Effect.Effect<boolean, PlatformError, CommandExecutor>;
 export declare const rmContainer: (name: string) => Effect.Effect<void, Error | PlatformError, CommandExecutor>;
+export {};
 //# sourceMappingURL=docker.d.ts.map

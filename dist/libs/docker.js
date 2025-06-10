@@ -20,8 +20,9 @@ export const pullImage = (image) => Command
 export const pullComposeImages = (projectName, env) => (composeFilePaths) => pipe(getComposeFileParams(composeFilePaths), composeFileParams => dockerCompose(projectName, ...composeFileParams, 'pull'), Command.env(env), runForExitCode, 
 // Pulling all the images at once can result in rate limiting
 Effect.retry({ schedule: Schedule.spaced(2000) }));
-export const doesComposeProjectHaveContainers = (projectName) => dockerCompose(projectName, 'ps', '-qa')
-    .pipe(runForString, Effect.map(String.isNonEmpty));
+export const getContainersForComposeProject = (projectName, ...statuses) => Option
+    .liftPredicate(statuses, Array.isNonEmptyArray)
+    .pipe(Option.map(Array.flatMap(status => ['--status', status])), Option.getOrElse(() => ['-a']), statusArgs => dockerCompose(projectName, 'ps', '-q', ...statusArgs), runForString, Effect.map(String.split('\n')), Effect.map(Array.map(String.trim)), Effect.map(Array.filter(String.isNonEmpty)));
 const getEntityWithLabel = (entity) => (label) => Command
     .make('docker', entity, 'ls', '--filter', `label=${label}`, '-q')
     .pipe(Command.lines, Effect.tap(Effect.logDebug), Effect.map(Array.map(String.trim)), Effect.map(Array.filter(String.isNonEmpty)));

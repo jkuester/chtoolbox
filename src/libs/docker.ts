@@ -60,12 +60,21 @@ export const pullComposeImages = (projectName: string, env: Record<string, strin
   Effect.retry({ schedule: Schedule.spaced(2000) }),
 );
 
-export const doesComposeProjectHaveContainers = (
-  projectName: string
-): Effect.Effect<boolean, PlatformError | Error, CommandExecutor> => dockerCompose(projectName, 'ps', '-qa')
+type DockerContainerStatus = 'running' | 'exited' | 'created' | 'paused' | 'restarting' | 'removing' | 'dead';
+
+export const getContainersForComposeProject = (
+  projectName: string,
+  ...statuses: DockerContainerStatus[]
+): Effect.Effect<string[], PlatformError, CommandExecutor> => Option
+  .liftPredicate(statuses, Array.isNonEmptyArray)
   .pipe(
+    Option.map(Array.flatMap(status => ['--status', status])),
+    Option.getOrElse(() => ['-a']),
+    statusArgs => dockerCompose(projectName, 'ps', '-q', ...statusArgs),
     runForString,
-    Effect.map(String.isNonEmpty),
+    Effect.map(String.split('\n')),
+    Effect.map(Array.map(String.trim)),
+    Effect.map(Array.filter(String.isNonEmpty)),
   );
 
 const getEntityWithLabel = (entity: 'volume' | 'container') => (label: string) => Command

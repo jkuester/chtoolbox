@@ -7,6 +7,7 @@ const filterInstances = (names) => Match
     .pipe(Match.when(true, () => () => true), Match.orElse(() => ({ name }) => names.includes(name)));
 const getPrintableInstanceInfo = (instance) => ({
     name: instance.name,
+    status: instance.status,
     credentials: `${instance.username}:${Redacted.value(instance.password)}`,
     url: instance.port.pipe(Option.map(getLocalIpUrl), Option.getOrElse(() => '')),
 });
