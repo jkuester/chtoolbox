@@ -3,7 +3,7 @@ import * as Context from 'effect/Context';
 import { FileSystem, HttpClient, HttpClientRequest } from '@effect/platform';
 import crypto from 'crypto';
 import { createTmpDir, getRemoteFile, readJsonFile, writeFile, writeJsonFile, } from '../libs/file.js';
-import { copyFileFromComposeContainer, copyFileToComposeContainer, createComposeContainers, destroyCompose, doesComposeProjectHaveContainers, doesVolumeExistWithLabel, getContainersForComposeProject, getEnvarFromComposeContainer, getVolumeLabelValue, getVolumeNamesWithLabel, pullComposeImages, restartCompose, restartComposeService, rmComposeContainer, startCompose, stopCompose } from '../libs/docker.js';
+import { copyFileFromComposeContainer, copyFileToComposeContainer, createComposeContainers, destroyCompose, doesVolumeExistWithLabel, getContainersForComposeProject, getEnvarFromComposeContainer, getVolumeLabelValue, getVolumeNamesWithLabel, pullComposeImages, restartCompose, restartComposeService, rmComposeContainer, startCompose, stopCompose } from '../libs/docker.js';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
 import { getFreePorts } from '../libs/local-network.js';
 import { filterStatusOk } from '@effect/platform/HttpClient';
@@ -141,7 +141,7 @@ const writeChtCompose = (dirPath, version) => (fileName) => pipe(chtComposeUrl(v
 const writeComposeFiles = (dirPath, version, localVolumePath) => pipe(CHT_COMPOSE_FILE_NAMES, Array.map(writeChtCompose(dirPath, version)), Array.append(writeUpgradeServiceCompose(dirPath)), Array.append(writeChtxOverrideCompose(dirPath, localVolumePath)), Effect.all);
 const writeSSLFiles = (sslType) => (dirPath) => pipe(SSL_URL_DICT[sslType], Array.map(([name, url]) => getRemoteFile(url)
     .pipe(Effect.flatMap(writeFile(`${dirPath}/${name}`)))), Effect.all);
-const doesUpgradeServiceExist = (instanceName) => pipe(upgradeSvcProjectName(instanceName), doesComposeProjectHaveContainers);
+const doesUpgradeServiceExist = (instanceName) => pipe(upgradeSvcProjectName(instanceName), getContainersForComposeProject, Effect.map(Array.isNonEmptyArray));
 const doesChtxVolumeExist = (instanceName) => doesVolumeExistWithLabel(`${CHTX_LABEL_NAME}=${instanceName}`);
 const assertChtxVolumeDoesNotExist = (instanceName) => doesChtxVolumeExist(instanceName)
     .pipe(Effect.filterOrFail(exists => !exists, () => new Error(`Instance ${instanceName} already exists`)));

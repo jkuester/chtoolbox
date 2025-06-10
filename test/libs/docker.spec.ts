@@ -31,7 +31,7 @@ const {
   copyFileToComposeContainer,
   createComposeContainers,
   destroyCompose,
-  doesComposeProjectHaveContainers,
+  getContainersForComposeProject,
   doesVolumeExistWithLabel,
   getEnvarFromComposeContainer,
   getVolumeLabelValue,
@@ -150,19 +150,37 @@ describe('docker libs', () => {
     }));
   });
 
-  [
-    ['hello', true],
-    ['', false],
-    ['   ', false]
-  ].forEach(([output, expected]) => {
-    it('doesComposeProjectHaveContainers', run(function* () {
+  describe('getContainersForComposeProject', () => {
+    [
+      ['c0\nc1\nc2', ['c0', 'c1', 'c2']],
+      ['', []],
+      ['c0  \n  c1\n    c2    \n   \n\n', ['c0', 'c1', 'c2']],
+    ].forEach(([output, expected]) => {
+      it('returns all containers for the compose project when no statuses are provided', run(function* () {
+        mockCommand.string.returns(Effect.succeed(output));
+
+        const result = yield* getContainersForComposeProject(PROJECT_NAME);
+
+        expect(result).to.deep.equal(expected);
+        expect(mockCommand.make.calledOnceWithExactly(
+          'docker', 'compose', '-p', PROJECT_NAME, 'ps', '-q', '-a'
+        )).to.be.true;
+        expect(mockCommand.env.notCalled).to.be.true;
+        expect(mockCommand.exitCode.notCalled).to.be.true;
+        expect(mockCommand.string.calledOnceWithExactly(FAKE_COMMAND)).to.be.true;
+        expect(mockCommand.lines.notCalled).to.be.true;
+      }));
+    });
+
+    it('returns the compose containers for the given statuses', run(function* () {
+      const output = 'container';
       mockCommand.string.returns(Effect.succeed(output));
 
-      const result = yield* doesComposeProjectHaveContainers(PROJECT_NAME);
+      const result = yield* getContainersForComposeProject(PROJECT_NAME, 'running', 'exited');
 
-      expect(result).to.equal(expected);
+      expect(result).to.deep.equal([output]);
       expect(mockCommand.make.calledOnceWithExactly(
-        'docker', 'compose', '-p', PROJECT_NAME, 'ps', '-qa'
+        'docker', 'compose', '-p', PROJECT_NAME, 'ps', '-q', '--status', 'running', '--status', 'exited'
       )).to.be.true;
       expect(mockCommand.env.notCalled).to.be.true;
       expect(mockCommand.exitCode.notCalled).to.be.true;
