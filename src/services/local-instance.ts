@@ -190,8 +190,8 @@ const writeUpgradeServiceCompose = (dirPath: string) => pipe(
 );
 const getNouveauOverride = (dirPath: string) => FileSystem.FileSystem.pipe(
   Effect.flatMap(fs => fs.readFileString(`${dirPath}/${CHT_COUCHDB_COMPOSE_FILE_NAME}`)),
-  Effect.map(String.includes('nouveau:')),
-  Effect.map(includeNouveau => Option.liftPredicate(NOUVEAU_SERVICE_OVERRIDE, () => includeNouveau)),
+  Effect.map(Option.liftPredicate(String.includes('nouveau:'))),
+  Effect.map(Option.map(() => NOUVEAU_SERVICE_OVERRIDE)),
 );
 const writeChtxOverrideCompose = (dirPath: string, localVolumePath: Option.Option<string>) => getNouveauOverride(dirPath)
   .pipe(

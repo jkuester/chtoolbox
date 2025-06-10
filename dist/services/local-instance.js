@@ -134,7 +134,7 @@ const makeDir = (dirPath) => FileSystem.FileSystem.pipe(Effect.flatMap(fs => fs.
 const createLocalVolumeDirs = (localVolumePath) => localVolumePath.pipe(Option.map(path => pipe(Array.make(SUB_DIR_CREDENTIALS, SUB_DIR_COUCHDB, SUB_DIR_NOUVEAU), Array.map(subDir => `${path}/${subDir}`), Array.map(makeDir), Effect.all)), Option.getOrElse(() => Effect.void));
 const chtComposeUrl = (version, fileName) => `https://staging.dev.medicmobile.org/_couch/builds_4/medic%3Amedic%3A${version}/docker-compose/${fileName}`;
 const writeUpgradeServiceCompose = (dirPath) => pipe(UPGRADE_SERVICE_COMPOSE, writeFile(`${dirPath}/${UPGRADE_SVC_COMPOSE_FILE_NAME}`));
-const getNouveauOverride = (dirPath) => FileSystem.FileSystem.pipe(Effect.flatMap(fs => fs.readFileString(`${dirPath}/${CHT_COUCHDB_COMPOSE_FILE_NAME}`)), Effect.map(String.includes('nouveau:')), Effect.map(includeNouveau => Option.liftPredicate(NOUVEAU_SERVICE_OVERRIDE, () => includeNouveau)));
+const getNouveauOverride = (dirPath) => FileSystem.FileSystem.pipe(Effect.flatMap(fs => fs.readFileString(`${dirPath}/${CHT_COUCHDB_COMPOSE_FILE_NAME}`)), Effect.map(Option.liftPredicate(String.includes('nouveau:'))), Effect.map(Option.map(() => NOUVEAU_SERVICE_OVERRIDE)));
 const writeChtxOverrideCompose = (dirPath, localVolumePath) => getNouveauOverride(dirPath)
     .pipe(Effect.map(getChtxComposeOverride(localVolumePath)), Effect.flatMap(writeFile(`${dirPath}/${CHTX_COMPOSE_OVERRIDE_FILE_NAME}`)));
 const writeChtCompose = (dirPath, version) => (fileName) => pipe(chtComposeUrl(version, fileName), getRemoteFile, Effect.flatMap(writeFile(`${dirPath}/${fileName}`)));
