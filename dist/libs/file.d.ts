@@ -7,4 +7,5 @@ export declare const getRemoteFile: (url: string) => Effect.Effect<string, Error
 export declare const writeFile: (path: string) => (content: string) => Effect.Effect<void, PlatformError, FileSystem.FileSystem>;
 export declare const writeJsonFile: (path: string, data: object) => Effect.Effect<void, PlatformError, FileSystem.FileSystem>;
 export declare const readJsonFile: (fileName: string, directory: string) => Effect.Effect<unknown, PlatformError, FileSystem.FileSystem>;
+export declare const writeEnvFile: (path: string, data: Record<string, string>) => Effect.Effect<void, PlatformError, FileSystem.FileSystem>;
 //# sourceMappingURL=file.d.ts.map

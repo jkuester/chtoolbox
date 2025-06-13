@@ -39,6 +39,7 @@ const mockDockerLib = {
 const mockFileLib = {
   createTmpDir: sandbox.stub(),
   writeFile: sandbox.stub(),
+  writeEnvFile: sandbox.stub(),
   writeJsonFile: sandbox.stub(),
   readJsonFile: sandbox.stub(),
   getRemoteFile: sandbox.stub(),
@@ -101,6 +102,7 @@ describe('Local Instance Service', () => {
 
     beforeEach(() => {
       mockFileLib.writeJsonFile.returns(Effect.void);
+      mockFileLib.writeEnvFile.returns(Effect.void);
       pullComposeImagesInner = sinon
         .stub()
         .returns(Effect.void);
@@ -147,11 +149,13 @@ describe('Local Instance Service', () => {
       const expectedEnv = {
         CHT_COMPOSE_PROJECT_NAME: INSTANCE_NAME,
         CHT_NETWORK: INSTANCE_NAME,
+        COMPOSE_PROJECT_NAME: `${INSTANCE_NAME}-up`,
         COUCHDB_PASSWORD: 'password',
         COUCHDB_USER: 'medic',
         NGINX_HTTP_PORT: httpPort,
         NGINX_HTTPS_PORT: httpsPort,
       };
+      expect(mockFileLib.writeEnvFile.notCalled).to.be.true;
       expect(mockFileLib.writeJsonFile.calledOnce).to.be.true;
       expect(mockFileLib.writeJsonFile.args[0][0]).to.equal(`${tmpDir}/env.json`);
       const actualEnv = mockFileLib.writeJsonFile.args[0][1] as Record<string, string>;
@@ -238,11 +242,15 @@ describe('Local Instance Service', () => {
       const expectedEnv = {
         CHT_COMPOSE_PROJECT_NAME: INSTANCE_NAME,
         CHT_NETWORK: INSTANCE_NAME,
+        COMPOSE_PROJECT_NAME: `${INSTANCE_NAME}-up`,
         COUCHDB_PASSWORD: 'password',
         COUCHDB_USER: 'medic',
         NGINX_HTTP_PORT: httpPort,
         NGINX_HTTPS_PORT: httpsPort,
       };
+      expect(mockFileLib.writeEnvFile.calledOnce).to.be.true;
+      expect(mockFileLib.writeEnvFile.args[0][0]).to.equal(`${dataDir}/.env`);
+      expect(mockFileLib.writeEnvFile.args[0][1]).to.deep.include(expectedEnv);
       expect(mockFileLib.writeJsonFile.calledOnce).to.be.true;
       expect(mockFileLib.writeJsonFile.args[0][0]).to.equal(`${tmpDir}/env.json`);
       const actualEnv = mockFileLib.writeJsonFile.args[0][1] as Record<string, string>;
@@ -440,6 +448,7 @@ describe('Local Instance Service', () => {
       const env = {
         CHT_COMPOSE_PROJECT_NAME: INSTANCE_NAME,
         CHT_NETWORK: INSTANCE_NAME,
+        COMPOSE_PROJECT_NAME: `${INSTANCE_NAME}-up`,
         COUCHDB_PASSWORD: 'password',
         COUCHDB_SECRET: 'secret',
         COUCHDB_USER: 'medic',
@@ -521,6 +530,7 @@ describe('Local Instance Service', () => {
       const env = {
         CHT_COMPOSE_PROJECT_NAME: INSTANCE_NAME,
         CHT_NETWORK: INSTANCE_NAME,
+        COMPOSE_PROJECT_NAME: `${INSTANCE_NAME}-up`,
         COUCHDB_PASSWORD: 'password',
         COUCHDB_SECRET: 'secret',
         COUCHDB_USER: 'medic',

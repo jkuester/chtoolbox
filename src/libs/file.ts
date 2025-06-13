@@ -1,6 +1,6 @@
 import { FileSystem, HttpClient, HttpClientRequest } from '@effect/platform';
 import { filterStatusOk } from '@effect/platform/HttpClient';
-import { Effect } from 'effect';
+import { Array, Effect, pipe, Record } from 'effect';
 import { Scope } from 'effect/Scope';
 import { PlatformError } from '@effect/platform/Error';
 
@@ -38,4 +38,15 @@ export const readJsonFile = (
 ): Effect.Effect<unknown, PlatformError, FileSystem.FileSystem> => FileSystem.FileSystem.pipe(
   Effect.flatMap(fs => fs.readFileString(`${directory}/${fileName}`)),
   Effect.map(JSON.parse),
+);
+
+export const writeEnvFile = (
+  path: string,
+  data: Record<string, string>
+): Effect.Effect<void, PlatformError, FileSystem.FileSystem> => pipe(
+  data,
+  Record.toEntries,
+  Array.map(([key, value]) => `${key}=${value}`),
+  Array.join('\n'),
+  envData =>  FileSystem.FileSystem.pipe(Effect.flatMap(fs => fs.writeFileString(path, envData)))
 );

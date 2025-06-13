@@ -2,7 +2,7 @@ import { Array, Effect, Logger, LogLevel, Match, Option, pipe, Redacted, Schedul
 import * as Context from 'effect/Context';
 import { FileSystem, HttpClient, HttpClientRequest } from '@effect/platform';
 import crypto from 'crypto';
-import { createTmpDir, getRemoteFile, readJsonFile, writeFile, writeJsonFile, } from '../libs/file.js';
+import { createTmpDir, getRemoteFile, readJsonFile, writeEnvFile, writeFile, writeJsonFile, } from '../libs/file.js';
 import {
   copyFileFromComposeContainer,
   copyFileToComposeContainer,
@@ -29,7 +29,8 @@ const CHTX_LABEL_NAME = 'chtx.instance';
 const UPGRADE_SVC_NAME = 'cht-upgrade-service';
 const NGINX_SVC_NAME = 'nginx';
 
-const ENV_FILE_NAME = 'env.json';
+const ENV_FILE_NAME = '.env';
+const ENV_JSON_FILE_NAME = 'env.json';
 const UPGRADE_SVC_COMPOSE_FILE_NAME = 'compose.yaml';
 const CHTX_COMPOSE_OVERRIDE_FILE_NAME = 'chtx-override.yaml';
 const CHT_COUCHDB_COMPOSE_FILE_NAME = 'cht-couchdb.yml';
@@ -141,6 +142,7 @@ export type SSLType = keyof typeof SSL_URL_DICT;
 class ChtInstanceConfig extends Schema.Class<ChtInstanceConfig>('ChtInstanceConfig')({
   CHT_COMPOSE_PROJECT_NAME: Schema.NonEmptyTrimmedString,
   CHT_NETWORK: Schema.NonEmptyTrimmedString,
+  COMPOSE_PROJECT_NAME: Schema.NonEmptyTrimmedString,
   COUCHDB_PASSWORD: Schema.NonEmptyTrimmedString,
   COUCHDB_SECRET: Schema.NonEmptyTrimmedString,
   COUCHDB_USER: Schema.NonEmptyTrimmedString,
@@ -152,6 +154,7 @@ class ChtInstanceConfig extends Schema.Class<ChtInstanceConfig>('ChtInstanceConf
       Effect.map(([NGINX_HTTPS_PORT, NGINX_HTTP_PORT]) => ({
         CHT_COMPOSE_PROJECT_NAME: instanceName,
         CHT_NETWORK: instanceName,
+        COMPOSE_PROJECT_NAME: upgradeSvcProjectName(instanceName),
         COUCHDB_PASSWORD,
         COUCHDB_SECRET: crypto
           .randomBytes(16)
@@ -212,6 +215,12 @@ const writeComposeFiles = (dirPath: string, version: string, localVolumePath: Op
   Array.append(writeChtxOverrideCompose(dirPath, localVolumePath)),
   Effect.all,
 );
+const writeConfigFile = (tmpDir: string, localVolumePath: Option.Option<string>, env: ChtInstanceConfig) => localVolumePath.pipe(
+  // Write .env file when mapping to local dir. Not used by chtx, but useful for directly manipulating compose files.
+  Option.map(dir => writeEnvFile(`${dir}/${ENV_FILE_NAME}`, ChtInstanceConfig.asRecord(env))),
+  Option.getOrElse(() => Effect.void),
+  Effect.andThen(writeJsonFile(`${tmpDir}/${ENV_JSON_FILE_NAME}`, env)),
+);
 const writeSSLFiles = (sslType: SSLType) => (dirPath: string) => pipe(
   SSL_URL_DICT[sslType],
   Array.map(([name, url]) => getRemoteFile(url)
@@ -269,7 +278,7 @@ const rmTempUpgradeServiceContainer = (
 );
 
 const copyFilesToUpgradeSvcContainer = (instanceName: string, tmpDir: string) => pipe(
-  [...CHT_COMPOSE_FILE_NAMES, CHTX_COMPOSE_OVERRIDE_FILE_NAME, ENV_FILE_NAME],
+  [...CHT_COMPOSE_FILE_NAMES, CHTX_COMPOSE_OVERRIDE_FILE_NAME, ENV_JSON_FILE_NAME],
   Array.map((fileName): [string, string] => [`${tmpDir}/${fileName}`, `/docker-compose/${fileName}`]),
   Array.map(copyFileToComposeContainer(upgradeSvcProjectName(instanceName), UPGRADE_SVC_NAME)),
   Effect.all,
@@ -282,14 +291,14 @@ const copySSLFilesToNginxContainer = (instanceName: string) => (tmpDir: string) 
 );
 const copyEnvFileFromUpgradeSvcContainer = (instanceName: string, tmpDir: string) => pipe(
   upgradeSvcProjectName(instanceName),
-  copyFileFromComposeContainer(UPGRADE_SVC_NAME, `/docker-compose/${ENV_FILE_NAME}`, `${tmpDir}/${ENV_FILE_NAME}`),
+  copyFileFromComposeContainer(UPGRADE_SVC_NAME, `/docker-compose/${ENV_JSON_FILE_NAME}`, `${tmpDir}/${ENV_JSON_FILE_NAME}`),
 );
 const copyEnvFileFromDanglingVolume = (
   tempDir: string,
   instanceName: string
 ) => Effect
   .acquireUseRelease(
-    writeUpgradeServiceCompose(tempDir, Option.none())// TODO Maybe need to load local volume dir from label?
+    writeUpgradeServiceCompose(tempDir, Option.none())
       .pipe(Effect.andThen(createUpgradeSvcContainer(instanceName, {}, tempDir))),
     () => copyEnvFileFromUpgradeSvcContainer(instanceName, tempDir),
     () => rmTempUpgradeServiceContainer(instanceName)
@@ -354,7 +363,7 @@ const createUpgradeServiceFromDanglingVolume = (projectName: string) => () => cr
   .pipe(
     Effect.flatMap(tmpDir => copyEnvFileFromDanglingVolume(tmpDir, projectName)
       .pipe(
-        Effect.andThen(readJsonFile(ENV_FILE_NAME, tmpDir)),
+        Effect.andThen(readJsonFile(ENV_JSON_FILE_NAME, tmpDir)),
         Effect.flatMap(Schema.decodeUnknown(ChtInstanceConfig)),
         Effect.flatMap(env => createUpgradeSvcContainer(
           projectName,
@@ -411,7 +420,7 @@ export class LocalInstanceService extends Effect.Service<LocalInstanceService>()
         Effect.flatMap(([env, tmpDir]) => Effect
           .all([
             writeComposeFiles(tmpDir, version, localVolumePath),
-            writeJsonFile(`${tmpDir}/${ENV_FILE_NAME}`, env),
+            writeConfigFile(tmpDir, localVolumePath, env),
           ])
           .pipe(
             Effect.andThen(pullAllChtImages(instanceName, env, tmpDir, localVolumePath)),

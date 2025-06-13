@@ -31,7 +31,8 @@ const {
   getRemoteFile,
   readJsonFile,
   writeFile,
-  writeJsonFile
+  writeJsonFile,
+  writeEnvFile
 } = await esmock<typeof FileLibs>('../../src/libs/file.js', {
   '@effect/platform': { HttpClientRequest: mockHttpRequest },
   '@effect/platform/HttpClient': mockHttpClient
@@ -117,6 +118,20 @@ describe('file libs', () => {
     expect(fsMakeTempDirectoryScoped.notCalled).to.be.true;
     expect(fsWriteFileString.notCalled).to.be.true;
     expect(fsReadFileString.calledOnceWithExactly(`${path}/${fileName}`)).to.be.true;
+    expect(httpClientExecute.notCalled).to.be.true;
+  }));
+
+  it('writeEnvFile', run(function* () {
+    const path = 'filepath';
+    const content = { hello: 'world', foo: 'bar' };
+    const envContent = 'hello=world\nfoo=bar';
+    fsWriteFileString.returns(Effect.void);
+
+    yield* writeEnvFile(path, content);
+
+    expect(fsMakeTempDirectoryScoped.notCalled).to.be.true;
+    expect(fsWriteFileString.calledOnceWithExactly(path, envContent)).to.be.true;
+    expect(fsReadFileString.notCalled).to.be.true;
     expect(httpClientExecute.notCalled).to.be.true;
   }));
 });
