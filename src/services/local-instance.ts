@@ -30,8 +30,8 @@ const UPGRADE_SVC_NAME = 'cht-upgrade-service';
 const NGINX_SVC_NAME = 'nginx';
 
 const ENV_FILE_NAME = 'env.json';
-const UPGRADE_SVC_COMPOSE_FILE_NAME = 'docker-compose.yml';
-const CHTX_COMPOSE_OVERRIDE_FILE_NAME = 'chtx-override.yml';
+const UPGRADE_SVC_COMPOSE_FILE_NAME = 'compose.yaml';
+const CHTX_COMPOSE_OVERRIDE_FILE_NAME = 'chtx-override.yaml';
 const CHT_COUCHDB_COMPOSE_FILE_NAME = 'cht-couchdb.yml';
 const CHT_COMPOSE_FILE_NAMES = [
   'cht-core.yml',
@@ -139,11 +139,11 @@ const SSL_URL_DICT = {
 export type SSLType = keyof typeof SSL_URL_DICT;
 
 class ChtInstanceConfig extends Schema.Class<ChtInstanceConfig>('ChtInstanceConfig')({
-  CHT_COMPOSE_PROJECT_NAME: Schema.NonEmptyString,
-  CHT_NETWORK: Schema.NonEmptyString,
-  COUCHDB_PASSWORD: Schema.NonEmptyString,
-  COUCHDB_SECRET: Schema.NonEmptyString,
-  COUCHDB_USER: Schema.NonEmptyString,
+  CHT_COMPOSE_PROJECT_NAME: Schema.NonEmptyTrimmedString,
+  CHT_NETWORK: Schema.NonEmptyTrimmedString,
+  COUCHDB_PASSWORD: Schema.NonEmptyTrimmedString,
+  COUCHDB_SECRET: Schema.NonEmptyTrimmedString,
+  COUCHDB_USER: Schema.NonEmptyTrimmedString,
   NGINX_HTTP_PORT: Schema.Number,
   NGINX_HTTPS_PORT: Schema.Number,
 }) {
@@ -188,7 +188,7 @@ const chtComposeUrl = (
 
 const writeUpgradeServiceCompose = (dirPath: string, localVolumePath: Option.Option<string>) => pipe(
   getUpgradeServiceCompose(localVolumePath),
-  writeFile(`${dirPath}/${UPGRADE_SVC_COMPOSE_FILE_NAME}`),
+  writeFile(`${localVolumePath.pipe(Option.getOrElse(() => dirPath))}/${UPGRADE_SVC_COMPOSE_FILE_NAME}`),
 );
 const getNouveauOverride = (dirPath: string) => FileSystem.FileSystem.pipe(
   Effect.flatMap(fs => fs.readFileString(`${dirPath}/${CHT_COUCHDB_COMPOSE_FILE_NAME}`)),
@@ -237,9 +237,15 @@ const assertChtxVolumeExists = (instanceName: string) => doesChtxVolumeExist(ins
     () => new Error(`Instance ${instanceName} does not exist`)
   ));
 
-const pullAllChtImages = (instanceName: string, env: ChtInstanceConfig, tmpDir: string) => pipe(
-  [...CHT_COMPOSE_FILE_NAMES, UPGRADE_SVC_COMPOSE_FILE_NAME, CHTX_COMPOSE_OVERRIDE_FILE_NAME],
+const pullAllChtImages = (
+  instanceName: string,
+  env: ChtInstanceConfig,
+  tmpDir: string,
+  localVolumePath: Option.Option<string>
+) => pipe(
+  [...CHT_COMPOSE_FILE_NAMES, CHTX_COMPOSE_OVERRIDE_FILE_NAME],
   Array.map(fileName => `${tmpDir}/${fileName}`),
+  Array.append(`${localVolumePath.pipe(Option.getOrElse(() => tmpDir))}/${UPGRADE_SVC_COMPOSE_FILE_NAME}`),
   pullComposeImages(instanceName, ChtInstanceConfig.asRecord(env)),
   // Log the output of the docker pull because this could take a very long time
   Logger.withMinimumLogLevel(LogLevel.Debug)
@@ -248,10 +254,10 @@ const pullAllChtImages = (instanceName: string, env: ChtInstanceConfig, tmpDir: 
 const createUpgradeSvcContainer = (
   instanceName: string,
   env: Record<string, string>,
-  tmpDir: string
+  dir: string
 ) => pipe(
   upgradeSvcProjectName(instanceName),
-  createComposeContainers(env, `${tmpDir}/${UPGRADE_SVC_COMPOSE_FILE_NAME}`)
+  createComposeContainers(env, `${dir}/${UPGRADE_SVC_COMPOSE_FILE_NAME}`)
 );
 
 const rmTempUpgradeServiceContainer = (
@@ -399,17 +405,21 @@ export class LocalInstanceService extends Effect.Service<LocalInstanceService>()
       .pipe(
         Effect.andThen(Effect.all([
           ChtInstanceConfig.generate(instanceName),
-          createTmpDir(), //TODO
+          createTmpDir(),
+          createLocalVolumeDirs(localVolumePath)
         ])),
-        Effect.tap(createLocalVolumeDirs(localVolumePath)),
         Effect.flatMap(([env, tmpDir]) => Effect
           .all([
             writeComposeFiles(tmpDir, version, localVolumePath),
             writeJsonFile(`${tmpDir}/${ENV_FILE_NAME}`, env),
           ])
           .pipe(
-            Effect.andThen(pullAllChtImages(instanceName, env, tmpDir)),
-            Effect.andThen(createUpgradeSvcContainer(instanceName, ChtInstanceConfig.asRecord(env), tmpDir)),
+            Effect.andThen(pullAllChtImages(instanceName, env, tmpDir, localVolumePath)),
+            Effect.andThen(createUpgradeSvcContainer(
+              instanceName,
+              ChtInstanceConfig.asRecord(env),
+              localVolumePath.pipe(Option.getOrElse(() => tmpDir))
+            )),
             Effect.andThen(copyFilesToUpgradeSvcContainer(instanceName, tmpDir)),
           )),
         Effect.mapError(x => x as Error),

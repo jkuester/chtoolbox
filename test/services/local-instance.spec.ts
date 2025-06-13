@@ -132,8 +132,8 @@ describe('Local Instance Service', () => {
       expect(mockFileLib.getRemoteFile.args).to.deep.equal([[coreComposeURL], [couchComposeURL]]);
       expect(mockFileSystem.makeDirectory.notCalled).to.be.true;
       expect(mockFileLib.writeFile.args).to.deep.equal([
-        [`${tmpDir}/docker-compose.yml`],
-        [`${tmpDir}/chtx-override.yml`],
+        [`${tmpDir}/compose.yaml`],
+        [`${tmpDir}/chtx-override.yaml`],
         [`${tmpDir}/${coreComposeName}`],
         [`${tmpDir}/${couchComposeName}`],
       ]);
@@ -161,11 +161,11 @@ describe('Local Instance Service', () => {
       expect(pullComposeImagesInner.calledOnceWithExactly([
         `${tmpDir}/${coreComposeName}`,
         `${tmpDir}/${couchComposeName}`,
-        `${tmpDir}/docker-compose.yml`,
-        `${tmpDir}/chtx-override.yml`,
+        `${tmpDir}/chtx-override.yaml`,
+        `${tmpDir}/compose.yaml`,
       ])).to.be.true;
       expect(mockDockerLib.createComposeContainers.calledOnceWithExactly(
-        actualEnv, `${tmpDir}/docker-compose.yml`
+        actualEnv, `${tmpDir}/compose.yaml`
       )).to.be.true;
       expect(createComposeContainersInner.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
       expect(mockDockerLib.copyFileToComposeContainer.calledOnceWithExactly(
@@ -179,7 +179,7 @@ describe('Local Instance Service', () => {
         [`${tmpDir}/${couchComposeName}`, `/docker-compose/${couchComposeName}`]
       );
       expect(copyFileToComposeContainerInner.args[2][0]).to.deep.equal(
-        [`${tmpDir}/chtx-override.yml`, `/docker-compose/chtx-override.yml`]
+        [`${tmpDir}/chtx-override.yaml`, `/docker-compose/chtx-override.yaml`]
       );
       expect(copyFileToComposeContainerInner.args[3][0]).to.deep.equal(
         [`${tmpDir}/env.json`, `/docker-compose/env.json`]
@@ -219,8 +219,8 @@ describe('Local Instance Service', () => {
         Array.map(dir => [dir, { recursive: true }]),
       ));
       expect(mockFileLib.writeFile.args).to.deep.equal([
-        [`${tmpDir}/docker-compose.yml`],
-        [`${tmpDir}/chtx-override.yml`],
+        [`${dataDir}/compose.yaml`],
+        [`${tmpDir}/chtx-override.yaml`],
         [`${tmpDir}/${coreComposeName}`],
         [`${tmpDir}/${couchComposeName}`],
       ]);
@@ -252,11 +252,11 @@ describe('Local Instance Service', () => {
       expect(pullComposeImagesInner.calledOnceWithExactly([
         `${tmpDir}/${coreComposeName}`,
         `${tmpDir}/${couchComposeName}`,
-        `${tmpDir}/docker-compose.yml`,
-        `${tmpDir}/chtx-override.yml`,
+        `${tmpDir}/chtx-override.yaml`,
+        `${dataDir}/compose.yaml`,
       ])).to.be.true;
       expect(mockDockerLib.createComposeContainers.calledOnceWithExactly(
-        actualEnv, `${tmpDir}/docker-compose.yml`
+        actualEnv, `${dataDir}/compose.yaml`
       )).to.be.true;
       expect(createComposeContainersInner.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
       expect(mockDockerLib.copyFileToComposeContainer.calledOnceWithExactly(
@@ -270,7 +270,7 @@ describe('Local Instance Service', () => {
         [`${tmpDir}/${couchComposeName}`, `/docker-compose/${couchComposeName}`]
       );
       expect(copyFileToComposeContainerInner.args[2][0]).to.deep.equal(
-        [`${tmpDir}/chtx-override.yml`, `/docker-compose/chtx-override.yml`]
+        [`${tmpDir}/chtx-override.yaml`, `/docker-compose/chtx-override.yaml`]
       );
       expect(copyFileToComposeContainerInner.args[3][0]).to.deep.equal(
         [`${tmpDir}/env.json`, `/docker-compose/env.json`]
@@ -460,12 +460,12 @@ describe('Local Instance Service', () => {
         [INSTANCE_NAME, ...CONTAINER_STATUSES_RUNNING],
         [INSTANCE_NAME, ...CONTAINER_STATUSES_STOPPED]
       ]);
-      expect(mockFileLib.writeFile.calledOnceWithExactly(`${tmpDir}/docker-compose.yml`)).to.be.true;
+      expect(mockFileLib.writeFile.calledOnceWithExactly(`${tmpDir}/compose.yaml`)).to.be.true;
       expect(writeFileInner.calledOnce).to.be.true;
       expect(writeFileInner.args[0][0]).to.include('image: public.ecr.aws/s5s3h4s7/cht-upgrade-service:latest');
       expect(mockDockerLib.createComposeContainers.args).to.deep.equal([
-        [{}, `${tmpDir}/docker-compose.yml`],
-        [env, `${tmpDir}/docker-compose.yml`]
+        [{}, `${tmpDir}/compose.yaml`],
+        [env, `${tmpDir}/compose.yaml`]
       ]);
       expect(createComposeContainersInner.args).to.deep.equal([[`${INSTANCE_NAME}-up`], [`${INSTANCE_NAME}-up`]]);
       expect(mockDockerLib.copyFileFromComposeContainer.calledOnceWithExactly(
@@ -542,12 +542,12 @@ describe('Local Instance Service', () => {
         [INSTANCE_NAME, ...CONTAINER_STATUSES_RUNNING],
         [INSTANCE_NAME, ...CONTAINER_STATUSES_STOPPED]
       ]);
-      expect(mockFileLib.writeFile.calledOnceWithExactly(`${tmpDir}/docker-compose.yml`)).to.be.true;
+      expect(mockFileLib.writeFile.calledOnceWithExactly(`${tmpDir}/compose.yaml`)).to.be.true;
       expect(writeFileInner.calledOnce).to.be.true;
       expect(writeFileInner.args[0][0]).to.include('image: public.ecr.aws/s5s3h4s7/cht-upgrade-service:latest');
       expect(mockDockerLib.createComposeContainers.args).to.deep.equal([
-        [{}, `${tmpDir}/docker-compose.yml`],
-        [env, `${tmpDir}/docker-compose.yml`]
+        [{}, `${tmpDir}/compose.yaml`],
+        [env, `${tmpDir}/compose.yaml`]
       ]);
       expect(createComposeContainersInner.args).to.deep.equal([[`${INSTANCE_NAME}-up`], [`${INSTANCE_NAME}-up`]]);
       expect(mockDockerLib.copyFileFromComposeContainer.calledOnceWithExactly(
