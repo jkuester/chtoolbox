@@ -43,7 +43,23 @@ const SSL_KEY_FILE_NAME = 'key.pem';
 const COUCHDB_USER = 'medic';
 const COUCHDB_PASSWORD = 'password';
 
-const UPGRADE_SERVICE_COMPOSE = `
+const getLocalVolumeConfig = (subDirectory: string) => (devicePath: string) => `
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${devicePath}/${subDirectory}`;
+const getVolumeConfig = (subDirectory: string) => (localVolumePath: Option.Option<string>) => localVolumePath.pipe(
+  Option.map(getLocalVolumeConfig(subDirectory)),
+  Option.getOrElse(() => ''),
+);
+
+const SUB_DIR_CREDENTIALS = 'credentials';
+const SUB_DIR_COUCHDB = 'couchdb';
+const SUB_DIR_NOUVEAU = 'nouveau';
+const SUB_DIR_DOCKER_COMPOSE = 'docker-compose';
+
+const getUpgradeServiceCompose = (localVolumePath: Option.Option<string>) => `
 services:
   ${UPGRADE_SVC_NAME}:
     restart: always
@@ -65,7 +81,7 @@ networks:
   cht-net:
     name: \${CHT_NETWORK}
 volumes:
-  chtx-compose-files:
+  chtx-compose-files:${localVolumePath.pipe(getVolumeConfig(SUB_DIR_DOCKER_COMPOSE))}
     labels:
       - "${CHTX_LABEL_NAME}=\${CHT_COMPOSE_PROJECT_NAME}"
 `;
@@ -77,20 +93,6 @@ const NOUVEAU_SERVICE_OVERRIDE = `
     volumes:
       - cht-nouveau-data:/data/nouveau
 `;
-const getLocalVolumeConfig = (subDirectory: string) => (devicePath: string) => `
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${devicePath}/${subDirectory}`;
-const getVolumeConfig = (subDirectory: string) => (localVolumePath: Option.Option<string>) => localVolumePath.pipe(
-  Option.map(getLocalVolumeConfig(subDirectory)),
-  Option.getOrElse(() => ''),
-);
-
-const SUB_DIR_CREDENTIALS = 'credentials';
-const SUB_DIR_COUCHDB = 'couchdb';
-const SUB_DIR_NOUVEAU = 'nouveau';
 
 // The contents of this file have to pass `docker compose config` validation
 const getChtxComposeOverride = (localVolumePath: Option.Option<string>) => (nouveauOverride: Option.Option<string>) => `
@@ -171,7 +173,7 @@ const upgradeSvcProjectName = (instanceName: string) => `${instanceName}-up`;
 const makeDir = (dirPath: string) => FileSystem.FileSystem.pipe(Effect.flatMap(fs => fs.makeDirectory(dirPath, { recursive: true })));
 const createLocalVolumeDirs = (localVolumePath: Option.Option<string>) => localVolumePath.pipe(
   Option.map(path => pipe(
-    Array.make(SUB_DIR_CREDENTIALS, SUB_DIR_COUCHDB, SUB_DIR_NOUVEAU),
+    Array.make(SUB_DIR_CREDENTIALS, SUB_DIR_COUCHDB, SUB_DIR_NOUVEAU, SUB_DIR_DOCKER_COMPOSE),
     Array.map(subDir => `${path}/${subDir}`),
     Array.map(makeDir),
     Effect.all,
@@ -184,8 +186,8 @@ const chtComposeUrl = (
   fileName: string
 ) => `https://staging.dev.medicmobile.org/_couch/builds_4/medic%3Amedic%3A${version}/docker-compose/${fileName}`;
 
-const writeUpgradeServiceCompose = (dirPath: string) => pipe(
-  UPGRADE_SERVICE_COMPOSE,
+const writeUpgradeServiceCompose = (dirPath: string, localVolumePath: Option.Option<string>) => pipe(
+  getUpgradeServiceCompose(localVolumePath),
   writeFile(`${dirPath}/${UPGRADE_SVC_COMPOSE_FILE_NAME}`),
 );
 const getNouveauOverride = (dirPath: string) => FileSystem.FileSystem.pipe(
@@ -206,7 +208,7 @@ const writeChtCompose = (dirPath: string, version: string) => (fileName: string)
 const writeComposeFiles = (dirPath: string, version: string, localVolumePath: Option.Option<string>) => pipe(
   CHT_COMPOSE_FILE_NAMES,
   Array.map(writeChtCompose(dirPath, version)),
-  Array.append(writeUpgradeServiceCompose(dirPath)),
+  Array.append(writeUpgradeServiceCompose(dirPath, localVolumePath)),
   Array.append(writeChtxOverrideCompose(dirPath, localVolumePath)),
   Effect.all,
 );
@@ -281,7 +283,7 @@ const copyEnvFileFromDanglingVolume = (
   instanceName: string
 ) => Effect
   .acquireUseRelease(
-    writeUpgradeServiceCompose(tempDir)
+    writeUpgradeServiceCompose(tempDir, Option.none())// TODO Maybe need to load local volume dir from label?
       .pipe(Effect.andThen(createUpgradeSvcContainer(instanceName, {}, tempDir))),
     () => copyEnvFileFromUpgradeSvcContainer(instanceName, tempDir),
     () => rmTempUpgradeServiceContainer(instanceName)
@@ -397,11 +399,11 @@ export class LocalInstanceService extends Effect.Service<LocalInstanceService>()
       .pipe(
         Effect.andThen(Effect.all([
           ChtInstanceConfig.generate(instanceName),
-          createTmpDir(),
+          createTmpDir(), //TODO
         ])),
+        Effect.tap(createLocalVolumeDirs(localVolumePath)),
         Effect.flatMap(([env, tmpDir]) => Effect
           .all([
-            createLocalVolumeDirs(localVolumePath),
             writeComposeFiles(tmpDir, version, localVolumePath),
             writeJsonFile(`${tmpDir}/${ENV_FILE_NAME}`, env),
           ])

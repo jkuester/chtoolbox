@@ -211,7 +211,7 @@ describe('Local Instance Service', () => {
       expect(mockFileLib.createTmpDir.calledOnceWithExactly()).to.be.true;
       expect(mockFileLib.getRemoteFile.args).to.deep.equal([[coreComposeURL], [couchComposeURL]]);
       const expectedDataDirs = pipe(
-        Array.make('credentials', 'couchdb', 'nouveau'),
+        Array.make('credentials', 'couchdb', 'nouveau', 'docker-compose'),
         Array.map(dir => `${dataDir}/${dir}`),
       );
       expect(mockFileSystem.makeDirectory.args).to.deep.equal(pipe(
@@ -226,12 +226,13 @@ describe('Local Instance Service', () => {
       ]);
       expect(writeFileInner.callCount).to.equal(4);
       expect(writeFileInner.args[0][0]).to.include('image: public.ecr.aws/s5s3h4s7/cht-upgrade-service:latest');
+      expect(writeFileInner.args[0][0]).to.include(`device: ${expectedDataDirs[3]}`);
       expect(writeFileInner.args[1]).to.deep.equal(['core-compose-file']);
       expect(writeFileInner.args[2]).to.deep.equal(['couch-compose-file']);
       expect(writeFileInner.args[3][0]).to.include('cht-couchdb-data:/opt/couchdb/data');
       expect(writeFileInner.args[3][0]).to.not.include('cht-nouveau-data:/data/nouveau');
       pipe(
-        expectedDataDirs,
+        expectedDataDirs.slice(0, 3),
         Array.forEach(dir => expect(writeFileInner.args[3][0]).to.include(`device: ${dir}`))
       );
       const expectedEnv = {
