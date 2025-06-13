@@ -52,7 +52,7 @@
   "dependencies": {
     "@effect/cli": "^0.61.4",
     "@effect/platform": "^0.82.8",
-    "@effect/platform-node": "^0.81.1",
+    "@effect/platform-node": "^0.85.11",
     "effect": "^3.15.2",
     "get-port": "^7.1.0",
     "pouchdb-adapter-http": "^9.0.0",
