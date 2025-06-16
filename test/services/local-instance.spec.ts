@@ -376,7 +376,7 @@ describe('Local Instance Service', () => {
         .returns(Effect.succeed(['container']));
       httpClientExecute.returns(Effect.void);
 
-      const result = yield* LocalInstanceService.start(INSTANCE_NAME);
+      const result = yield* LocalInstanceService.start(INSTANCE_NAME, Option.none());
 
       expect(result).to.deep.equal(expectedLocalInstanceInfo);
       expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
@@ -410,7 +410,7 @@ describe('Local Instance Service', () => {
       httpClientExecute.onSecondCall().returns(Effect.void);
       mockSchedule.spaced.returns(Schedule.forever); // Avoid waiting in tests
 
-      const result = yield* LocalInstanceService.start(INSTANCE_NAME);
+      const result = yield* LocalInstanceService.start(INSTANCE_NAME, Option.none());
 
       expect(result).to.deep.equal(expectedLocalInstanceInfo);
       expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
@@ -458,7 +458,7 @@ describe('Local Instance Service', () => {
       mockFileLib.readJsonFile.returns(Effect.succeed(env));
       httpClientExecute.returns(Effect.void);
 
-      const result = yield* LocalInstanceService.start(INSTANCE_NAME);
+      const result = yield* LocalInstanceService.start(INSTANCE_NAME, Option.none());
 
       expect(result).to.deep.equal(expectedLocalInstanceInfo);
       expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
@@ -493,7 +493,7 @@ describe('Local Instance Service', () => {
       mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(false));
 
       const either = yield* LocalInstanceService
-        .start(INSTANCE_NAME)
+        .start(INSTANCE_NAME, Option.none())
         .pipe(Effect.either);
 
       if (Either.isLeft(either)) {
@@ -541,7 +541,7 @@ describe('Local Instance Service', () => {
       httpClientExecute.returns(Effect.void);
       rmComposeContainerInner.returns(Effect.fail('Failed to remove container'));
 
-      const result = yield* LocalInstanceService.start(INSTANCE_NAME);
+      const result = yield* LocalInstanceService.start(INSTANCE_NAME, Option.none());
 
       expect(result).to.deep.equal(expectedLocalInstanceInfo);
       expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
@@ -570,6 +570,86 @@ describe('Local Instance Service', () => {
       expect(mockHttpClient.filterStatusOk.calledOnce).to.be.true;
       expect(mockHttpRequest.get.calledOnceWithExactly(`https://localhost:${PORT}/api/info`)).to.be.true;
       expect(httpClientExecute.calledOnceWithExactly(HTTP_CLIENT_REQUEST)).to.be.true;
+    }));
+
+    it('creates and starts CHT instance from local directory', run(function* () {
+      mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(false));
+      const env = {
+        CHT_COMPOSE_PROJECT_NAME: INSTANCE_NAME,
+        CHT_NETWORK: INSTANCE_NAME,
+        COMPOSE_PROJECT_NAME: `${INSTANCE_NAME}-up`,
+        COUCHDB_PASSWORD: 'password',
+        COUCHDB_SECRET: 'secret',
+        COUCHDB_USER: 'medic',
+        NGINX_HTTP_PORT: 1111,
+        NGINX_HTTPS_PORT: Number(PORT),
+      };
+      mockFileLib.readJsonFile.returns(Effect.succeed(env));
+      httpClientExecute.returns(Effect.void);
+      const dirPath = '/data/directory';
+
+      const result = yield* LocalInstanceService.start(INSTANCE_NAME, Option.some(dirPath));
+
+      expect(result).to.deep.equal(expectedLocalInstanceInfo);
+      expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
+      expect(mockDockerLib.getContainersForComposeProject.args).to.deep.equal([
+        [INSTANCE_NAME, ...CONTAINER_STATUSES_RUNNING],
+        [INSTANCE_NAME, ...CONTAINER_STATUSES_STOPPED],
+        [INSTANCE_NAME, ...CONTAINER_STATUSES_RUNNING],
+        [INSTANCE_NAME, ...CONTAINER_STATUSES_STOPPED]
+      ]);
+      expect(mockFileLib.writeFile.notCalled).to.be.true;
+      expect(writeFileInner.notCalled).to.be.true;
+      expect(mockDockerLib.createComposeContainers.args).to.deep.equal([[env, `${dirPath}/compose.yaml`]]);
+      expect(createComposeContainersInner.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
+      expect(mockDockerLib.copyFileFromComposeContainer.notCalled).to.be.true;
+      expect(mockDockerLib.rmComposeContainer.notCalled).to.be.true;
+      expect(mockDockerLib.restartCompose.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
+      expect(mockHttpClient.filterStatusOk.calledOnce).to.be.true;
+      expect(mockHttpRequest.get.calledOnceWithExactly(`https://localhost:${PORT}/api/info`)).to.be.true;
+      expect(httpClientExecute.calledOnceWithExactly(HTTP_CLIENT_REQUEST)).to.be.true;
+    }));
+
+    it('returns error when starting CHT instance from local directory when docker volume exists', run(function* () {
+      mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(true));
+      const env = {
+        CHT_COMPOSE_PROJECT_NAME: INSTANCE_NAME,
+        CHT_NETWORK: INSTANCE_NAME,
+        COMPOSE_PROJECT_NAME: `${INSTANCE_NAME}-up`,
+        COUCHDB_PASSWORD: 'password',
+        COUCHDB_SECRET: 'secret',
+        COUCHDB_USER: 'medic',
+        NGINX_HTTP_PORT: 1111,
+        NGINX_HTTPS_PORT: Number(PORT),
+      };
+      mockFileLib.readJsonFile.returns(Effect.succeed(env));
+      httpClientExecute.returns(Effect.void);
+      const dirPath = '/data/directory';
+
+      const either = yield* LocalInstanceService
+        .start(INSTANCE_NAME, Option.some(dirPath))
+        .pipe(Effect.either);
+
+      if (Either.isRight(either)) {
+        expect.fail('Expected error');
+      }
+
+      expect(either.left).to.deep.equal(new Error(`Instance ${INSTANCE_NAME} already exists`));
+      expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
+      expect(mockDockerLib.getContainersForComposeProject.args).to.deep.equal([
+        [INSTANCE_NAME, ...CONTAINER_STATUSES_RUNNING],
+        [INSTANCE_NAME, ...CONTAINER_STATUSES_STOPPED]
+      ]);
+      expect(mockFileLib.writeFile.notCalled).to.be.true;
+      expect(writeFileInner.notCalled).to.be.true;
+      expect(mockDockerLib.createComposeContainers.notCalled).to.be.true;
+      expect(createComposeContainersInner.notCalled).to.be.true;
+      expect(mockDockerLib.copyFileFromComposeContainer.notCalled).to.be.true;
+      expect(mockDockerLib.rmComposeContainer.notCalled).to.be.true;
+      expect(mockDockerLib.restartCompose.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
+      expect(mockHttpClient.filterStatusOk.notCalled).to.be.true;
+      expect(mockHttpRequest.get.notCalled).to.be.true;
+      expect(httpClientExecute.notCalled).to.be.true;
     }));
   });
 

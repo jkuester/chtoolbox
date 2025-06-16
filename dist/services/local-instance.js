@@ -194,14 +194,14 @@ const waitForInstance = (port) => HttpClient.HttpClient.pipe(Effect.map(filterSt
     times: 180,
     schedule: Schedule.spaced(1000),
 }), Effect.scoped);
+const createUpgradeServiceFromLocalVolume = (projectName, localVolumePath) => assertChtxVolumeDoesNotExist(projectName).pipe(Effect.andThen(readJsonFile(ENV_JSON_FILE_NAME, `${localVolumePath}/${SUB_DIR_DOCKER_COMPOSE}`)), Effect.flatMap(Schema.decodeUnknown(ChtInstanceConfig)), Effect.flatMap(env => createUpgradeSvcContainer(projectName, ChtInstanceConfig.asRecord(env), localVolumePath)));
 const createUpgradeServiceFromDanglingVolume = (projectName) => () => createTmpDir()
     .pipe(Effect.flatMap(tmpDir => copyEnvFileFromDanglingVolume(tmpDir, projectName)
     .pipe(Effect.andThen(readJsonFile(ENV_JSON_FILE_NAME, tmpDir)), Effect.flatMap(Schema.decodeUnknown(ChtInstanceConfig)), Effect.flatMap(env => createUpgradeSvcContainer(projectName, ChtInstanceConfig.asRecord(env), tmpDir)))), Effect.scoped);
-const ensureUpgradeServiceExists = (projectName) => assertChtxVolumeExists(projectName)
-    .pipe(Effect.filterEffectOrElse({
+const ensureUpgradeServiceExists = (projectName, localVolumePath) => localVolumePath.pipe(Option.map(path => createUpgradeServiceFromLocalVolume(projectName, path)), Option.getOrElse(() => assertChtxVolumeExists(projectName).pipe(Effect.filterEffectOrElse({
     predicate: () => doesUpgradeServiceExist(projectName),
     orElse: createUpgradeServiceFromDanglingVolume(projectName),
-}));
+}))));
 const serviceContext = Effect
     .all([
     HttpClient.HttpClient,
@@ -217,14 +217,14 @@ export class LocalInstanceService extends Effect.Service()('chtoolbox/LocalInsta
             .pipe(Effect.andThen(Effect.all([
             ChtInstanceConfig.generate(instanceName),
             createTmpDir(),
-            createLocalVolumeDirs(localVolumePath)
+            createLocalVolumeDirs(localVolumePath) //TODO ensure data does not already exist
         ])), Effect.flatMap(([env, tmpDir]) => Effect
             .all([
             writeComposeFiles(tmpDir, version, localVolumePath),
             writeConfigFile(tmpDir, localVolumePath, env),
         ])
             .pipe(Effect.andThen(pullAllChtImages(instanceName, env, tmpDir, localVolumePath)), Effect.andThen(createUpgradeSvcContainer(instanceName, ChtInstanceConfig.asRecord(env), localVolumePath.pipe(Option.getOrElse(() => tmpDir)))), Effect.andThen(copyFilesToUpgradeSvcContainer(instanceName, tmpDir)))), Effect.mapError(x => x), Effect.scoped, Effect.provide(context)),
-        start: (instanceName) => ensureUpgradeServiceExists(instanceName)
+        start: (instanceName, localVolumePath) => ensureUpgradeServiceExists(instanceName, localVolumePath)
             .pipe(Effect.andThen(restartCompose(upgradeSvcProjectName(instanceName))), Effect.andThen(getLocalChtInstanceInfo(instanceName)), Effect.tap(({ port }) => port.pipe(Option.getOrThrow, waitForInstance)), 
         // Get status again after instance started
         Effect.flatMap(instanceData => getInstanceStatus(instanceName).pipe(Effect.map(status => ({
@@ -242,7 +242,7 @@ export class LocalInstanceService extends Effect.Service()('chtoolbox/LocalInsta
             destroyCompose(upgradeSvcProjectName(instanceName)),
         ])
             .pipe(Effect.mapError(x => x), Effect.provide(context)),
-        setSSLCerts: (instanceName, sslType) => ensureUpgradeServiceExists(instanceName)
+        setSSLCerts: (instanceName, sslType) => ensureUpgradeServiceExists(instanceName, Option.none())
             .pipe(Effect.andThen(startCompose(upgradeSvcProjectName(instanceName))), Effect.andThen(getPortForInstance(instanceName)), Effect.tap(waitForInstance), Effect.andThen(createTmpDir()), Effect.tap(writeSSLFiles(sslType)), Effect.flatMap(copySSLFilesToNginxContainer(instanceName)), Effect.andThen(restartComposeService(instanceName, NGINX_SVC_NAME)), Effect.mapError(x => x), Effect.provide(context), Effect.scoped),
         ls: () => getVolumeNamesWithLabel(CHTX_LABEL_NAME)
             .pipe(Effect.map(Array.map(getVolumeLabelValue(CHTX_LABEL_NAME))), Effect.flatMap(Effect.all), Effect.map(Array.map(getLocalChtInstanceInfo)), Effect.flatMap(Effect.all), Effect.mapError(x => x), Effect.provide(context)),

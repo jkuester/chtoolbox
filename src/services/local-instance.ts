@@ -359,6 +359,15 @@ const waitForInstance = (port: string) => HttpClient.HttpClient.pipe(
   Effect.scoped,
 );
 
+const createUpgradeServiceFromLocalVolume = (projectName: string, localVolumePath: string) => assertChtxVolumeDoesNotExist(projectName).pipe(
+  Effect.andThen(readJsonFile(ENV_JSON_FILE_NAME, `${localVolumePath}/${SUB_DIR_DOCKER_COMPOSE}`)),
+  Effect.flatMap(Schema.decodeUnknown(ChtInstanceConfig)),
+  Effect.flatMap(env => createUpgradeSvcContainer(
+    projectName,
+    ChtInstanceConfig.asRecord(env),
+    localVolumePath
+  )),
+);
 const createUpgradeServiceFromDanglingVolume = (projectName: string) => () => createTmpDir()
   .pipe(
     Effect.flatMap(tmpDir => copyEnvFileFromDanglingVolume(tmpDir, projectName)
@@ -373,11 +382,16 @@ const createUpgradeServiceFromDanglingVolume = (projectName: string) => () => cr
       )),
     Effect.scoped,
   );
-const ensureUpgradeServiceExists = (projectName: string) => assertChtxVolumeExists(projectName)
-  .pipe(Effect.filterEffectOrElse({
+const ensureUpgradeServiceExists = (
+  projectName: string,
+  localVolumePath: Option.Option<string>
+) => localVolumePath.pipe(
+  Option.map(path => createUpgradeServiceFromLocalVolume(projectName, path)),
+  Option.getOrElse(() => assertChtxVolumeExists(projectName).pipe(Effect.filterEffectOrElse({
     predicate: () => doesUpgradeServiceExist(projectName),
     orElse: createUpgradeServiceFromDanglingVolume(projectName),
-  }));
+  }))),
+);
 
 const serviceContext = Effect
   .all([
@@ -436,8 +450,9 @@ export class LocalInstanceService extends Effect.Service<LocalInstanceService>()
         Effect.provide(context),
       ),
     start: (
-      instanceName: string
-    ): Effect.Effect<LocalChtInstance, Error> => ensureUpgradeServiceExists(instanceName)
+      instanceName: string,
+      localVolumePath: Option.Option<string>
+    ): Effect.Effect<LocalChtInstance, Error> => ensureUpgradeServiceExists(instanceName, localVolumePath)
       .pipe(
         Effect.andThen(restartCompose(upgradeSvcProjectName(instanceName))),
         Effect.andThen(getLocalChtInstanceInfo(instanceName)),
@@ -480,7 +495,7 @@ export class LocalInstanceService extends Effect.Service<LocalInstanceService>()
     setSSLCerts: (
       instanceName: string,
       sslType: SSLType
-    ): Effect.Effect<void, Error> => ensureUpgradeServiceExists(instanceName)
+    ): Effect.Effect<void, Error> => ensureUpgradeServiceExists(instanceName, Option.none())
       .pipe(
         Effect.andThen(startCompose(upgradeSvcProjectName(instanceName))),
         Effect.andThen(getPortForInstance(instanceName)),
