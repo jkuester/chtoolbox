@@ -17,7 +17,7 @@ const createChtInstances = (names: string[], version: string, directory: Option.
 
 const startChtInstances = (names: string[]) => pipe(
   names,
-  Array.map(LocalInstanceService.start),
+  Array.map(name => LocalInstanceService.start(name, Option.none())),
   Effect.all,
 );
 
@@ -53,7 +53,7 @@ const directory = Options
       + ' Data in this directory will NOT be automatically deleted when the instance is remove.'
     ),
     Options.optional,
-  )
+  );
 
 export const create = Command
   .make('create', { names, version, directory }, ({ names, version, directory }) => Console

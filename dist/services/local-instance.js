@@ -2,7 +2,7 @@ import { Array, Effect, Logger, LogLevel, Match, Option, pipe, Redacted, Schedul
 import * as Context from 'effect/Context';
 import { FileSystem, HttpClient, HttpClientRequest } from '@effect/platform';
 import crypto from 'crypto';
-import { createTmpDir, getRemoteFile, readJsonFile, writeFile, writeJsonFile, } from '../libs/file.js';
+import { createDir, createTmpDir, getRemoteFile, isDirectoryEmpty, readJsonFile, writeEnvFile, writeFile, writeJsonFile, } from '../libs/file.js';
 import { copyFileFromComposeContainer, copyFileToComposeContainer, createComposeContainers, destroyCompose, doesVolumeExistWithLabel, getContainersForComposeProject, getEnvarFromComposeContainer, getVolumeLabelValue, getVolumeNamesWithLabel, pullComposeImages, restartCompose, restartComposeService, rmComposeContainer, startCompose, stopCompose } from '../libs/docker.js';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
 import { getFreePorts } from '../libs/local-network.js';
@@ -10,9 +10,10 @@ import { filterStatusOk } from '@effect/platform/HttpClient';
 const CHTX_LABEL_NAME = 'chtx.instance';
 const UPGRADE_SVC_NAME = 'cht-upgrade-service';
 const NGINX_SVC_NAME = 'nginx';
-const ENV_FILE_NAME = 'env.json';
-const UPGRADE_SVC_COMPOSE_FILE_NAME = 'docker-compose.yml';
-const CHTX_COMPOSE_OVERRIDE_FILE_NAME = 'chtx-override.yml';
+const ENV_FILE_NAME = '.env';
+const ENV_JSON_FILE_NAME = 'env.json';
+const UPGRADE_SVC_COMPOSE_FILE_NAME = 'compose.yaml';
+const CHTX_COMPOSE_OVERRIDE_FILE_NAME = 'chtx-override.yaml';
 const CHT_COUCHDB_COMPOSE_FILE_NAME = 'cht-couchdb.yml';
 const CHT_COMPOSE_FILE_NAMES = [
     'cht-core.yml',
@@ -22,7 +23,18 @@ const SSL_CERT_FILE_NAME = 'cert.pem';
 const SSL_KEY_FILE_NAME = 'key.pem';
 const COUCHDB_USER = 'medic';
 const COUCHDB_PASSWORD = 'password';
-const UPGRADE_SERVICE_COMPOSE = `
+const getLocalVolumeConfig = (subDirectory) => (devicePath) => `
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${devicePath}/${subDirectory}`;
+const getVolumeConfig = (subDirectory) => (localVolumePath) => localVolumePath.pipe(Option.map(getLocalVolumeConfig(subDirectory)), Option.getOrElse(() => ''));
+const SUB_DIR_CREDENTIALS = 'credentials';
+const SUB_DIR_COUCHDB = 'couchdb';
+const SUB_DIR_NOUVEAU = 'nouveau';
+const SUB_DIR_DOCKER_COMPOSE = 'docker-compose';
+const getUpgradeServiceCompose = (localVolumePath) => `
 services:
   ${UPGRADE_SVC_NAME}:
     restart: always
@@ -44,7 +56,7 @@ networks:
   cht-net:
     name: \${CHT_NETWORK}
 volumes:
-  chtx-compose-files:
+  chtx-compose-files:${localVolumePath.pipe(getVolumeConfig(SUB_DIR_DOCKER_COMPOSE))}
     labels:
       - "${CHTX_LABEL_NAME}=\${CHT_COMPOSE_PROJECT_NAME}"
 `;
@@ -55,16 +67,6 @@ const NOUVEAU_SERVICE_OVERRIDE = `
     volumes:
       - cht-nouveau-data:/data/nouveau
 `;
-const getLocalVolumeConfig = (subDirectory) => (devicePath) => `
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${devicePath}/${subDirectory}`;
-const getVolumeConfig = (subDirectory) => (localVolumePath) => localVolumePath.pipe(Option.map(getLocalVolumeConfig(subDirectory)), Option.getOrElse(() => ''));
-const SUB_DIR_CREDENTIALS = 'credentials';
-const SUB_DIR_COUCHDB = 'couchdb';
-const SUB_DIR_NOUVEAU = 'nouveau';
 // The contents of this file have to pass `docker compose config` validation
 const getChtxComposeOverride = (localVolumePath) => (nouveauOverride) => `
 services:
@@ -107,11 +109,12 @@ const SSL_URL_DICT = {
     ],
 };
 class ChtInstanceConfig extends Schema.Class('ChtInstanceConfig')({
-    CHT_COMPOSE_PROJECT_NAME: Schema.NonEmptyString,
-    CHT_NETWORK: Schema.NonEmptyString,
-    COUCHDB_PASSWORD: Schema.NonEmptyString,
-    COUCHDB_SECRET: Schema.NonEmptyString,
-    COUCHDB_USER: Schema.NonEmptyString,
+    CHT_COMPOSE_PROJECT_NAME: Schema.NonEmptyTrimmedString,
+    CHT_NETWORK: Schema.NonEmptyTrimmedString,
+    COMPOSE_PROJECT_NAME: Schema.NonEmptyTrimmedString,
+    COUCHDB_PASSWORD: Schema.NonEmptyTrimmedString,
+    COUCHDB_SECRET: Schema.NonEmptyTrimmedString,
+    COUCHDB_USER: Schema.NonEmptyTrimmedString,
     NGINX_HTTP_PORT: Schema.Number,
     NGINX_HTTPS_PORT: Schema.Number,
 }) {
@@ -119,6 +122,7 @@ class ChtInstanceConfig extends Schema.Class('ChtInstanceConfig')({
         .pipe(Effect.map(([NGINX_HTTPS_PORT, NGINX_HTTP_PORT]) => ({
         CHT_COMPOSE_PROJECT_NAME: instanceName,
         CHT_NETWORK: instanceName,
+        COMPOSE_PROJECT_NAME: upgradeSvcProjectName(instanceName),
         COUCHDB_PASSWORD,
         COUCHDB_SECRET: crypto
             .randomBytes(16)
@@ -130,15 +134,18 @@ class ChtInstanceConfig extends Schema.Class('ChtInstanceConfig')({
     static asRecord = (config) => config;
 }
 const upgradeSvcProjectName = (instanceName) => `${instanceName}-up`;
-const makeDir = (dirPath) => FileSystem.FileSystem.pipe(Effect.flatMap(fs => fs.makeDirectory(dirPath, { recursive: true })));
-const createLocalVolumeDirs = (localVolumePath) => localVolumePath.pipe(Option.map(path => pipe(Array.make(SUB_DIR_CREDENTIALS, SUB_DIR_COUCHDB, SUB_DIR_NOUVEAU), Array.map(subDir => `${path}/${subDir}`), Array.map(makeDir), Effect.all)), Option.getOrElse(() => Effect.void));
+const assertLocalVolumeEmpty = (localVolumePath) => isDirectoryEmpty(localVolumePath).pipe(Effect.filterOrFail(isEmpty => isEmpty, () => new Error(`Local directory ${localVolumePath} is not empty.`)), Effect.map(() => localVolumePath));
+const createLocalVolumeDirs = (localVolumePath) => localVolumePath.pipe(Option.map(path => assertLocalVolumeEmpty(path)), Option.map(Effect.flatMap(path => pipe(Array.make(SUB_DIR_CREDENTIALS, SUB_DIR_COUCHDB, SUB_DIR_NOUVEAU, SUB_DIR_DOCKER_COMPOSE), Array.map(subDir => `${path}/${subDir}`), Array.map(createDir), Effect.all))), Option.getOrElse(() => Effect.void));
 const chtComposeUrl = (version, fileName) => `https://staging.dev.medicmobile.org/_couch/builds_4/medic%3Amedic%3A${version}/docker-compose/${fileName}`;
-const writeUpgradeServiceCompose = (dirPath) => pipe(UPGRADE_SERVICE_COMPOSE, writeFile(`${dirPath}/${UPGRADE_SVC_COMPOSE_FILE_NAME}`));
+const writeUpgradeServiceCompose = (dirPath, localVolumePath) => pipe(getUpgradeServiceCompose(localVolumePath), writeFile(`${localVolumePath.pipe(Option.getOrElse(() => dirPath))}/${UPGRADE_SVC_COMPOSE_FILE_NAME}`));
 const getNouveauOverride = (dirPath) => FileSystem.FileSystem.pipe(Effect.flatMap(fs => fs.readFileString(`${dirPath}/${CHT_COUCHDB_COMPOSE_FILE_NAME}`)), Effect.map(Option.liftPredicate(String.includes('nouveau:'))), Effect.map(Option.map(() => NOUVEAU_SERVICE_OVERRIDE)));
 const writeChtxOverrideCompose = (dirPath, localVolumePath) => getNouveauOverride(dirPath)
     .pipe(Effect.map(getChtxComposeOverride(localVolumePath)), Effect.flatMap(writeFile(`${dirPath}/${CHTX_COMPOSE_OVERRIDE_FILE_NAME}`)));
 const writeChtCompose = (dirPath, version) => (fileName) => pipe(chtComposeUrl(version, fileName), getRemoteFile, Effect.flatMap(writeFile(`${dirPath}/${fileName}`)));
-const writeComposeFiles = (dirPath, version, localVolumePath) => pipe(CHT_COMPOSE_FILE_NAMES, Array.map(writeChtCompose(dirPath, version)), Array.append(writeUpgradeServiceCompose(dirPath)), Array.append(writeChtxOverrideCompose(dirPath, localVolumePath)), Effect.all);
+const writeComposeFiles = (dirPath, version, localVolumePath) => pipe(CHT_COMPOSE_FILE_NAMES, Array.map(writeChtCompose(dirPath, version)), Array.append(writeUpgradeServiceCompose(dirPath, localVolumePath)), Array.append(writeChtxOverrideCompose(dirPath, localVolumePath)), Effect.all);
+const writeConfigFile = (tmpDir, localVolumePath, env) => localVolumePath.pipe(
+// Write .env file when mapping to local dir. Not used by chtx, but useful for directly manipulating compose files.
+Option.map(dir => writeEnvFile(`${dir}/${ENV_FILE_NAME}`, ChtInstanceConfig.asRecord(env))), Option.getOrElse(() => Effect.void), Effect.andThen(writeJsonFile(`${tmpDir}/${ENV_JSON_FILE_NAME}`, env)));
 const writeSSLFiles = (sslType) => (dirPath) => pipe(SSL_URL_DICT[sslType], Array.map(([name, url]) => getRemoteFile(url)
     .pipe(Effect.flatMap(writeFile(`${dirPath}/${name}`)))), Effect.all);
 const doesUpgradeServiceExist = (instanceName) => pipe(upgradeSvcProjectName(instanceName), getContainersForComposeProject, Effect.map(Array.isNonEmptyArray));
@@ -147,16 +154,16 @@ const assertChtxVolumeDoesNotExist = (instanceName) => doesChtxVolumeExist(insta
     .pipe(Effect.filterOrFail(exists => !exists, () => new Error(`Instance ${instanceName} already exists`)));
 const assertChtxVolumeExists = (instanceName) => doesChtxVolumeExist(instanceName)
     .pipe(Effect.filterOrFail(exists => exists, () => new Error(`Instance ${instanceName} does not exist`)));
-const pullAllChtImages = (instanceName, env, tmpDir) => pipe([...CHT_COMPOSE_FILE_NAMES, UPGRADE_SVC_COMPOSE_FILE_NAME, CHTX_COMPOSE_OVERRIDE_FILE_NAME], Array.map(fileName => `${tmpDir}/${fileName}`), pullComposeImages(instanceName, ChtInstanceConfig.asRecord(env)), 
+const pullAllChtImages = (instanceName, env, tmpDir, localVolumePath) => pipe([...CHT_COMPOSE_FILE_NAMES, CHTX_COMPOSE_OVERRIDE_FILE_NAME], Array.map(fileName => `${tmpDir}/${fileName}`), Array.append(`${localVolumePath.pipe(Option.getOrElse(() => tmpDir))}/${UPGRADE_SVC_COMPOSE_FILE_NAME}`), pullComposeImages(instanceName, ChtInstanceConfig.asRecord(env)), 
 // Log the output of the docker pull because this could take a very long time
 Logger.withMinimumLogLevel(LogLevel.Debug));
-const createUpgradeSvcContainer = (instanceName, env, tmpDir) => pipe(upgradeSvcProjectName(instanceName), createComposeContainers(env, `${tmpDir}/${UPGRADE_SVC_COMPOSE_FILE_NAME}`));
+const createUpgradeSvcContainer = (instanceName, env, dir) => pipe(upgradeSvcProjectName(instanceName), createComposeContainers(env, `${dir}/${UPGRADE_SVC_COMPOSE_FILE_NAME}`));
 const rmTempUpgradeServiceContainer = (instanceName) => pipe(upgradeSvcProjectName(instanceName), rmComposeContainer(UPGRADE_SVC_NAME), Effect.catchAll(() => Effect.void));
-const copyFilesToUpgradeSvcContainer = (instanceName, tmpDir) => pipe([...CHT_COMPOSE_FILE_NAMES, CHTX_COMPOSE_OVERRIDE_FILE_NAME, ENV_FILE_NAME], Array.map((fileName) => [`${tmpDir}/${fileName}`, `/docker-compose/${fileName}`]), Array.map(copyFileToComposeContainer(upgradeSvcProjectName(instanceName), UPGRADE_SVC_NAME)), Effect.all);
+const copyFilesToUpgradeSvcContainer = (instanceName, tmpDir) => pipe([...CHT_COMPOSE_FILE_NAMES, CHTX_COMPOSE_OVERRIDE_FILE_NAME, ENV_JSON_FILE_NAME], Array.map((fileName) => [`${tmpDir}/${fileName}`, `/docker-compose/${fileName}`]), Array.map(copyFileToComposeContainer(upgradeSvcProjectName(instanceName), UPGRADE_SVC_NAME)), Effect.all);
 const copySSLFilesToNginxContainer = (instanceName) => (tmpDir) => pipe([SSL_CERT_FILE_NAME, SSL_KEY_FILE_NAME], Array.map((fileName) => [`${tmpDir}/${fileName}`, `/etc/nginx/private/${fileName}`]), Array.map(copyFileToComposeContainer(instanceName, NGINX_SVC_NAME)), Effect.all);
-const copyEnvFileFromUpgradeSvcContainer = (instanceName, tmpDir) => pipe(upgradeSvcProjectName(instanceName), copyFileFromComposeContainer(UPGRADE_SVC_NAME, `/docker-compose/${ENV_FILE_NAME}`, `${tmpDir}/${ENV_FILE_NAME}`));
+const copyEnvFileFromUpgradeSvcContainer = (instanceName, tmpDir) => pipe(upgradeSvcProjectName(instanceName), copyFileFromComposeContainer(UPGRADE_SVC_NAME, `/docker-compose/${ENV_JSON_FILE_NAME}`, `${tmpDir}/${ENV_JSON_FILE_NAME}`));
 const copyEnvFileFromDanglingVolume = (tempDir, instanceName) => Effect
-    .acquireUseRelease(writeUpgradeServiceCompose(tempDir)
+    .acquireUseRelease(writeUpgradeServiceCompose(tempDir, Option.none())
     .pipe(Effect.andThen(createUpgradeSvcContainer(instanceName, {}, tempDir))), () => copyEnvFileFromUpgradeSvcContainer(instanceName, tempDir), () => rmTempUpgradeServiceContainer(instanceName))
     .pipe(Effect.scoped);
 const getEnvarFromUpgradeSvcContainer = (instanceName, envar) => pipe(upgradeSvcProjectName(instanceName), serviceName => getEnvarFromComposeContainer(UPGRADE_SVC_NAME, envar, serviceName));
@@ -187,14 +194,14 @@ const waitForInstance = (port) => HttpClient.HttpClient.pipe(Effect.map(filterSt
     times: 180,
     schedule: Schedule.spaced(1000),
 }), Effect.scoped);
+const createUpgradeServiceFromLocalVolume = (projectName, localVolumePath) => assertChtxVolumeDoesNotExist(projectName).pipe(Effect.andThen(readJsonFile(ENV_JSON_FILE_NAME, `${localVolumePath}/${SUB_DIR_DOCKER_COMPOSE}`)), Effect.flatMap(Schema.decodeUnknown(ChtInstanceConfig)), Effect.flatMap(env => createUpgradeSvcContainer(projectName, ChtInstanceConfig.asRecord(env), localVolumePath)));
 const createUpgradeServiceFromDanglingVolume = (projectName) => () => createTmpDir()
     .pipe(Effect.flatMap(tmpDir => copyEnvFileFromDanglingVolume(tmpDir, projectName)
-    .pipe(Effect.andThen(readJsonFile(ENV_FILE_NAME, tmpDir)), Effect.flatMap(Schema.decodeUnknown(ChtInstanceConfig)), Effect.flatMap(env => createUpgradeSvcContainer(projectName, ChtInstanceConfig.asRecord(env), tmpDir)))), Effect.scoped);
-const ensureUpgradeServiceExists = (projectName) => assertChtxVolumeExists(projectName)
-    .pipe(Effect.filterEffectOrElse({
+    .pipe(Effect.andThen(readJsonFile(ENV_JSON_FILE_NAME, tmpDir)), Effect.flatMap(Schema.decodeUnknown(ChtInstanceConfig)), Effect.flatMap(env => createUpgradeSvcContainer(projectName, ChtInstanceConfig.asRecord(env), tmpDir)))), Effect.scoped);
+const ensureUpgradeServiceExists = (projectName, localVolumePath) => localVolumePath.pipe(Option.map(path => createUpgradeServiceFromLocalVolume(projectName, path)), Option.getOrElse(() => assertChtxVolumeExists(projectName).pipe(Effect.filterEffectOrElse({
     predicate: () => doesUpgradeServiceExist(projectName),
     orElse: createUpgradeServiceFromDanglingVolume(projectName),
-}));
+}))));
 const serviceContext = Effect
     .all([
     HttpClient.HttpClient,
@@ -210,14 +217,14 @@ export class LocalInstanceService extends Effect.Service()('chtoolbox/LocalInsta
             .pipe(Effect.andThen(Effect.all([
             ChtInstanceConfig.generate(instanceName),
             createTmpDir(),
+            createLocalVolumeDirs(localVolumePath)
         ])), Effect.flatMap(([env, tmpDir]) => Effect
             .all([
-            createLocalVolumeDirs(localVolumePath),
             writeComposeFiles(tmpDir, version, localVolumePath),
-            writeJsonFile(`${tmpDir}/${ENV_FILE_NAME}`, env),
+            writeConfigFile(tmpDir, localVolumePath, env),
         ])
-            .pipe(Effect.andThen(pullAllChtImages(instanceName, env, tmpDir)), Effect.andThen(createUpgradeSvcContainer(instanceName, ChtInstanceConfig.asRecord(env), tmpDir)), Effect.andThen(copyFilesToUpgradeSvcContainer(instanceName, tmpDir)))), Effect.mapError(x => x), Effect.scoped, Effect.provide(context)),
-        start: (instanceName) => ensureUpgradeServiceExists(instanceName)
+            .pipe(Effect.andThen(pullAllChtImages(instanceName, env, tmpDir, localVolumePath)), Effect.andThen(createUpgradeSvcContainer(instanceName, ChtInstanceConfig.asRecord(env), localVolumePath.pipe(Option.getOrElse(() => tmpDir)))), Effect.andThen(copyFilesToUpgradeSvcContainer(instanceName, tmpDir)))), Effect.mapError(x => x), Effect.scoped, Effect.provide(context)),
+        start: (instanceName, localVolumePath) => ensureUpgradeServiceExists(instanceName, localVolumePath)
             .pipe(Effect.andThen(restartCompose(upgradeSvcProjectName(instanceName))), Effect.andThen(getLocalChtInstanceInfo(instanceName)), Effect.tap(({ port }) => port.pipe(Option.getOrThrow, waitForInstance)), 
         // Get status again after instance started
         Effect.flatMap(instanceData => getInstanceStatus(instanceName).pipe(Effect.map(status => ({
@@ -235,7 +242,7 @@ export class LocalInstanceService extends Effect.Service()('chtoolbox/LocalInsta
             destroyCompose(upgradeSvcProjectName(instanceName)),
         ])
             .pipe(Effect.mapError(x => x), Effect.provide(context)),
-        setSSLCerts: (instanceName, sslType) => ensureUpgradeServiceExists(instanceName)
+        setSSLCerts: (instanceName, sslType) => ensureUpgradeServiceExists(instanceName, Option.none())
             .pipe(Effect.andThen(startCompose(upgradeSvcProjectName(instanceName))), Effect.andThen(getPortForInstance(instanceName)), Effect.tap(waitForInstance), Effect.andThen(createTmpDir()), Effect.tap(writeSSLFiles(sslType)), Effect.flatMap(copySSLFilesToNginxContainer(instanceName)), Effect.andThen(restartComposeService(instanceName, NGINX_SVC_NAME)), Effect.mapError(x => x), Effect.provide(context), Effect.scoped),
         ls: () => getVolumeNamesWithLabel(CHTX_LABEL_NAME)
             .pipe(Effect.map(Array.map(getVolumeLabelValue(CHTX_LABEL_NAME))), Effect.flatMap(Effect.all), Effect.map(Array.map(getLocalChtInstanceInfo)), Effect.flatMap(Effect.all), Effect.mapError(x => x), Effect.provide(context)),

@@ -13,6 +13,7 @@ export declare const instance: Command.Command<"instance", import("@effect/platf
         readonly names: [string, ...string[]];
     } | {
         readonly names: [string, ...string[]];
+        readonly directory: import("effect/Option").Option<string>;
     } | {
         readonly names: [string, ...string[]];
         readonly type: "local-ip" | "expired" | "self-signed";
