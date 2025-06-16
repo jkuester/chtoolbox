@@ -2,7 +2,15 @@ import { Array, Effect, Logger, LogLevel, Match, Option, pipe, Redacted, Schedul
 import * as Context from 'effect/Context';
 import { FileSystem, HttpClient, HttpClientRequest } from '@effect/platform';
 import crypto from 'crypto';
-import { createTmpDir, getRemoteFile, readJsonFile, writeEnvFile, writeFile, writeJsonFile, } from '../libs/file.js';
+import {
+  createDir,
+  createTmpDir,
+  getRemoteFile, isDirectoryEmpty,
+  readJsonFile,
+  writeEnvFile,
+  writeFile,
+  writeJsonFile,
+} from '../libs/file.js';
 import {
   copyFileFromComposeContainer,
   copyFileToComposeContainer,
@@ -173,14 +181,22 @@ class ChtInstanceConfig extends Schema.Class<ChtInstanceConfig>('ChtInstanceConf
 
 const upgradeSvcProjectName = (instanceName: string) => `${instanceName}-up`;
 
-const makeDir = (dirPath: string) => FileSystem.FileSystem.pipe(Effect.flatMap(fs => fs.makeDirectory(dirPath, { recursive: true })));
+const assertLocalVolumeEmpty = (localVolumePath: string) => isDirectoryEmpty(localVolumePath).pipe(
+  Effect.filterOrFail(
+    isEmpty => isEmpty,
+    () => new Error(`Local directory ${localVolumePath} is not empty.`)
+  ),
+  Effect.map(() => localVolumePath),
+);
+
 const createLocalVolumeDirs = (localVolumePath: Option.Option<string>) => localVolumePath.pipe(
-  Option.map(path => pipe(
+  Option.map(path => assertLocalVolumeEmpty(path)),
+  Option.map(Effect.flatMap(path => pipe(
     Array.make(SUB_DIR_CREDENTIALS, SUB_DIR_COUCHDB, SUB_DIR_NOUVEAU, SUB_DIR_DOCKER_COMPOSE),
     Array.map(subDir => `${path}/${subDir}`),
-    Array.map(makeDir),
+    Array.map(createDir),
     Effect.all,
-  )),
+  ))),
   Option.getOrElse(() => Effect.void),
 );
 

@@ -6,7 +6,7 @@ import { genWithLayer, sandbox } from '../utils/base.js';
 import * as LocalInstanceSvc from '../../src/services/local-instance.js';
 import { SSLType } from '../../src/services/local-instance.js';
 import { NodeContext } from '@effect/platform-node';
-import { HttpClient, HttpClientRequest, FileSystem } from '@effect/platform';
+import { FileSystem, HttpClient, HttpClientRequest } from '@effect/platform';
 import esmock from 'esmock';
 
 const INSTANCE_NAME = 'myinstance';
@@ -37,7 +37,9 @@ const mockDockerLib = {
   getVolumeLabelValue: sandbox.stub(),
 };
 const mockFileLib = {
+  createDir: sandbox.stub(),
   createTmpDir: sandbox.stub(),
+  isDirectoryEmpty: sandbox.stub(),
   writeFile: sandbox.stub(),
   writeEnvFile: sandbox.stub(),
   writeJsonFile: sandbox.stub(),
@@ -47,7 +49,6 @@ const mockFileLib = {
 const mockHttpClient = { filterStatusOk: sandbox.stub() };
 const mockHttpRequest = { get: sandbox.stub() };
 const mockFileSystem = {
-  makeDirectory: sandbox.stub(),
   readFileString: sandbox.stub(),
 };
 const mockNetworkLib = { getFreePorts: sandbox.stub() };
@@ -101,13 +102,13 @@ describe('Local Instance Service', () => {
     let pullComposeImagesInner: SinonStub;
 
     beforeEach(() => {
+      mockFileLib.createDir.returns(Effect.void);
       mockFileLib.writeJsonFile.returns(Effect.void);
       mockFileLib.writeEnvFile.returns(Effect.void);
       pullComposeImagesInner = sinon
         .stub()
         .returns(Effect.void);
       mockDockerLib.pullComposeImages.returns(pullComposeImagesInner);
-      mockFileSystem.makeDirectory.returns(Effect.void);
     });
 
     it('creates a new instance with the given name and version', run(function* () {
@@ -132,7 +133,7 @@ describe('Local Instance Service', () => {
       expect(mockNetworkLib.getFreePorts.calledOnceWithExactly()).to.be.true;
       expect(mockFileLib.createTmpDir.calledOnceWithExactly()).to.be.true;
       expect(mockFileLib.getRemoteFile.args).to.deep.equal([[coreComposeURL], [couchComposeURL]]);
-      expect(mockFileSystem.makeDirectory.notCalled).to.be.true;
+      expect(mockFileLib.createDir.notCalled).to.be.true;
       expect(mockFileLib.writeFile.args).to.deep.equal([
         [`${tmpDir}/compose.yaml`],
         [`${tmpDir}/chtx-override.yaml`],
@@ -199,6 +200,7 @@ describe('Local Instance Service', () => {
       mockNetworkLib.getFreePorts.returns(Effect.succeed([httpsPort, httpPort]));
       const tmpDir = '/tmp/asdfasdfas';
       mockFileLib.createTmpDir.returns(Effect.succeed(tmpDir));
+      mockFileLib.isDirectoryEmpty.returns(Effect.succeed(true));
       const coreComposeName = 'cht-core.yml';
       const couchComposeName = 'cht-couchdb.yml';
       const coreComposeURL = chtComposeUrl(version, coreComposeName);
@@ -218,10 +220,8 @@ describe('Local Instance Service', () => {
         Array.make('credentials', 'couchdb', 'nouveau', 'docker-compose'),
         Array.map(dir => `${dataDir}/${dir}`),
       );
-      expect(mockFileSystem.makeDirectory.args).to.deep.equal(pipe(
-        expectedDataDirs,
-        Array.map(dir => [dir, { recursive: true }]),
-      ));
+      expect(mockFileLib.isDirectoryEmpty.calledOnceWithExactly(dataDir)).to.be.true;
+      expect(mockFileLib.createDir.args).to.deep.equal(Array.map(expectedDataDirs, Array.make));
       expect(mockFileLib.writeFile.args).to.deep.equal([
         [`${dataDir}/compose.yaml`],
         [`${tmpDir}/chtx-override.yaml`],
@@ -284,6 +284,39 @@ describe('Local Instance Service', () => {
         [`${tmpDir}/env.json`, `/docker-compose/env.json`]
       );
       expect(mockFileSystem.readFileString.calledOnceWithExactly(`${tmpDir}/${couchComposeName}`)).to.be.true;
+    }));
+
+    it('returns error if given local directory is not empty', run(function* () {
+      const version = '3.7.0';
+      mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(false));
+      const httpsPort = 1234;
+      const httpPort = 5678;
+      mockNetworkLib.getFreePorts.returns(Effect.succeed([httpsPort, httpPort]));
+      const tmpDir = '/tmp/asdfasdfas';
+      mockFileLib.createTmpDir.returns(Effect.succeed(tmpDir));
+      mockFileLib.isDirectoryEmpty.returns(Effect.succeed(false));
+      const dataDir = '/data/directory';
+
+      const either = yield* LocalInstanceService
+        .create(INSTANCE_NAME, version, Option.some(dataDir))
+        .pipe(Effect.either);
+      if (Either.isRight(either)) {
+        expect.fail('Expected error');
+      }
+
+      expect(either.left).to.deep.equal(new Error(`Local directory ${dataDir} is not empty.`));
+      expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
+      expect(mockNetworkLib.getFreePorts.calledOnceWithExactly()).to.be.true;
+      expect(mockFileLib.createTmpDir.calledOnceWithExactly()).to.be.true;
+      expect(mockFileLib.isDirectoryEmpty.calledOnceWithExactly(dataDir)).to.be.true;
+      expect(mockFileLib.createDir.notCalled).to.be.true;
+      expect(mockFileLib.writeFile.notCalled).to.be.true;
+      expect(mockFileLib.writeEnvFile.notCalled).to.be.true;
+      expect(mockFileLib.writeJsonFile.notCalled).to.be.true;
+      expect(mockDockerLib.pullComposeImages.notCalled).to.be.true;
+      expect(mockDockerLib.createComposeContainers.notCalled).to.be.true;
+      expect(mockDockerLib.copyFileToComposeContainer.notCalled).to.be.true;
+      expect(mockFileSystem.readFileString.notCalled).to.be.true;
     }));
 
     it('returns error if chtx volume already exists with the same name', run(function* () {

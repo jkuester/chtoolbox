@@ -2,7 +2,7 @@ import { Array, Effect, Logger, LogLevel, Match, Option, pipe, Redacted, Schedul
 import * as Context from 'effect/Context';
 import { FileSystem, HttpClient, HttpClientRequest } from '@effect/platform';
 import crypto from 'crypto';
-import { createTmpDir, getRemoteFile, readJsonFile, writeEnvFile, writeFile, writeJsonFile, } from '../libs/file.js';
+import { createDir, createTmpDir, getRemoteFile, isDirectoryEmpty, readJsonFile, writeEnvFile, writeFile, writeJsonFile, } from '../libs/file.js';
 import { copyFileFromComposeContainer, copyFileToComposeContainer, createComposeContainers, destroyCompose, doesVolumeExistWithLabel, getContainersForComposeProject, getEnvarFromComposeContainer, getVolumeLabelValue, getVolumeNamesWithLabel, pullComposeImages, restartCompose, restartComposeService, rmComposeContainer, startCompose, stopCompose } from '../libs/docker.js';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
 import { getFreePorts } from '../libs/local-network.js';
@@ -134,8 +134,8 @@ class ChtInstanceConfig extends Schema.Class('ChtInstanceConfig')({
     static asRecord = (config) => config;
 }
 const upgradeSvcProjectName = (instanceName) => `${instanceName}-up`;
-const makeDir = (dirPath) => FileSystem.FileSystem.pipe(Effect.flatMap(fs => fs.makeDirectory(dirPath, { recursive: true })));
-const createLocalVolumeDirs = (localVolumePath) => localVolumePath.pipe(Option.map(path => pipe(Array.make(SUB_DIR_CREDENTIALS, SUB_DIR_COUCHDB, SUB_DIR_NOUVEAU, SUB_DIR_DOCKER_COMPOSE), Array.map(subDir => `${path}/${subDir}`), Array.map(makeDir), Effect.all)), Option.getOrElse(() => Effect.void));
+const assertLocalVolumeEmpty = (localVolumePath) => isDirectoryEmpty(localVolumePath).pipe(Effect.filterOrFail(isEmpty => isEmpty, () => new Error(`Local directory ${localVolumePath} is not empty.`)), Effect.map(() => localVolumePath));
+const createLocalVolumeDirs = (localVolumePath) => localVolumePath.pipe(Option.map(path => assertLocalVolumeEmpty(path)), Option.map(Effect.flatMap(path => pipe(Array.make(SUB_DIR_CREDENTIALS, SUB_DIR_COUCHDB, SUB_DIR_NOUVEAU, SUB_DIR_DOCKER_COMPOSE), Array.map(subDir => `${path}/${subDir}`), Array.map(createDir), Effect.all))), Option.getOrElse(() => Effect.void));
 const chtComposeUrl = (version, fileName) => `https://staging.dev.medicmobile.org/_couch/builds_4/medic%3Amedic%3A${version}/docker-compose/${fileName}`;
 const writeUpgradeServiceCompose = (dirPath, localVolumePath) => pipe(getUpgradeServiceCompose(localVolumePath), writeFile(`${localVolumePath.pipe(Option.getOrElse(() => dirPath))}/${UPGRADE_SVC_COMPOSE_FILE_NAME}`));
 const getNouveauOverride = (dirPath) => FileSystem.FileSystem.pipe(Effect.flatMap(fs => fs.readFileString(`${dirPath}/${CHT_COUCHDB_COMPOSE_FILE_NAME}`)), Effect.map(Option.liftPredicate(String.includes('nouveau:'))), Effect.map(Option.map(() => NOUVEAU_SERVICE_OVERRIDE)));
@@ -217,7 +217,7 @@ export class LocalInstanceService extends Effect.Service()('chtoolbox/LocalInsta
             .pipe(Effect.andThen(Effect.all([
             ChtInstanceConfig.generate(instanceName),
             createTmpDir(),
-            createLocalVolumeDirs(localVolumePath) //TODO ensure data does not already exist
+            createLocalVolumeDirs(localVolumePath)
         ])), Effect.flatMap(([env, tmpDir]) => Effect
             .all([
             writeComposeFiles(tmpDir, version, localVolumePath),
