@@ -7,3 +7,6 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "chore"
+    ignore:
+      - dependency-name: "@types/node"
+        versions: [">=21"] # Sync with minimum supported Node.js version

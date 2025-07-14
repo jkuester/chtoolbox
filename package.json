@@ -30,7 +30,7 @@
     "@types/chai": "^5.2.2",
     "@types/deep-equal-in-any-order": "^1.0.4",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^22.15.30",
+    "@types/node": "^20.19.7",
     "@types/pouchdb-adapter-http": "^6.1.6",
     "@types/pouchdb-core": "^7.0.15",
     "@types/pouchdb-mapreduce": "^6.1.10",
