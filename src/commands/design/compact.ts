@@ -29,7 +29,7 @@ export const compact = Command
   .make('compact', { follow, database, designs }, ({ follow, database, designs }) => initializeUrl.pipe(
     Effect.andThen(CompactService.compactDesign(database)),
     Effect.map(compactDesign => Array.map(designs, compactDesign)),
-    Effect.flatMap(Effect.all),
+    Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })),
     Effect.map(Option.liftPredicate(() => follow)),
     Effect.map(Option.map(mergeArrayStreams)),
     Effect.map(Option.map(streamActiveTasks)),

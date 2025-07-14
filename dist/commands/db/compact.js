@@ -15,7 +15,7 @@ export const streamActiveTasks = (taskStream) => taskStream.pipe(Stream.map(Arra
 const compactAll = (compactDesigns) => CompactService
     .compactAll(compactDesigns)
     .pipe(Effect.map(Array.make));
-const doCompaction = (databases, all) => pipe(databases, Option.liftPredicate(Array.isNonEmptyArray), Option.map(Array.map(dbName => CompactService.compactDb(dbName, all))), Option.map(Effect.all), Option.getOrElse(() => compactAll(all)), x => x);
+const doCompaction = (databases, all) => pipe(databases, Option.liftPredicate(Array.isNonEmptyArray), Option.map(Array.map(dbName => CompactService.compactDb(dbName, all))), Option.map(Effect.allWith({ concurrency: 'unbounded' })), Option.getOrElse(() => compactAll(all)));
 const databases = Args
     .text({ name: 'database' })
     .pipe(Args.withDescription('The database(s) to compact. Leave empty to compact all databases.'), Args.atLeast(0));

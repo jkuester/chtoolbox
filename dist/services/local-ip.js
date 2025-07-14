@@ -30,7 +30,7 @@ export class LocalIpService extends Effect.Service()('chtoolbox/LocalIpService',
         rm: (toPort) => rmContainer(getLocalIpContainerName(toPort))
             .pipe(Effect.mapError(x => x), Effect.provide(context)),
         ls: () => getContainerNamesWithLabel(CHTX_LOCAL_IP_LABEL)
-            .pipe(Effect.map(Array.map(getContainerLabelValue(CHTX_LOCAL_IP_LABEL))), Effect.flatMap(Effect.all), Effect.map(Array.map(getPortsFromLabel)), Effect.mapError(x => x), Effect.provide(context))
+            .pipe(Effect.map(Array.map(getContainerLabelValue(CHTX_LOCAL_IP_LABEL))), Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })), Effect.map(Array.map(getPortsFromLabel)), Effect.mapError(x => x), Effect.provide(context))
     }))),
     accessors: true,
 }) {

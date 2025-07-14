@@ -50,8 +50,8 @@ const emptyDesignInfo = {
         },
     },
 };
-const getCouchDesignInfosForDb = (dbName) => Effect.all(pipe(VIEW_INDEXES_BY_DB[dbName], Array.map(designName => getDesignInfo(dbName, designName)), Array.map(Effect.catchIf((error) => error instanceof ResponseError && error.response.status === 404, () => Effect.succeed(emptyDesignInfo)))));
-const getCouchDesignInfos = () => pipe(DB_NAMES, Array.map(getCouchDesignInfosForDb), Effect.all);
+const getCouchDesignInfosForDb = (dbName) => Effect.all(pipe(VIEW_INDEXES_BY_DB[dbName], Array.map(designName => getDesignInfo(dbName, designName)), Array.map(Effect.catchIf((error) => error instanceof ResponseError && error.response.status === 404, () => Effect.succeed(emptyDesignInfo)))), { concurrency: 'unbounded' });
+const getCouchDesignInfos = () => pipe(DB_NAMES, Array.map(getCouchDesignInfosForDb), Effect.allWith({ concurrency: 'unbounded' }));
 const NOUVEAU_INDEXES_BY_DB = {
     medic: [
         ['medic', 'contacts_by_freetext'],
@@ -70,8 +70,8 @@ const emptyNouveauInfo = {
         num_docs: 0,
     },
 };
-const getNouveauInfosForDb = (dbName) => Effect.all(pipe(NOUVEAU_INDEXES_BY_DB[dbName], Array.map(([ddoc, index]) => getNouveauInfo(dbName, ddoc, index)), Array.map(Effect.catchIf((error) => error instanceof ResponseError && error.response.status === 404, () => Effect.succeed(emptyNouveauInfo)))));
-const getNouveauInfos = () => pipe(DB_NAMES, Array.map(getNouveauInfosForDb), Effect.all);
+const getNouveauInfosForDb = (dbName) => Effect.all(pipe(NOUVEAU_INDEXES_BY_DB[dbName], Array.map(([ddoc, index]) => getNouveauInfo(dbName, ddoc, index)), Array.map(Effect.catchIf((error) => error instanceof ResponseError && error.response.status === 404, () => Effect.succeed(emptyNouveauInfo)))), { concurrency: 'unbounded' });
+const getNouveauInfos = () => pipe(DB_NAMES, Array.map(getNouveauInfosForDb), Effect.allWith({ concurrency: 'unbounded' }));
 const getDirectorySize = (directory) => LocalDiskUsageService.pipe(Effect.flatMap(service => directory.pipe(Option.map(dir => service.getSize(dir)), Option.getOrElse(() => Effect.succeed(null)))), Effect.map(Option.fromNullable));
 const getChtMonitoring = () => getChtMonitoringData().pipe(Effect.catchAll((error) => {
     if (error instanceof ResponseError && error.response.status === 404) {
@@ -87,7 +87,7 @@ const getMonitoringData = (directory) => pipe(Effect.all([
     getNouveauInfos(),
     getDirectorySize(directory),
     getChtMonitoring()
-]), Effect.map(([unixTime, nodeSystem, dbsInfo, designInfos, nouveauInfos, directory_size, { version }]) => ({
+], { concurrency: 'unbounded' }), Effect.map(([unixTime, nodeSystem, dbsInfo, designInfos, nouveauInfos, directory_size, { version }]) => ({
     ...nodeSystem,
     unix_time: unixTime,
     version,

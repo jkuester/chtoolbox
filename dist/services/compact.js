@@ -10,12 +10,12 @@ import { ChtClientService } from './cht-client.js';
 const TYPE_DB_COMPACT = 'database_compaction';
 const TYPE_VIEW_COMPACT = 'view_compaction';
 const compactDbViews = (dbName) => getDesignDocNames(dbName)
-    .pipe(Effect.map(Array.map(compactCouchDesign(dbName))), Effect.flatMap(Effect.all));
+    .pipe(Effect.map(Array.map(compactCouchDesign(dbName))), Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })));
 const compactCouchDb = (dbName, compactDesigns) => compactDb(dbName)
     .pipe(Effect.filterOrElse(() => !compactDesigns, () => compactDbViews(dbName)));
 const compactCouchDesign = (dbName) => (designName) => compactDesign(dbName, designName);
 const compactAll = (compactDesigns) => getDbNames()
-    .pipe(Effect.map(Array.map(dbName => compactCouchDb(dbName, compactDesigns))), Effect.flatMap(Effect.all));
+    .pipe(Effect.map(Array.map(dbName => compactCouchDb(dbName, compactDesigns))), Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })));
 const streamActiveTasksUntilEmpty = () => streamActiveTasks()
     .pipe(Stream.takeUntilEffect(untilEmptyCount(5)));
 const getActiveTaskTypeFilter = (compactDesigns) => pipe([TYPE_DB_COMPACT, TYPE_VIEW_COMPACT], Option.liftPredicate(() => compactDesigns), Option.getOrElse(() => [TYPE_DB_COMPACT]), types => filterStreamByType(...types));

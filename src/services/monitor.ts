@@ -80,12 +80,12 @@ const getCouchDesignInfosForDb = (dbName: string) => Effect.all(pipe(
     (error) => error instanceof ResponseError && error.response.status === 404,
     () => Effect.succeed(emptyDesignInfo),
   )),
-));
+), { concurrency: 'unbounded' });
 
 const getCouchDesignInfos = () => pipe(
   DB_NAMES,
   Array.map(getCouchDesignInfosForDb),
-  Effect.all,
+  Effect.allWith({ concurrency: 'unbounded' }),
 );
 
 const NOUVEAU_INDEXES_BY_DB: Record<typeof DB_NAMES[number], [string, string][]> = {
@@ -115,11 +115,11 @@ const getNouveauInfosForDb = (dbName: string) => Effect.all(pipe(
     (error) => error instanceof ResponseError && error.response.status === 404,
     () => Effect.succeed(emptyNouveauInfo),
   )),
-));
+), { concurrency: 'unbounded' });
 const getNouveauInfos = () => pipe(
   DB_NAMES,
   Array.map(getNouveauInfosForDb),
-  Effect.all,
+  Effect.allWith({ concurrency: 'unbounded' }),
 );
 
 const getDirectorySize = (directory: Option.Option<string>) => LocalDiskUsageService.pipe(
@@ -148,7 +148,7 @@ const getMonitoringData = (directory: Option.Option<string>) => pipe(
     getNouveauInfos(),
     getDirectorySize(directory),
     getChtMonitoring()
-  ]),
+  ], { concurrency: 'unbounded' }),
   Effect.map(([
     unixTime,
     nodeSystem,

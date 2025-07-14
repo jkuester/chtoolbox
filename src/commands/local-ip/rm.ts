@@ -13,7 +13,7 @@ export const rm = Command
   .make('rm', { toPorts }, ({ toPorts }) => pipe(
     toPorts,
     Array.map(LocalIpService.rm),
-    Effect.all,
+    Effect.allWith({ concurrency: 'unbounded' }),
     Effect.andThen(Console.log('Nginx-local-ip instance(s) removed')),
   ))
   .pipe(Command.withDescription(

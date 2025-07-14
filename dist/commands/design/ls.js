@@ -8,7 +8,7 @@ const printDesignDocNames = (dbName) => getDesignDocNames(dbName)
     .pipe(Effect.flatMap(logJson));
 const getDisplayDict = (data) => Array.reduce(data, {}, (dict, [designNames, dbName]) => Record.set(dbName, designNames)(dict));
 const printAllDesignDocNames = getDbNames()
-    .pipe(Effect.flatMap(dbNames => pipe(Array.map(dbNames, getDesignDocNames), Effect.all, Effect.map(Array.zip(dbNames)), Effect.map(getDisplayDict))), Effect.flatMap(logJson));
+    .pipe(Effect.flatMap(dbNames => pipe(Array.map(dbNames, getDesignDocNames), Effect.allWith({ concurrency: 'unbounded' }), Effect.map(Array.zip(dbNames)), Effect.map(getDisplayDict))), Effect.flatMap(logJson));
 const database = Args
     .text({ name: 'database' })
     .pipe(Args.withDescription('The database with the designs to list'), Args.optional);

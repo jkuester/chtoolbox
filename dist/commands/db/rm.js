@@ -2,7 +2,7 @@ import { Args, Command, Options, Prompt } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe } from 'effect';
 import { initializeUrl } from '../../index.js';
 import { PouchDBService } from '../../services/pouchdb.js';
-const destroyDbs = (dbs) => pipe(dbs, Array.map(PouchDBService.get), Array.map(Effect.flatMap(db => Effect.promise(() => db.destroy()))), Effect.all, Effect.tap(Console.log('Database(s) removed')));
+const destroyDbs = (dbs) => pipe(dbs, Array.map(PouchDBService.get), Array.map(Effect.flatMap(db => Effect.promise(() => db.destroy()))), Effect.allWith({ concurrency: 'unbounded' }), Effect.tap(Console.log('Database(s) removed')));
 const getConfirmationPrompt = (dbNames) => Prompt.confirm({
     message: `Are you sure you want to permanently remove ${Array.join(dbNames, ', ')}?`,
     initial: false,

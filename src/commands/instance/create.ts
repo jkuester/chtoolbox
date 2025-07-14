@@ -18,13 +18,13 @@ const createChtInstances = (names: string[], version: string, directory: Option.
 const startChtInstances = (names: string[]) => pipe(
   names,
   Array.map(name => LocalInstanceService.start(name, Option.none())),
-  Effect.all,
+  Effect.allWith({ concurrency: 'unbounded' }),
 );
 
 const setLocalIpSSLCerts = (names: string[]) => pipe(
   names,
   Array.map(name => LocalInstanceService.setSSLCerts(name, 'local-ip')),
-  Effect.all,
+  Effect.allWith({ concurrency: 'unbounded' }),
 );
 
 const names = Args

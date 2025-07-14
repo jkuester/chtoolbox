@@ -5,7 +5,7 @@ import { LocalInstanceService, SSLType } from '../../services/local-instance.js'
 const setSSLCertOnInstances = (names: string[], type: SSLType) => pipe(
   names,
   Array.map(name => LocalInstanceService.setSSLCerts(name, type)),
-  Effect.all,
+  Effect.allWith({ concurrency: 'unbounded' }),
 );
 
 const type = Options

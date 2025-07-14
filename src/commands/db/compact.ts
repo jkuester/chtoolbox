@@ -47,9 +47,8 @@ const doCompaction = (databases: string[], all: boolean) => pipe(
   databases,
   Option.liftPredicate(Array.isNonEmptyArray),
   Option.map(Array.map(dbName => CompactService.compactDb(dbName, all))),
-  Option.map(Effect.all),
+  Option.map(Effect.allWith({ concurrency: 'unbounded' })),
   Option.getOrElse(() => compactAll(all)),
-  x => x,
 );
 
 const databases = Args

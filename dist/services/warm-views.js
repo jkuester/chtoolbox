@@ -11,10 +11,10 @@ const warmCouchView = (dbName, designId) => (viewName) => warmView(dbName, desig
 const warmAll = () => getDbNames()
     .pipe(Effect.map(Array.map(dbName => getDesignDocNames(dbName)
     .pipe(Effect.map(Array.map(designName => getViewNames(dbName, designName)
-    .pipe(Effect.map(Array.map(warmCouchView(dbName, designName))), Effect.flatMap(Effect.all)))), Effect.flatMap(Effect.all), Effect.map(Array.flatten)))), Effect.flatMap(Effect.all), Effect.map(Array.flatten));
+    .pipe(Effect.map(Array.map(warmCouchView(dbName, designName))), Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' }))))), Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })), Effect.map(Array.flatten)))), Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })), Effect.map(Array.flatten));
 const designsCurrentlyUpdating = () => getDbNames()
     .pipe(Effect.map(Array.map(dbName => getDesignDocNames(dbName)
-    .pipe(Effect.map(Array.map(designId => getDesignInfo(dbName, designId))), Effect.flatMap(Effect.all), Effect.map(Array.filter(designInfo => designInfo.view_index.updater_running)), Effect.map(Array.map(designInfo => ({ dbName, designId: designInfo.name })))))), Effect.flatMap(Effect.all), Effect.map(Array.flatten));
+    .pipe(Effect.map(Array.map(designId => getDesignInfo(dbName, designId))), Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })), Effect.map(Array.filter(designInfo => designInfo.view_index.updater_running)), Effect.map(Array.map(designInfo => ({ dbName, designId: designInfo.name })))))), Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })), Effect.map(Array.flatten));
 const serviceContext = ChtClientService.pipe(Effect.map(couch => Context.make(ChtClientService, couch)));
 export class WarmViewsService extends Effect.Service()('chtoolbox/WarmViewsService', {
     effect: serviceContext.pipe(Effect.map(context => ({

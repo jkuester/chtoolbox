@@ -1,7 +1,7 @@
 import { Args, Command } from '@effect/cli';
 import { Array, Console, Effect, pipe } from 'effect';
 import { LocalInstanceService } from '../../services/local-instance.js';
-const stopChtInstances = (names) => pipe(names, Array.map(LocalInstanceService.stop), Effect.all);
+const stopChtInstances = (names) => pipe(names, Array.map(LocalInstanceService.stop), Effect.allWith({ concurrency: 'unbounded' }));
 const names = Args
     .text({ name: 'name' })
     .pipe(Args.withDescription('The project name of the CHT instance to stop'), Args.atLeast(1));
