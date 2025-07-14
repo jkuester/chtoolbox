@@ -2,18 +2,18 @@ name: CI
 
 on: [push, pull_request]
 
-env:
-  NODE_VERSION: '20.11'
-
 jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      matrix:
+        node-version: [20, 22, 24]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: ${{ matrix.node-version }}
       - run: npm ci
       - run: npm run lint
       - run: npm run build-app

@@ -13,6 +13,9 @@
   "files": [
     "/dist"
   ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build-app": "rm -rf dist && tsc -p tsconfig.build.json && chmod +x dist/index.js",
     "lint": "eslint --color --cache . && knip --production",
