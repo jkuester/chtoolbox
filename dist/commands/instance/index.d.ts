@@ -1,5 +1,5 @@
 import { Command } from '@effect/cli';
-export declare const instance: Command.Command<"instance", import("@effect/platform/Terminal").Terminal | import("@effect/platform/FileSystem").FileSystem | import("../../services/local-instance.js").LocalInstanceService, Error | import("@effect/platform/Error").PlatformError | import("@effect/platform/Terminal").QuitException, {
+export declare const instance: Command.Command<"instance", import("@effect/platform/Terminal").Terminal | import("@effect/platform/FileSystem").FileSystem | import("../../services/local-instance.js").LocalInstanceService, Error | import("@effect/platform/Error").PlatformError, {
     readonly subcommand: import("effect/Option").Option<{
         readonly names: string[];
     } | {
