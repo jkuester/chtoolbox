@@ -6,7 +6,7 @@ import { mergeArrayStreams } from '../../libs/core.js';
 import { getDbName, getDesignName, getDisplayDictByPid, getPid, getProgressPct } from '../../libs/couch/active-tasks.js';
 const getDesignDisplayName = (task) => getDesignName(task)
     .pipe(Option.map(design => `/${design}`), Option.getOrElse(() => String.empty));
-const getTaskDisplayData = (task) => ({
+export const getTaskDisplayData = (task) => ({
     database: `${getDbName(task)}${getDesignDisplayName(task)}`,
     pid: getPid(task),
     progress: getProgressPct(task),

@@ -229,7 +229,7 @@ const writeComposeFiles = (dirPath: string, version: string, localVolumePath: Op
   Array.map(writeChtCompose(dirPath, version)),
   Array.append(writeUpgradeServiceCompose(dirPath, localVolumePath)),
   Array.append(writeChtxOverrideCompose(dirPath, localVolumePath)),
-  Effect.allWith({ concurrency: 'unbounded' }),
+  Effect.all,
 );
 const writeConfigFile = (tmpDir: string, localVolumePath: Option.Option<string>, env: ChtInstanceConfig) => localVolumePath.pipe(
   // Write .env file when mapping to local dir. Not used by chtx, but useful for directly manipulating compose files.

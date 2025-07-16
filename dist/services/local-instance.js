@@ -142,7 +142,7 @@ const getNouveauOverride = (dirPath) => FileSystem.FileSystem.pipe(Effect.flatMa
 const writeChtxOverrideCompose = (dirPath, localVolumePath) => getNouveauOverride(dirPath)
     .pipe(Effect.map(getChtxComposeOverride(localVolumePath)), Effect.flatMap(writeFile(`${dirPath}/${CHTX_COMPOSE_OVERRIDE_FILE_NAME}`)));
 const writeChtCompose = (dirPath, version) => (fileName) => pipe(chtComposeUrl(version, fileName), getRemoteFile, Effect.flatMap(writeFile(`${dirPath}/${fileName}`)));
-const writeComposeFiles = (dirPath, version, localVolumePath) => pipe(CHT_COMPOSE_FILE_NAMES, Array.map(writeChtCompose(dirPath, version)), Array.append(writeUpgradeServiceCompose(dirPath, localVolumePath)), Array.append(writeChtxOverrideCompose(dirPath, localVolumePath)), Effect.allWith({ concurrency: 'unbounded' }));
+const writeComposeFiles = (dirPath, version, localVolumePath) => pipe(CHT_COMPOSE_FILE_NAMES, Array.map(writeChtCompose(dirPath, version)), Array.append(writeUpgradeServiceCompose(dirPath, localVolumePath)), Array.append(writeChtxOverrideCompose(dirPath, localVolumePath)), Effect.all);
 const writeConfigFile = (tmpDir, localVolumePath, env) => localVolumePath.pipe(
 // Write .env file when mapping to local dir. Not used by chtx, but useful for directly manipulating compose files.
 Option.map(dir => writeEnvFile(`${dir}/${ENV_FILE_NAME}`, ChtInstanceConfig.asRecord(env))), Option.getOrElse(() => Effect.void), Effect.andThen(writeJsonFile(`${tmpDir}/${ENV_JSON_FILE_NAME}`, env)));

@@ -19,7 +19,7 @@ const getDesignDisplayName = (task: CouchActiveTask) => getDesignName(task)
     Option.getOrElse(() => String.empty),
   );
 
-const getTaskDisplayData = (task: CouchActiveTask) => ({
+export const getTaskDisplayData = (task: CouchActiveTask): { database: string, pid: string, progress: string } => ({
   database: `${getDbName(task)}${getDesignDisplayName(task)}`,
   pid: getPid(task),
   progress: getProgressPct(task),

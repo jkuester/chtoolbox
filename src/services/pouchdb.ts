@@ -1,6 +1,6 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { Chunk, Match, Option, pipe, Redacted, Stream, StreamEmit, String } from 'effect';
+import { Array, Chunk, Either, Match, Option, pipe, Predicate, Redacted, Stream, StreamEmit, String } from 'effect';
 import PouchDB from 'pouchdb-core';
 import { pouchDB } from '../libs/core.js';
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
@@ -9,6 +9,7 @@ import PouchDBMapReduce from 'pouchdb-mapreduce';
 import PouchDBSessionAuthentication from 'pouchdb-session-authentication';
 import { EnvironmentService } from './environment.js';
 import https from 'https';
+import { NonEmptyArray } from "effect/Array";
 
 const HTTPS_AGENT_ALLOW_INVALID_SSL = new https.Agent({
   rejectUnauthorized: false,
@@ -32,7 +33,7 @@ type AllDocsOptions = PouchDB.Core.AllDocsWithKeyOptions |
   PouchDB.Core.AllDocsWithinRangeOptions |
   PouchDB.Core.AllDocsOptions;
 type AllDocsOptionsWithLimit = Omit<AllDocsOptions, 'limit'> & { limit: number };
-const allDocs = (db: PouchDB.Database, options: AllDocsOptionsWithLimit) => Effect
+const allDocs = (db: PouchDB.Database, options: AllDocsOptions) => Effect
   .promise(() => db.allDocs(options));
 const getAllDocsPage = (
   db: PouchDB.Database,
@@ -50,6 +51,34 @@ export const streamAllDocPages = (options: AllDocsOptions = {}) => (
 ): AllDocsResponseStream => pipe(
   getAllDocsPage(db, { ...options, limit: options.limit ?? 1000 }),
   pageFn => Stream.paginateEffect(0, pageFn),
+);
+
+type Doc = PouchDB.Core.AllDocsMeta & PouchDB.Core.IdMeta & PouchDB.Core.RevisionIdMeta;
+export const getAllDocs = (options: AllDocsOptions = {}) => (
+    db: PouchDB.Database
+): Effect.Effect<Doc[]> => pipe(
+    allDocs(db, { ...options, include_docs: true }),
+    Effect.map(({ rows }) => rows),
+    Effect.map(Array.map(({ doc }) => doc)),
+    Effect.map(Array.filter(Predicate.isNotNullable)),
+);
+
+export const deleteDocs = (db: PouchDB.Database) => (
+    docs: NonEmptyArray<Doc>
+): Effect.Effect<PouchDB.Core.Response[]> => pipe(
+    docs,
+    Array.map(doc => ({ ...doc, _deleted: true })),
+    docsToDelete => Effect.promise(() => db.bulkDocs(docsToDelete)),
+    Effect.map(Array.map(assertPouchResponse)),
+);
+
+export const saveDoc = (db: Either.Either<PouchDB.Database, string>) => (
+  doc: object
+): Effect.Effect<PouchDB.Core.Response, never, PouchDBService> => db.pipe(
+  Either.map(Effect.succeed),
+  Either.getOrElse((db) => PouchDBService.get(db)),
+  Effect.flatMap(db => Effect.promise(() => db.put(doc))),
+  Effect.map(assertPouchResponse),
 );
 
 type QueryOptionsWithLimit = Omit<PouchDB.Query.Options<object, object>, 'limit'> & { limit: number };
