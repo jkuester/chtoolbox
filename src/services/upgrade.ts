@@ -140,17 +140,14 @@ const assertReadyForComplete = latestUpgradeLog.pipe(
 const deleteStagedDdocs = (dbName: string) => Effect
   .logDebug(`Deleting staging ddocs for ${dbName}.`)
   .pipe(
-    Effect.andThen(PouchDBService.get(dbName)),
-    Effect.flatMap(db => pipe(
-      db,
-      getAllDocs({
-        startkey: STAGED_DDOC_PREFIX,
-        endkey: `${STAGED_DDOC_PREFIX}\ufff0`
-      }),
-      Effect.map(Option.liftPredicate(Array.isNonEmptyArray)),
-      Effect.map(Option.map(deleteDocs(db))),
-      Effect.flatMap(Option.getOrElse(() => Effect.void)),
-    ))
+    Effect.andThen({
+      startkey: STAGED_DDOC_PREFIX,
+      endkey: `${STAGED_DDOC_PREFIX}\ufff0`
+    }),
+    Effect.flatMap(getAllDocs(dbName)),
+    Effect.map(Option.liftPredicate(Array.isNonEmptyArray)),
+    Effect.map(Option.map(deleteDocs(dbName))),
+    Effect.flatMap(Option.getOrElse(() => Effect.void)),
   );
 
 const getStagingDocAttachments = (version: string) => Effect
@@ -176,7 +173,7 @@ const preStageDdoc = (dbName: string) => (ddoc: CouchDesign) => Effect
       _id: pipe(ddoc._id, String.replace(DDOC_PREFIX, STAGED_DDOC_PREFIX)),
       deploy_info: { user: 'Pre-staged by chtoolbox' }
     }),
-    Effect.tap(saveDoc(Either.left(dbName))),
+    Effect.tap(saveDoc(dbName)),
     Effect.flatMap(({ _id }) => WarmViewsService.warmDesign(dbName, _id.replace(DDOC_PREFIX, ''))),
 );
 
@@ -241,6 +238,7 @@ export class UpgradeService extends Effect.Service<UpgradeService>()('chtoolbox/
       Effect.flatMap(Effect.all),
       Effect.map(Chunk.fromIterable),
       Effect.map(Stream.concatAll),
+      Effect.mapError(x => x as Error),
       Effect.provide(context),
     )
   }))),

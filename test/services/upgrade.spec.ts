@@ -7,6 +7,7 @@ import * as UpgradeSvc from '../../src/services/upgrade.js';
 import { genWithLayer, sandbox } from '../utils/base.js';
 import { ChtClientService } from '../../src/services/cht-client.js';
 import esmock from 'esmock';
+import { WarmViewsService } from '../../src/services/warm-views.js';
 
 const version = '3.7.0';
 const EXPECTED_ALL_DOCS_OPTS = {
@@ -42,6 +43,7 @@ const run = UpgradeService.Default.pipe(
     get: pouchGet,
   } as unknown as PouchDBService),),
   Layer.provide(Layer.succeed(ChtClientService, { } as unknown as ChtClientService)),
+  Layer.provide(Layer.succeed(WarmViewsService, { } as unknown as WarmViewsService)),
   genWithLayer,
 );
 

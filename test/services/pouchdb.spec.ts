@@ -1,5 +1,5 @@
 import { describe, it } from 'mocha';
-import { Array, Chunk, Effect, Either, Layer, Option, Redacted, Stream } from 'effect';
+import { Array, Chunk, Effect, Either, Layer, Option, Redacted, Stream, pipe } from 'effect';
 import sinon, { SinonStub } from 'sinon';
 import PouchDB from 'pouchdb-core';
 import * as PouchDbSvc from '../../src/services/pouchdb.js';
@@ -7,6 +7,7 @@ import { EnvironmentService } from '../../src/services/environment.js';
 import { expect } from 'chai';
 import { genWithLayer, sandbox } from '../utils/base.js';
 import esmock from 'esmock';
+import { NonEmptyArray } from 'effect/Array';
 
 const FAKE_POUCHDB = { hello: 'world' } as const;
 
@@ -16,6 +17,9 @@ const environmentGet = sandbox.stub();
 
 const {
   assertPouchResponse,
+  getAllDocs,
+  deleteDocs,
+  saveDoc,
   PouchDBService,
   streamAllDocPages,
   streamChanges,
@@ -290,6 +294,156 @@ describe('PouchDB Service', () => {
 
       expect(pages).to.deep.equal([firstResponse]);
       expect(allDocs.args).to.deep.equal([[{ limit: 1000, skip: 0 }]]);
+    }));
+  });
+
+  describe('getAllDocs', () => {
+    const url = 'https://localhost:5984/';
+    const dbName = 'medic';
+    const fakeDdb = { allDocs: () => null } as unknown as PouchDB.Database;
+    let allDocs: SinonStub;
+
+    beforeEach(() => {
+      allDocs = sinon.stub(fakeDdb, 'allDocs');
+      const env = Redacted.make(url).pipe(url => ({ url }));
+      environmentGet.returns(Effect.succeed(env));
+      mockCore.pouchDB.returns(fakeDdb);
+    });
+
+    afterEach(() => {
+      expect(environmentGet.calledOnceWithExactly()).to.be.true;
+      expect(mockCore.pouchDB.calledOnce).to.be.true;
+      expect(mockCore.pouchDB.args[0][0]).to.equal(`${url}${dbName}`);
+    });
+
+    it('returns an array of docs with the null values filtered out', run(function* () {
+      const expectedDocs = [
+        { _id: '1', _rev: '1', hello: 'world' },
+        { _id: '2', _rev: '2', hello: 'again' }
+      ];
+      const rows = pipe(
+        [null, ...expectedDocs, null],
+        Array.map(doc => ({ doc }))
+      );
+      allDocs.resolves({ rows });
+      const options = { limit: 42 };
+
+      const docs = yield* getAllDocs(dbName)(options);
+
+      expect(docs).to.deep.equal(expectedDocs);
+      expect(allDocs.args).to.deep.equal([[{ ...options, include_docs: true }]]);
+    }));
+
+    it('returns an empty array when no docs are found', run(function* () {
+      allDocs.resolves({ rows: [] });
+
+      const docs = yield* getAllDocs(dbName)();
+
+      expect(docs).to.have.length(0);
+      expect(allDocs.args).to.deep.equal([[{ include_docs: true }]]);
+    }));
+  });
+
+  describe('deleteDocs', () => {
+    const url = 'https://localhost:5984/';
+    const dbName = 'medic';
+    const fakeDdb = { bulkDocs: () => null } as unknown as PouchDB.Database;
+    const docs = [
+      { _id: '1', _rev: '1', hello: 'world' },
+      { _id: '2', _rev: '2', hello: 'again' }
+    ] as unknown as NonEmptyArray<PouchDB.Core.AllDocsMeta & PouchDB.Core.IdMeta & PouchDB.Core.RevisionIdMeta>;
+    let bulkDocs: SinonStub;
+
+    beforeEach(() => {
+      bulkDocs = sinon.stub(fakeDdb, 'bulkDocs');
+      const env = Redacted.make(url).pipe(url => ({ url }));
+      environmentGet.returns(Effect.succeed(env));
+      mockCore.pouchDB.returns(fakeDdb);
+    });
+
+    afterEach(() => {
+      expect(environmentGet.calledOnceWithExactly()).to.be.true;
+      expect(mockCore.pouchDB.calledOnce).to.be.true;
+      expect(mockCore.pouchDB.args[0][0]).to.equal(`${url}${dbName}`);
+    });
+
+    it('deletes the given docs', run(function* () {
+      const expectedResult = [{ ok: true }, { ok: true }];
+      bulkDocs.resolves(expectedResult);
+
+      const result = yield* deleteDocs(dbName)(docs);
+
+      expect(result).to.deep.equal(expectedResult);
+      const expectedDocs = pipe(
+        docs,
+        Array.map(doc => ({ ...doc, _deleted: true }))
+      );
+      expect(bulkDocs.calledOnceWithExactly(expectedDocs)).to.be.true;
+    }));
+
+    it('fails if there is a problem deleting any of the docs', run(function* () {
+      const expectedResult = [{ ok: true }, { ok: false }];
+      bulkDocs.resolves(expectedResult);
+
+      const either = yield* deleteDocs(dbName)(docs).pipe(Effect.either);
+
+      if (Either.isRight(either)) {
+        expect.fail('Expected a failure but got a success');
+      }
+
+      expect(either.left).to.deep.equal(expectedResult[1]);
+      const expectedDocs = pipe(
+        docs,
+        Array.map(doc => ({ ...doc, _deleted: true }))
+      );
+      expect(bulkDocs.calledOnceWithExactly(expectedDocs)).to.be.true;
+    }));
+  });
+
+  describe('saveDoc', () => {
+    const url = 'https://localhost:5984/';
+    const dbName = 'medic';
+    const fakeDdb = { put: () => null } as unknown as PouchDB.Database;
+    const doc = {
+      _id: '1', _rev: '1', hello: 'world'
+    } as unknown as PouchDB.Core.AllDocsMeta & PouchDB.Core.IdMeta & PouchDB.Core.RevisionIdMeta;
+    let put: SinonStub;
+
+    beforeEach(() => {
+      put = sinon.stub(fakeDdb, 'put');
+      const env = Redacted.make(url).pipe(url => ({ url }));
+      environmentGet.returns(Effect.succeed(env));
+      mockCore.pouchDB.returns(fakeDdb);
+    });
+
+    afterEach(() => {
+      expect(environmentGet.calledOnceWithExactly()).to.be.true;
+      expect(mockCore.pouchDB.calledOnce).to.be.true;
+      expect(mockCore.pouchDB.args[0][0]).to.equal(`${url}${dbName}`);
+    });
+
+    it('saves the given doc', run(function* () {
+      const expectedResult = { ok: true };
+      put.resolves(expectedResult);
+
+      const result = yield* saveDoc(dbName)(doc);
+
+      expect(result).to.deep.equal(expectedResult);
+      expect(put.calledOnceWithExactly(doc)).to.be.true;
+    }));
+
+    it('fails if there is a problem saving the doc', run(function* () {
+      const expectedResult = { ok: false };
+      put.resolves(expectedResult);
+
+      const either = yield* saveDoc(dbName)(doc).pipe(Effect.either);
+
+      if (Either.isRight(either)) {
+        expect.fail('Expected a failure but got a success');
+      }
+
+      expect(either.left).to.deep.equal(expectedResult);
+      expect(put.calledOnceWithExactly(doc)).to.be.true;
     }));
   });
 

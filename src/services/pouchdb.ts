@@ -29,6 +29,14 @@ export const assertPouchResponse = (
   Option.getOrThrowWith(() => value),
 );
 
+const getPouchResponse = (
+  value: PouchDB.Core.Response | PouchDB.Core.Error
+): Effect.Effect<PouchDB.Core.Response, PouchDB.Core.Error> => pipe(
+  Option.liftPredicate(value, isPouchResponse),
+  Option.map(Effect.succeed),
+  Option.getOrElse(() => Effect.fail(value as PouchDB.Core.Error)),
+);
+
 type AllDocsOptions = PouchDB.Core.AllDocsWithKeyOptions |
   PouchDB.Core.AllDocsWithinRangeOptions |
   PouchDB.Core.AllDocsOptions;
@@ -54,14 +62,16 @@ export const streamAllDocPages = (options: AllDocsOptions = {}) => (
 );
 
 type Doc = PouchDB.Core.AllDocsMeta & PouchDB.Core.IdMeta & PouchDB.Core.RevisionIdMeta;
-export const getAllDocs = (options: AllDocsOptions = {}) => (
-    db: PouchDB.Database
-): Effect.Effect<Doc[]> => pipe(
-    allDocs(db, { ...options, include_docs: true }),
+export const getAllDocs = (dbName: string) => (
+  options: AllDocsOptions = {}
+): Effect.Effect<Doc[], never, PouchDBService> => PouchDBService
+  .get(dbName)
+  .pipe(
+    Effect.flatMap(db => allDocs(db, { ...options, include_docs: true })),
     Effect.map(({ rows }) => rows),
     Effect.map(Array.map(({ doc }) => doc)),
     Effect.map(Array.filter(Predicate.isNotNullable)),
-);
+  );
 
 export const deleteDocs = (db: PouchDB.Database) => (
     docs: NonEmptyArray<Doc>
@@ -70,16 +80,32 @@ export const deleteDocs = (db: PouchDB.Database) => (
     Array.map(doc => ({ ...doc, _deleted: true })),
     docsToDelete => Effect.promise(() => db.bulkDocs(docsToDelete)),
     Effect.map(Array.map(assertPouchResponse)),
+const bulkDocs = (dbName: string) => (
+  docs: PouchDB.Core.PutDocument<object>[]
+) => PouchDBService
+    .get(dbName)
+    .pipe(
+      Effect.flatMap(db => Effect.promise(() => db.bulkDocs(docs))),
+      Effect.map(Array.map(getPouchResponse)),
+      Effect.flatMap(Effect.all),
+    );
+
+export const deleteDocs = (dbName: string) => (
+  docs: NonEmptyArray<Doc>
+): Effect.Effect<PouchDB.Core.Response[], PouchDB.Core.Error, PouchDBService> => pipe(
+  docs,
+  Array.map(doc => ({ ...doc, _deleted: true })),
+  bulkDocs(dbName),
 );
 
-export const saveDoc = (db: Either.Either<PouchDB.Database, string>) => (
+export const saveDoc = (dbName: string) => (
   doc: object
-): Effect.Effect<PouchDB.Core.Response, never, PouchDBService> => db.pipe(
-  Either.map(Effect.succeed),
-  Either.getOrElse((db) => PouchDBService.get(db)),
-  Effect.flatMap(db => Effect.promise(() => db.put(doc))),
-  Effect.map(assertPouchResponse),
-);
+): Effect.Effect<PouchDB.Core.Response, PouchDB.Core.Error, PouchDBService> => PouchDBService
+  .get(dbName)
+  .pipe(
+    Effect.flatMap(db => Effect.promise(() => db.put(doc))),
+    Effect.flatMap(getPouchResponse),
+  );
 
 type QueryOptionsWithLimit = Omit<PouchDB.Query.Options<object, object>, 'limit'> & { limit: number };
 const query = (db: PouchDB.Database, viewIndex: string, options: QueryOptionsWithLimit) => Effect
