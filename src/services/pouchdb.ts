@@ -1,6 +1,6 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { Array, Chunk, Either, Match, Option, pipe, Predicate, Redacted, Stream, StreamEmit, String } from 'effect';
+import { Array, Chunk, Match, Option, pipe, Predicate, Redacted, Stream, StreamEmit, String } from 'effect';
 import PouchDB from 'pouchdb-core';
 import { pouchDB } from '../libs/core.js';
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
