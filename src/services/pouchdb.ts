@@ -73,13 +73,6 @@ export const getAllDocs = (dbName: string) => (
     Effect.map(Array.filter(Predicate.isNotNullable)),
   );
 
-export const deleteDocs = (db: PouchDB.Database) => (
-    docs: NonEmptyArray<Doc>
-): Effect.Effect<PouchDB.Core.Response[]> => pipe(
-    docs,
-    Array.map(doc => ({ ...doc, _deleted: true })),
-    docsToDelete => Effect.promise(() => db.bulkDocs(docsToDelete)),
-    Effect.map(Array.map(assertPouchResponse)),
 const bulkDocs = (dbName: string) => (
   docs: PouchDB.Core.PutDocument<object>[]
 ) => PouchDBService

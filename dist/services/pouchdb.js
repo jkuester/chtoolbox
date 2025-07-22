@@ -1,6 +1,6 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { Array, Chunk, Either, Match, Option, pipe, Predicate, Redacted, Stream, String } from 'effect';
+import { Array, Chunk, Match, Option, pipe, Predicate, Redacted, Stream, String } from 'effect';
 import PouchDB from 'pouchdb-core';
 import { pouchDB } from '../libs/core.js';
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
@@ -16,7 +16,10 @@ PouchDB.plugin(PouchDBAdapterHttp);
 PouchDB.plugin(PouchDBSessionAuthentication);
 PouchDB.plugin(PouchDBMapReduce);
 const isPouchResponse = (value) => 'ok' in value && value.ok;
+// TODO Consider refactoring to use getPouchResponse instead of this function.
+// Pouch errors are def the kind of thing that could realistically happen (e.g. network issues)
 export const assertPouchResponse = (value) => pipe(Option.liftPredicate(value, isPouchResponse), Option.getOrThrowWith(() => value));
+const getPouchResponse = (value) => pipe(Option.liftPredicate(value, isPouchResponse), Option.map(Effect.succeed), Option.getOrElse(() => Effect.fail(value)));
 const allDocs = (db, options) => Effect
     .promise(() => db.allDocs(options));
 const getAllDocsPage = (db, options) => (skip) => allDocs(db, { skip, ...options })
@@ -24,10 +27,18 @@ const getAllDocsPage = (db, options) => (skip) => allDocs(db, { skip, ...options
     response,
     Option.liftPredicate(skip + options.limit, () => response.rows.length === options.limit),
 ]));
+// TODO Consider accepting dbName here instead of db.
 export const streamAllDocPages = (options = {}) => (db) => pipe(getAllDocsPage(db, { ...options, limit: options.limit ?? 1000 }), pageFn => Stream.paginateEffect(0, pageFn));
-export const getAllDocs = (options = {}) => (db) => pipe(allDocs(db, { ...options, include_docs: true }), Effect.map(({ rows }) => rows), Effect.map(Array.map(({ doc }) => doc)), Effect.map(Array.filter(Predicate.isNotNullable)));
-export const deleteDocs = (db) => (docs) => pipe(docs, Array.map(doc => ({ ...doc, _deleted: true })), docsToDelete => Effect.promise(() => db.bulkDocs(docsToDelete)), Effect.map(Array.map(assertPouchResponse)));
-export const saveDoc = (db) => (doc) => db.pipe(Either.map(Effect.succeed), Either.getOrElse((db) => PouchDBService.get(db)), Effect.flatMap(db => Effect.promise(() => db.put(doc))), Effect.map(assertPouchResponse));
+export const getAllDocs = (dbName) => (options = {}) => PouchDBService
+    .get(dbName)
+    .pipe(Effect.flatMap(db => allDocs(db, { ...options, include_docs: true })), Effect.map(({ rows }) => rows), Effect.map(Array.map(({ doc }) => doc)), Effect.map(Array.filter(Predicate.isNotNullable)));
+const bulkDocs = (dbName) => (docs) => PouchDBService
+    .get(dbName)
+    .pipe(Effect.flatMap(db => Effect.promise(() => db.bulkDocs(docs))), Effect.map(Array.map(getPouchResponse)), Effect.flatMap(Effect.all));
+export const deleteDocs = (dbName) => (docs) => pipe(docs, Array.map(doc => ({ ...doc, _deleted: true })), bulkDocs(dbName));
+export const saveDoc = (dbName) => (doc) => PouchDBService
+    .get(dbName)
+    .pipe(Effect.flatMap(db => Effect.promise(() => db.put(doc))), Effect.flatMap(getPouchResponse));
 const query = (db, viewIndex, options) => Effect
     .promise(() => db.query(viewIndex, options));
 const getQueryPage = (db, viewIndex, options) => (skip) => query(db, viewIndex, { skip, ...options })

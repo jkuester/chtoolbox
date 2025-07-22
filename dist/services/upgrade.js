@@ -50,7 +50,7 @@ export class UpgradeLog extends Schema.Class('UpgradeLog')({
 class DesignDocAttachment extends Schema.Class('DesignDocAttachment')({
     docs: Schema.Array(CouchDesign),
 }) {
-    static decode = (attachment) => pipe(attachment.data, Encoding.decodeBase64String, Either.getOrThrow, JSON.parse, x => Schema.decodeUnknown(DesignDocAttachment)(x));
+    static decode = (attachment) => pipe(attachment.data, Encoding.decodeBase64String, Either.getOrThrow, JSON.parse, Schema.decodeUnknown(DesignDocAttachment));
 }
 const latestUpgradeLog = PouchDBService
     .get('medic-logs')
@@ -75,10 +75,10 @@ const assertReadyForUpgrade = latestUpgradeLog.pipe(Effect.map(Option.map(({ sta
 const assertReadyForComplete = latestUpgradeLog.pipe(Effect.map(Option.map(({ state }) => state)), Effect.map(Match.value), Effect.map(Match.when(state => Option.isSome(state) && Option.getOrThrow(state) === 'indexed', () => Effect.void)), Effect.flatMap(Match.orElse(() => Effect.fail(new Error('No upgrade ready for completion.')))));
 const deleteStagedDdocs = (dbName) => Effect
     .logDebug(`Deleting staging ddocs for ${dbName}.`)
-    .pipe(Effect.andThen(PouchDBService.get(dbName)), Effect.flatMap(db => pipe(db, getAllDocs({
+    .pipe(Effect.andThen({
     startkey: STAGED_DDOC_PREFIX,
     endkey: `${STAGED_DDOC_PREFIX}\ufff0`
-}), Effect.map(Option.liftPredicate(Array.isNonEmptyArray)), Effect.map(Option.map(deleteDocs(db))), Effect.flatMap(Option.getOrElse(() => Effect.void)))));
+}), Effect.flatMap(getAllDocs(dbName)), Effect.map(Option.liftPredicate(Array.isNonEmptyArray)), Effect.map(Option.map(deleteDocs(dbName))), Effect.flatMap(Option.getOrElse(() => Effect.void)));
 const getStagingDocAttachments = (version) => Effect
     .logDebug(`Getting staging doc attachments for ${version}`)
     .pipe(Effect.andThen(pouchDB(STAGING_BUILDS_COUCH_URL)), Effect.flatMap(db => Effect.promise(() => db.get(`medic:medic:${version}`, { attachments: true }))), Effect.map(({ _attachments }) => _attachments), Effect.filterOrFail(Predicate.isNotNullable));
@@ -88,7 +88,7 @@ const preStageDdoc = (dbName) => (ddoc) => Effect
     ...ddoc,
     _id: pipe(ddoc._id, String.replace(DDOC_PREFIX, STAGED_DDOC_PREFIX)),
     deploy_info: { user: 'Pre-staged by chtoolbox' }
-}), Effect.tap(saveDoc(Either.left(dbName))), Effect.flatMap(({ _id }) => WarmViewsService.warmDesign(dbName, _id.replace(DDOC_PREFIX, ''))));
+}), Effect.tap(saveDoc(dbName)), Effect.flatMap(({ _id }) => WarmViewsService.warmDesign(dbName, _id.replace(DDOC_PREFIX, ''))));
 const preStageDdocs = (docsByDb) => pipe(docsByDb, Array.map(([{ docs }, attachmentName]) => pipe(docs, Array.map(preStageDdoc(CHT_DATABASE_BY_ATTACHMENT_NAME[attachmentName])), Effect.all, Effect.map(Chunk.fromIterable), Effect.map(Stream.concatAll))));
 const serviceContext = Effect
     .all([
@@ -105,37 +105,9 @@ export class UpgradeService extends Effect.Service()('chtoolbox/UpgradeService',
         stage: (version) => assertReadyForUpgrade.pipe(Effect.andThen(stageChtUpgrade(version)), Effect.andThen(streamUpgradeLogChanges(STAGING_COMPLETE_STATES)), Effect.provide(context)),
         complete: (version) => assertReadyForComplete.pipe(Effect.andThen(completeChtUpgrade(version)), Effect.andThen(streamUpgradeLogChanges(COMPLETED_STATES)
             .pipe(Effect.retry(Schedule.spaced(1000)))), Effect.provide(context)),
-        preStage: (version) => assertReadyForUpgrade.pipe(Effect.andThen(CHT_DATABASES), Effect.map(Array.map(deleteStagedDdocs)), Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })), Effect.andThen(getStagingDocAttachments(version)), Effect.flatMap(decodeStagingDocAttachments), Effect.map(Array.zip(CHT_DDOC_ATTACMENT_NAMES)), Effect.map(preStageDdocs), Effect.flatMap(Effect.all), Effect.map(Chunk.fromIterable), Effect.map(Stream.concatAll), Effect.provide(context))
+        preStage: (version) => assertReadyForUpgrade.pipe(Effect.andThen(CHT_DATABASES), Effect.map(Array.map(deleteStagedDdocs)), Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })), Effect.andThen(getStagingDocAttachments(version)), Effect.flatMap(decodeStagingDocAttachments), Effect.map(Array.zip(CHT_DDOC_ATTACMENT_NAMES)), Effect.map(preStageDdocs), Effect.flatMap(Effect.all), Effect.map(Chunk.fromIterable), Effect.map(Stream.concatAll), Effect.mapError(x => x), Effect.provide(context))
     }))),
     accessors: true,
 }) {
 }
-//
-// await Effect.runPromise(pipe(
-//   // CHT_DATABASES,
-//   // Array.map(deleteStagedDdocs),
-//   // Effect.allWith({ concurrency: 'unbounded' }),
-//
-//
-//   UpgradeService.preStage('4.21.0'),
-//   x => x,
-//   Effect.map(Stream.tap((n) => Console.log(`mapping: ${JSON.stringify(n)}`))),
-//   Effect.map(x => x),
-//   Effect.flatMap(Stream.runDrain),
-//   // x => x,
-//
-//
-//   Effect.andThen(Effect.log('Purged all docs')),
-//   Effect.provide(UpgradeService.Default),
-//   Effect.provide(WarmViewsService.Default),
-//   Effect.provide(ChtClientService.Default.pipe(
-//     Layer.provide(NodeHttpClient.layerWithoutAgent.pipe(
-//       Layer.provide(NodeHttpClient.makeAgentLayer({ rejectUnauthorized: false }))
-//     ))
-//   )),
-//   Effect.provide(PouchDBService.Default),
-//   Effect.provide(EnvironmentService.Default),
-//   Effect.provide(NodeContext.layer),
-//   Logger.withMinimumLogLevel(LogLevel.Debug),
-// ));
 //# sourceMappingURL=upgrade.js.map
