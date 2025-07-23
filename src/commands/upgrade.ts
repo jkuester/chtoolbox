@@ -3,7 +3,7 @@ import { Array, Console, DateTime, Effect, Match, pipe, Stream } from 'effect';
 import { initializeUrl } from '../index.js';
 import { UpgradeLog, UpgradeService } from '../services/upgrade.js';
 
-import { clearThen } from '../libs/console.js';
+import { clearConsole, clearThen } from '../libs/console.js';
 import { CouchActiveTaskStream, getDisplayDictByPid } from '../libs/couch/active-tasks.js';
 import { ChtClientService } from '../services/cht-client.js';
 import { getTaskDisplayData } from './db/compact.js';
@@ -45,13 +45,11 @@ const streamActiveTasks = (
 ): Effect.Effect<void, Error, ChtClientService> => taskStream.pipe(
   Stream.map(Array.map(getTaskDisplayData)),
   Stream.map(getDisplayDictByPid),
-  Stream.runForEach(taskDict => Console.clear.pipe(
+  Stream.runForEach(taskDict => clearConsole.pipe(
     Effect.tap(Console.log('Currently indexing:')),
     Effect.tap(Console.table(taskDict)),
   )),
-  Effect.tap(Console.clear.pipe(
-    Effect.tap(Console.log('Pre-staging complete.')),
-  )),
+  Effect.tap(clearThen(Console.log('Pre-staging complete.'))),
 );
 
 const getStreamAction = (opts: { preStage: boolean, follow: boolean }) => (stream: Stream.Stream<UpgradeLog, Error> | CouchActiveTaskStream) => Match

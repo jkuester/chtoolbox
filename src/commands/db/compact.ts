@@ -12,6 +12,7 @@ import {
   getProgressPct
 } from '../../libs/couch/active-tasks.js';
 import { ChtClientService } from '../../services/cht-client.js';
+import { clearConsole } from '../../libs/console.js';
 
 const getDesignDisplayName = (task: CouchActiveTask) => getDesignName(task)
   .pipe(
@@ -30,11 +31,11 @@ export const streamActiveTasks = (
 ): Effect.Effect<void, Error, ChtClientService> => taskStream.pipe(
   Stream.map(Array.map(getTaskDisplayData)),
   Stream.map(getDisplayDictByPid),
-  Stream.runForEach(taskDict => Console.clear.pipe(
+  Stream.runForEach(taskDict => clearConsole.pipe(
     Effect.tap(Console.log('Currently compacting:')),
     Effect.tap(Console.table(taskDict)),
   )),
-  Effect.tap(Console.clear.pipe(
+  Effect.tap(clearConsole.pipe(
     Effect.tap(Console.log('Compaction complete.')),
   )),
 );

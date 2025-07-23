@@ -2,7 +2,7 @@ import { Args, Command, Options } from '@effect/cli';
 import { Array, Console, DateTime, Effect, Match, pipe, Stream } from 'effect';
 import { initializeUrl } from '../index.js';
 import { UpgradeService } from '../services/upgrade.js';
-import { clearThen } from '../libs/console.js';
+import { clearConsole, clearThen } from '../libs/console.js';
 import { getDisplayDictByPid } from '../libs/couch/active-tasks.js';
 import { getTaskDisplayData } from './db/compact.js';
 const getUpgradeLogDisplay = ({ state_history }) => pipe(state_history, Array.map(({ state, date }) => ({
@@ -16,7 +16,7 @@ const printUpgradeLogId = (stream) => stream.pipe(Stream.take(1), Stream.tap(log
 const getUpgradeAction = (opts) => Match
     .value(opts)
     .pipe(Match.when({ preStage: true }, ({ version }) => UpgradeService.preStage(version)), Match.when({ stage: true }, ({ version }) => UpgradeService.stage(version)), Match.when({ complete: true }, ({ version }) => UpgradeService.complete(version)), Match.orElse(({ version }) => UpgradeService.upgrade(version)));
-const streamActiveTasks = (taskStream) => taskStream.pipe(Stream.map(Array.map(getTaskDisplayData)), Stream.map(getDisplayDictByPid), Stream.runForEach(taskDict => Console.clear.pipe(Effect.tap(Console.log('Currently indexing:')), Effect.tap(Console.table(taskDict)))), Effect.tap(Console.clear.pipe(Effect.tap(Console.log('Pre-staging complete.')))));
+const streamActiveTasks = (taskStream) => taskStream.pipe(Stream.map(Array.map(getTaskDisplayData)), Stream.map(getDisplayDictByPid), Stream.runForEach(taskDict => clearConsole.pipe(Effect.tap(Console.log('Currently indexing:')), Effect.tap(Console.table(taskDict)))), Effect.tap(clearThen(Console.log('Pre-staging complete.'))));
 const getStreamAction = (opts) => (stream) => Match
     .value(opts)
     .pipe(Match.when({ preStage: true, follow: true }, () => streamActiveTasks(stream)), Match.when({ preStage: true, follow: false }, () => Console.log('Pre-staging started. Watch the active tasks for progress: chtx active-tasks -f')), Match.when({ follow: true }, () => streamUpgradeLog(stream)), Match.orElse(() => printUpgradeLogId(stream)));

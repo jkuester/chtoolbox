@@ -4,6 +4,7 @@ import { initializeUrl } from '../../index.js';
 import { CompactService } from '../../services/compact.js';
 import { mergeArrayStreams } from '../../libs/core.js';
 import { getDbName, getDesignName, getDisplayDictByPid, getPid, getProgressPct } from '../../libs/couch/active-tasks.js';
+import { clearConsole } from '../../libs/console.js';
 const getDesignDisplayName = (task) => getDesignName(task)
     .pipe(Option.map(design => `/${design}`), Option.getOrElse(() => String.empty));
 export const getTaskDisplayData = (task) => ({
@@ -11,7 +12,7 @@ export const getTaskDisplayData = (task) => ({
     pid: getPid(task),
     progress: getProgressPct(task),
 });
-export const streamActiveTasks = (taskStream) => taskStream.pipe(Stream.map(Array.map(getTaskDisplayData)), Stream.map(getDisplayDictByPid), Stream.runForEach(taskDict => Console.clear.pipe(Effect.tap(Console.log('Currently compacting:')), Effect.tap(Console.table(taskDict)))), Effect.tap(Console.clear.pipe(Effect.tap(Console.log('Compaction complete.')))));
+export const streamActiveTasks = (taskStream) => taskStream.pipe(Stream.map(Array.map(getTaskDisplayData)), Stream.map(getDisplayDictByPid), Stream.runForEach(taskDict => clearConsole.pipe(Effect.tap(Console.log('Currently compacting:')), Effect.tap(Console.table(taskDict)))), Effect.tap(clearConsole.pipe(Effect.tap(Console.log('Compaction complete.')))));
 const compactAll = (compactDesigns) => CompactService
     .compactAll(compactDesigns)
     .pipe(Effect.map(Array.make));

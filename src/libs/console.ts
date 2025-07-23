@@ -1,4 +1,4 @@
-import { Console, Effect, pipe } from 'effect';
+import { Console, Effect, FiberRef, LogLevel, pipe } from 'effect';
 
 // const ANSI_CODES = {
 //   red: '\x1b[31m',
@@ -10,9 +10,20 @@ import { Console, Effect, pipe } from 'effect';
 
 // export const color = (color: AnsiColor) => (text: string): string => `${ANSI_CODES[color]}${text}${resetCode}`;
 
+export const debugLoggingEnabled = FiberRef
+  .get(FiberRef.currentMinimumLogLevel)
+  .pipe(Effect.map(LogLevel.lessThanEqual(LogLevel.Debug)));
+
+export const clearConsole = Effect.void.pipe(
+  Effect.filterEffectOrElse({
+    predicate: () => debugLoggingEnabled,
+    orElse: () => Console.clear
+  })
+);
+
 export const clearThen = (
   printEffect: Effect.Effect<void>
-): Effect.Effect<void> => Console.clear.pipe(Effect.tap(printEffect));
+): Effect.Effect<void> => clearConsole.pipe(Effect.tap(printEffect));
 
 export const logJson = (data: unknown): Effect.Effect<void> => pipe(
   JSON.stringify(data, null, 2),
