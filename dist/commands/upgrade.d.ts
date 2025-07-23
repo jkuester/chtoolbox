@@ -1,7 +1,7 @@
 import { Command } from '@effect/cli';
 import { UpgradeService } from '../services/upgrade.js';
 import { ChtClientService } from '../services/cht-client.js';
-export declare const upgrade: Command.Command<"upgrade", import("../services/environment.js").EnvironmentService | ChtClientService | Command.Command.Context<"chtx"> | UpgradeService, Error, {
+export declare const upgrade: Command.Command<"upgrade", import("../services/environment.js").EnvironmentService | ChtClientService | Command.Command.Context<"chtx"> | UpgradeService, string | Error, {
     readonly version: string;
     readonly follow: boolean;
     readonly stage: boolean;

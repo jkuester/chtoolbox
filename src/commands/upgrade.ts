@@ -61,10 +61,10 @@ const streamActiveTasks = (
 const getStreamAction = (opts: { preStage: boolean, follow: boolean }) => (stream: Stream.Stream<UpgradeLog, Error> | CouchActiveTaskStream) => Match
   .value(opts)
   .pipe(
-    Match.when({ preStage: true, follow: true }, () => streamActiveTasks(stream as CouchActiveTaskStream)),
-    Match.when({ preStage: true, follow: false }, () => Console.log(
-      'Pre-staging started. Watch the active tasks for progress: chtx active-tasks -f'
+    Match.when({ preStage: true, follow: false }, () => Effect.fail(
+      'Cannot pre-stage without actively following the progress. The with the -f option must be used.'
     )),
+    Match.when({ preStage: true, follow: true }, () => streamActiveTasks(stream as CouchActiveTaskStream)),
     Match.when({ follow: true }, () => streamUpgradeLog(stream as Stream.Stream<UpgradeLog, Error>)),
     Match.orElse(() => printUpgradeLogId(stream as Stream.Stream<UpgradeLog, Error>)),
   )
@@ -82,7 +82,8 @@ const preStage = Options
     Options.withDescription('NOT REQUIRED for doing a normal upgrade. This option should not be used in most cases.' +
       'Pre-staging will manually stage the new indexes for the upgrade and warm them one design doc at a time. This ' +
       'will take longer than just staging the upgrade (which indexes all design docs at the same time). However, it ' +
-      'requires less available system resources and so may be preferable in some cases.'),
+      'requires less available system resources and so may be preferable in some cases.' +
+      'The -f option must be used with this option (because an active connection is required to stage each ddoc.'),
   );
 
 const stage = Options

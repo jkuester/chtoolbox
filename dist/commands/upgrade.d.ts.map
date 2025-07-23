@@ -1,1 +1,1 @@
-{"version":3,"file":"upgrade.d.ts","sourceRoot":"","sources":["../../src/commands/upgrade.ts"],"names":[],"mappings":"AAAA,OAAO,EAAQ,OAAO,EAAW,MAAM,aAAa,CAAC;AAGrD,OAAO,EAAc,cAAc,EAAE,MAAM,wBAAwB,CAAC;AAIpE,OAAO,EAAE,gBAAgB,EAAE,MAAM,2BAA2B,CAAC;AAkG7D,eAAO,MAAM,OAAO;;;;;;EAK0D,CAAC"}
+{"version":3,"file":"upgrade.d.ts","sourceRoot":"","sources":["../../src/commands/upgrade.ts"],"names":[],"mappings":"AAAA,OAAO,EAAQ,OAAO,EAAW,MAAM,aAAa,CAAC;AAGrD,OAAO,EAAc,cAAc,EAAE,MAAM,wBAAwB,CAAC;AAIpE,OAAO,EAAE,gBAAgB,EAAE,MAAM,2BAA2B,CAAC;AAmG7D,eAAO,MAAM,OAAO;;;;;;EAK0D,CAAC"}
