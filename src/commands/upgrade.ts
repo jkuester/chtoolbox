@@ -1,5 +1,5 @@
 import { Args, Command, Options } from '@effect/cli';
-import { Array, Console, DateTime, Effect, Match, pipe, Stream } from 'effect';
+import { Array, Console, DateTime, Effect, Match, pipe, Schedule, Stream } from 'effect';
 import { initializeUrl } from '../index.js';
 import { UpgradeLog, UpgradeService } from '../services/upgrade.js';
 
@@ -40,13 +40,19 @@ const getUpgradeAction = (opts: { preStage: boolean, stage: boolean, complete: b
     Match.orElse(({ version }) => UpgradeService.upgrade(version)),
   );
 
+const getCurrentTime = () => DateTime
+  .unsafeNow()
+  .pipe(DateTime.formatLocal({ hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
+
 const streamActiveTasks = (
   taskStream: CouchActiveTaskStream
 ): Effect.Effect<void, Error, ChtClientService> => taskStream.pipe(
   Stream.map(Array.map(getTaskDisplayData)),
   Stream.map(getDisplayDictByPid),
+  Stream.tapError(e => Effect.logError(`${JSON.stringify(e, null, 2)}\n\nRetrying...`)),
+  Stream.retry(Schedule.spaced(5000)),
   Stream.runForEach(taskDict => clearConsole.pipe(
-    Effect.tap(Console.log('Currently indexing:')),
+    Effect.tap(Console.log(`Currently indexing: [${getCurrentTime()}]`)),
     Effect.tap(Console.table(taskDict)),
   )),
   Effect.tap(clearThen(Console.log('Pre-staging complete.'))),

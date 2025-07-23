@@ -47,7 +47,7 @@ const CHT_DATABASES = [
   '_users'
 ];
 const DDOC_PREFIX = '_design/';
-const STAGED_DDOC_PREFIX = `${DDOC_PREFIX}:staged:`;
+const STAGED_DDOC_PREFIX = ':staged:';
 const CHT_DDOC_ATTACMENT_NAMES = [
   'ddocs/medic.json',
   'ddocs/sentinel.json',
@@ -151,7 +151,7 @@ const decodeStagingDocAttachments = (attachments: Attachments) => pipe(
 
 const getExistingStagedDdocRev = (dbName: string, ddocId: string) => pipe(
   ddocId,
-  String.replace(DDOC_PREFIX, STAGED_DDOC_PREFIX),
+  String.replace(DDOC_PREFIX, `${DDOC_PREFIX}${STAGED_DDOC_PREFIX}`),
   getDoc(dbName),
   Effect.tap(doc => pipe(
     doc,
@@ -162,18 +162,22 @@ const getExistingStagedDdocRev = (dbName: string, ddocId: string) => pipe(
   Effect.map(Option.getOrElse(() => ({ }))),
 );
 
-const preStageDdoc = (dbName: string) => (ddoc: CouchDesign) => Effect
-  .logDebug(`Staging ddoc for ${dbName}/${ddoc._id}`).pipe(
+const saveStagedDdoc = (dbName: string, ddoc: CouchDesign) => Effect
+  .logDebug(`Saving staging ddoc for ${dbName}/${ddoc._id}`)
+  .pipe(
     Effect.andThen(getExistingStagedDdocRev(dbName, ddoc._id)),
     Effect.map(existingDdoc => ({
       ...existingDdoc,
       ...ddoc,
-      _id: pipe(ddoc._id, String.replace(DDOC_PREFIX, STAGED_DDOC_PREFIX)),
+      _id: pipe(ddoc._id, String.replace(DDOC_PREFIX, `${DDOC_PREFIX}${STAGED_DDOC_PREFIX}`)),
       deploy_info: { user: 'Pre-staged by chtoolbox' }
     })),
-    Effect.tap(saveDoc(dbName)),
-    Effect.flatMap(({ _id }) => WarmViewsService.warmDesign(dbName, _id.replace(DDOC_PREFIX, ''))),
-);
+    Effect.flatMap(saveDoc(dbName)),
+  );
+
+const preStageDdoc = (dbName: string) => (ddoc: CouchDesign) => WarmViewsService
+  .warmDesign(dbName, pipe(ddoc._id, String.replace(DDOC_PREFIX, STAGED_DDOC_PREFIX)))
+  .pipe(Effect.map(Stream.onStart(saveStagedDdoc(dbName, ddoc))));
 
 const preStageDdocs = (docsByDb: [DesignDocAttachment, string][]) => pipe(
   docsByDb,
@@ -183,7 +187,10 @@ const preStageDdocs = (docsByDb: [DesignDocAttachment, string][]) => pipe(
     Effect.all,
     Effect.map(Chunk.fromIterable),
     Effect.map(Stream.concatAll),
-  ))
+  )),
+  Effect.all,
+  Effect.map(Chunk.fromIterable),
+  Effect.map(Stream.concatAll),
 );
 
 const serviceContext = Effect
@@ -229,13 +236,11 @@ export class UpgradeService extends Effect.Service<UpgradeService>()('chtoolbox/
       Effect.andThen(getStagingDocAttachments(version)),
       Effect.flatMap(decodeStagingDocAttachments),
       Effect.map(Array.zip(CHT_DDOC_ATTACMENT_NAMES)),
-      Effect.map(preStageDdocs),
-      Effect.flatMap(Effect.all),
-      Effect.map(Chunk.fromIterable),
-      Effect.map(Stream.concatAll),
-      Effect.mapError(x => x as Error),
+      Effect.flatMap(preStageDdocs),
+      Effect.map(Stream.provideContext(context)),
+      Effect.map(Stream.mapError(x => x as Error)),
       Effect.provide(context),
-    )
+    ),
   }))),
   accessors: true,
 }) {
