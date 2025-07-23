@@ -1,5 +1,5 @@
 import { describe, it } from 'mocha';
-import { Array, Chunk, Effect, Either, Layer, Option, Redacted, Stream, pipe } from 'effect';
+import { Array, Chunk, Effect, Either, Layer, Option, pipe, Redacted, Stream } from 'effect';
 import sinon, { SinonStub } from 'sinon';
 import PouchDB from 'pouchdb-core';
 import * as PouchDbSvc from '../../src/services/pouchdb.js';
@@ -16,7 +16,6 @@ const mockStream = { async: sandbox.stub() };
 const environmentGet = sandbox.stub();
 
 const {
-  assertPouchResponse,
   getAllDocs,
   deleteDocs,
   saveDoc,
@@ -35,6 +34,8 @@ const run = PouchDBService.Default.pipe(
 
 describe('PouchDB Service', () => {
   describe('streamChanges', () => {
+    const url = 'https://localhost:5984/';
+    const dbName = 'medic';
     class FakeChangeEmitter {
       public on = sinon.stub().returns(this);
       public cancel = sinon.stub();
@@ -49,10 +50,19 @@ describe('PouchDB Service', () => {
       dbChanges = sinon
         .stub(fakeDdb, 'changes')
         .returns(fakeChangeEmitter as unknown as PouchDB.Core.Changes<object>);
+      const env = Redacted.make(url).pipe(url => ({ url }));
+      environmentGet.returns(Effect.succeed(env));
+      mockCore.pouchDB.returns(fakeDdb);
+    });
+
+    afterEach(() => {
+      expect(environmentGet.calledOnceWithExactly()).to.be.true;
+      expect(mockCore.pouchDB.calledOnce).to.be.true;
+      expect(mockCore.pouchDB.args[0][0]).to.equal(`${url}${dbName}`);
     });
 
     it('builds stream from changes feed event emitter', run(function* () {
-      streamChanges()(fakeDdb);
+      yield* streamChanges(dbName)();
 
       expect(mockStream.async.calledOnce).to.be.true;
       const emit = sinon.stub();
@@ -89,8 +99,8 @@ describe('PouchDB Service', () => {
       expect(fakeChangeEmitter.cancel.calledOnceWithExactly()).to.be.true;
     }));
 
-    it('caches the changes since index and reuses it if the stream is retried', () => {
-      streamChanges({ since: 100 })(fakeDdb);
+    it('caches the changes since index and reuses it if the stream is retried', run(function* () {
+      yield* streamChanges(dbName)({ since: 100 });
 
       const emit = sinon.stub();
       expect(mockStream.async.calledOnce).to.be.true;
@@ -114,7 +124,7 @@ describe('PouchDB Service', () => {
       // Subsequent call to changes uses the new since value
       buildStreamFn(emit);
       expect(dbChanges.calledOnceWithExactly({ since: 101, live: true })).to.be.true;
-    });
+    }));
   });
 
   describe('get', () => {
@@ -219,38 +229,23 @@ describe('PouchDB Service', () => {
     }));
   });
 
-  describe('assertPouchResponse', () => {
-    [
-      new Error('Response Error'),
-      { hello: 'world' } as unknown as Error,
-      { ok: false } as unknown as Error,
-    ].forEach(expectedError => {
-      it('throws an error if the response is not ok', () => {
-        const respEither = Either.try(() => assertPouchResponse(expectedError));
-
-        if (Either.isLeft(respEither)) {
-          expect(respEither.left).to.equal(expectedError);
-        } else {
-          expect.fail('Expected an error');
-        }
-      });
-    });
-
-    it('succeeds with a value Pouch response', () => {
-      const expectedResponse = { ok: true } as unknown as PouchDB.Core.Response;
-
-      const response = assertPouchResponse(expectedResponse);
-
-      expect(response).to.equal(expectedResponse);
-    });
-  });
-
   describe('streamAllDocPages', () => {
+    const url = 'https://localhost:5984/';
+    const dbName = 'medic';
     const fakeDdb = { allDocs: () => null } as unknown as PouchDB.Database;
     let allDocs: SinonStub;
 
     beforeEach(() => {
       allDocs = sinon.stub(fakeDdb, 'allDocs');
+      const env = Redacted.make(url).pipe(url => ({ url }));
+      environmentGet.returns(Effect.succeed(env));
+      mockCore.pouchDB.returns(fakeDdb);
+    });
+
+    afterEach(() => {
+      expect(environmentGet.calledOnceWithExactly()).to.be.true;
+      expect(mockCore.pouchDB.calledOnce).to.be.true;
+      expect(mockCore.pouchDB.args[0][0]).to.equal(`${url}${dbName}`);
     });
 
     it('streams pages of docs with the default options', run(function* () {
@@ -261,7 +256,7 @@ describe('PouchDB Service', () => {
       allDocs.onSecondCall().resolves(secondResponse);
       allDocs.onThirdCall().resolves(thirdResponse);
 
-      const stream = streamAllDocPages()(fakeDdb);
+      const stream = yield* streamAllDocPages(dbName)();
       const pages = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
       expect(pages).to.deep.equal([firstResponse, secondResponse, thirdResponse]);
@@ -278,7 +273,7 @@ describe('PouchDB Service', () => {
       allDocs.onFirstCall().resolves(firstResponse);
       allDocs.onSecondCall().resolves(secondResponse);
 
-      const stream = streamAllDocPages({ limit: 2, skip: 0 })(fakeDdb);
+      const stream = yield* streamAllDocPages(dbName)({ limit: 2, skip: 0 });
       const pages = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
       expect(pages).to.deep.equal([firstResponse, secondResponse]);
@@ -289,7 +284,7 @@ describe('PouchDB Service', () => {
       const firstResponse = { rows: [] };
       allDocs.onFirstCall().resolves(firstResponse);
 
-      const stream = streamAllDocPages()(fakeDdb);
+      const stream = yield* streamAllDocPages(dbName)();
       const pages = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
       expect(pages).to.deep.equal([firstResponse]);
@@ -406,7 +401,7 @@ describe('PouchDB Service', () => {
     const fakeDdb = { put: () => null } as unknown as PouchDB.Database;
     const doc = {
       _id: '1', _rev: '1', hello: 'world'
-    } as unknown as PouchDB.Core.AllDocsMeta & PouchDB.Core.IdMeta & PouchDB.Core.RevisionIdMeta;
+    };
     let put: SinonStub;
 
     beforeEach(() => {
@@ -432,6 +427,19 @@ describe('PouchDB Service', () => {
       expect(put.calledOnceWithExactly(doc)).to.be.true;
     }));
 
+    it('saves the given doc with a new _id if none is provided', run(function* () {
+      const expectedResult = { ok: true };
+      put.resolves(expectedResult);
+      const doc = { hello: 'world' };
+
+      const result = yield* saveDoc(dbName)(doc);
+
+      expect(result).to.deep.equal(expectedResult);
+      expect(put.calledOnce).to.be.true;
+      expect(put.args[0][0]).excludingEvery('_id').to.deep.equal(doc);
+      expect(put.args[0][0]).to.have.property('_id').that.is.a('string').and.not.empty;
+    }));
+
     it('fails if there is a problem saving the doc', run(function* () {
       const expectedResult = { ok: false };
       put.resolves(expectedResult);
@@ -448,12 +456,23 @@ describe('PouchDB Service', () => {
   });
 
   describe('streamQueryPages', () => {
+    const url = 'https://localhost:5984/';
+    const dbName = 'medic';
     const indexName = 'test-index';
     const fakeDdb = { query: () => null } as unknown as PouchDB.Database;
     let query: SinonStub;
 
     beforeEach(() => {
       query = sinon.stub(fakeDdb, 'query');
+      const env = Redacted.make(url).pipe(url => ({ url }));
+      environmentGet.returns(Effect.succeed(env));
+      mockCore.pouchDB.returns(fakeDdb);
+    });
+
+    afterEach(() => {
+      expect(environmentGet.calledOnceWithExactly()).to.be.true;
+      expect(mockCore.pouchDB.calledOnce).to.be.true;
+      expect(mockCore.pouchDB.args[0][0]).to.equal(`${url}${dbName}`);
     });
 
     it('streams pages of docs with the default options', run(function* () {
@@ -464,7 +483,7 @@ describe('PouchDB Service', () => {
       query.onSecondCall().resolves(secondResponse);
       query.onThirdCall().resolves(thirdResponse);
 
-      const stream = streamQueryPages(indexName)(fakeDdb);
+      const stream = yield* streamQueryPages(dbName, indexName)();
       const pages = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
       expect(pages).to.deep.equal([firstResponse, secondResponse, thirdResponse]);
@@ -482,7 +501,7 @@ describe('PouchDB Service', () => {
       query.onSecondCall().resolves(secondResponse);
       const key = 'hello';
 
-      const stream = streamQueryPages(indexName, { limit: 2, skip: 0, key })(fakeDdb);
+      const stream = yield* streamQueryPages(dbName, indexName)({ limit: 2, skip: 0, key });
       const pages = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
       expect(pages).to.deep.equal([firstResponse, secondResponse]);
@@ -496,7 +515,7 @@ describe('PouchDB Service', () => {
       const firstResponse = { rows: [] };
       query.onFirstCall().resolves(firstResponse);
 
-      const stream = streamQueryPages(indexName)(fakeDdb);
+      const stream = yield* streamQueryPages(dbName, indexName)();
       const pages = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
       expect(pages).to.deep.equal([firstResponse]);

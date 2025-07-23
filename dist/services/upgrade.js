@@ -63,12 +63,7 @@ const latestUpgradeLog = PouchDBService
     limit: 1,
     include_docs: true,
 }))), Effect.map(({ rows }) => rows), Effect.map(Option.liftPredicate(Array.isNonEmptyArray)), Effect.map(Option.map(([{ doc }]) => doc)), Effect.map(Option.flatMap(Option.fromNullable)), Effect.map(Option.flatMap(Schema.decodeUnknownOption(UpgradeLog))));
-const streamChangesFeed = (upgradeLogId) => PouchDBService
-    .get('medic-logs')
-    .pipe(Effect.map(streamChanges({
-    include_docs: true,
-    doc_ids: [upgradeLogId]
-})));
+const streamChangesFeed = (upgradeLogId) => pipe({ include_docs: true, doc_ids: [upgradeLogId] }, streamChanges('medic-logs'));
 const streamUpgradeLogChanges = (completedStates) => latestUpgradeLog
     .pipe(Effect.map(Option.getOrThrowWith(() => new Error('No upgrade log found'))), Effect.flatMap(({ _id }) => streamChangesFeed(_id)), Effect.map(Stream.retry(Schedule.spaced(1000))), Effect.map(Stream.map(({ doc }) => doc)), Effect.map(Stream.map(Schema.decodeUnknownSync(UpgradeLog))), Effect.map(Stream.takeUntil(({ state }) => completedStates.includes(state))));
 const assertReadyForUpgrade = latestUpgradeLog.pipe(Effect.map(Option.map(({ state }) => state)), Effect.map(Match.value), Effect.map(Match.when(Option.isNone, () => Effect.void)), Effect.map(Match.when(state => COMPLETED_STATES.includes(Option.getOrThrow(state)), () => Effect.void)), Effect.flatMap(Match.orElse(() => Effect.fail(new Error('Upgrade already in progress.')))));

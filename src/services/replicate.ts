@@ -1,8 +1,8 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { assertPouchResponse, PouchDBService, streamChanges } from './pouchdb.js';
+import { PouchDBService, saveDoc, streamChanges } from './pouchdb.js';
 import { Environment, EnvironmentService } from './environment.js';
-import { Option, pipe, Redacted, Schema, Stream, Match, Array } from 'effect';
+import { Array, Match, Option, pipe, Redacted, Schema, Stream } from 'effect';
 
 const SKIP_DDOC_SELECTOR = {
   _id: { '$regex': '^(?!_design/)' },
@@ -78,13 +78,9 @@ export class ReplicationDoc extends Schema.Class<ReplicationDoc>('ReplicationDoc
 }) {
 }
 
-const streamReplicationDocChanges = (repDocId: string) => PouchDBService
-  .get('_replicator')
-  .pipe(
-    Effect.map(streamChanges({
-      include_docs: true,
-      doc_ids: [repDocId],
-    })),
+const streamReplicationDocChanges = (repDocId: string) => pipe(
+    { include_docs: true, doc_ids: [repDocId], },
+    streamChanges('_replicator'),
     Effect.map(Stream.map(({ doc }) => doc)),
     Effect.map(Stream.mapEffect(Schema.decodeUnknown(ReplicationDoc))),
     Effect.map(Stream.takeUntil(({ _replication_state }) => _replication_state === 'completed')),
@@ -113,14 +109,12 @@ export class ReplicateService extends Effect.Service<ReplicateService>()('chtool
       source: string,
       target: string,
       opts: ReplicationOptions = { }
-    ): Effect.Effect<Stream.Stream<ReplicationDoc, Error>, Error> => Effect
-      .all([PouchDBService.get('_replicator'), createReplicationDoc(source, target, opts)])
+    ): Effect.Effect<Stream.Stream<ReplicationDoc, Error>, Error> => createReplicationDoc(source, target, opts)
       .pipe(
-        Effect.flatMap(([db, doc]) => Effect.promise(() => db.bulkDocs([doc]))),
-        Effect.map(([resp]) => resp),
-        Effect.map(assertPouchResponse),
+        Effect.flatMap(saveDoc('_replicator')),
         Effect.map(({ id }) => id),
         Effect.flatMap(streamReplicationDocChanges),
+        Effect.mapError(x => x as Error),
         Effect.provide(context),
       ),
   }))),

@@ -103,13 +103,9 @@ const latestUpgradeLog = PouchDBService
     Effect.map(Option.flatMap(Schema.decodeUnknownOption(UpgradeLog))),
   );
 
-const streamChangesFeed = (upgradeLogId: string) => PouchDBService
-  .get('medic-logs')
-  .pipe(
-    Effect.map(streamChanges({
-      include_docs: true,
-      doc_ids: [upgradeLogId]
-    })),
+const streamChangesFeed = (upgradeLogId: string) => pipe(
+    { include_docs: true, doc_ids: [upgradeLogId] },
+    streamChanges('medic-logs'),
   );
 
 const streamUpgradeLogChanges = (completedStates: string[]) => latestUpgradeLog

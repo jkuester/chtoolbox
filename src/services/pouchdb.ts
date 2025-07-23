@@ -10,6 +10,7 @@ import PouchDBSessionAuthentication from 'pouchdb-session-authentication';
 import { EnvironmentService } from './environment.js';
 import https from 'https';
 import { NonEmptyArray } from "effect/Array";
+import { v4 as uuid } from 'uuid';
 
 const HTTPS_AGENT_ALLOW_INVALID_SSL = new https.Agent({
   rejectUnauthorized: false,
@@ -21,13 +22,6 @@ PouchDB.plugin(PouchDBMapReduce);
 const isPouchResponse = (
   value: PouchDB.Core.Response | PouchDB.Core.Error
 ): value is PouchDB.Core.Response => 'ok' in value && value.ok;
-
-export const assertPouchResponse = (
-  value: PouchDB.Core.Response | PouchDB.Core.Error
-): PouchDB.Core.Response => pipe(
-  Option.liftPredicate(value, isPouchResponse),
-  Option.getOrThrowWith(() => value),
-);
 
 const getPouchResponse = (
   value: PouchDB.Core.Response | PouchDB.Core.Error
@@ -54,12 +48,14 @@ const getAllDocsPage = (
     Option.liftPredicate(skip + options.limit, () => response.rows.length === options.limit),
   ]));
 export type AllDocsResponseStream = Stream.Stream<PouchDB.Core.AllDocsResponse<object>, Error>;
-export const streamAllDocPages = (options: AllDocsOptions = {}) => (
-  db: PouchDB.Database
-): AllDocsResponseStream => pipe(
-  getAllDocsPage(db, { ...options, limit: options.limit ?? 1000 }),
-  pageFn => Stream.paginateEffect(0, pageFn),
-);
+export const streamAllDocPages = (dbName: string) => (
+  options: AllDocsOptions = {}
+): Effect.Effect<AllDocsResponseStream, never, PouchDBService> => PouchDBService
+  .get(dbName)
+  .pipe(
+    Effect.map(db => getAllDocsPage(db, { ...options, limit: options.limit ?? 1000 })),
+    Effect.map(pageFn => Stream.paginateEffect(0, pageFn)),
+  );
 
 type Doc = PouchDB.Core.AllDocsMeta & PouchDB.Core.IdMeta & PouchDB.Core.RevisionIdMeta;
 export const getAllDocs = (dbName: string) => (
@@ -92,11 +88,14 @@ export const deleteDocs = (dbName: string) => (
 );
 
 export const saveDoc = (dbName: string) => (
-  doc: object
+  doc:  object
 ): Effect.Effect<PouchDB.Core.Response, PouchDB.Core.Error, PouchDBService> => PouchDBService
   .get(dbName)
   .pipe(
-    Effect.flatMap(db => Effect.promise(() => db.put(doc))),
+    Effect.flatMap(db => Effect.promise(() => db.put({
+      ...doc,
+      _id: (doc as { _id?: string })._id ?? uuid(),
+    }))),
     Effect.flatMap(getPouchResponse),
   );
 
@@ -114,13 +113,15 @@ const getQueryPage = (
     response,
     Option.liftPredicate(skip + options.limit, () => response.rows.length === options.limit),
   ]));
-export const streamQueryPages = (
-  viewIndex: string,
+
+export const streamQueryPages = (dbName: string, viewIndex: string) => (
   options: PouchDB.Query.Options<object, object> = {}
-) => (db: PouchDB.Database): Stream.Stream<PouchDB.Query.Response<object>> => pipe(
-  getQueryPage(db, viewIndex, { ...options, limit: options.limit ?? 1000 }),
-  pageFn => Stream.paginateEffect(0, pageFn),
-);
+): Effect.Effect<Stream.Stream<PouchDB.Query.Response<object>>, never, PouchDBService> => PouchDBService
+  .get(dbName)
+  .pipe(
+    Effect.map(db => getQueryPage(db, viewIndex, { ...options, limit: options.limit ?? 1000 })),
+    Effect.map(pageFn => Stream.paginateEffect(0, pageFn)),
+  );
 
 type ChangeEmit = StreamEmit.Emit<never, Error, PouchDB.Core.ChangesResponseChange<object>, void>;
 const failStreamForError = (emit: ChangeEmit) => (err: unknown) => Effect
@@ -141,25 +142,28 @@ const cancelChangesFeedIfInterrupted = (feed: PouchDB.Core.Changes<object>) => E
     Effect.map(fn => fn()),
     Effect.andThen(Effect.logDebug('Changes feed canceled because the stream was interrupted')),
   );
-export const streamChanges = (options?: PouchDB.Core.ChangesOptions) => (
-  db: PouchDB.Database
-): Stream.Stream<PouchDB.Core.ChangesResponseChange<object>, Error> => pipe(
-  { since: options?.since ?? 0 }, // Caching the since value in case the Stream is retried
-  cache => Stream.async((emit: ChangeEmit) => pipe(
-    db.changes({ ...options, since: cache.since, live: true }),
-    feed => feed
-      .on('error', failStreamForError(emit))
-      .on('complete', endStream(emit))
-      .on('change', (change) => Effect
-        .logDebug('Emitting change:', change)
-        .pipe(
-          Effect.andThen(Effect.succeed(Chunk.of(change))),
-          emit,
-          () => cache.since = change.seq,
-        )),
-    cancelChangesFeedIfInterrupted,
-  )),
-);
+
+export const streamChanges = (dbName: string) => (
+  options?: PouchDB.Core.ChangesOptions
+): Effect.Effect<Stream.Stream<PouchDB.Core.ChangesResponseChange<object>, Error>, never, PouchDBService> => PouchDBService
+  .get(dbName)
+  .pipe(Effect.map(db => pipe(
+    { since: options?.since ?? 0 }, // Caching the since value in case the Stream is retried
+    cache => Stream.async((emit: ChangeEmit) => pipe(
+      db.changes({ ...options, since: cache.since, live: true }),
+      feed => feed
+        .on('error', failStreamForError(emit))
+        .on('complete', endStream(emit))
+        .on('change', (change) => Effect
+          .logDebug('Emitting change:', change)
+          .pipe(
+            Effect.andThen(Effect.succeed(Chunk.of(change))),
+            emit,
+            () => cache.since = change.seq,
+          )),
+      cancelChangesFeedIfInterrupted,
+    )),
+  )));
 
 const couchUrl = EnvironmentService
   .get()
