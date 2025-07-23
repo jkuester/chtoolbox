@@ -1,6 +1,6 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { Array, Chunk, Match, Option, pipe, Predicate, Redacted, Stream, StreamEmit, String } from 'effect';
+import { Chunk, Match, Option, pipe, Redacted, Stream, StreamEmit, String } from 'effect';
 import PouchDB from 'pouchdb-core';
 import { pouchDB } from '../libs/core.js';
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
@@ -9,8 +9,8 @@ import PouchDBMapReduce from 'pouchdb-mapreduce';
 import PouchDBSessionAuthentication from 'pouchdb-session-authentication';
 import { EnvironmentService } from './environment.js';
 import https from 'https';
-import { NonEmptyArray } from "effect/Array";
 import { v4 as uuid } from 'uuid';
+import { UnknownException } from 'effect/Cause';
 
 const HTTPS_AGENT_ALLOW_INVALID_SSL = new https.Agent({
   rejectUnauthorized: false,
@@ -33,7 +33,8 @@ const getPouchResponse = (
 
 type AllDocsOptions = PouchDB.Core.AllDocsWithKeyOptions |
   PouchDB.Core.AllDocsWithinRangeOptions |
-  PouchDB.Core.AllDocsOptions;
+  PouchDB.Core.AllDocsOptions |
+  PouchDB.Core.AllDocsWithKeysOptions;
 type AllDocsOptionsWithLimit = Omit<AllDocsOptions, 'limit'> & { limit: number };
 const allDocs = (db: PouchDB.Database, options: AllDocsOptions) => Effect
   .promise(() => db.allDocs(options));
@@ -58,34 +59,35 @@ export const streamAllDocPages = (dbName: string) => (
   );
 
 type Doc = PouchDB.Core.AllDocsMeta & PouchDB.Core.IdMeta & PouchDB.Core.RevisionIdMeta;
-export const getAllDocs = (dbName: string) => (
-  options: AllDocsOptions = {}
-): Effect.Effect<Doc[], never, PouchDBService> => PouchDBService
-  .get(dbName)
-  .pipe(
-    Effect.flatMap(db => allDocs(db, { ...options, include_docs: true })),
-    Effect.map(({ rows }) => rows),
-    Effect.map(Array.map(({ doc }) => doc)),
-    Effect.map(Array.filter(Predicate.isNotNullable)),
-  );
 
-const bulkDocs = (dbName: string) => (
-  docs: PouchDB.Core.PutDocument<object>[]
-) => PouchDBService
-    .get(dbName)
-    .pipe(
-      Effect.flatMap(db => Effect.promise(() => db.bulkDocs(docs))),
-      Effect.map(Array.map(getPouchResponse)),
-      Effect.flatMap(Effect.all),
-    );
+// export const getAllDocs = (dbName: string) => (
+//   options: AllDocsOptions = {}
+// ): Effect.Effect<Doc[], never, PouchDBService> => PouchDBService
+//   .get(dbName)
+//   .pipe(
+//     Effect.flatMap(db => allDocs(db, { ...options, include_docs: true })),
+//     Effect.map(({ rows }) => rows),
+//     Effect.map(Array.map(({ doc }) => doc)),
+//     Effect.map(Array.filter(Predicate.isNotNullable)),
+//   );
 
-export const deleteDocs = (dbName: string) => (
-  docs: NonEmptyArray<Doc>
-): Effect.Effect<PouchDB.Core.Response[], PouchDB.Core.Error, PouchDBService> => pipe(
-  docs,
-  Array.map(doc => ({ ...doc, _deleted: true })),
-  bulkDocs(dbName),
-);
+// const bulkDocs = (dbName: string) => (
+//   docs: PouchDB.Core.PutDocument<object>[]
+// ) => PouchDBService
+//     .get(dbName)
+//     .pipe(
+//       Effect.flatMap(db => Effect.promise(() => db.bulkDocs(docs))),
+//       Effect.map(Array.map(getPouchResponse)),
+//       Effect.flatMap(Effect.all),
+//     );
+//
+// export const deleteDocs = (dbName: string) => (
+//   docs: NonEmptyArray<Doc>
+// ): Effect.Effect<PouchDB.Core.Response[], PouchDB.Core.Error, PouchDBService> => pipe(
+//   docs,
+//   Array.map(doc => ({ ...doc, _deleted: true })),
+//   bulkDocs(dbName),
+// );
 
 export const saveDoc = (dbName: string) => (
   doc:  object
@@ -97,6 +99,19 @@ export const saveDoc = (dbName: string) => (
       _id: (doc as { _id?: string })._id ?? uuid(),
     }))),
     Effect.flatMap(getPouchResponse),
+  );
+
+export const getDoc = (dbName: string) => (
+  id: string
+): Effect.Effect<Option.Option<Doc>, UnknownException, PouchDBService> => PouchDBService
+  .get(dbName)
+  .pipe(
+    Effect.flatMap(db => Effect.tryPromise(() => db.get(id))),
+    Effect.catchIf(
+      ({ error }) => (error as PouchDB.Core.Error).status === 404,
+      () => Effect.succeed(null)
+    ),
+    Effect.map(Option.fromNullable),
   );
 
 type QueryOptionsWithLimit = Omit<PouchDB.Query.Options<object, object>, 'limit'> & { limit: number };

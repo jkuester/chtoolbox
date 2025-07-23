@@ -1,6 +1,6 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { deleteDocs, getAllDocs, PouchDBService, saveDoc, streamChanges } from './pouchdb.js';
+import { getDoc, PouchDBService, saveDoc, streamChanges } from './pouchdb.js';
 import {
   Array,
   Chunk,
@@ -133,19 +133,6 @@ const assertReadyForComplete = latestUpgradeLog.pipe(
   Effect.flatMap(Match.orElse(() => Effect.fail(new Error('No upgrade ready for completion.')))),
 );
 
-const deleteStagedDdocs = (dbName: string) => Effect
-  .logDebug(`Deleting staging ddocs for ${dbName}.`)
-  .pipe(
-    Effect.andThen({
-      startkey: STAGED_DDOC_PREFIX,
-      endkey: `${STAGED_DDOC_PREFIX}\ufff0`
-    }),
-    Effect.flatMap(getAllDocs(dbName)),
-    Effect.map(Option.liftPredicate(Array.isNonEmptyArray)),
-    Effect.map(Option.map(deleteDocs(dbName))),
-    Effect.flatMap(Option.getOrElse(() => Effect.void)),
-  );
-
 const getStagingDocAttachments = (version: string) => Effect
   .logDebug(`Getting staging doc attachments for ${version}`)
   .pipe(
@@ -162,13 +149,28 @@ const decodeStagingDocAttachments = (attachments: Attachments) => pipe(
   Effect.allWith({ concurrency: 'unbounded' }),
 );
 
+const getExistingStagedDdocRev = (dbName: string, ddocId: string) => pipe(
+  ddocId,
+  String.replace(DDOC_PREFIX, STAGED_DDOC_PREFIX),
+  getDoc(dbName),
+  Effect.tap(doc => pipe(
+    doc,
+    Option.map(doc => Effect.logDebug(`Found existing staged ddoc ${doc._id} with rev ${doc._rev}`)),
+    Option.getOrElse(() => Effect.logDebug(`No existing staged ddoc found for ${ddocId}`)),
+  )),
+  Effect.map(Option.map(({ _rev }) => ({ _rev }))),
+  Effect.map(Option.getOrElse(() => ({ }))),
+);
+
 const preStageDdoc = (dbName: string) => (ddoc: CouchDesign) => Effect
   .logDebug(`Staging ddoc for ${dbName}/${ddoc._id}`).pipe(
-    Effect.andThen({
+    Effect.andThen(getExistingStagedDdocRev(dbName, ddoc._id)),
+    Effect.map(existingDdoc => ({
+      ...existingDdoc,
       ...ddoc,
       _id: pipe(ddoc._id, String.replace(DDOC_PREFIX, STAGED_DDOC_PREFIX)),
       deploy_info: { user: 'Pre-staged by chtoolbox' }
-    }),
+    })),
     Effect.tap(saveDoc(dbName)),
     Effect.flatMap(({ _id }) => WarmViewsService.warmDesign(dbName, _id.replace(DDOC_PREFIX, ''))),
 );
@@ -224,9 +226,6 @@ export class UpgradeService extends Effect.Service<UpgradeService>()('chtoolbox/
       Effect.provide(context),
     ),
     preStage: (version: string): Effect.Effect<CouchActiveTaskStream, Error> => assertReadyForUpgrade.pipe(
-      Effect.andThen(CHT_DATABASES),
-      Effect.map(Array.map(deleteStagedDdocs)),
-      Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })),
       Effect.andThen(getStagingDocAttachments(version)),
       Effect.flatMap(decodeStagingDocAttachments),
       Effect.map(Array.zip(CHT_DDOC_ATTACMENT_NAMES)),

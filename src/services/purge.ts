@@ -15,7 +15,6 @@ const AllDocsRow = Schema.Struct({ id: Schema.String, value: Schema.Struct({ rev
 const convertAllDocsResponse = (response: AllDocsResponse<object> | AllDocsWithKeysResponse<object>) => pipe(
   response.rows as unknown[],
   Array.filter(Schema.is(AllDocsRow)),
-  x => x,
   Array.map(({ id, value: { rev } }) => ({ _id: id, _rev: rev }))
 );
 

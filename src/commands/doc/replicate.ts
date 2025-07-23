@@ -4,7 +4,7 @@ import { initializeUrl } from '../../index.js';
 import { ReplicateService, ReplicationDoc } from '../../services/replicate.js';
 import { CouchActiveTask, streamActiveTasks } from '../../libs/couch/active-tasks.js';
 import { ParseError } from 'effect/Cron';
-import { clearConsole, clearThen } from '../../libs/console.js';
+import { clearThen } from '../../libs/console.js';
 import { PouchDBService } from '../../services/pouchdb.js';
 
 const DB_SPECIFIER_DESCRIPTION = `This can either be a database name for the current instance (e.g. 'medic') `

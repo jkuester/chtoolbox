@@ -8,7 +8,7 @@ import { ChtClientService } from './cht-client.js';
 // skip: 0 just keeps getting the next 100 (after the last was purged)
 const PAGE_OPTIONS = { limit: 100, skip: 0 };
 const AllDocsRow = Schema.Struct({ id: Schema.String, value: Schema.Struct({ rev: Schema.String }) });
-const convertAllDocsResponse = (response) => pipe(response.rows, Array.filter(Schema.is(AllDocsRow)), x => x, Array.map(({ id, value: { rev } }) => ({ _id: id, _rev: rev })));
+const convertAllDocsResponse = (response) => pipe(response.rows, Array.filter(Schema.is(AllDocsRow)), Array.map(({ id, value: { rev } }) => ({ _id: id, _rev: rev })));
 const filterDdoc = (purgeDdocs) => (doc) => Option
     .liftPredicate(doc, () => !purgeDdocs)
     .pipe(Option.map(({ _id }) => _id), Option.map(Predicate.not(String.startsWith('_design/'))), Option.getOrElse(() => true));
