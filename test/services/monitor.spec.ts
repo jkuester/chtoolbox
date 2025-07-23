@@ -371,6 +371,15 @@ describe('Monitor service', () => {
         reason: 'StatusCode'
       });
       mockDesignInfoLib.getDesignInfo.returns(Effect.fail(expectedError));
+      mockNouveauInfoLib.getNouveauInfo
+                        .withArgs('medic', 'medic', 'contacts_by_freetext')
+                        .returns(Effect.succeed(contactsByFreetextNouveauInfo))
+      mockNouveauInfoLib.getNouveauInfo.returns(Effect.fail(new ResponseError({
+        request: {} as unknown as HttpClientRequest.HttpClientRequest,
+        response: { status: 404 } as unknown as HttpClientResponse.HttpClientResponse,
+        reason: 'StatusCode'
+      })));
+
       const directory = 'directory';
       const directorySize = 444444;
       mockChtMonitoringLib.getChtMonitoringData.returns(Effect.succeed(chtMonitoringData));
@@ -387,7 +396,7 @@ describe('Monitor service', () => {
         expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
         expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
         expect(mockChtMonitoringLib.getChtMonitoringData.calledOnceWithExactly()).to.be.true;
-        expect(diskUsageServiceGetSize.notCalled).to.be.true;
+        expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
       } else {
         expect.fail('Expected error to be thrown');
       }
