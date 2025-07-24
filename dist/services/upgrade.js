@@ -29,7 +29,7 @@ const CHT_DATABASES = [
 ];
 const DDOC_PREFIX = '_design/';
 const STAGED_DDOC_PREFIX = ':staged:';
-const CHT_DDOC_ATTACMENT_NAMES = [
+const CHT_DDOC_ATTACHMENT_NAMES = [
     'ddocs/medic.json',
     'ddocs/sentinel.json',
     'ddocs/logs.json',
@@ -37,7 +37,7 @@ const CHT_DDOC_ATTACMENT_NAMES = [
     'ddocs/users.json'
 ];
 const STAGING_BUILDS_COUCH_URL = 'https://staging.dev.medicmobile.org/_couch/builds_4';
-const CHT_DATABASE_BY_ATTACHMENT_NAME = pipe(CHT_DDOC_ATTACMENT_NAMES, Array.zip(CHT_DATABASES), Record.fromEntries);
+const CHT_DATABASE_BY_ATTACHMENT_NAME = pipe(CHT_DDOC_ATTACHMENT_NAMES, Array.zip(CHT_DATABASES), Record.fromEntries);
 export class UpgradeLog extends Schema.Class('UpgradeLog')({
     _id: Schema.String,
     state: Schema.Literal(...UPGRADE_LOG_STATES),
@@ -71,7 +71,7 @@ const assertReadyForComplete = latestUpgradeLog.pipe(Effect.map(Option.map(({ st
 const getStagingDocAttachments = (version) => Effect
     .logDebug(`Getting staging doc attachments for ${version}`)
     .pipe(Effect.andThen(pouchDB(STAGING_BUILDS_COUCH_URL)), Effect.flatMap(db => Effect.promise(() => db.get(`medic:medic:${version}`, { attachments: true }))), Effect.map(({ _attachments }) => _attachments), Effect.filterOrFail(Predicate.isNotNullable));
-const decodeStagingDocAttachments = (attachments) => pipe(CHT_DDOC_ATTACMENT_NAMES, Array.map(name => attachments[name]), Array.map(DesignDocAttachment.decode), Effect.allWith({ concurrency: 'unbounded' }));
+const decodeStagingDocAttachments = (attachments) => pipe(CHT_DDOC_ATTACHMENT_NAMES, Array.map(name => attachments[name]), Array.map(DesignDocAttachment.decode), Effect.allWith({ concurrency: 'unbounded' }));
 const getExistingStagedDdocRev = (dbName, ddocId) => pipe(ddocId, String.replace(DDOC_PREFIX, `${DDOC_PREFIX}${STAGED_DDOC_PREFIX}`), getDoc(dbName), Effect.tap(doc => pipe(doc, Option.map(doc => Effect.logDebug(`Found existing staged ddoc ${doc._id} with rev ${doc._rev}`)), Option.getOrElse(() => Effect.logDebug(`No existing staged ddoc found for ${ddocId}`)))), Effect.map(Option.map(({ _rev }) => ({ _rev }))), Effect.map(Option.getOrElse(() => ({}))));
 const saveStagedDdoc = (dbName, ddoc) => Effect
     .logDebug(`Saving staging ddoc for ${dbName}/${ddoc._id}`)
@@ -100,7 +100,7 @@ export class UpgradeService extends Effect.Service()('chtoolbox/UpgradeService',
         stage: (version) => assertReadyForUpgrade.pipe(Effect.andThen(stageChtUpgrade(version)), Effect.andThen(streamUpgradeLogChanges(STAGING_COMPLETE_STATES)), Effect.provide(context)),
         complete: (version) => assertReadyForComplete.pipe(Effect.andThen(completeChtUpgrade(version)), Effect.andThen(streamUpgradeLogChanges(COMPLETED_STATES)
             .pipe(Effect.retry(Schedule.spaced(1000)))), Effect.provide(context)),
-        preStage: (version) => assertReadyForUpgrade.pipe(Effect.andThen(getStagingDocAttachments(version)), Effect.flatMap(decodeStagingDocAttachments), Effect.map(Array.zip(CHT_DDOC_ATTACMENT_NAMES)), Effect.flatMap(preStageDdocs), Effect.map(Stream.provideContext(context)), Effect.map(Stream.mapError(x => x)), Effect.provide(context)),
+        preStage: (version) => assertReadyForUpgrade.pipe(Effect.andThen(getStagingDocAttachments(version)), Effect.flatMap(decodeStagingDocAttachments), Effect.map(Array.zip(CHT_DDOC_ATTACHMENT_NAMES)), Effect.flatMap(preStageDdocs), Effect.map(Stream.provideContext(context)), Effect.map(Stream.mapError(x => x)), Effect.provide(context)),
     }))),
     accessors: true,
 }) {

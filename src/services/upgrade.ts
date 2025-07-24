@@ -22,9 +22,9 @@ import { ChtClientService } from './cht-client.js';
 import { pouchDB } from '../libs/core.js';
 import { CouchDesign } from '../libs/couch/design.js';
 import { WarmViewsService } from './warm-views.js';
-import { CouchActiveTaskStream } from '../libs/couch/active-tasks.js';
 import Attachments = PouchDB.Core.Attachments;
 import FullAttachment = PouchDB.Core.FullAttachment;
+import { CouchActiveTaskStream } from '../libs/couch/active-tasks.js';
 
 const UPGRADE_LOG_NAME = 'upgrade_log';
 const COMPLETED_STATES = ['finalized', 'aborted', 'errored', 'interrupted'];
@@ -48,7 +48,7 @@ const CHT_DATABASES = [
 ];
 const DDOC_PREFIX = '_design/';
 const STAGED_DDOC_PREFIX = ':staged:';
-const CHT_DDOC_ATTACMENT_NAMES = [
+const CHT_DDOC_ATTACHMENT_NAMES = [
   'ddocs/medic.json',
   'ddocs/sentinel.json',
   'ddocs/logs.json',
@@ -57,7 +57,7 @@ const CHT_DDOC_ATTACMENT_NAMES = [
 ];
 const STAGING_BUILDS_COUCH_URL = 'https://staging.dev.medicmobile.org/_couch/builds_4';
 const CHT_DATABASE_BY_ATTACHMENT_NAME = pipe(
-  CHT_DDOC_ATTACMENT_NAMES,
+  CHT_DDOC_ATTACHMENT_NAMES,
   Array.zip(CHT_DATABASES),
   Record.fromEntries,
 )
@@ -137,13 +137,13 @@ const getStagingDocAttachments = (version: string) => Effect
   .logDebug(`Getting staging doc attachments for ${version}`)
   .pipe(
     Effect.andThen(pouchDB(STAGING_BUILDS_COUCH_URL)),
-    Effect.flatMap(db => Effect.promise(() => db.get(`medic:medic:${version}`, {attachments: true}))),
+    Effect.flatMap(db => Effect.promise(() => db.get(`medic:medic:${version}`, { attachments: true }))),
     Effect.map(({ _attachments }) => _attachments),
     Effect.filterOrFail(Predicate.isNotNullable),
   );
 
 const decodeStagingDocAttachments = (attachments: Attachments) => pipe(
-  CHT_DDOC_ATTACMENT_NAMES,
+  CHT_DDOC_ATTACHMENT_NAMES,
   Array.map(name => attachments[name] as FullAttachment),
   Array.map(DesignDocAttachment.decode),
   Effect.allWith({ concurrency: 'unbounded' }),
@@ -235,7 +235,7 @@ export class UpgradeService extends Effect.Service<UpgradeService>()('chtoolbox/
     preStage: (version: string): Effect.Effect<CouchActiveTaskStream, Error> => assertReadyForUpgrade.pipe(
       Effect.andThen(getStagingDocAttachments(version)),
       Effect.flatMap(decodeStagingDocAttachments),
-      Effect.map(Array.zip(CHT_DDOC_ATTACMENT_NAMES)),
+      Effect.map(Array.zip(CHT_DDOC_ATTACHMENT_NAMES)),
       Effect.flatMap(preStageDdocs),
       Effect.map(Stream.provideContext(context)),
       Effect.map(Stream.mapError(x => x as Error)),
