@@ -4,8 +4,10 @@ import { YieldWrap } from 'effect/Utils';
 import { Scope } from 'effect/Scope';
 import { use } from 'chai';
 import deepEqualInAnyOrder from 'deep-equal-in-any-order';
+import chaiExclude from 'chai-exclude'
 
 use(deepEqualInAnyOrder);
+use(chaiExclude);
 
 /**
  * Sandbox to use when creating stand-alone stubs. This sandbox will be `reset` after each test, but not `restore`d.

@@ -76,7 +76,7 @@ export class LocalIpService extends Effect.Service<LocalIpService>()('chtoolbox/
     ls: (): Effect.Effect<{ from: number, to: number }[], Error> => getContainerNamesWithLabel(CHTX_LOCAL_IP_LABEL)
       .pipe(
         Effect.map(Array.map(getContainerLabelValue(CHTX_LOCAL_IP_LABEL))),
-        Effect.flatMap(Effect.all),
+        Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })),
         Effect.map(Array.map(getPortsFromLabel)),
         Effect.mapError(x => x as unknown as Error),
         Effect.provide(context),

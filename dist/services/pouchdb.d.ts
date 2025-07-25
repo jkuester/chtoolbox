@@ -1,12 +1,15 @@
 import * as Effect from 'effect/Effect';
-import { Stream } from 'effect';
+import { Option, Stream } from 'effect';
 import { EnvironmentService } from './environment.js';
-export declare const assertPouchResponse: (value: PouchDB.Core.Response | PouchDB.Core.Error) => PouchDB.Core.Response;
-type AllDocsOptions = PouchDB.Core.AllDocsWithKeyOptions | PouchDB.Core.AllDocsWithinRangeOptions | PouchDB.Core.AllDocsOptions;
+import { UnknownException } from 'effect/Cause';
+type AllDocsOptions = PouchDB.Core.AllDocsWithKeyOptions | PouchDB.Core.AllDocsWithinRangeOptions | PouchDB.Core.AllDocsOptions | PouchDB.Core.AllDocsWithKeysOptions;
 export type AllDocsResponseStream = Stream.Stream<PouchDB.Core.AllDocsResponse<object>, Error>;
-export declare const streamAllDocPages: (options?: AllDocsOptions) => (db: PouchDB.Database) => AllDocsResponseStream;
-export declare const streamQueryPages: (viewIndex: string, options?: PouchDB.Query.Options<object, object>) => (db: PouchDB.Database) => Stream.Stream<PouchDB.Query.Response<object>>;
-export declare const streamChanges: (options?: PouchDB.Core.ChangesOptions) => (db: PouchDB.Database) => Stream.Stream<PouchDB.Core.ChangesResponseChange<object>, Error>;
+export declare const streamAllDocPages: (dbName: string) => (options?: AllDocsOptions) => Effect.Effect<AllDocsResponseStream, never, PouchDBService>;
+type Doc = PouchDB.Core.AllDocsMeta & PouchDB.Core.IdMeta & PouchDB.Core.RevisionIdMeta;
+export declare const saveDoc: (dbName: string) => (doc: object) => Effect.Effect<PouchDB.Core.Response, PouchDB.Core.Error, PouchDBService>;
+export declare const getDoc: (dbName: string) => (id: string) => Effect.Effect<Option.Option<Doc>, UnknownException, PouchDBService>;
+export declare const streamQueryPages: (dbName: string, viewIndex: string) => (options?: PouchDB.Query.Options<object, object>) => Effect.Effect<Stream.Stream<PouchDB.Query.Response<object>>, never, PouchDBService>;
+export declare const streamChanges: (dbName: string) => (options?: PouchDB.Core.ChangesOptions) => Effect.Effect<Stream.Stream<PouchDB.Core.ChangesResponseChange<object>, Error>, never, PouchDBService>;
 declare const PouchDBService_base: Effect.Service.Class<PouchDBService, "chtoolbox/PouchDBService", {
     readonly effect: Effect.Effect<{
         get: (dbName: string) => Effect.Effect<PouchDB.Database<object>, never, never>;

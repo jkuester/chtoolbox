@@ -92,9 +92,9 @@ export const replicate = Command
     })),
     Effect.map(completionStream => Option.liftPredicate(completionStream, () => follow)),
     Effect.map(Option.map(watchReplication)),
-    Effect.flatMap(Option.getOrElse(() => Console.clear.pipe(
-      Effect.andThen(Console.log('Replication started. Watch the active tasks for progress: chtx active-tasks -f'))
-    ))),
+    Effect.flatMap(Option.getOrElse(() => clearThen(Console.log(
+      'Replication started. Watch the active tasks for progress: chtx active-tasks -f'
+    )))),
   ))
   .pipe(Command.withDescription(
     'Triggers a one-time server-side replication of the docs from the source to the target database.'

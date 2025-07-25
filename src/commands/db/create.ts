@@ -8,7 +8,7 @@ import { logJson } from '../../libs/console.js';
 const createDbs = (dbs: string[]) => pipe(
   dbs,
   Array.map(PouchDBService.get),
-  Effect.all,
+  Effect.allWith({ concurrency: 'unbounded' }),
 );
 
 const databases = Args
@@ -22,7 +22,7 @@ export const create = Command
   .make('create', { databases }, ({ databases }) => initializeUrl.pipe(
     Effect.andThen(createDbs(databases)),
     Effect.map(Array.map(db => Effect.promise(() => db.info()))),
-    Effect.flatMap(Effect.all),
+    Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })),
     Effect.tap(logJson),
   ))
   .pipe(Command.withDescription(`Create new Couch database. Nothing happens if the database already exists.`));

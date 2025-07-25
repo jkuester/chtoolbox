@@ -12,6 +12,7 @@ import {
   getProgressPct
 } from '../../libs/couch/active-tasks.js';
 import { ChtClientService } from '../../services/cht-client.js';
+import { clearConsole } from '../../libs/console.js';
 
 const getDesignDisplayName = (task: CouchActiveTask) => getDesignName(task)
   .pipe(
@@ -19,7 +20,7 @@ const getDesignDisplayName = (task: CouchActiveTask) => getDesignName(task)
     Option.getOrElse(() => String.empty),
   );
 
-const getTaskDisplayData = (task: CouchActiveTask) => ({
+export const getTaskDisplayData = (task: CouchActiveTask): { database: string, pid: string, progress: string } => ({
   database: `${getDbName(task)}${getDesignDisplayName(task)}`,
   pid: getPid(task),
   progress: getProgressPct(task),
@@ -30,11 +31,11 @@ export const streamActiveTasks = (
 ): Effect.Effect<void, Error, ChtClientService> => taskStream.pipe(
   Stream.map(Array.map(getTaskDisplayData)),
   Stream.map(getDisplayDictByPid),
-  Stream.runForEach(taskDict => Console.clear.pipe(
+  Stream.runForEach(taskDict => clearConsole.pipe(
     Effect.tap(Console.log('Currently compacting:')),
     Effect.tap(Console.table(taskDict)),
   )),
-  Effect.tap(Console.clear.pipe(
+  Effect.tap(clearConsole.pipe(
     Effect.tap(Console.log('Compaction complete.')),
   )),
 );
@@ -47,9 +48,8 @@ const doCompaction = (databases: string[], all: boolean) => pipe(
   databases,
   Option.liftPredicate(Array.isNonEmptyArray),
   Option.map(Array.map(dbName => CompactService.compactDb(dbName, all))),
-  Option.map(Effect.all),
+  Option.map(Effect.allWith({ concurrency: 'unbounded' })),
   Option.getOrElse(() => compactAll(all)),
-  x => x,
 );
 
 const databases = Args

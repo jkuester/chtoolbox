@@ -195,7 +195,7 @@ const createLocalVolumeDirs = (localVolumePath: Option.Option<string>) => localV
     Array.make(SUB_DIR_CREDENTIALS, SUB_DIR_COUCHDB, SUB_DIR_NOUVEAU, SUB_DIR_DOCKER_COMPOSE),
     Array.map(subDir => `${path}/${subDir}`),
     Array.map(createDir),
-    Effect.all,
+    Effect.allWith({ concurrency: 'unbounded' }),
   ))),
   Option.getOrElse(() => Effect.void),
 );
@@ -241,7 +241,7 @@ const writeSSLFiles = (sslType: SSLType) => (dirPath: string) => pipe(
   SSL_URL_DICT[sslType],
   Array.map(([name, url]) => getRemoteFile(url)
     .pipe(Effect.flatMap(writeFile(`${dirPath}/${name}`)))),
-  Effect.all,
+  Effect.allWith({ concurrency: 'unbounded' }),
 );
 
 const doesUpgradeServiceExist = (instanceName: string) => pipe(
@@ -297,13 +297,13 @@ const copyFilesToUpgradeSvcContainer = (instanceName: string, tmpDir: string) =>
   [...CHT_COMPOSE_FILE_NAMES, CHTX_COMPOSE_OVERRIDE_FILE_NAME, ENV_JSON_FILE_NAME],
   Array.map((fileName): [string, string] => [`${tmpDir}/${fileName}`, `/docker-compose/${fileName}`]),
   Array.map(copyFileToComposeContainer(upgradeSvcProjectName(instanceName), UPGRADE_SVC_NAME)),
-  Effect.all,
+  Effect.allWith({ concurrency: 'unbounded' }),
 );
 const copySSLFilesToNginxContainer = (instanceName: string) => (tmpDir: string) => pipe(
   [SSL_CERT_FILE_NAME, SSL_KEY_FILE_NAME],
   Array.map((fileName): [string, string] => [`${tmpDir}/${fileName}`, `/etc/nginx/private/${fileName}`]),
   Array.map(copyFileToComposeContainer(instanceName, NGINX_SVC_NAME)),
-  Effect.all,
+  Effect.allWith({ concurrency: 'unbounded' }),
 );
 const copyEnvFileFromUpgradeSvcContainer = (instanceName: string, tmpDir: string) => pipe(
   upgradeSvcProjectName(instanceName),
@@ -446,7 +446,7 @@ export class LocalInstanceService extends Effect.Service<LocalInstanceService>()
           ChtInstanceConfig.generate(instanceName),
           createTmpDir(),
           createLocalVolumeDirs(localVolumePath)
-        ])),
+        ], { concurrency: 'unbounded' })),
         Effect.flatMap(([env, tmpDir]) => Effect
           .all([
             writeComposeFiles(tmpDir, version, localVolumePath),
@@ -493,7 +493,7 @@ export class LocalInstanceService extends Effect.Service<LocalInstanceService>()
         Effect.andThen(Effect.all([
           stopCompose(instanceName),
           stopCompose(upgradeSvcProjectName(instanceName))
-        ])),
+        ], { concurrency: 'unbounded' })),
         Effect.mapError(x => x as Error),
         Effect.provide(context),
       ),
@@ -527,9 +527,9 @@ export class LocalInstanceService extends Effect.Service<LocalInstanceService>()
     ls: (): Effect.Effect<LocalChtInstance[], Error> => getVolumeNamesWithLabel(CHTX_LABEL_NAME)
       .pipe(
         Effect.map(Array.map(getVolumeLabelValue(CHTX_LABEL_NAME))),
-        Effect.flatMap(Effect.all),
+        Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })),
         Effect.map(Array.map(getLocalChtInstanceInfo)),
-        Effect.flatMap(Effect.all),
+        Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })),
         Effect.mapError(x => x as unknown as Error),
         Effect.provide(context),
       ),

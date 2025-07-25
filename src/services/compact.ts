@@ -20,7 +20,7 @@ const TYPE_VIEW_COMPACT = 'view_compaction';
 const compactDbViews = (dbName: string) => getDesignDocNames(dbName)
   .pipe(
     Effect.map(Array.map(compactCouchDesign(dbName))),
-    Effect.flatMap(Effect.all),
+    Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })),
   );
 
 const compactCouchDb = (dbName: string, compactDesigns: boolean) => compactDb(dbName)
@@ -34,7 +34,7 @@ const compactCouchDesign = (dbName: string) => (designName: string) => compactDe
 const compactAll = (compactDesigns: boolean) => getDbNames()
   .pipe(
     Effect.map(Array.map(dbName => compactCouchDb(dbName, compactDesigns))),
-    Effect.flatMap(Effect.all),
+    Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })),
   );
 
 const streamActiveTasksUntilEmpty = () => streamActiveTasks()

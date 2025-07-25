@@ -5,7 +5,7 @@ import { LocalInstanceService } from '../../services/local-instance.js';
 const stopChtInstances = (names: string[]) => pipe(
   names,
   Array.map(LocalInstanceService.stop),
-  Effect.all,
+  Effect.allWith({ concurrency: 'unbounded' }),
 );
 
 const names = Args

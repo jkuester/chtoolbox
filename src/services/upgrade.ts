@@ -1,9 +1,30 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { PouchDBService, streamChanges } from './pouchdb.js';
-import { Array, DateTime, Match, Option, Schedule, Schema, Stream } from 'effect';
+import { getDoc, PouchDBService, saveDoc, streamChanges } from './pouchdb.js';
+import {
+  Array,
+  Chunk,
+  DateTime,
+  Either,
+  Encoding,
+  Match,
+  Option,
+  pipe,
+  Predicate,
+  Record,
+  Schedule,
+  Schema,
+  Stream,
+  String
+} from 'effect';
 import { completeChtUpgrade, stageChtUpgrade, upgradeCht } from '../libs/cht/upgrade.js';
 import { ChtClientService } from './cht-client.js';
+import { pouchDB } from '../libs/core.js';
+import { CouchDesign } from '../libs/couch/design.js';
+import { WarmViewsService } from './warm-views.js';
+import Attachments = PouchDB.Core.Attachments;
+import FullAttachment = PouchDB.Core.FullAttachment;
+import { CouchActiveTaskStream } from '../libs/couch/active-tasks.js';
 
 const UPGRADE_LOG_NAME = 'upgrade_log';
 const COMPLETED_STATES = ['finalized', 'aborted', 'errored', 'interrupted'];
@@ -18,6 +39,28 @@ const UPGRADE_LOG_STATES = [
   'aborting',
   ...STAGING_COMPLETE_STATES,
 ];
+const CHT_DATABASES = [
+  'medic',
+  'medic-sentinel',
+  'medic-logs',
+  'medic-users-meta',
+  '_users'
+];
+const DDOC_PREFIX = '_design/';
+const STAGED_DDOC_PREFIX = ':staged:';
+const CHT_DDOC_ATTACHMENT_NAMES = [
+  'ddocs/medic.json',
+  'ddocs/sentinel.json',
+  'ddocs/logs.json',
+  'ddocs/users-meta.json',
+  'ddocs/users.json'
+];
+const STAGING_BUILDS_COUCH_URL = 'https://staging.dev.medicmobile.org/_couch/builds_4';
+const CHT_DATABASE_BY_ATTACHMENT_NAME = pipe(
+  CHT_DDOC_ATTACHMENT_NAMES,
+  Array.zip(CHT_DATABASES),
+  Record.fromEntries,
+)
 
 export class UpgradeLog extends Schema.Class<UpgradeLog>('UpgradeLog')({
   _id: Schema.String,
@@ -27,6 +70,18 @@ export class UpgradeLog extends Schema.Class<UpgradeLog>('UpgradeLog')({
     date: Schema.Number,
   })),
 }) {
+}
+
+class DesignDocAttachment extends Schema.Class<DesignDocAttachment>('DesignDocAttachment')({
+  docs: Schema.Array(CouchDesign),
+}) {
+  static readonly decode = (attachment: FullAttachment) => pipe(
+    attachment.data as string,
+    Encoding.decodeBase64String,
+    Either.getOrThrow,
+    JSON.parse,
+    Schema.decodeUnknown(DesignDocAttachment),
+  )
 }
 
 const latestUpgradeLog = PouchDBService
@@ -48,13 +103,9 @@ const latestUpgradeLog = PouchDBService
     Effect.map(Option.flatMap(Schema.decodeUnknownOption(UpgradeLog))),
   );
 
-const streamChangesFeed = (upgradeLogId: string) => PouchDBService
-  .get('medic-logs')
-  .pipe(
-    Effect.map(streamChanges({
-      include_docs: true,
-      doc_ids: [upgradeLogId]
-    })),
+const streamChangesFeed = (upgradeLogId: string) => pipe(
+    { include_docs: true, doc_ids: [upgradeLogId] },
+    streamChanges('medic-logs'),
   );
 
 const streamUpgradeLogChanges = (completedStates: string[]) => latestUpgradeLog
@@ -66,18 +117,6 @@ const streamUpgradeLogChanges = (completedStates: string[]) => latestUpgradeLog
     Effect.map(Stream.map(Schema.decodeUnknownSync(UpgradeLog))),
     Effect.map(Stream.takeUntil(({ state }: UpgradeLog) => completedStates.includes(state))),
   );
-
-const serviceContext = Effect
-  .all([
-    ChtClientService,
-    PouchDBService,
-  ])
-  .pipe(Effect.map(([
-    chtClient,
-    pouch,
-  ]) => Context
-    .make(PouchDBService, pouch)
-    .pipe(Context.add(ChtClientService, chtClient))));
 
 const assertReadyForUpgrade = latestUpgradeLog.pipe(
   Effect.map(Option.map(({ state }) => state)),
@@ -93,6 +132,83 @@ const assertReadyForComplete = latestUpgradeLog.pipe(
   Effect.map(Match.when(state => Option.isSome(state) && Option.getOrThrow(state) === 'indexed', () => Effect.void)),
   Effect.flatMap(Match.orElse(() => Effect.fail(new Error('No upgrade ready for completion.')))),
 );
+
+const getStagingDocAttachments = (version: string) => Effect
+  .logDebug(`Getting staging doc attachments for ${version}`)
+  .pipe(
+    Effect.andThen(pouchDB(STAGING_BUILDS_COUCH_URL)),
+    Effect.flatMap(db => Effect.promise(() => db.get(`medic:medic:${version}`, { attachments: true }))),
+    Effect.map(({ _attachments }) => _attachments),
+    Effect.filterOrFail(Predicate.isNotNullable),
+  );
+
+const decodeStagingDocAttachments = (attachments: Attachments) => pipe(
+  CHT_DDOC_ATTACHMENT_NAMES,
+  Array.map(name => attachments[name] as FullAttachment),
+  Array.map(DesignDocAttachment.decode),
+  Effect.allWith({ concurrency: 'unbounded' }),
+);
+
+const getExistingStagedDdocRev = (dbName: string, ddocId: string) => pipe(
+  ddocId,
+  String.replace(DDOC_PREFIX, `${DDOC_PREFIX}${STAGED_DDOC_PREFIX}`),
+  getDoc(dbName),
+  Effect.tap(doc => pipe(
+    doc,
+    Option.map(doc => Effect.logDebug(`Found existing staged ddoc ${doc._id} with rev ${doc._rev}`)),
+    Option.getOrElse(() => Effect.logDebug(`No existing staged ddoc found for ${ddocId}`)),
+  )),
+  Effect.map(Option.map(({ _rev }) => ({ _rev }))),
+  Effect.map(Option.getOrElse(() => ({ }))),
+);
+
+const saveStagedDdoc = (dbName: string, ddoc: CouchDesign) => Effect
+  .logDebug(`Saving staging ddoc for ${dbName}/${ddoc._id}`)
+  .pipe(
+    Effect.andThen(getExistingStagedDdocRev(dbName, ddoc._id)),
+    Effect.map(existingDdoc => ({
+      ...existingDdoc,
+      ...ddoc,
+      _id: pipe(ddoc._id, String.replace(DDOC_PREFIX, `${DDOC_PREFIX}${STAGED_DDOC_PREFIX}`)),
+      deploy_info: { user: 'Pre-staged by chtoolbox' }
+    })),
+    Effect.flatMap(saveDoc(dbName)),
+  );
+
+const preStageDdoc = (dbName: string) => (ddoc: CouchDesign) => WarmViewsService
+  .warmDesign(dbName, pipe(ddoc._id, String.replace(DDOC_PREFIX, STAGED_DDOC_PREFIX)))
+  .pipe(Effect.map(Stream.onStart(saveStagedDdoc(dbName, ddoc))));
+
+const preStageDdocs = (docsByDb: [DesignDocAttachment, string][]) => pipe(
+  docsByDb,
+  Array.map(([{ docs }, attachmentName]) => pipe(
+    docs,
+    Array.map(preStageDdoc(CHT_DATABASE_BY_ATTACHMENT_NAME[attachmentName])),
+    Effect.all,
+    Effect.map(Chunk.fromIterable),
+    Effect.map(Stream.concatAll),
+  )),
+  Effect.all,
+  Effect.map(Chunk.fromIterable),
+  Effect.map(Stream.concatAll),
+);
+
+const serviceContext = Effect
+  .all([
+    ChtClientService,
+    PouchDBService,
+    WarmViewsService,
+  ])
+  .pipe(Effect.map(([
+    chtClient,
+    pouch,
+    warmViews,
+  ]) => Context
+    .make(PouchDBService, pouch)
+    .pipe(
+      Context.add(ChtClientService, chtClient),
+      Context.add(WarmViewsService, warmViews)
+    )));
 
 type UpgradeLogStreamEffect = Effect.Effect<Stream.Stream<UpgradeLog, Error>, Error>;
 
@@ -114,6 +230,15 @@ export class UpgradeService extends Effect.Service<UpgradeService>()('chtoolbox/
         .pipe(
           Effect.retry(Schedule.spaced(1000)), // Getting the upgrade log may fail while the server is still restarting
         )),
+      Effect.provide(context),
+    ),
+    preStage: (version: string): Effect.Effect<CouchActiveTaskStream, Error> => assertReadyForUpgrade.pipe(
+      Effect.andThen(getStagingDocAttachments(version)),
+      Effect.flatMap(decodeStagingDocAttachments),
+      Effect.map(Array.zip(CHT_DDOC_ATTACHMENT_NAMES)),
+      Effect.flatMap(preStageDdocs),
+      Effect.map(Stream.provideContext(context)),
+      Effect.map(Stream.mapError(x => x as Error)),
       Effect.provide(context),
     ),
   }))),

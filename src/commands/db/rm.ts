@@ -7,7 +7,7 @@ const destroyDbs = (dbs: string[]) => pipe(
   dbs,
   Array.map(PouchDBService.get),
   Array.map(Effect.flatMap(db => Effect.promise(() => db.destroy()))),
-  Effect.all,
+  Effect.allWith({ concurrency: 'unbounded' }),
   Effect.tap(Console.log('Database(s) removed')),
 );
 

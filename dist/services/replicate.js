@@ -1,8 +1,8 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { assertPouchResponse, PouchDBService, streamChanges } from './pouchdb.js';
+import { PouchDBService, saveDoc, streamChanges } from './pouchdb.js';
 import { EnvironmentService } from './environment.js';
-import { Option, pipe, Redacted, Schema, Stream, Match, Array } from 'effect';
+import { Array, Match, Option, pipe, Redacted, Schema, Stream } from 'effect';
 const SKIP_DDOC_SELECTOR = {
     _id: { '$regex': '^(?!_design/)' },
 };
@@ -48,12 +48,7 @@ export class ReplicationDoc extends Schema.Class('ReplicationDoc')({
     })),
 }) {
 }
-const streamReplicationDocChanges = (repDocId) => PouchDBService
-    .get('_replicator')
-    .pipe(Effect.map(streamChanges({
-    include_docs: true,
-    doc_ids: [repDocId],
-})), Effect.map(Stream.map(({ doc }) => doc)), Effect.map(Stream.mapEffect(Schema.decodeUnknown(ReplicationDoc))), Effect.map(Stream.takeUntil(({ _replication_state }) => _replication_state === 'completed')));
+const streamReplicationDocChanges = (repDocId) => pipe({ include_docs: true, doc_ids: [repDocId], }, streamChanges('_replicator'), Effect.map(Stream.map(({ doc }) => doc)), Effect.map(Stream.mapEffect(Schema.decodeUnknown(ReplicationDoc))), Effect.map(Stream.takeUntil(({ _replication_state }) => _replication_state === 'completed')));
 const serviceContext = Effect
     .all([
     EnvironmentService,
@@ -64,9 +59,8 @@ const serviceContext = Effect
     .pipe(Context.add(EnvironmentService, env))));
 export class ReplicateService extends Effect.Service()('chtoolbox/ReplicateService', {
     effect: serviceContext.pipe(Effect.map(context => ({
-        replicate: (source, target, opts = {}) => Effect
-            .all([PouchDBService.get('_replicator'), createReplicationDoc(source, target, opts)])
-            .pipe(Effect.flatMap(([db, doc]) => Effect.promise(() => db.bulkDocs([doc]))), Effect.map(([resp]) => resp), Effect.map(assertPouchResponse), Effect.map(({ id }) => id), Effect.flatMap(streamReplicationDocChanges), Effect.provide(context)),
+        replicate: (source, target, opts = {}) => createReplicationDoc(source, target, opts)
+            .pipe(Effect.flatMap(saveDoc('_replicator')), Effect.map(({ id }) => id), Effect.flatMap(streamReplicationDocChanges), Effect.mapError(x => x), Effect.provide(context)),
     }))),
     accessors: true,
 }) {

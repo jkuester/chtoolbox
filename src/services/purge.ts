@@ -15,7 +15,6 @@ const AllDocsRow = Schema.Struct({ id: Schema.String, value: Schema.Struct({ rev
 const convertAllDocsResponse = (response: AllDocsResponse<object> | AllDocsWithKeysResponse<object>) => pipe(
   response.rows as unknown[],
   Array.filter(Schema.is(AllDocsRow)),
-  x => x,
   Array.map(({ id, value: { rev } }) => ({ _id: id, _rev: rev }))
 );
 
@@ -63,12 +62,11 @@ const purgeDocsFromResponse = (dbName: string) => (response: PouchDB.Query.Respo
 
 const purgeByViewQuery = (dbName: string, viewName: string) => (
   opts: PouchDB.Query.Options<object, object>
-) => PouchDBService
-  .get(dbName)
-  .pipe(
-    Effect.map(streamQueryPages(viewName, opts)),
-    Effect.map(Stream.tap(purgeDocsFromResponse(dbName))),
-  );
+) => pipe(
+  opts,
+  streamQueryPages(dbName, viewName),
+  Effect.map(Stream.tap(purgeDocsFromResponse(dbName))),
+);
 
 const serviceContext = Effect
   .all([
@@ -84,18 +82,17 @@ const serviceContext = Effect
 
 export class PurgeService extends Effect.Service<PurgeService>()('chtoolbox/PurgeService', {
   effect: serviceContext.pipe(Effect.map(context => ({
-    purgeAll: (dbName: string, purgeDdocs = false): Effect.Effect<AllDocsResponseStream, Error> => PouchDBService
-      .get(dbName)
-      .pipe(
-        Effect.map(streamAllDocPages(PAGE_OPTIONS)),
-        Effect.map(Stream.tap(response => pipe(
-          convertAllDocsResponse(response),
-          Array.filter(filterDdoc(purgeDdocs)),
-          purgeRows(dbName),
-        ))),
-        Effect.map(Stream.provideContext(context)),
-        Effect.provide(context),
-      ),
+    purgeAll: (dbName: string, purgeDdocs = false): Effect.Effect<AllDocsResponseStream, Error> => pipe(
+      PAGE_OPTIONS,
+      streamAllDocPages(dbName),
+      Effect.map(Stream.tap(response => pipe(
+        convertAllDocsResponse(response),
+        Array.filter(filterDdoc(purgeDdocs)),
+        purgeRows(dbName),
+      ))),
+      Effect.map(Stream.provideContext(context)),
+      Effect.provide(context),
+    ),
     purgeReports: (
       dbName: string,
       opts: { since: Option.Option<Date>, before: Option.Option<Date> }

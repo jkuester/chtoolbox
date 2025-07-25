@@ -17,7 +17,7 @@ const isRemoveConfirmed = (names: string[], yes: boolean) => Effect
 const rmChtInstances = (names: string[]) => pipe(
   names,
   Array.map(LocalInstanceService.rm),
-  Effect.all,
+  Effect.allWith({ concurrency: 'unbounded' }),
   Effect.andThen(Console.log('CHT instance(s) removed')),
 );
 

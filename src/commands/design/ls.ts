@@ -19,7 +19,7 @@ const printAllDesignDocNames = getDbNames()
   .pipe(
     Effect.flatMap(dbNames => pipe(
       Array.map(dbNames, getDesignDocNames),
-      Effect.all,
+      Effect.allWith({ concurrency: 'unbounded' }),
       Effect.map(Array.zip(dbNames)),
       Effect.map(getDisplayDict),
     )),

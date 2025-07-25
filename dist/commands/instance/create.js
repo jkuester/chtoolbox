@@ -5,8 +5,8 @@ import { LocalInstanceService } from '../../services/local-instance.js';
 import { clearThen } from '../../libs/console.js';
 import { printInstanceTable } from './ls.js';
 const createChtInstances = (names, version, directory) => directory.pipe(Option.map(dir => FileSystem.FileSystem.pipe(Effect.flatMap(fs => fs.realPath(dir)))), Effect.transposeOption, Effect.flatMap(dirPath => pipe(names, Array.map(name => LocalInstanceService.create(name, version, dirPath.pipe(Option.map(path => `${path}/${name}`)))), Effect.allWith({ concurrency: 0 }))));
-const startChtInstances = (names) => pipe(names, Array.map(name => LocalInstanceService.start(name, Option.none())), Effect.all);
-const setLocalIpSSLCerts = (names) => pipe(names, Array.map(name => LocalInstanceService.setSSLCerts(name, 'local-ip')), Effect.all);
+const startChtInstances = (names) => pipe(names, Array.map(name => LocalInstanceService.start(name, Option.none())), Effect.allWith({ concurrency: 'unbounded' }));
+const setLocalIpSSLCerts = (names) => pipe(names, Array.map(name => LocalInstanceService.setSSLCerts(name, 'local-ip')), Effect.allWith({ concurrency: 'unbounded' }));
 const names = Args
     .text({ name: 'name' })
     .pipe(Args.withDescription('The name of the instance to create'), Args.atLeast(1));

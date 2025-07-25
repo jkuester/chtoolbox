@@ -6,7 +6,7 @@ import { printInstanceTable } from './ls.js';
 const startChtInstances = (names: string[], directory: Option.Option<string>) => pipe(
   names,
   Array.map(name => LocalInstanceService.start(name, directory.pipe(Option.map(dir => `${dir}/${name}`)))),
-  Effect.all,
+  Effect.allWith({ concurrency: 'unbounded' }),
 );
 
 const directory = Options

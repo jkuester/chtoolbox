@@ -36,7 +36,7 @@ export const inspect = Command
     Effect.andThen(pipe(
       designs,
       Array.map(getViewData(database)),
-      Effect.all,
+      Effect.allWith({ concurrency: 'unbounded' }),
     )),
     Effect.tap(logJson),
   ))

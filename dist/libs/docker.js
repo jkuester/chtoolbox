@@ -1,10 +1,8 @@
 import { Command } from '@effect/platform';
-import { Array, Boolean, Effect, FiberRef, LogLevel, Option, pipe, Schedule, String } from 'effect';
+import { Array, Boolean, Effect, Option, pipe, Schedule, String } from 'effect';
+import { debugLoggingEnabled } from './console.js';
 const dockerCompose = (projectName, ...args) => Command.make('docker', 'compose', '-p', projectName, ...args);
 const getComposeFileParams = (composeFilePaths) => pipe(composeFilePaths, Array.map(path => ['-f', path]), Array.flatten);
-const debugLoggingEnabled = FiberRef
-    .get(FiberRef.currentMinimumLogLevel)
-    .pipe(Effect.map(LogLevel.lessThanEqual(LogLevel.Debug)));
 const printCommandWhenDebugLogging = (command) => Effect
     .succeed(command)
     .pipe(Effect.filterEffectOrElse({

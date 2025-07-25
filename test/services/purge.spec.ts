@@ -51,15 +51,15 @@ describe('Purge Service', () => {
         { rows: [{ id: '2', value: { rev: 'b' } }] },
         { rows: [{ id: '_design/4', value: { rev: 'd' } }] },
       ];
-      streamAllDocPagesInner.returns(Stream.make(...expectedResponses));
+      streamAllDocPagesInner.returns(Effect.succeed(Stream.make(...expectedResponses)));
 
       const stream = yield* PurgeService.purgeAll(FAKE_DB.name);
       const pages = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
       expect(pages).to.deep.equal(expectedResponses);
-      expect(pouchGet.calledOnceWithExactly(FAKE_DB.name)).to.be.true;
-      expect(mockPouchSvc.streamAllDocPages.calledOnceWithExactly({ limit: 100, skip: 0 })).to.be.true;
-      expect(streamAllDocPagesInner.calledOnceWithExactly(FAKE_DB)).to.be.true;
+      expect(pouchGet.notCalled).to.be.true;
+      expect(mockPouchSvc.streamAllDocPages.calledOnceWithExactly(FAKE_DB.name)).to.be.true;
+      expect(streamAllDocPagesInner.calledOnceWithExactly({ limit: 100, skip: 0 })).to.be.true;
       expect(mockPurgeLib.purgeFrom.args).to.deep.equal(Array.replicate([FAKE_DB.name], 3));
       expect(purgeFromInner.args).to.deep.equal([
         [[{ _id: '1', _rev: 'a' }]],
@@ -72,15 +72,15 @@ describe('Purge Service', () => {
         { rows: [{ id: '1', value: { rev: 'a' } }, { id: '_design/3', value: { rev: 'c' } }] },
         { rows: [{ id: '2', value: { rev: 'b' } }] },
       ];
-      streamAllDocPagesInner.returns(Stream.make(...expectedResponses));
+      streamAllDocPagesInner.returns(Effect.succeed(Stream.make(...expectedResponses)));
 
       const stream = yield* PurgeService.purgeAll(FAKE_DB.name, true);
       const pages = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
       expect(pages).to.deep.equal(expectedResponses);
-      expect(pouchGet.calledOnceWithExactly(FAKE_DB.name)).to.be.true;
-      expect(mockPouchSvc.streamAllDocPages.calledOnceWithExactly({ limit: 100, skip: 0 })).to.be.true;
-      expect(streamAllDocPagesInner.calledOnceWithExactly(FAKE_DB)).to.be.true;
+      expect(pouchGet.notCalled).to.be.true;
+      expect(mockPouchSvc.streamAllDocPages.calledOnceWithExactly(FAKE_DB.name)).to.be.true;
+      expect(streamAllDocPagesInner.calledOnceWithExactly({ limit: 100, skip: 0 })).to.be.true;
       expect(mockPurgeLib.purgeFrom.args).to.deep.equal(Array.replicate([FAKE_DB.name], 2));
       expect(purgeFromInner.args).to.deep.equal([
         [[{ _id: '1', _rev: 'a' }, { _id: '_design/3', _rev: 'c' }]],
@@ -89,15 +89,15 @@ describe('Purge Service', () => {
     }));
 
     it('does not purge anything if nothing is found', run(function* () {
-      streamAllDocPagesInner.returns(Stream.empty);
+      streamAllDocPagesInner.returns(Effect.succeed(Stream.empty));
 
       const stream = yield* PurgeService.purgeAll(FAKE_DB.name, true);
       const pages = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
       expect(pages).to.deep.equal([]);
-      expect(pouchGet.calledOnceWithExactly(FAKE_DB.name)).to.be.true;
-      expect(mockPouchSvc.streamAllDocPages.calledOnceWithExactly({ limit: 100, skip: 0 })).to.be.true;
-      expect(streamAllDocPagesInner.calledOnceWithExactly(FAKE_DB)).to.be.true;
+      expect(pouchGet.notCalled).to.be.true;
+      expect(mockPouchSvc.streamAllDocPages.calledOnceWithExactly(FAKE_DB.name)).to.be.true;
+      expect(streamAllDocPagesInner.calledOnceWithExactly({ limit: 100, skip: 0 })).to.be.true;
       expect(mockPurgeLib.purgeFrom.notCalled).to.be.true;
       expect(purgeFromInner.notCalled).to.be.true;
     }));
@@ -120,7 +120,7 @@ describe('Purge Service', () => {
         { rows: [{ id: '2' }] },
         { rows: [{ id: '4' }] },
       ];
-      streamQueryPagesInner.returns(Stream.make(...streamQueryResponses));
+      streamQueryPagesInner.returns(Effect.succeed(Stream.make(...streamQueryResponses)));
       dbAllDocs.onFirstCall().resolves({ rows: [{ id: '1', value: { rev: 'a' } }, { id: '3', value: { rev: 'b' } }] });
       dbAllDocs.onSecondCall().resolves({ rows: [{ id: '2', value: { rev: 'c' } }] });
       dbAllDocs.onThirdCall().resolves({ rows: [{ id: '4', value: { rev: 'd' } }] });
@@ -130,12 +130,14 @@ describe('Purge Service', () => {
       const pages = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
       expect(pages).to.deep.equal(streamQueryResponses);
-      expect(pouchGet.args).to.deep.equal(Array.replicate([FAKE_DB.name], 4));
+      expect(pouchGet.args).to.deep.equal(Array.replicate([FAKE_DB.name], 3));
       expect(mockPouchSvc.streamQueryPages.calledOnceWithExactly(
-        viewName,
-        { limit: 100, skip: 0, startkey: undefined, endkey: undefined }
+        FAKE_DB.name,
+        viewName
       )).to.be.true;
-      expect(streamQueryPagesInner.calledOnceWithExactly(FAKE_DB)).to.be.true;
+      expect(streamQueryPagesInner.calledOnceWithExactly({
+        limit: 100, skip: 0, startkey: undefined, endkey: undefined
+      })).to.be.true;
       expect(dbAllDocs.args).to.deep.equal([
         [{ keys: ['1', '3'] }],
         [{ keys: ['2'] }],
@@ -150,19 +152,21 @@ describe('Purge Service', () => {
     }));
 
     it('does not purge anything if nothing is found when querying', run(function* () {
-      streamQueryPagesInner.returns(Stream.empty);
+      streamQueryPagesInner.returns(Effect.succeed(Stream.empty));
       const opts = { since: Option.none(), before: Option.none() };
 
       const stream = yield* PurgeService.purgeReports(FAKE_DB.name, opts);
       const pages = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
       expect(pages).to.deep.equal([]);
-      expect(pouchGet.calledOnceWithExactly(FAKE_DB.name)).to.be.true;
+      expect(pouchGet.notCalled).to.be.true;
       expect(mockPouchSvc.streamQueryPages.calledOnceWithExactly(
+        FAKE_DB.name,
         viewName,
+      )).to.be.true;
+      expect(streamQueryPagesInner.calledOnceWithExactly(
         { limit: 100, skip: 0, startkey: undefined, endkey: undefined }
       )).to.be.true;
-      expect(streamQueryPagesInner.calledOnceWithExactly(FAKE_DB)).to.be.true;
       expect(dbAllDocs.notCalled).to.be.true;
       expect(mockPurgeLib.purgeFrom.notCalled).to.be.true;
       expect(purgeFromInner.notCalled).to.be.true;
@@ -174,7 +178,7 @@ describe('Purge Service', () => {
         { rows: [{ id: '2' }] },
         { rows: [{ id: '4' }] },
       ];
-      streamQueryPagesInner.returns(Stream.make(...streamQueryResponses));
+      streamQueryPagesInner.returns(Effect.succeed(Stream.make(...streamQueryResponses)));
       dbAllDocs.onFirstCall().resolves({ rows: [{ error: 'not_found' }, { error: 'not_found' }] });
       dbAllDocs.onSecondCall().resolves({ rows: [{ error: 'not_found' }] });
       dbAllDocs.onThirdCall().resolves({ rows: [] });
@@ -184,12 +188,14 @@ describe('Purge Service', () => {
       const pages = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
       expect(pages).to.deep.equal(streamQueryResponses);
-      expect(pouchGet.args).to.deep.equal(Array.replicate([FAKE_DB.name], 4));
+      expect(pouchGet.args).to.deep.equal(Array.replicate([FAKE_DB.name], 3));
       expect(mockPouchSvc.streamQueryPages.calledOnceWithExactly(
+        FAKE_DB.name,
         viewName,
+      )).to.be.true;
+      expect(streamQueryPagesInner.calledOnceWithExactly(
         { limit: 100, skip: 0, startkey: undefined, endkey: undefined }
       )).to.be.true;
-      expect(streamQueryPagesInner.calledOnceWithExactly(FAKE_DB)).to.be.true;
       expect(dbAllDocs.args).to.deep.equal([
         [{ keys: ['1', '3'] }],
         [{ keys: ['2'] }],
@@ -203,7 +209,7 @@ describe('Purge Service', () => {
       const streamQueryResponses = [
         { rows: [{ id: '1' }] },
       ];
-      streamQueryPagesInner.returns(Stream.make(...streamQueryResponses));
+      streamQueryPagesInner.returns(Effect.succeed(Stream.make(...streamQueryResponses)));
       dbAllDocs.resolves({ rows: [{ id: '1', value: { rev: 'a' } }] });
       const sinceDate = new Date('2021-01-01');
       const beforeDate = new Date('2021-02-01');
@@ -213,12 +219,14 @@ describe('Purge Service', () => {
       const pages = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
       expect(pages).to.deep.equal(streamQueryResponses);
-      expect(pouchGet.args).to.deep.equal(Array.replicate([FAKE_DB.name], 2));
+      expect(pouchGet.calledOnceWithExactly(FAKE_DB.name)).to.be.true;
       expect(mockPouchSvc.streamQueryPages.calledOnceWithExactly(
+        FAKE_DB.name,
         viewName,
+      )).to.be.true;
+      expect(streamQueryPagesInner.calledOnceWithExactly(
         { limit: 100, skip: 0, startkey: [sinceDate.getTime()], endkey: [beforeDate.getTime()] }
       )).to.be.true;
-      expect(streamQueryPagesInner.calledOnceWithExactly(FAKE_DB)).to.be.true;
       expect(dbAllDocs.args).to.deep.equal([[{ keys: ['1'] }]]);
       expect(mockPurgeLib.purgeFrom.args).to.deep.equal(Array.replicate([FAKE_DB.name], 1));
       expect(purgeFromInner.args).to.deep.equal([[[{ _id: '1', _rev: 'a' }]]]);
@@ -242,7 +250,7 @@ describe('Purge Service', () => {
         { rows: [{ id: '2' }] },
         { rows: [{ id: '4' }] },
       ];
-      streamQueryPagesInner.returns(Stream.make(...streamQueryResponses));
+      streamQueryPagesInner.returns(Effect.succeed(Stream.make(...streamQueryResponses)));
       dbAllDocs.onFirstCall().resolves({ rows: [{ id: '1', value: { rev: 'a' } }, { id: '3', value: { rev: 'b' } }] });
       dbAllDocs.onSecondCall().resolves({ rows: [{ id: '2', value: { rev: 'c' } }] });
       dbAllDocs.onThirdCall().resolves({ rows: [{ id: '4', value: { rev: 'd' } }] });
@@ -252,12 +260,14 @@ describe('Purge Service', () => {
       const pages = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
       expect(pages).to.deep.equal(streamQueryResponses);
-      expect(pouchGet.args).to.deep.equal(Array.replicate([FAKE_DB.name], 4));
+      expect(pouchGet.args).to.deep.equal(Array.replicate([FAKE_DB.name], 3));
       expect(mockPouchSvc.streamQueryPages.calledOnceWithExactly(
+        FAKE_DB.name,
         viewName,
+      )).to.be.true;
+      expect(streamQueryPagesInner.calledOnceWithExactly(
         { limit: 100, skip: 0, key: [contactType] }
       )).to.be.true;
-      expect(streamQueryPagesInner.calledOnceWithExactly(FAKE_DB)).to.be.true;
       expect(dbAllDocs.args).to.deep.equal([
         [{ keys: ['1', '3'] }],
         [{ keys: ['2'] }],
@@ -272,19 +282,21 @@ describe('Purge Service', () => {
     }));
 
     it('does not purge anything if nothing is found when querying', run(function* () {
-      streamQueryPagesInner.returns(Stream.empty);
+      streamQueryPagesInner.returns(Effect.succeed(Stream.empty));
       const contactType = 'person';
 
       const stream = yield* PurgeService.purgeContacts(FAKE_DB.name, contactType);
       const pages = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
       expect(pages).to.deep.equal([]);
-      expect(pouchGet.calledOnceWithExactly(FAKE_DB.name)).to.be.true;
+      expect(pouchGet.notCalled).to.be.true;
       expect(mockPouchSvc.streamQueryPages.calledOnceWithExactly(
+        FAKE_DB.name,
         viewName,
+      )).to.be.true;
+      expect(streamQueryPagesInner.calledOnceWithExactly(
         { limit: 100, skip: 0, key: [contactType] }
       )).to.be.true;
-      expect(streamQueryPagesInner.calledOnceWithExactly(FAKE_DB)).to.be.true;
       expect(dbAllDocs.notCalled).to.be.true;
       expect(mockPurgeLib.purgeFrom.notCalled).to.be.true;
       expect(purgeFromInner.notCalled).to.be.true;
@@ -296,7 +308,7 @@ describe('Purge Service', () => {
         { rows: [{ id: '2' }] },
         { rows: [{ id: '4' }] },
       ];
-      streamQueryPagesInner.returns(Stream.make(...streamQueryResponses));
+      streamQueryPagesInner.returns(Effect.succeed(Stream.make(...streamQueryResponses)));
       dbAllDocs.onFirstCall().resolves({ rows: [{ error: 'not_found' }, { error: 'not_found' }] });
       dbAllDocs.onSecondCall().resolves({ rows: [{ error: 'not_found' }] });
       dbAllDocs.onThirdCall().resolves({ rows: [] });
@@ -306,12 +318,14 @@ describe('Purge Service', () => {
       const pages = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
       expect(pages).to.deep.equal(streamQueryResponses);
-      expect(pouchGet.args).to.deep.equal(Array.replicate([FAKE_DB.name], 4));
+      expect(pouchGet.args).to.deep.equal(Array.replicate([FAKE_DB.name], 3));
       expect(mockPouchSvc.streamQueryPages.calledOnceWithExactly(
+        FAKE_DB.name,
         viewName,
+      )).to.be.true;
+      expect(streamQueryPagesInner.calledOnceWithExactly(
         { limit: 100, skip: 0, key: [contactType] }
       )).to.be.true;
-      expect(streamQueryPagesInner.calledOnceWithExactly(FAKE_DB)).to.be.true;
       expect(dbAllDocs.args).to.deep.equal([
         [{ keys: ['1', '3'] }],
         [{ keys: ['2'] }],

@@ -8,7 +8,7 @@ const getConfirmationPrompt = (names) => Prompt.confirm({
 const isRemoveConfirmed = (names, yes) => Effect
     .succeed(true)
     .pipe(Effect.filterOrElse(() => yes, () => getConfirmationPrompt(names)));
-const rmChtInstances = (names) => pipe(names, Array.map(LocalInstanceService.rm), Effect.all, Effect.andThen(Console.log('CHT instance(s) removed')));
+const rmChtInstances = (names) => pipe(names, Array.map(LocalInstanceService.rm), Effect.allWith({ concurrency: 'unbounded' }), Effect.andThen(Console.log('CHT instance(s) removed')));
 const yes = Options
     .boolean('yes')
     .pipe(Options.withAlias('y'), Options.withDescription('Do not prompt for confirmation.'));
