@@ -34,7 +34,7 @@ describe('Purge Service', () => {
   beforeEach(() => {
     purgeFromInner.returns(Effect.void);
     mockPurgeLib.purgeFrom.returns(purgeFromInner);
-    pouchGet.returns(Effect.succeed(FAKE_DB)); // TODO
+    pouchGet.returns(Effect.succeed(FAKE_DB));
   });
 
   describe('purgeAll', () => {
