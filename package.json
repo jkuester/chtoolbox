@@ -54,7 +54,7 @@
     "typescript-eslint": "^8.37.0"
   },
   "dependencies": {
-    "@effect/cli": "^0.67.1",
+    "@effect/cli": "^0.69.0",
     "@effect/platform": "^0.88.0",
     "@effect/platform-node": "^0.91.0",
     "effect": "^3.17.2",
