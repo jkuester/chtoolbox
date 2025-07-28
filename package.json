@@ -57,7 +57,7 @@
     "@effect/cli": "^0.67.1",
     "@effect/platform": "^0.88.0",
     "@effect/platform-node": "^0.91.0",
-    "effect": "^3.16.13",
+    "effect": "^3.17.2",
     "get-port": "^7.1.0",
     "pouchdb-adapter-http": "^9.0.0",
     "pouchdb-core": "^9.0.0",
