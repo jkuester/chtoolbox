@@ -42,4 +42,3 @@ export class PurgeService extends Effect.Service()('chtoolbox/PurgeService', {
     accessors: true,
 }) {
 }
-//# sourceMappingURL=purge.js.map

@@ -39,4 +39,3 @@ export class CompactService extends Effect.Service()('chtoolbox/CompactService',
     accessors: true,
 }) {
 }
-//# sourceMappingURL=compact.js.map

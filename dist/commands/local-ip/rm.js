@@ -7,4 +7,3 @@ const toPorts = Args
 export const rm = Command
     .make('rm', { toPorts }, ({ toPorts }) => pipe(toPorts, Array.map(LocalIpService.rm), Effect.allWith({ concurrency: 'unbounded' }), Effect.andThen(Console.log('Nginx-local-ip instance(s) removed'))))
     .pipe(Command.withDescription('LOCAL ONLY: Remove an nginx-local-ip instance. Requires Docker.'));
-//# sourceMappingURL=rm.js.map

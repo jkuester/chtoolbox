@@ -11,4 +11,3 @@ const names = Args
 export const setSSL = Command
     .make('set-ssl', { names, type }, ({ names, type }) => setSSLCertOnInstances(names, type))
     .pipe(Command.withDescription(`LOCAL ONLY: Set the SSL certs on a local CHT instance. Requires Docker and Docker Compose.`));
-//# sourceMappingURL=set-ssl.js.map

@@ -9,4 +9,3 @@ export const stop = Command
     .make('stop', { names }, ({ names }) => stopChtInstances(names)
     .pipe(Effect.andThen(Console.log('CHT instance(s) stopped'))))
     .pipe(Command.withDescription(`LOCAL ONLY: Stop a local CHT instance. Data for the instance is not removed. Requires Docker and Docker Compose.`));
-//# sourceMappingURL=stop.js.map

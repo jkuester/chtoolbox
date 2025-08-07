@@ -28,4 +28,3 @@ export const ls = Command
     .ls()
     .pipe(Effect.flatMap(print(names))))
     .pipe(Command.withDescription(`LOCAL ONLY: List the local CHT instances and their URLs. Requires Docker and Docker Compose.`));
-//# sourceMappingURL=ls.js.map

@@ -19,4 +19,3 @@ const createEnvironmentService = Ref
 })), Effect.tap((envService) => COUCH_URL.pipe(Config.map(Option.map(envService.setUrl)), Config.map(Option.map(Effect.asVoid)), Effect.flatMap(Option.getOrElse(() => Effect.void)))));
 export class EnvironmentService extends Effect.Service()('chtoolbox/EnvironmentService', { effect: createEnvironmentService, accessors: true, }) {
 }
-//# sourceMappingURL=environment.js.map

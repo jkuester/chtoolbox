@@ -5,4 +5,3 @@ import { rm } from "./rm.js";
 export const localIp = Command
     .make('local-ip', {})
     .pipe(Command.withDescription(`Manage nginx-local-ip instances.`), Command.withSubcommands([create, ls, rm]));
-//# sourceMappingURL=index.js.map

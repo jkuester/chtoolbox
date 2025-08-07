@@ -11,4 +11,3 @@ export const writeJsonFile = (path, data) => FileSystem.FileSystem.pipe(Effect.f
 export const readJsonFile = (fileName, directory) => FileSystem.FileSystem.pipe(Effect.flatMap(fs => fs.readFileString(`${directory}/${fileName}`)), Effect.map(JSON.parse));
 export const writeEnvFile = (path, data) => pipe(data, Record.toEntries, Array.map(([key, value]) => `${key}=${value}`), Array.join('\n'), envData => FileSystem.FileSystem.pipe(Effect.flatMap(fs => fs.writeFileString(path, envData))));
 export const isDirectoryEmpty = (dirPath) => FileSystem.FileSystem.pipe(Effect.flatMap(fs => fs.exists(dirPath).pipe(Effect.map(Boolean.not), Effect.filterOrElse(dirNotExists => dirNotExists, () => fs.readDirectory(dirPath).pipe(Effect.map(entries => entries.length === 0))))));
-//# sourceMappingURL=file.js.map

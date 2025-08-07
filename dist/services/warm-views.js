@@ -36,4 +36,3 @@ export class WarmViewsService extends Effect.Service()('chtoolbox/WarmViewsServi
     accessors: true,
 }) {
 }
-//# sourceMappingURL=warm-views.js.map

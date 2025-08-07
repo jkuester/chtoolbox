@@ -7,4 +7,3 @@ const getWarmRequest = (dbName, designName, viewName) => HttpClientRequest
 export const warmView = (dbName, designName, viewName) => ChtClientService
     .request(getWarmRequest(dbName, designName, viewName))
     .pipe(Effect.andThen(Effect.void), Effect.scoped);
-//# sourceMappingURL=view.js.map

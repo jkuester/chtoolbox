@@ -27,4 +27,3 @@ const follow = Options
 export const activeTasks = Command
     .make('active-tasks', { follow }, ({ follow }) => initializeUrl.pipe(Effect.andThen(followActiveTasks), Option.liftPredicate(() => follow), Option.getOrElse(() => printCurrentTasks)))
     .pipe(Command.withDescription(`Force compaction on databases and views.`));
-//# sourceMappingURL=active-tasks.js.map

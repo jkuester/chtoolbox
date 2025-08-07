@@ -36,4 +36,3 @@ export const getDbsInfoByName = (dbNames) => getPostRequest(dbNames)
     .pipe(Effect.flatMap(request => ChtClientService.request(request)), Effect.flatMap(CouchDbInfo.decodeResponse), Effect.scoped);
 export const getDbNames = () => getAllDbsInfo()
     .pipe(Effect.map(Array.map(({ key }) => key)));
-//# sourceMappingURL=dbs-info.js.map

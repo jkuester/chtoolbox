@@ -30,4 +30,3 @@ export class CouchDesignInfo extends Schema.Class('CouchDesignInfo')({
 export const getDesignInfo = (dbName, designName) => ChtClientService
     .request(HttpClientRequest.get(`/${dbName}/_design/${designName}/_info`))
     .pipe(Effect.flatMap(CouchDesignInfo.decodeResponse), Effect.scoped);
-//# sourceMappingURL=design-info.js.map

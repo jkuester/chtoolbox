@@ -8,4 +8,3 @@ export const ls = Command
     .ls()
     .pipe(Effect.flatMap(printLocalIpInstances)))
     .pipe(Command.withDescription(`LOCAL ONLY: List the nginx-local-ip instances and their URLs. Requires Docker.`));
-//# sourceMappingURL=ls.js.map

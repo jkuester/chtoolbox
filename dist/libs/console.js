@@ -16,4 +16,3 @@ export const clearConsole = Effect.void.pipe(Effect.filterEffectOrElse({
 }));
 export const clearThen = (printEffect) => clearConsole.pipe(Effect.tap(printEffect));
 export const logJson = (data) => pipe(JSON.stringify(data, null, 2), Console.log);
-//# sourceMappingURL=console.js.map

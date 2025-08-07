@@ -14,4 +14,3 @@ export class ChtMonitoringData extends Schema.Class('ChtMonitoringData')({
 export const getChtMonitoringData = () => ChtClientService
     .request(HttpClientRequest.get(ENDPOINT))
     .pipe(Effect.flatMap(ChtMonitoringData.decodeResponse), Effect.scoped);
-//# sourceMappingURL=monitoring.js.map

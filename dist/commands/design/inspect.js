@@ -22,4 +22,3 @@ const designs = Args
 export const inspect = Command
     .make('inspect', { database, designs }, ({ database, designs }) => initializeUrl.pipe(Effect.andThen(pipe(designs, Array.map(getViewData(database)), Effect.allWith({ concurrency: 'unbounded' }))), Effect.tap(logJson)))
     .pipe(Command.withDescription(`Display detailed information on one or more designs for a Couch database`));
-//# sourceMappingURL=inspect.js.map

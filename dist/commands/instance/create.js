@@ -22,4 +22,3 @@ export const create = Command
     .log('Pulling Docker images (this may take awhile depending on network speeds)...')
     .pipe(Effect.andThen(createChtInstances(names, version, directory)), Effect.andThen(clearThen(Console.log('Starting instance(s)...'))), Effect.andThen(startChtInstances(names)), Effect.tap(setLocalIpSSLCerts(names)), Effect.flatMap(printInstanceTable)))
     .pipe(Command.withDescription(`LOCAL ONLY: Create (and start) a new local CHT instance. Requires Docker and Docker Compose.`));
-//# sourceMappingURL=create.js.map

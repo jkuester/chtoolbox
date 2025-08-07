@@ -7,4 +7,3 @@ import { ls } from "./ls.js";
 export const db = Command
     .make('db', {})
     .pipe(Command.withDescription(`Manage Couch databases.`), Command.withSubcommands([create, compact, inspect, ls, rm]));
-//# sourceMappingURL=index.js.map

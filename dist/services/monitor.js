@@ -164,4 +164,3 @@ export class MonitorService extends Effect.Service()('chtoolbox/MonitorService',
     accessors: true,
 }) {
 }
-//# sourceMappingURL=monitor.js.map

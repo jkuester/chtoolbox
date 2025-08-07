@@ -8,4 +8,3 @@ const designScriptPath = Args
 export const generate = Command
     .make('generate', { designScriptPath }, ({ designScriptPath }) => initializeUrl.pipe(Effect.andThen(TestDataGeneratorService.generate(designScriptPath))))
     .pipe(Command.withDescription('Generate docs using https://github.com/medic/test-data-generator.'));
-//# sourceMappingURL=generate.js.map

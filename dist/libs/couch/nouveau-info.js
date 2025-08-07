@@ -16,4 +16,3 @@ export class NouveauInfo extends Schema.Class('NouveauInfo')({
 export const getNouveauInfo = (dbName, ddocName, indexName) => ChtClientService
     .request(HttpClientRequest.get(`/${dbName}/_design/${ddocName}/_nouveau_info/${indexName}`))
     .pipe(Effect.flatMap(NouveauInfo.decodeResponse), Effect.scoped);
-//# sourceMappingURL=nouveau-info.js.map

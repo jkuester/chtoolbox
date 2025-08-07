@@ -17,4 +17,3 @@ export const compact = Command
     .make('compact', { follow, database, designs }, ({ follow, database, designs }) => initializeUrl.pipe(Effect.andThen(CompactService.compactDesign(database)), Effect.map(compactDesign => Array.map(designs, compactDesign)), Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })), Effect.map(Option.liftPredicate(() => follow)), Effect.map(Option.map(mergeArrayStreams)), Effect.map(Option.map(streamActiveTasks)), Effect.flatMap(Option.getOrElse(() => Console.log('Compaction started. Watch the active tasks for progress: chtx active-tasks -f')))))
     .pipe(Command.withDescription(`Run compaction on one or more Couch designs. `
     + `The \`db compact\` command can be used to compact entire databases.`));
-//# sourceMappingURL=compact.js.map

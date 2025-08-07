@@ -35,4 +35,3 @@ export class LocalIpService extends Effect.Service()('chtoolbox/LocalIpService',
     accessors: true,
 }) {
 }
-//# sourceMappingURL=local-ip.js.map

@@ -106,4 +106,3 @@ export class UpgradeService extends Effect.Service()('chtoolbox/UpgradeService',
     accessors: true,
 }) {
 }
-//# sourceMappingURL=upgrade.js.map

@@ -9,4 +9,3 @@ const databases = Args
 export const inspect = Command
     .make('inspect', { databases }, ({ databases }) => initializeUrl.pipe(Effect.andThen(getDbsInfoByName(databases)), Effect.tap(logJson)))
     .pipe(Command.withDescription(`Display detailed information on one or more Couch databases`));
-//# sourceMappingURL=inspect.js.map

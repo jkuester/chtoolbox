@@ -15,4 +15,3 @@ const database = Args
 export const ls = Command
     .make('ls', { database }, ({ database }) => initializeUrl.pipe(Effect.andThen(Effect.succeed(database)), Effect.map(Option.map(printDesignDocNames)), Effect.flatMap(Option.getOrElse(() => printAllDesignDocNames))))
     .pipe(Command.withDescription(`List designs for a Couch database`));
-//# sourceMappingURL=ls.js.map

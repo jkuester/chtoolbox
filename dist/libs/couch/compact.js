@@ -10,4 +10,3 @@ const compact = (dbName, designName) => getCompactRequest(dbName, designName)
     .pipe(Effect.flatMap(request => ChtClientService.request(request)), Effect.andThen(Effect.void), Effect.scoped);
 export const compactDb = (dbName) => compact(dbName);
 export const compactDesign = (dbName, designName) => compact(dbName, designName);
-//# sourceMappingURL=compact.js.map

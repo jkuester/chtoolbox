@@ -21,4 +21,3 @@ export const rm = Command
     .pipe(Command.withDescription('LOCAL ONLY: Remove a local CHT instance, completely deleting all associated data. ' +
     'If the data for this instance was mapped to a local directory when the instance was created (via the ' +
     '--directory flag) this data will NOT be deleted. Requires Docker and Docker Compose.'));
-//# sourceMappingURL=rm.js.map

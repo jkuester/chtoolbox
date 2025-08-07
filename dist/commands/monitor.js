@@ -13,4 +13,3 @@ const trackDirSize = Options
 export const monitor = Command
     .make('monitor', { interval, trackDirSize }, ({ interval, trackDirSize }) => pipe(initializeUrl, Effect.andThen(MonitorService.getCsvHeader(trackDirSize)), Effect.tap(printCsvRow), Effect.andThen(Effect.repeat(monitorData(trackDirSize), Schedule.spaced(interval * 1000)))))
     .pipe(Command.withDescription(`Poll CHT metrics.`));
-//# sourceMappingURL=monitor.js.map

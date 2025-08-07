@@ -43,4 +43,3 @@ const cli = Command.run(command, {
 const httpClientNoSslVerify = Layer.provide(NodeHttpClient.layerWithoutAgent.pipe(Layer.provide(NodeHttpClient.makeAgentLayer({ rejectUnauthorized: false }))));
 cli(process.argv)
     .pipe(Effect.provide(CompactService.Default), Effect.provide(MonitorService.Default), Effect.provide(LocalDiskUsageService.Default), Effect.provide(LocalInstanceService.Default.pipe(httpClientNoSslVerify)), Effect.provide(LocalIpService.Default), Effect.provide(PurgeService.Default), Effect.provide(UpgradeService.Default), Effect.provide(WarmViewsService.Default), Effect.provide(ReplicateService.Default), Effect.provide(TestDataGeneratorService.Default), Effect.provide(PouchDBService.Default), Effect.provide(ChtClientService.Default.pipe(httpClientNoSslVerify)), Effect.provide(EnvironmentService.Default), Effect.provide(NodeContext.layer), NodeRuntime.runMain);
-//# sourceMappingURL=index.js.map

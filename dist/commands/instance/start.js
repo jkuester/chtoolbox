@@ -16,4 +16,3 @@ export const start = Command
     .pipe(Effect.flatMap(printInstanceTable)))
     .pipe(Command.withDescription('LOCAL ONLY: Start a local CHT instance. The instance must already have been created. ' +
     'Requires Docker and Docker Compose.'));
-//# sourceMappingURL=start.js.map

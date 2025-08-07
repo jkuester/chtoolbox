@@ -117,4 +117,3 @@ export class PouchDBService extends Effect.Service()('chtoolbox/PouchDBService',
     accessors: true,
 }) {
 }
-//# sourceMappingURL=pouchdb.js.map

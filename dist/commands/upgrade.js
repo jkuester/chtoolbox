@@ -46,4 +46,3 @@ const version = Args
 export const upgrade = Command
     .make('upgrade', { version, follow, stage, complete, preStage }, (opts) => initializeUrl.pipe(Effect.andThen(getUpgradeAction(opts)), Effect.flatMap(getStreamAction(opts))))
     .pipe(Command.withDescription(`Run compaction on all databases and views.`));
-//# sourceMappingURL=upgrade.js.map

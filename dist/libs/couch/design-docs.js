@@ -12,4 +12,3 @@ class CouchDesignDocs extends Schema.Class('CouchDesignDocs')({
 export const getDesignDocNames = (dbName) => ChtClientService
     .request(HttpClientRequest.get(`/${dbName}/_design_docs`))
     .pipe(Effect.flatMap(CouchDesignDocs.decodeResponse), Effect.scoped, Effect.map(designDocs => designDocs.rows), Effect.map(Array.map(({ id }) => id)), Effect.map(Array.map(id => id.split('/')[1])));
-//# sourceMappingURL=design-docs.js.map

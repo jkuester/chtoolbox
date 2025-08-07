@@ -8,4 +8,3 @@ const purgeDb = (dbName) => (body) => getPostRequest(dbName, body)
     .pipe(Effect.flatMap(ChtClientService.request), Effect.scoped);
 const purgeDocs = (dbName, docs) => pipe(docs, Array.reduce({}, (acc, doc) => ({ ...acc, [doc._id]: [doc._rev] })), purgeDb(dbName));
 export const purgeFrom = (dbName) => (docs) => purgeDocs(dbName, docs);
-//# sourceMappingURL=purge.js.map

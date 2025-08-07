@@ -10,4 +10,3 @@ const databases = Args
 export const create = Command
     .make('create', { databases }, ({ databases }) => initializeUrl.pipe(Effect.andThen(createDbs(databases)), Effect.map(Array.map(db => Effect.promise(() => db.info()))), Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })), Effect.tap(logJson)))
     .pipe(Command.withDescription(`Create new Couch database. Nothing happens if the database already exists.`));
-//# sourceMappingURL=create.js.map

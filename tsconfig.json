@@ -1,18 +1,24 @@
 {
   "extends": "@tsconfig/node20/tsconfig.json",
   "compilerOptions": {
-    "allowImportingTsExtensions": true,
-    "allowSyntheticDefaultImports": true,
-    "composite": true,
-    "declarationMap": true,
-    "rewriteRelativeImportExtensions": true,
-    "exactOptionalPropertyTypes": true,
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
+
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noImplicitOverride": true,
     "outDir": "dist",
     "resolveJsonModule": true,
-    "sourceMap": true,
+    "verbatimModuleSyntax": true,
+
+
+    "allowImportingTsExtensions": true,
+    "allowSyntheticDefaultImports": true,
+    "rewriteRelativeImportExtensions": true,
+    "exactOptionalPropertyTypes": true,
+    "moduleResolution": "nodenext",
     "tsBuildInfoFile": "dist/tsconfig.build.tsbuildinfo",
+
+
+
   },
   "files": [
     "package.json"

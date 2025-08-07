@@ -19,4 +19,3 @@ const databases = Args
 export const rm = Command
     .make('rm', { databases, yes }, ({ databases, yes }) => initializeUrl.pipe(Effect.andThen(isRemoveConfirmed(databases, yes)), Effect.map(removeConfirmed => Option.liftPredicate(destroyDbs(databases), () => removeConfirmed)), Effect.flatMap(Option.getOrElse(() => Console.log('Operation cancelled')))))
     .pipe(Command.withDescription(`Remove Couch database. Nothing happens if the database does not exist.`));
-//# sourceMappingURL=rm.js.map

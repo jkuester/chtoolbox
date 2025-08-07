@@ -16,4 +16,3 @@ export class LocalDiskUsageService extends Effect.Service()('chtoolbox/LocalDisk
     accessors: true,
 }) {
 }
-//# sourceMappingURL=local-disk-usage.js.map

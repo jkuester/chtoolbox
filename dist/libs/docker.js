@@ -63,4 +63,3 @@ export const doesContainerExist = (containerName) => Command
 export const rmContainer = (name) => Command
     .make('docker', 'rm', '-f', name)
     .pipe(runForExitCode);
-//# sourceMappingURL=docker.js.map

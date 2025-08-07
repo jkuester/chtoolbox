@@ -14,4 +14,3 @@ export class CouchNodeSystem extends Schema.Class('CouchNodeSystem')({
 export const getCouchNodeSystem = () => ChtClientService
     .request(HttpClientRequest.get(ENDPOINT))
     .pipe(Effect.flatMap(CouchNodeSystem.decodeResponse), Effect.scoped);
-//# sourceMappingURL=node-system.js.map

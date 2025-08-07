@@ -251,4 +251,3 @@ export class LocalInstanceService extends Effect.Service()('chtoolbox/LocalInsta
     accessors: true,
 }) {
 }
-//# sourceMappingURL=local-instance.js.map

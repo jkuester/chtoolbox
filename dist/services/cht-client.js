@@ -24,4 +24,3 @@ export class ChtClientService extends Effect.Service()('chtoolbox/ChtClientServi
     accessors: true,
 }) {
 }
-//# sourceMappingURL=cht-client.js.map

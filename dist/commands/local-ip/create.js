@@ -14,4 +14,3 @@ export const create = Command
     .create(toPort, fromPort)
     .pipe(Effect.map(from => ({ from, to: toPort })), Effect.map(Array.make), Effect.flatMap(printLocalIpInstances)))
     .pipe(Command.withDescription(`LOCAL ONLY: Create (and start) a new nginx-local-ip instance. Requires Docker.`));
-//# sourceMappingURL=create.js.map

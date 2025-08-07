@@ -47,4 +47,3 @@ export const purge = Command
     .pipe(Command.withDescription('Purge docs from a database. This operation is inefficient with large numbers of docs. When possible, simply ' +
     'delete and recreate the database. The results of a purge operation will NOT be replicated to client dbs, so ' +
     'any currently logged in users should be logged out and have their cache cleared to force a re-sync.'));
-//# sourceMappingURL=purge.js.map
