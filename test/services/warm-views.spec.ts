@@ -25,7 +25,7 @@ const { WarmViewsService } = await esmock<typeof WarmViewsSvc>('../../src/servic
   '../../src/libs/couch/design-info.ts': mockDesignInfoLib,
   '../../src/libs/couch/design-docs.ts': mockDesignDocsLib,
   '../../src/libs/couch/design.ts': mockDesignLib,
-  '../../src/libs/couch/view.js': mockViewLib,
+  '../../src/libs/couch/view.ts': mockViewLib,
 });
 const run = WarmViewsService.Default.pipe(
   Layer.provide(Layer.succeed(ChtClientService, {} as unknown as ChtClientService)),

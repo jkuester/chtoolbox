@@ -2,10 +2,10 @@ import { describe, it } from 'mocha';
 import { Array, Chunk, Effect, Either, Layer, Option, Redacted, Stream } from 'effect';
 import sinon, { type SinonStub } from 'sinon';
 import PouchDB from 'pouchdb-core';
-import * as PouchDbSvc from '../../src/services/pouchdb.js';
-import { EnvironmentService } from '../../src/services/environment.js';
+import * as PouchDbSvc from '../../src/services/pouchdb.ts';
+import { EnvironmentService } from '../../src/services/environment.ts';
 import { expect } from 'chai';
-import { genWithLayer, sandbox } from '../utils/base.js';
+import { genWithLayer, sandbox } from '../utils/base.ts';
 import esmock from 'esmock';
 
 const FAKE_POUCHDB = { hello: 'world' } as const;
@@ -21,8 +21,8 @@ const {
   streamAllDocPages,
   streamChanges,
   streamQueryPages
-} = await esmock<typeof PouchDbSvc>('../../src/services/pouchdb.js', {
-  '../../src/libs/core.js': mockCore,
+} = await esmock<typeof PouchDbSvc>('../../src/services/pouchdb.ts', {
+  '../../src/libs/core.ts': mockCore,
   'effect': { Stream: { ...Stream, ...mockStream } },
 });
 const run = PouchDBService.Default.pipe(

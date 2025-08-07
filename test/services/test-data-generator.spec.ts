@@ -24,7 +24,7 @@ const mockCommand = {
 }
 const envGet = sandbox.stub();
 
-const { TestDataGeneratorService } = await esmock<typeof TestDataGeneratorSvc>('../../src/services/test-data-generator.js', {
+const { TestDataGeneratorService } = await esmock<typeof TestDataGeneratorSvc>('../../src/services/test-data-generator.ts', {
   '@effect/platform': { Command: mockCommand }
 });
 const run = TestDataGeneratorService.Default.pipe(

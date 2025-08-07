@@ -41,10 +41,10 @@ const mockUpgradeLib = {
 }
 const mockCore = { pouchDB: sandbox.stub() };
 
-const { UpgradeService } = await esmock<typeof UpgradeSvc>('../../src/services/upgrade.js', {
-  '../../src/libs/core.js': mockCore,
-  '../../src/services/pouchdb.js': mockPouchSvc,
-  '../../src/libs/cht/upgrade.js': mockUpgradeLib,
+const { UpgradeService } = await esmock<typeof UpgradeSvc>('../../src/services/upgrade.ts', {
+  '../../src/libs/core.ts': mockCore,
+  '../../src/services/pouchdb.ts': mockPouchSvc,
+  '../../src/libs/cht/upgrade.ts': mockUpgradeLib,
 });
 const run = UpgradeService.Default.pipe(
   Layer.provideMerge(Layer.succeed(ChtClientService, { } as unknown as ChtClientService)),

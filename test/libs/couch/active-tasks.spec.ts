@@ -2,9 +2,9 @@ import { describe, it } from 'mocha';
 import { Chunk, Effect, Layer, Option, Schedule, Stream } from 'effect';
 import { expect } from 'chai';
 import { ChtClientService } from '../../../src/services/cht-client.ts';
-import * as ActiveTasksLib from '../../../src/libs/couch/active-tasks.js';
-import { createActiveTask } from '../../utils/data-models.js';
-import { genWithLayer, sandbox } from '../../utils/base.js';
+import * as ActiveTasksLib from '../../../src/libs/couch/active-tasks.ts';
+import { createActiveTask } from '../../utils/data-models.ts';
+import { genWithLayer, sandbox } from '../../utils/base.ts';
 import esmock from 'esmock';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
@@ -40,7 +40,7 @@ const {
   getPid,
   getProgressPct,
   streamActiveTasks
-} = await esmock<typeof ActiveTasksLib>('../../../src/libs/couch/active-tasks.js', {
+} = await esmock<typeof ActiveTasksLib>('../../../src/libs/couch/active-tasks.ts', {
   '@effect/platform': { HttpClientRequest: mockHttpRequest },
   'effect': { Schedule: mockSchedule },
 });

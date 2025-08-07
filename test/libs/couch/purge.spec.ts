@@ -18,7 +18,7 @@ const requestBuild = sandbox.stub();
 const run = Layer
   .succeed(ChtClientService, mockChtClient as unknown as ChtClientService)
   .pipe(genWithLayer);
-const { purgeFrom } = await esmock<typeof PurgeLibs>('../../../src/libs/couch/purge.js', {
+const { purgeFrom } = await esmock<typeof PurgeLibs>('../../../src/libs/couch/purge.ts', {
   '@effect/platform': { HttpClientRequest: mockHttpRequest }
 });
 

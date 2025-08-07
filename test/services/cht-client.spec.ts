@@ -4,9 +4,9 @@ import { expect } from 'chai';
 import sinon from 'sinon';
 import * as ChtClientSvc from '../../src/services/cht-client.ts';
 import { HttpClientRequest } from '@effect/platform';
-import { EnvironmentService } from '../../src/services/environment.js';
+import { EnvironmentService } from '../../src/services/environment.ts';
 import { NodeHttpClient } from '@effect/platform-node';
-import { genWithLayer, sandbox } from '../utils/base.js';
+import { genWithLayer, sandbox } from '../utils/base.ts';
 import esmock from 'esmock';
 
 const mockHttpClient = {
@@ -16,7 +16,7 @@ const mockHttpClient = {
 const mockHttpRequest = { prependUrl: sandbox.stub() };
 const environmentGet = sandbox.stub();
 
-const { ChtClientService } = await esmock<typeof ChtClientSvc>('../../src/services/cht-client.js', {
+const { ChtClientService } = await esmock<typeof ChtClientSvc>('../../src/services/cht-client.ts', {
   '@effect/platform': { HttpClientRequest: mockHttpRequest },
   '@effect/platform/HttpClient': mockHttpClient
 });

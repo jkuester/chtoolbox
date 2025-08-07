@@ -4,7 +4,7 @@ import { initializeUrl } from '../../index.ts';
 import { getDesignDocNames } from '../../libs/couch/design-docs.ts';
 import { getDbNames } from '../../libs/couch/dbs-info.ts';
 
-import { logJson } from '../../libs/console.js';
+import { logJson } from '../../libs/console.ts';
 
 const printDesignDocNames = (dbName: string) => getDesignDocNames(dbName)
   .pipe(Effect.flatMap(logJson));

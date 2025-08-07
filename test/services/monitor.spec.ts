@@ -1,21 +1,21 @@
 import { afterEach, describe, it } from 'mocha';
 import { Effect, Either, Layer, Option, TestClock } from 'effect';
 import { expect } from 'chai';
-import * as MonitorSvc from '../../src/services/monitor.js';
-import { CouchNodeSystem } from '../../src/libs/couch/node-system.js';
+import * as MonitorSvc from '../../src/services/monitor.ts';
+import { CouchNodeSystem } from '../../src/libs/couch/node-system.ts';
 import { type SinonStub } from 'sinon';
-import { CouchDbInfo } from '../../src/libs/couch/dbs-info.js';
-import { CouchDesignInfo } from '../../src/libs/couch/design-info.js';
-import { LocalDiskUsageService } from '../../src/services/local-disk-usage.js';
-import { createDbInfo, createDesignInfo, createNodeSystem, createNouveauInfo, createChtMonitoringData } from '../utils/data-models.js';
+import { CouchDbInfo } from '../../src/libs/couch/dbs-info.ts';
+import { CouchDesignInfo } from '../../src/libs/couch/design-info.ts';
+import { LocalDiskUsageService } from '../../src/services/local-disk-usage.ts';
+import { createDbInfo, createDesignInfo, createNodeSystem, createNouveauInfo, createChtMonitoringData } from '../utils/data-models.ts';
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import { type NonEmptyArray } from 'effect/Array';
-import { genWithLayer, sandbox } from '../utils/base.js';
-import { ChtClientService } from '../../src/services/cht-client.js';
+import { genWithLayer, sandbox } from '../utils/base.ts';
+import { ChtClientService } from '../../src/services/cht-client.ts';
 import esmock from 'esmock';
-import { NouveauInfo } from '../../src/libs/couch/nouveau-info.js';
-import { ChtMonitoringData } from '../../src/libs/cht/monitoring.js';
+import { NouveauInfo } from '../../src/libs/couch/nouveau-info.ts';
+import { ChtMonitoringData } from '../../src/libs/cht/monitoring.ts';
 
 const DB_NAMES: NonEmptyArray<string> = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 const EXPECTED_DESIGN_INFO_ARGS = [
@@ -171,12 +171,12 @@ const mockDbsInfoLib = { getDbsInfoByName: sandbox.stub() };
 const mockChtMonitoringLib = { getChtMonitoringData: sandbox.stub() };
 const diskUsageServiceGetSize = sandbox.stub();
 
-const { MonitorService } = await esmock<typeof MonitorSvc>('../../src/services/monitor.js', {
-  '../../src/libs/couch/node-system.js': mockNodeSystemLib,
-  '../../src/libs/couch/dbs-info.js': mockDbsInfoLib,
-  '../../src/libs/couch/design-info.js': mockDesignInfoLib,
-  '../../src/libs/couch/nouveau-info.js': mockNouveauInfoLib,
-  '../../src/libs/cht/monitoring.js': mockChtMonitoringLib,
+const { MonitorService } = await esmock<typeof MonitorSvc>('../../src/services/monitor.ts', {
+  '../../src/libs/couch/node-system.ts': mockNodeSystemLib,
+  '../../src/libs/couch/dbs-info.ts': mockDbsInfoLib,
+  '../../src/libs/couch/design-info.ts': mockDesignInfoLib,
+  '../../src/libs/couch/nouveau-info.ts': mockNouveauInfoLib,
+  '../../src/libs/cht/monitoring.ts': mockChtMonitoringLib,
 });
 const run = MonitorService.Default.pipe(
   Layer.provide(Layer.succeed(ChtClientService, {} as unknown as ChtClientService)),

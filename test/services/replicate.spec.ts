@@ -17,7 +17,7 @@ const mockPouchSvc = {
 const environmentGet = sandbox.stub();
 
 const { ReplicateService } = await esmock<typeof ReplicateSvc>('../../src/services/replicate.ts', {
-  '../../src/services/pouchdb.js': mockPouchSvc,
+  '../../src/services/pouchdb.ts': mockPouchSvc,
 });
 const run = ReplicateService.Default.pipe(
   Layer.provide(Layer.succeed(PouchDBService, { } as unknown as PouchDBService)),

@@ -3,8 +3,8 @@ import { Array, Effect, Either, Layer, Option, pipe, Redacted, Schedule } from '
 import sinon, { type SinonStub } from 'sinon';
 import { expect } from 'chai';
 import { genWithLayer, sandbox } from '../utils/base.ts';
-import * as LocalInstanceSvc from '../../src/services/local-instance.js';
-import { type SSLType } from '../../src/services/local-instance.js';
+import * as LocalInstanceSvc from '../../src/services/local-instance.ts';
+import { type SSLType } from '../../src/services/local-instance.ts';
 import { NodeContext } from '@effect/platform-node';
 import { FileSystem, HttpClient, HttpClientRequest } from '@effect/platform';
 import esmock from 'esmock';
@@ -55,12 +55,12 @@ const mockNetworkLib = { getFreePorts: sandbox.stub() };
 const mockSchedule = { spaced: sandbox.stub() };
 const httpClientExecute = sandbox.stub();
 
-const { LocalInstanceService } = await esmock<typeof LocalInstanceSvc>('../../src/services/local-instance.js', {
-  '../../src/libs/docker.js': mockDockerLib,
-  '../../src/libs/file.js': mockFileLib,
+const { LocalInstanceService } = await esmock<typeof LocalInstanceSvc>('../../src/services/local-instance.ts', {
+  '../../src/libs/docker.ts': mockDockerLib,
+  '../../src/libs/file.ts': mockFileLib,
   '@effect/platform/HttpClient': mockHttpClient,
   '@effect/platform': { HttpClientRequest: mockHttpRequest },
-  '../../src/libs/local-network.js': mockNetworkLib,
+  '../../src/libs/local-network.ts': mockNetworkLib,
   'effect': { Schedule: mockSchedule },
 });
 const run = LocalInstanceService.Default.pipe(

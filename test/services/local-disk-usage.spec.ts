@@ -3,7 +3,7 @@ import { Effect, Layer } from 'effect';
 import { expect } from 'chai';
 import * as LocalDiskUsageSvc from '../../src/services/local-disk-usage.ts';
 import { NodeContext } from '@effect/platform-node';
-import { genWithLayer, sandbox } from '../utils/base.js';
+import { genWithLayer, sandbox } from '../utils/base.ts';
 import esmock from 'esmock';
 
 const FAKE_COMMAND = Effect.succeed({ hello: 'world' });
@@ -12,7 +12,7 @@ const mockCommand = {
   string: sandbox.stub(),
 }
 
-const { LocalDiskUsageService } = await esmock<typeof LocalDiskUsageSvc>('../../src/services/local-disk-usage.js', {
+const { LocalDiskUsageService } = await esmock<typeof LocalDiskUsageSvc>('../../src/services/local-disk-usage.ts', {
   '@effect/platform': { Command: mockCommand }
 });
 const run = LocalDiskUsageService.Default.pipe(

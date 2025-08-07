@@ -2,10 +2,10 @@ import { describe, it } from 'mocha';
 import { Effect, Either, Layer } from 'effect';
 import { expect } from 'chai';
 import { ChtClientService } from '../../../src/services/cht-client.ts';
-import { createDbInfo } from '../../utils/data-models.js';
+import { createDbInfo } from '../../utils/data-models.ts';
 import { type NonEmptyArray } from 'effect/Array';
-import { genWithLayer, sandbox } from '../../utils/base.js';
-import * as DbsInfoLibs from '../../../src/libs/couch/dbs-info.js';
+import { genWithLayer, sandbox } from '../../utils/base.ts';
+import * as DbsInfoLibs from '../../../src/libs/couch/dbs-info.ts';
 import esmock from 'esmock';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
@@ -24,7 +24,7 @@ const {
   getAllDbsInfo,
   getDbNames,
   getDbsInfoByName
-} = await esmock<typeof DbsInfoLibs>('../../../src/libs/couch/dbs-info.js', {
+} = await esmock<typeof DbsInfoLibs>('../../../src/libs/couch/dbs-info.ts', {
   '@effect/platform': { HttpClientRequest: mockHttpRequest }
 });
 
