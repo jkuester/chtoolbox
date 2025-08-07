@@ -1,7 +1,6 @@
 import * as Effect from 'effect/Effect';
 import { Schema } from 'effect';
 import { ChtClientService } from '../../services/cht-client.js';
-import { NonEmptyArray } from 'effect/Array';
 declare const CouchDbInfo_base: Schema.Class<CouchDbInfo, {
     key: typeof Schema.String;
     info: Schema.Struct<{
@@ -49,8 +48,6 @@ declare const CouchDbInfo_base: Schema.Class<CouchDbInfo, {
         instance_start_time: typeof Schema.String;
     }>;
 }>, never, {
-    readonly key: string;
-} & {
     readonly info: {
         readonly db_name: string;
         readonly update_seq: string;
@@ -72,12 +69,14 @@ declare const CouchDbInfo_base: Schema.Class<CouchDbInfo, {
         };
         readonly instance_start_time: string;
     };
+} & {
+    readonly key: string;
 }, {}, {}>;
 export declare class CouchDbInfo extends CouchDbInfo_base {
-    static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<readonly CouchDbInfo[], import("effect/ParseResult").ParseError | E, never>;
+    static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<readonly CouchDbInfo[], E | import("effect/ParseResult").ParseError, never>;
 }
 export declare const getAllDbsInfo: () => Effect.Effect<readonly CouchDbInfo[], Error, ChtClientService>;
-export declare const getDbsInfoByName: (dbNames: NonEmptyArray<string>) => Effect.Effect<readonly CouchDbInfo[], Error, ChtClientService>;
+export declare const getDbsInfoByName: (dbNames: [string, ...string[]]) => Effect.Effect<readonly CouchDbInfo[], Error, ChtClientService>;
 export declare const getDbNames: () => Effect.Effect<string[], Error, ChtClientService>;
 export {};
 //# sourceMappingURL=dbs-info.d.ts.map

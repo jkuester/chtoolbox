@@ -18,7 +18,7 @@ declare const CouchNodeSystem_base: Schema.Class<CouchNodeSystem, {
     };
 }, {}, {}>;
 export declare class CouchNodeSystem extends CouchNodeSystem_base {
-    static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<CouchNodeSystem, import("effect/ParseResult").ParseError | E, never>;
+    static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<CouchNodeSystem, E | import("effect/ParseResult").ParseError, never>;
 }
 export declare const getCouchNodeSystem: () => Effect.Effect<CouchNodeSystem, Error, ChtClientService>;
 export {};

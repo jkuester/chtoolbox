@@ -1,7 +1,7 @@
 import { Command } from '@effect/cli';
 import { Option } from 'effect';
 import { MonitorService } from '../services/monitor.js';
-export declare const monitor: Command.Command<"monitor", import("../services/environment.js").EnvironmentService | MonitorService | Command.Command.Context<"chtx">, Error, {
+export declare const monitor: Command.Command<"monitor", Command.Command.Context<"chtx"> | import("../services/environment.ts").EnvironmentService | MonitorService, Error, {
     readonly interval: number;
     readonly trackDirSize: Option.Option<string>;
 }>;

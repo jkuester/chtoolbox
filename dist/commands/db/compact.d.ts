@@ -9,7 +9,7 @@ export declare const getTaskDisplayData: (task: CouchActiveTask) => {
     progress: string;
 };
 export declare const streamActiveTasks: (taskStream: CouchActiveTaskStream) => Effect.Effect<void, Error, ChtClientService>;
-export declare const compact: Command.Command<"compact", import("../../services/environment.js").EnvironmentService | ChtClientService | Command.Command.Context<"chtx"> | CompactService, Error, {
+export declare const compact: Command.Command<"compact", ChtClientService | CompactService | Command.Command.Context<"chtx"> | import("../../services/environment.ts").EnvironmentService, Error, {
     readonly follow: boolean;
     readonly databases: string[];
     readonly all: boolean;

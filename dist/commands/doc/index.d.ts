@@ -1,5 +1,5 @@
 import { Command } from '@effect/cli';
-export declare const doc: Command.Command<"doc", import("../../services/environment.js").EnvironmentService | import("../../services/cht-client.js").ChtClientService | Command.Command.Context<"chtx"> | import("../../services/pouchdb.js").PouchDBService | import("../../services/replicate.js").ReplicateService | import("@effect/platform/Terminal").Terminal | import("../../services/test-data-generator.js").TestDataGeneratorService | import("../../services/purge.js").PurgeService, Error | import("effect/ParseResult").ParseError, {
+export declare const doc: Command.Command<"doc", import("../../services/cht-client.ts").ChtClientService | Command.Command.Context<"chtx"> | import("../../services/environment.ts").EnvironmentService | import("../../services/pouchdb.ts").PouchDBService | import("../../services/purge.ts").PurgeService | import("../../services/replicate.ts").ReplicateService | import("@effect/platform/Terminal").Terminal | import("../../services/test-data-generator.ts").TestDataGeneratorService, Error | import("effect/ParseResult").ParseError, {
     readonly subcommand: import("effect/Option").Option<{
         readonly designScriptPath: string;
     } | {

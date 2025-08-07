@@ -36,8 +36,8 @@ declare const UpgradeService_base: Effect.Service.Class<UpgradeService, "chtoolb
         upgrade: (version: string) => UpgradeLogStreamEffect;
         stage: (version: string) => UpgradeLogStreamEffect;
         complete: (version: string) => UpgradeLogStreamEffect;
-        preStage: (version: string) => Effect.Effect<CouchActiveTaskStream, Error>;
-    }, never, ChtClientService | WarmViewsService | PouchDBService>;
+        preStage: (version: string) => Effect.Effect<CouchActiveTaskStream, Error, never>;
+    }, never, ChtClientService | PouchDBService | WarmViewsService>;
     readonly accessors: true;
 }>;
 export declare class UpgradeService extends UpgradeService_base {

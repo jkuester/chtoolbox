@@ -4,12 +4,12 @@ import { ChtClientService } from './cht-client.js';
 import { CouchActiveTask } from '../libs/couch/active-tasks.js';
 declare const WarmViewsService_base: Effect.Service.Class<WarmViewsService, "chtoolbox/WarmViewsService", {
     readonly effect: Effect.Effect<{
-        warmAll: () => Effect.Effect<void, Error>;
+        warmAll: () => Effect.Effect<void, Error, never>;
         designsCurrentlyUpdating: () => Effect.Effect<{
             dbName: string;
             designId: string;
-        }[], Error>;
-        warmDesign: (dbName: string, designId: string) => Stream.Stream<CouchActiveTask[], Error>;
+        }[], Error, never>;
+        warmDesign: (dbName: string, designId: string) => Stream.Stream<CouchActiveTask[], Error, never>;
     }, never, ChtClientService>;
     readonly accessors: true;
 }>;

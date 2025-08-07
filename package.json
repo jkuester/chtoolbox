@@ -17,7 +17,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "build-app": "rm -rf dist && tsc -p tsconfig.build.json && chmod +x dist/index.js",
+    "build-app": "rm -rf dist && tsgo -p tsconfig.build.json && chmod +x dist/index.js",
     "lint": "eslint --color --cache . && knip --production",
     "local": "tsx src/index.ts",
     "test": "c8 mocha \"test/**/*\""
@@ -37,6 +37,7 @@
     "@types/sinon": "^17.0.4",
     "@typescript-eslint/eslint-plugin": "^8.35.1",
     "@typescript-eslint/parser": "^8.38.0",
+    "@typescript/native-preview": "^7.0.0-dev.20250807.1",
     "c8": "^10.1.3",
     "chai": "^5.2.1",
     "chai-exclude": "^3.0.1",
@@ -50,7 +51,6 @@
     "mocha": "^11.4.0",
     "sinon": "^21.0.0",
     "tsx": "^4.20.3",
-    "typescript": "^5.8.3",
     "typescript-eslint": "^8.37.0"
   },
   "dependencies": {

@@ -3,8 +3,8 @@ import { EnvironmentService } from './environment.js';
 import { CommandExecutor, ExitCode } from '@effect/platform/CommandExecutor';
 declare const TestDataGeneratorService_base: Effect.Service.Class<TestDataGeneratorService, "chtoolbox/TestDataGeneratorService", {
     readonly effect: Effect.Effect<{
-        generate: (designScriptPath: string) => Effect.Effect<ExitCode, Error>;
-    }, never, EnvironmentService | CommandExecutor>;
+        generate: (designScriptPath: string) => Effect.Effect<ExitCode, Error, never>;
+    }, never, CommandExecutor | EnvironmentService>;
     readonly accessors: true;
 }>;
 export declare class TestDataGeneratorService extends TestDataGeneratorService_base {

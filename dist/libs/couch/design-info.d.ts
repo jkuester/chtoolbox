@@ -49,16 +49,16 @@ declare const CouchDesignInfo_base: Schema.Class<CouchDesignInfo, {
     readonly name: string;
 } & {
     readonly view_index: {
-        readonly sizes: {
-            readonly file: number;
-            readonly external: number;
-            readonly active: number;
-        };
-        readonly purge_seq: number;
-        readonly compact_running: boolean;
         readonly collator_versions: readonly string[];
+        readonly compact_running: boolean;
         readonly language: string;
+        readonly purge_seq: number;
         readonly signature: string;
+        readonly sizes: {
+            readonly active: number;
+            readonly external: number;
+            readonly file: number;
+        };
         readonly updater_running: boolean;
         readonly updates_pending: {
             readonly minimum: number;
@@ -70,7 +70,7 @@ declare const CouchDesignInfo_base: Schema.Class<CouchDesignInfo, {
     };
 }, {}, {}>;
 export declare class CouchDesignInfo extends CouchDesignInfo_base {
-    static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<CouchDesignInfo, import("effect/ParseResult").ParseError | E, never>;
+    static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<CouchDesignInfo, E | import("effect/ParseResult").ParseError, never>;
 }
 export declare const getDesignInfo: (dbName: string, designName: string) => Effect.Effect<CouchDesignInfo, Error, ChtClientService>;
 export {};

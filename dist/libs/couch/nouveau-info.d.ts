@@ -28,7 +28,7 @@ declare const NouveauInfo_base: Schema.Class<NouveauInfo, {
     };
 }, {}, {}>;
 export declare class NouveauInfo extends NouveauInfo_base {
-    static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<NouveauInfo, import("effect/ParseResult").ParseError | E, never>;
+    static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<NouveauInfo, E | import("effect/ParseResult").ParseError, never>;
 }
 export declare const getNouveauInfo: (dbName: string, ddocName: string, indexName: string) => Effect.Effect<NouveauInfo, Error, ChtClientService>;
 export {};

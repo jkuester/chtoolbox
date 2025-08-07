@@ -18,7 +18,7 @@ declare const ChtMonitoringData_base: Schema.Class<ChtMonitoringData, {
     };
 }, {}, {}>;
 export declare class ChtMonitoringData extends ChtMonitoringData_base {
-    static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<ChtMonitoringData, import("effect/ParseResult").ParseError | E, never>;
+    static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<ChtMonitoringData, E | import("effect/ParseResult").ParseError, never>;
 }
 export declare const getChtMonitoringData: () => Effect.Effect<ChtMonitoringData, Error, ChtClientService>;
 export {};

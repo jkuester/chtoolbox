@@ -2,7 +2,7 @@
 import { Command, Options } from '@effect/cli';
 import { NodeContext, NodeHttpClient, NodeRuntime } from '@effect/platform-node';
 import { Effect, Layer, Option, Redacted, String } from 'effect';
-import { ChtClientService } from './services/cht-client.js';
+import { ChtClientService } from "./services/cht-client.js";
 import { monitor } from './commands/monitor.js';
 import packageJson from '../package.json' with { type: 'json' };
 import { EnvironmentService, } from './services/environment.js';

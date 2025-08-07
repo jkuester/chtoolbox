@@ -21,22 +21,22 @@ declare const CouchActiveTask_base: Schema.Class<CouchActiveTask, {
 }>, never, {
     readonly database: string;
 } & {
-    readonly pid: string;
-} & {
-    readonly started_on: number;
-} & {
-    readonly type: string;
-} & {
     readonly design_document: string | undefined;
 } & {
     readonly doc_id: string | undefined;
 } & {
     readonly docs_written: number | undefined;
 } & {
+    readonly pid: string;
+} & {
     readonly progress: number | undefined;
+} & {
+    readonly started_on: number;
+} & {
+    readonly type: string;
 }, {}, {}>;
 export declare class CouchActiveTask extends CouchActiveTask_base {
-    static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<readonly CouchActiveTask[], import("effect/ParseResult").ParseError | E, never>;
+    static readonly decodeResponse: <E>(self: import("@effect/platform/HttpIncomingMessage").HttpIncomingMessage<E>) => Effect.Effect<readonly CouchActiveTask[], E | import("effect/ParseResult").ParseError, never>;
 }
 export declare const getDesignName: (task: CouchActiveTask) => Option.Option<string>;
 export declare const getDbName: (task: CouchActiveTask) => string;

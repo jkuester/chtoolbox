@@ -5,8 +5,8 @@ export interface Environment {
 }
 declare const EnvironmentService_base: Effect.Service.Class<EnvironmentService, "chtoolbox/EnvironmentService", {
     readonly effect: Effect.Effect<{
-        get: () => Effect.Effect<Environment>;
-        setUrl: (url: Redacted.Redacted) => Effect.Effect<Environment, Error>;
+        get: () => Effect.Effect<Environment, never, never>;
+        setUrl: (url: Redacted.Redacted<string>) => Effect.Effect<Environment, Error, never>;
     }, Error | import("effect/ConfigError").ConfigError, never>;
     readonly accessors: true;
 }>;

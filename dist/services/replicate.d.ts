@@ -15,13 +15,13 @@ declare const ReplicationDoc_base: Schema.Class<ReplicationDoc, {
         docs_written: typeof Schema.Number;
     }>>;
 }>, never, {
-    readonly _id: string;
-} & {
     readonly _replication_state?: string | undefined;
 } & {
     readonly _replication_stats?: {
         readonly docs_written: number;
     } | undefined;
+} & {
+    readonly _id: string;
 }, {}, {}>;
 export declare class ReplicationDoc extends ReplicationDoc_base {
 }
@@ -31,7 +31,7 @@ interface ReplicationOptions {
 }
 declare const ReplicateService_base: Effect.Service.Class<ReplicateService, "chtoolbox/ReplicateService", {
     readonly effect: Effect.Effect<{
-        replicate: (source: string, target: string, opts?: ReplicationOptions) => Effect.Effect<Stream.Stream<ReplicationDoc, Error>, Error>;
+        replicate: (source: string, target: string, opts?: ReplicationOptions) => Effect.Effect<Stream.Stream<ReplicationDoc, Error, never>, Error, never>;
     }, never, EnvironmentService | PouchDBService>;
     readonly accessors: true;
 }>;

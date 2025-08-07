@@ -22,9 +22,9 @@ interface MonitoringData extends CouchNodeSystem {
 }
 declare const MonitorService_base: Effect.Service.Class<MonitorService, "chtoolbox/MonitorService", {
     readonly effect: Effect.Effect<{
-        get: (directory: Option.Option<string>) => Effect.Effect<MonitoringData, Error | PlatformError>;
+        get: (directory: Option.Option<string>) => Effect.Effect<MonitoringData, Error | PlatformError, never>;
         getCsvHeader: (directory: Option.Option<string>) => string[];
-        getAsCsv: (directory: Option.Option<string>) => Effect.Effect<string[], Error | PlatformError>;
+        getAsCsv: (directory: Option.Option<string>) => Effect.Effect<string[], Error | PlatformError, never>;
     }, never, ChtClientService | LocalDiskUsageService>;
     readonly accessors: true;
 }>;
