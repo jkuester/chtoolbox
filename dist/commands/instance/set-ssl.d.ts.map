@@ -1,1 +1,1 @@
-{"version":3,"file":"set-ssl.d.ts","sourceRoot":"","sources":["../../../src/commands/instance/set-ssl.ts"],"names":[],"mappings":"AAAA,OAAO,EAAQ,OAAO,EAAW,MAAM,aAAa,CAAC;AAErD,OAAO,EAAE,oBAAoB,EAAW,MAAM,kCAAkC,CAAC;AAsBjF,eAAO,MAAM,MAAM;;;EAIf,CAAC"}
+{"version":3,"file":"set-ssl.d.ts","sourceRoot":"","sources":["../../../src/commands/instance/set-ssl.ts"],"names":[],"mappings":"AAAA,OAAO,EAAQ,OAAO,EAAW,MAAM,aAAa,CAAC;AAErD,OAAO,EAAE,oBAAoB,EAAgB,MAAM,kCAAkC,CAAC;AAsBtF,eAAO,MAAM,MAAM;;;EAIf,CAAC"}

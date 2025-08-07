@@ -3,7 +3,7 @@ import { Effect, Either, Layer } from 'effect';
 import { expect } from 'chai';
 import { ChtClientService } from '../../../src/services/cht-client.ts';
 import { createDbInfo } from '../../utils/data-models.js';
-import { NonEmptyArray } from 'effect/Array';
+import { type NonEmptyArray } from 'effect/Array';
 import { genWithLayer, sandbox } from '../../utils/base.js';
 import * as DbsInfoLibs from '../../../src/libs/couch/dbs-info.js';
 import esmock from 'esmock';

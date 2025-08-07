@@ -22,9 +22,9 @@ import { ChtClientService } from './cht-client.ts';
 import { pouchDB } from '../libs/core.ts';
 import { CouchDesign } from '../libs/couch/design.ts';
 import { WarmViewsService } from './warm-views.ts';
-import Attachments = PouchDB.Core.Attachments;
-import FullAttachment = PouchDB.Core.FullAttachment;
-import { CouchActiveTaskStream } from '../libs/couch/active-tasks.ts';
+type Attachments = PouchDB.Core.Attachments;
+type FullAttachment = PouchDB.Core.FullAttachment;
+import { type CouchActiveTaskStream } from '../libs/couch/active-tasks.ts';
 
 const UPGRADE_LOG_NAME = 'upgrade_log';
 const COMPLETED_STATES = ['finalized', 'aborted', 'errored', 'interrupted'];

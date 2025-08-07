@@ -1,10 +1,10 @@
 import { HttpClientRequest } from '@effect/platform';
-import { HttpClientResponse } from '@effect/platform/HttpClientResponse';
+import type { HttpClientResponse } from '@effect/platform/HttpClientResponse';
 import * as Effect from 'effect/Effect';
 import { Array, pipe, Schema } from 'effect';
 import { ChtClientService } from '../../services/cht-client.ts';
-import { NonEmptyArray } from 'effect/Array';
-import RemoveDocument = PouchDB.Core.RemoveDocument;
+import type { NonEmptyArray } from 'effect/Array';
+type RemoveDocument = PouchDB.Core.RemoveDocument;
 
 const PurgeBody = Schema.Record({ key: Schema.String, value: Schema.Array(Schema.String) });
 const getPostRequest = (dbName: string, body: typeof PurgeBody.Type) => PurgeBody.pipe(

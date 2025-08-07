@@ -1,6 +1,6 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { Chunk, Match, Option, pipe, Redacted, Stream, String } from 'effect';
+import { Chunk, Match, Option, pipe, Redacted, Stream, StreamEmit, String } from 'effect';
 import PouchDB from 'pouchdb-core';
 import { pouchDB } from "../libs/core.js";
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
@@ -10,6 +10,7 @@ import PouchDBSessionAuthentication from 'pouchdb-session-authentication';
 import { EnvironmentService } from "./environment.js";
 import https from 'https';
 import { v4 as uuid } from 'uuid';
+import { UnknownException } from 'effect/Cause';
 const HTTPS_AGENT_ALLOW_INVALID_SSL = new https.Agent({
     rejectUnauthorized: false,
 });

@@ -1,6 +1,6 @@
 import { Args, Command, Options } from '@effect/cli';
 import { Array, Effect, pipe } from 'effect';
-import { LocalInstanceService, SSLType } from '../../services/local-instance.ts';
+import { LocalInstanceService, type SSLType } from '../../services/local-instance.ts';
 
 const setSSLCertOnInstances = (names: string[], type: SSLType) => pipe(
   names,

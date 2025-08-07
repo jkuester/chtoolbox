@@ -5,7 +5,7 @@ import { getDbNames } from '../libs/couch/dbs-info.ts';
 import { getDesignDocNames } from '../libs/couch/design-docs.ts';
 import { compactDb, compactDesign } from '../libs/couch/compact.ts';
 import {
-  CouchActiveTaskStream,
+  type CouchActiveTaskStream,
   filterStreamByType,
   getDbName,
   getDesignName,

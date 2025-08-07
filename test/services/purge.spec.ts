@@ -1,6 +1,6 @@
 import { describe, it } from 'mocha';
 import { Array, Chunk, Effect, Layer, Option, Stream } from 'effect';
-import sinon, { SinonStub } from 'sinon';
+import sinon, { type SinonStub } from 'sinon';
 import { PouchDBService } from '../../src/services/pouchdb.ts';
 import { expect } from 'chai';
 import * as PurgeSvc from '../../src/services/purge.ts';

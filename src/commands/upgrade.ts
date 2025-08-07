@@ -4,7 +4,7 @@ import { initializeUrl } from '../index.ts';
 import { UpgradeLog, UpgradeService } from '../services/upgrade.ts';
 
 import { clearConsole, clearThen } from '../libs/console.ts';
-import { CouchActiveTaskStream, getDisplayDictByPid } from '../libs/couch/active-tasks.ts';
+import { type CouchActiveTaskStream, getDisplayDictByPid } from '../libs/couch/active-tasks.ts';
 import { ChtClientService } from '../services/cht-client.ts';
 import { getTaskDisplayData } from './db/compact.ts';
 

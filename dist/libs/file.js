@@ -1,6 +1,8 @@
 import { FileSystem, HttpClient, HttpClientRequest } from '@effect/platform';
 import { filterStatusOk } from '@effect/platform/HttpClient';
 import { Array, Boolean, Effect, pipe, Record } from 'effect';
+import { Scope } from 'effect/Scope';
+import { PlatformError } from '@effect/platform/Error';
 export const createDir = (dirPath) => FileSystem.FileSystem.pipe(Effect.flatMap(fs => fs.makeDirectory(dirPath, { recursive: true })));
 export const createTmpDir = () => FileSystem.FileSystem.pipe(Effect.flatMap(fs => fs.makeTempDirectoryScoped()));
 export const getRemoteFile = (url) => HttpClient.HttpClient.pipe(Effect.map(filterStatusOk), Effect.flatMap(client => client.execute(HttpClientRequest.get(url))), Effect.flatMap(({ text }) => text), Effect.scoped);

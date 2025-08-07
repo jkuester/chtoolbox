@@ -1,10 +1,10 @@
 import { describe, it } from 'mocha';
 import { Array, Effect, Either, Layer, Option, pipe, Redacted, Schedule } from 'effect';
-import sinon, { SinonStub } from 'sinon';
+import sinon, { type SinonStub } from 'sinon';
 import { expect } from 'chai';
 import { genWithLayer, sandbox } from '../utils/base.ts';
 import * as LocalInstanceSvc from '../../src/services/local-instance.js';
-import { SSLType } from '../../src/services/local-instance.js';
+import { type SSLType } from '../../src/services/local-instance.js';
 import { NodeContext } from '@effect/platform-node';
 import { FileSystem, HttpClient, HttpClientRequest } from '@effect/platform';
 import esmock from 'esmock';

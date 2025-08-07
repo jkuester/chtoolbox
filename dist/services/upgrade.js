@@ -7,6 +7,7 @@ import { ChtClientService } from "./cht-client.js";
 import { pouchDB } from "../libs/core.js";
 import { CouchDesign } from "../libs/couch/design.js";
 import { WarmViewsService } from "./warm-views.js";
+import {} from "../libs/couch/active-tasks.js";
 const UPGRADE_LOG_NAME = 'upgrade_log';
 const COMPLETED_STATES = ['finalized', 'aborted', 'errored', 'interrupted'];
 const STAGING_COMPLETE_STATES = ['indexed', ...COMPLETED_STATES];

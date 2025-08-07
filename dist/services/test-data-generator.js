@@ -1,7 +1,7 @@
 import { Effect, Option, Redacted } from 'effect';
 import { Command } from '@effect/platform';
 import { EnvironmentService } from "./environment.js";
-import { CommandExecutor } from '@effect/platform/CommandExecutor';
+import { CommandExecutor, ExitCode } from '@effect/platform/CommandExecutor';
 import * as Context from 'effect/Context';
 import { fileURLToPath } from 'node:url';
 const tdgPath = fileURLToPath(import.meta.resolve('test-data-generator'));

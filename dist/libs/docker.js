@@ -1,5 +1,7 @@
 import { Command } from '@effect/platform';
 import { Array, Boolean, Effect, Option, pipe, Schedule, String } from 'effect';
+import { CommandExecutor } from '@effect/platform/CommandExecutor';
+import { PlatformError } from '@effect/platform/Error';
 import { debugLoggingEnabled } from "./console.js";
 const dockerCompose = (projectName, ...args) => Command.make('docker', 'compose', '-p', projectName, ...args);
 const getComposeFileParams = (composeFilePaths) => pipe(composeFilePaths, Array.map(path => ['-f', path]), Array.flatten);

@@ -1,5 +1,5 @@
 import { Command, Options } from '@effect/cli';
-import { Array, Console, Effect, pipe, Schedule } from 'effect';
+import { Array, Console, Effect, Option, pipe, Schedule } from 'effect';
 import { initializeUrl } from "../index.js";
 import { MonitorService } from "../services/monitor.js";
 const printCsvRow = (row) => pipe(row, Array.map(value => String(value)), Array.join(','), Console.log);

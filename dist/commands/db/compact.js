@@ -3,7 +3,8 @@ import { Array, Console, Effect, Option, pipe, Stream, String } from 'effect';
 import { initializeUrl } from "../../index.js";
 import { CompactService } from "../../services/compact.js";
 import { mergeArrayStreams } from "../../libs/core.js";
-import { getDbName, getDesignName, getDisplayDictByPid, getPid, getProgressPct } from "../../libs/couch/active-tasks.js";
+import { CouchActiveTask, getDbName, getDesignName, getDisplayDictByPid, getPid, getProgressPct } from "../../libs/couch/active-tasks.js";
+import { ChtClientService } from "../../services/cht-client.js";
 import { clearConsole } from "../../libs/console.js";
 const getDesignDisplayName = (task) => getDesignName(task)
     .pipe(Option.map(design => `/${design}`), Option.getOrElse(() => String.empty));

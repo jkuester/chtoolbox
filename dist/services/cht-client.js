@@ -1,4 +1,5 @@
 import { EnvironmentService } from "./environment.js";
+import { Scope } from 'effect/Scope';
 import * as Effect from 'effect/Effect';
 import { HttpClient, HttpClientRequest } from '@effect/platform';
 import * as Context from 'effect/Context';

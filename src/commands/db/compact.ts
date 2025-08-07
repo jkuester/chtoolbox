@@ -4,7 +4,7 @@ import { initializeUrl } from '../../index.ts';
 import { CompactService } from '../../services/compact.ts';
 import { mergeArrayStreams } from '../../libs/core.ts';
 import {
-  CouchActiveTask, CouchActiveTaskStream,
+  CouchActiveTask, type CouchActiveTaskStream,
   getDbName,
   getDesignName,
   getDisplayDictByPid,

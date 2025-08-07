@@ -1,6 +1,6 @@
 import { describe, it } from 'mocha';
 import { Array, Chunk, Effect, Either, Layer, Option, Redacted, Stream } from 'effect';
-import sinon, { SinonStub } from 'sinon';
+import sinon, { type SinonStub } from 'sinon';
 import PouchDB from 'pouchdb-core';
 import * as PouchDbSvc from '../../src/services/pouchdb.js';
 import { EnvironmentService } from '../../src/services/environment.js';

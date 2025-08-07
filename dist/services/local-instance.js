@@ -7,6 +7,7 @@ import { copyFileFromComposeContainer, copyFileToComposeContainer, createCompose
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
 import { getFreePorts } from "../libs/local-network.js";
 import { filterStatusOk } from '@effect/platform/HttpClient';
+import { PlatformError } from '@effect/platform/Error';
 const CHTX_LABEL_NAME = 'chtx.instance';
 const UPGRADE_SVC_NAME = 'cht-upgrade-service';
 const NGINX_SVC_NAME = 'nginx';

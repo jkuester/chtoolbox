@@ -7,7 +7,7 @@ import { getViewNames } from "../libs/couch/design.js";
 import { warmView } from "../libs/couch/view.js";
 import { getDesignInfo } from "../libs/couch/design-info.js";
 import { ChtClientService } from "./cht-client.js";
-import { filterStreamByType, streamActiveTasks } from "../libs/couch/active-tasks.js";
+import { CouchActiveTask, filterStreamByType, streamActiveTasks } from "../libs/couch/active-tasks.js";
 const warmCouchView = (dbName, designId) => (viewName) => warmView(dbName, designId, viewName);
 const warmAll = () => getDbNames()
     .pipe(Effect.map(Array.map(dbName => getDesignDocNames(dbName)

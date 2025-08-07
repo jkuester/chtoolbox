@@ -6,7 +6,7 @@ import { CouchNodeSystem, getCouchNodeSystem } from '../libs/couch/node-system.t
 import { Array, Clock, Number, Option, pipe } from 'effect';
 import { LocalDiskUsageService } from './local-disk-usage.ts';
 import { ResponseError } from '@effect/platform/HttpClientError';
-import { NonEmptyArray } from 'effect/Array';
+import type { NonEmptyArray } from 'effect/Array';
 import { PlatformError } from '@effect/platform/Error';
 import { ChtClientService } from './cht-client.ts';
 import { getNouveauInfo, NouveauInfo } from '../libs/couch/nouveau-info.ts';

@@ -3,7 +3,7 @@ import { PouchDBService } from './pouchdb.ts';
 import { Schema, Stream } from 'effect';
 import { ChtClientService } from './cht-client.ts';
 import { WarmViewsService } from './warm-views.ts';
-import { CouchActiveTaskStream } from '../libs/couch/active-tasks.ts';
+import { type CouchActiveTaskStream } from '../libs/couch/active-tasks.ts';
 declare const UpgradeLog_base: Schema.Class<UpgradeLog, {
     _id: typeof Schema.String;
     state: Schema.SchemaClass<string, string, never>;

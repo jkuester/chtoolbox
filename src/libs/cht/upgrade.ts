@@ -3,7 +3,7 @@ import * as Effect from 'effect/Effect';
 import { ChtClientService } from '../../services/cht-client.ts';
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { Schema } from 'effect';
-import { HttpClientResponse } from '@effect/platform/HttpClientResponse';
+import type { HttpClientResponse } from '@effect/platform/HttpClientResponse';
 
 const ENDPOINT_UPGRADE = '/api/v1/upgrade';
 const ENDPOINT_STAGE = `${ENDPOINT_UPGRADE}/stage`;
