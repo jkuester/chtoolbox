@@ -2,9 +2,9 @@ import { describe, it } from 'mocha';
 import { Option, Redacted, TestContext } from 'effect';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { genWithLayer, sandbox } from '../utils/base.js';
+import { genWithLayer, sandbox } from '../utils/base.ts';
 import OS from 'node:os';
-import * as LocalNetworkLibs from '../../src/libs/local-network.js';
+import * as LocalNetworkLibs from '../../src/libs/local-network.ts';
 import esmock from 'esmock';
 
 const mockGetPort = sandbox.stub();
@@ -16,7 +16,7 @@ const {
   getLANIPAddress,
   getLocalIpUrl,
   getLocalIpUrlBasicAuth
-} = await esmock<typeof LocalNetworkLibs>('../../src/libs/local-network.js', {
+} = await esmock<typeof LocalNetworkLibs>('../../src/libs/local-network.ts', {
   'get-port': mockGetPort
 });
 

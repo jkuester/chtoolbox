@@ -1,7 +1,7 @@
 import { Command } from '@effect/cli';
-import { ReplicateService } from '../../services/replicate.js';
+import { ReplicateService } from '../../services/replicate.ts';
 import { ParseError } from 'effect/Cron';
-import { PouchDBService } from '../../services/pouchdb.js';
+import { PouchDBService } from '../../services/pouchdb.ts';
 export declare const replicate: Command.Command<"replicate", import("../../services/cht-client.ts").ChtClientService | Command.Command.Context<"chtx"> | import("../../services/environment.ts").EnvironmentService | PouchDBService | ReplicateService, Error | ParseError | import("effect/ParseResult").ParseError, {
     readonly follow: boolean;
     readonly contacts: string[];

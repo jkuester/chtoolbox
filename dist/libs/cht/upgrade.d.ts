@@ -1,5 +1,5 @@
 import * as Effect from 'effect/Effect';
-import { ChtClientService } from '../../services/cht-client.js';
+import { ChtClientService } from '../../services/cht-client.ts';
 import { HttpClientResponse } from '@effect/platform/HttpClientResponse';
 export declare const upgradeCht: (version: string) => Effect.Effect<HttpClientResponse, Error, ChtClientService>;
 export declare const stageChtUpgrade: (version: string) => Effect.Effect<HttpClientResponse, Error, ChtClientService>;

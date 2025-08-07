@@ -1,6 +1,6 @@
 import { HttpClientRequest } from '@effect/platform';
 import * as Effect from 'effect/Effect';
-import { ChtClientService } from '../../services/cht-client.js';
+import { ChtClientService } from "../../services/cht-client.js";
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { Schema } from 'effect';
 const ENDPOINT_UPGRADE = '/api/v1/upgrade';

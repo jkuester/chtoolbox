@@ -1,7 +1,7 @@
 import { describe, it } from 'mocha';
 import { Chunk, Effect, Layer, Option, Schedule, Stream } from 'effect';
 import { expect } from 'chai';
-import { ChtClientService } from '../../../src/services/cht-client.js';
+import { ChtClientService } from '../../../src/services/cht-client.ts';
 import * as ActiveTasksLib from '../../../src/libs/couch/active-tasks.js';
 import { createActiveTask } from '../../utils/data-models.js';
 import { genWithLayer, sandbox } from '../../utils/base.js';

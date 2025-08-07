@@ -1,5 +1,5 @@
 import * as Effect from 'effect/Effect';
-import { ChtClientService } from '../../services/cht-client.js';
+import { ChtClientService } from '../../services/cht-client.ts';
 import { Schema } from 'effect';
 declare const ChtMonitoringData_base: Schema.Class<ChtMonitoringData, {
     version: Schema.Struct<{

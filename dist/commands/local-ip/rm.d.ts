@@ -1,5 +1,5 @@
 import { Command } from '@effect/cli';
-import { LocalIpService } from '../../services/local-ip.js';
+import { LocalIpService } from '../../services/local-ip.ts';
 export declare const rm: Command.Command<"rm", LocalIpService, Error, {
     readonly toPorts: [number, ...number[]];
 }>;

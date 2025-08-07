@@ -3,10 +3,10 @@ import { describe, it } from 'mocha';
 import { Effect, Layer, Logger, LogLevel, Schedule } from 'effect';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import * as DockerLibs from '../../src/libs/docker.js';
+import * as DockerLibs from '../../src/libs/docker.ts';
 import { PlatformError } from '@effect/platform/Error';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
-import { genWithLayer, sandbox } from '../utils/base.js';
+import { genWithLayer, sandbox } from '../utils/base.ts';
 import esmock from 'esmock';
 
 const PROJECT_NAME = 'projectName';
@@ -48,7 +48,7 @@ const {
   runContainer,
   doesContainerExist,
   rmContainer
-} = await esmock<typeof DockerLibs>('../../src/libs/docker.js', {
+} = await esmock<typeof DockerLibs>('../../src/libs/docker.ts', {
   '@effect/platform': { Command: mockCommand },
   'effect': { Schedule: mockSchedule },
 });

@@ -2,7 +2,7 @@ import { describe, it } from 'mocha';
 import { Effect, Either, Layer, Redacted } from 'effect';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import * as ChtClientSvc from '../../src/services/cht-client.js';
+import * as ChtClientSvc from '../../src/services/cht-client.ts';
 import { HttpClientRequest } from '@effect/platform';
 import { EnvironmentService } from '../../src/services/environment.js';
 import { NodeHttpClient } from '@effect/platform-node';

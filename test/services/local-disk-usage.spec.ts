@@ -1,7 +1,7 @@
 import { describe, it } from 'mocha';
 import { Effect, Layer } from 'effect';
 import { expect } from 'chai';
-import * as LocalDiskUsageSvc from '../../src/services/local-disk-usage.js';
+import * as LocalDiskUsageSvc from '../../src/services/local-disk-usage.ts';
 import { NodeContext } from '@effect/platform-node';
 import { genWithLayer, sandbox } from '../utils/base.js';
 import esmock from 'esmock';

@@ -1,7 +1,7 @@
 import { Args, Command, Options } from '@effect/cli';
 import { Effect, Array } from 'effect';
-import { LocalIpService } from '../../services/local-ip.js';
-import { printLocalIpInstances } from './ls.js';
+import { LocalIpService } from '../../services/local-ip.ts';
+import { printLocalIpInstances } from './ls.ts';
 
 const toPort = Args
   .integer({ name: 'to' })

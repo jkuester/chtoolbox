@@ -18,9 +18,9 @@ const mockPouchSvc = {
 const pouchGet = sandbox.stub();
 const purgeFromInner = sandbox.stub();
 
-const { PurgeService } = await esmock<typeof PurgeSvc>('../../src/services/purge.js', {
-  '../../src/libs/couch/purge.js': mockPurgeLib,
-  '../../src/services/pouchdb.js': mockPouchSvc,
+const { PurgeService } = await esmock<typeof PurgeSvc>('../../src/services/purge.ts', {
+  '../../src/libs/couch/purge.ts': mockPurgeLib,
+  '../../src/services/pouchdb.ts': mockPouchSvc,
 });
 const run = PurgeService.Default.pipe(
   Layer.provide(Layer.succeed(PouchDBService, {

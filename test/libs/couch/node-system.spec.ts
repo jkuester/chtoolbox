@@ -1,7 +1,7 @@
 import { describe, it } from 'mocha';
 import { Effect, Layer } from 'effect';
 import { expect } from 'chai';
-import { ChtClientService } from '../../../src/services/cht-client.js';
+import { ChtClientService } from '../../../src/services/cht-client.ts';
 import { createNodeSystem } from '../../utils/data-models.js';
 import * as NodeSystemLibs from '../../../src/libs/couch/node-system.js';
 import { genWithLayer, sandbox } from '../../utils/base.js';

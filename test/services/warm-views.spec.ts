@@ -20,11 +20,11 @@ const mockActiveTasksLib = {
 }
 
 const { WarmViewsService } = await esmock<typeof WarmViewsSvc>('../../src/services/warm-views.ts', {
-  '../../src/libs/couch/active-tasks.js': mockActiveTasksLib,
-  '../../src/libs/couch/dbs-info.js': mockDbsInfoLib,
-  '../../src/libs/couch/design-info.js': mockDesignInfoLib,
-  '../../src/libs/couch/design-docs.js': mockDesignDocsLib,
-  '../../src/libs/couch/design.js': mockDesignLib,
+  '../../src/libs/couch/active-tasks.ts': mockActiveTasksLib,
+  '../../src/libs/couch/dbs-info.ts': mockDbsInfoLib,
+  '../../src/libs/couch/design-info.ts': mockDesignInfoLib,
+  '../../src/libs/couch/design-docs.ts': mockDesignDocsLib,
+  '../../src/libs/couch/design.ts': mockDesignLib,
   '../../src/libs/couch/view.js': mockViewLib,
 });
 const run = WarmViewsService.Default.pipe(

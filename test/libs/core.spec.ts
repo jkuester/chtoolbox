@@ -1,7 +1,7 @@
 import { describe, it } from 'mocha';
 import { Chunk, Effect, Stream, TestContext } from 'effect';
 import { expect } from 'chai';
-import { mergeArrayStreams, pouchDB, untilEmptyCount } from '../../src/libs/core.js';
+import { mergeArrayStreams, pouchDB, untilEmptyCount } from '../../src/libs/core.ts';
 import PouchDB from 'pouchdb-core';
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
 

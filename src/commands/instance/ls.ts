@@ -1,7 +1,7 @@
 import { Args, Command } from '@effect/cli';
 import { Array, Console, Effect, Match, Option, pipe, Record, Redacted } from 'effect';
-import { LocalChtInstance, LocalInstanceService } from '../../services/local-instance.js';
-import { getLocalIpUrl, getLocalIpUrlBasicAuth } from '../../libs/local-network.js';
+import { LocalChtInstance, LocalInstanceService } from '../../services/local-instance.ts';
+import { getLocalIpUrl, getLocalIpUrlBasicAuth } from '../../libs/local-network.ts';
 
 const filterInstances = (names: string[]) => Match
   .value(Array.isEmptyArray(names))

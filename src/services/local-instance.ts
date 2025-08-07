@@ -29,7 +29,7 @@ import {
   stopCompose
 } from '../libs/docker.ts';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
-import { getFreePorts } from '../libs/local-network.js';
+import { getFreePorts } from '../libs/local-network.ts';
 import { filterStatusOk } from '@effect/platform/HttpClient';
 import { PlatformError } from '@effect/platform/Error';
 

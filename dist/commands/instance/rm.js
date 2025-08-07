@@ -1,6 +1,6 @@
 import { Args, Command, Options, Prompt } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe } from 'effect';
-import { LocalInstanceService } from '../../services/local-instance.js';
+import { LocalInstanceService } from "../../services/local-instance.js";
 const getConfirmationPrompt = (names) => Prompt.confirm({
     message: `Are you sure you want to permanently remove ${Array.join(names, ', ')}?`,
     initial: false,

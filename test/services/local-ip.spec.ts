@@ -2,7 +2,7 @@ import { describe, it } from 'mocha';
 import { Array, Effect, Either, Layer, Option } from 'effect';
 import sinon from 'sinon';
 import { expect } from 'chai';
-import { genWithLayer, sandbox } from '../utils/base.js';
+import { genWithLayer, sandbox } from '../utils/base.ts';
 import * as LocalIpSvc from '../../src/services/local-ip.js';
 import { NodeContext } from '@effect/platform-node';
 import esmock from 'esmock';

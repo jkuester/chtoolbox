@@ -1,10 +1,10 @@
 import { Args, Command, Options } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe, Predicate, Schema, Stream } from 'effect';
-import { initializeUrl } from '../../index.js';
-import { ReplicateService, ReplicationDoc } from '../../services/replicate.js';
-import { streamActiveTasks } from '../../libs/couch/active-tasks.js';
-import { clearThen } from '../../libs/console.js';
-import { PouchDBService } from '../../services/pouchdb.js';
+import { initializeUrl } from "../../index.js";
+import { ReplicateService, ReplicationDoc } from "../../services/replicate.js";
+import { streamActiveTasks } from "../../libs/couch/active-tasks.js";
+import { clearThen } from "../../libs/console.js";
+import { PouchDBService } from "../../services/pouchdb.js";
 const DB_SPECIFIER_DESCRIPTION = `This can either be a database name for the current instance (e.g. 'medic') `
     + `or a full URL to a remote Couch database (including username/password). `
     + `E.g. 'https://medic:password@192-168-1-80.local-ip.medicmobile.org:38593/medic'`;

@@ -1,7 +1,7 @@
 import { describe, it } from 'mocha';
 import { Effect, Layer, pipe } from 'effect';
 import { expect } from 'chai';
-import { ChtClientService } from '../../../src/services/cht-client.js';
+import { ChtClientService } from '../../../src/services/cht-client.ts';
 import * as ViewLib from '../../../src/libs/couch/view.js';
 import { genWithLayer, sandbox } from '../../utils/base.js';
 import esmock from 'esmock'

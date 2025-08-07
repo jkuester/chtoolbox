@@ -1,9 +1,9 @@
 import { describe, it } from 'mocha';
 import { Array, Effect, Either, Layer } from 'effect';
 import { expect } from 'chai';
-import { ChtClientService } from '../../../src/services/cht-client.js';
-import * as PurgeLibs from '../../../src/libs/couch/purge.js';
-import { genWithLayer, sandbox } from '../../utils/base.js';
+import { ChtClientService } from '../../../src/services/cht-client.ts';
+import * as PurgeLibs from '../../../src/libs/couch/purge.ts';
+import { genWithLayer, sandbox } from '../../utils/base.ts';
 import esmock from 'esmock';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
