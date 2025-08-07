@@ -1,7 +1,7 @@
 import * as Effect from 'effect/Effect';
-import { AllDocsResponseStream, PouchDBService } from './pouchdb.js';
+import { AllDocsResponseStream, PouchDBService } from './pouchdb.ts';
 import { Option } from 'effect';
-import { ChtClientService } from './cht-client.js';
+import { ChtClientService } from './cht-client.ts';
 declare const PurgeService_base: Effect.Service.Class<PurgeService, "chtoolbox/PurgeService", {
     readonly effect: Effect.Effect<{
         purgeAll: (dbName: string, purgeDdocs?: boolean) => Effect.Effect<AllDocsResponseStream, Error, never>;

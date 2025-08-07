@@ -1,6 +1,6 @@
 import { Command, Options } from '@effect/cli';
 import { Array, Console, DateTime, Effect, Number, Option, pipe, Stream, String } from 'effect';
-import { initializeUrl } from '../index.js';
+import { initializeUrl } from '../index.ts';
 import {
   CouchActiveTask,
   getActiveTasks,
@@ -10,9 +10,8 @@ import {
   getPid,
   getProgressPct,
   streamActiveTasks
-} from '../libs/couch/active-tasks.js';
-
-import { clearThen } from '../libs/console.js';
+} from '../libs/couch/active-tasks.ts';
+import { clearThen } from '../libs/console.ts';
 
 const getDesignDisplayName = (task: CouchActiveTask) => getDesignName(task)
   .pipe(

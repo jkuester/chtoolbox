@@ -1,6 +1,6 @@
 import * as Effect from 'effect/Effect';
-import { PouchDBService } from './pouchdb.js';
-import { EnvironmentService } from './environment.js';
+import { PouchDBService } from './pouchdb.ts';
+import { EnvironmentService } from './environment.ts';
 import { Schema, Stream } from 'effect';
 declare const ReplicationDoc_base: Schema.Class<ReplicationDoc, {
     _id: typeof Schema.String;

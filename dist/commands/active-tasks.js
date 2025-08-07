@@ -1,8 +1,8 @@
 import { Command, Options } from '@effect/cli';
 import { Array, Console, DateTime, Effect, Number, Option, pipe, Stream, String } from 'effect';
-import { initializeUrl } from '../index.js';
-import { getActiveTasks, getDbName, getDesignName, getDisplayDictByPid, getPid, getProgressPct, streamActiveTasks } from '../libs/couch/active-tasks.js';
-import { clearThen } from '../libs/console.js';
+import { initializeUrl } from "../index.js";
+import { getActiveTasks, getDbName, getDesignName, getDisplayDictByPid, getPid, getProgressPct, streamActiveTasks } from "../libs/couch/active-tasks.js";
+import { clearThen } from "../libs/console.js";
 const getDesignDisplayName = (task) => getDesignName(task)
     .pipe(Option.map(design => `/${design}`), Option.getOrElse(() => String.empty));
 const getTaskDisplayData = (task) => ({

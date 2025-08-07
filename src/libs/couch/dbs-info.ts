@@ -1,7 +1,7 @@
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import { Array, Schema } from 'effect';
-import { ChtClientService } from '../../services/cht-client.js';
+import { ChtClientService } from '../../services/cht-client.ts';
 import { NonEmptyArray } from 'effect/Array';
 
 const ENDPOINT = '/_dbs_info';

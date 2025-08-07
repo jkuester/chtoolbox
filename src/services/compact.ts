@@ -1,18 +1,18 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { Array, Option, pipe, Stream } from 'effect';
-import { getDbNames } from '../libs/couch/dbs-info.js';
-import { getDesignDocNames } from '../libs/couch/design-docs.js';
-import { compactDb, compactDesign } from '../libs/couch/compact.js';
+import { getDbNames } from '../libs/couch/dbs-info.ts';
+import { getDesignDocNames } from '../libs/couch/design-docs.ts';
+import { compactDb, compactDesign } from '../libs/couch/compact.ts';
 import {
   CouchActiveTaskStream,
   filterStreamByType,
   getDbName,
   getDesignName,
   streamActiveTasks
-} from '../libs/couch/active-tasks.js';
-import { untilEmptyCount } from '../libs/core.js';
-import { ChtClientService } from './cht-client.js';
+} from '../libs/couch/active-tasks.ts';
+import { untilEmptyCount } from '../libs/core.ts';
+import { ChtClientService } from './cht-client.ts';
 
 const TYPE_DB_COMPACT = 'database_compaction';
 const TYPE_VIEW_COMPACT = 'view_compaction';

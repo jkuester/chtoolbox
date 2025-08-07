@@ -2,7 +2,7 @@ import { Command } from '@effect/platform';
 import { Array, Boolean, Effect, Option, pipe, Schedule, String } from 'effect';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
 import { PlatformError } from '@effect/platform/Error';
-import { debugLoggingEnabled } from './console.js';
+import { debugLoggingEnabled } from './console.ts';
 
 const dockerCompose = (
   projectName: string,

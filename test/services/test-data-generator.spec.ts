@@ -2,11 +2,11 @@ import { describe, it } from 'mocha';
 import { Effect, Either, Layer, Redacted } from 'effect';
 import sinon from 'sinon';
 import { expect } from 'chai';
-import * as TestDataGeneratorSvc from '../../src/services/test-data-generator.js';
-import { EnvironmentService } from '../../src/services/environment.js';
+import * as TestDataGeneratorSvc from '../../src/services/test-data-generator.ts';
+import { EnvironmentService } from '../../src/services/environment.ts';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
 import { Command } from '@effect/platform';
-import { genWithLayer, sandbox } from '../utils/base.js';
+import { genWithLayer, sandbox } from '../utils/base.ts';
 import esmock from 'esmock';
 import { fileURLToPath } from 'node:url';
 

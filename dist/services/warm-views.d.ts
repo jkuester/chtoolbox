@@ -1,7 +1,7 @@
 import * as Effect from 'effect/Effect';
 import { Stream } from 'effect';
-import { ChtClientService } from './cht-client.js';
-import { CouchActiveTask } from '../libs/couch/active-tasks.js';
+import { ChtClientService } from './cht-client.ts';
+import { CouchActiveTask } from '../libs/couch/active-tasks.ts';
 declare const WarmViewsService_base: Effect.Service.Class<WarmViewsService, "chtoolbox/WarmViewsService", {
     readonly effect: Effect.Effect<{
         warmAll: () => Effect.Effect<void, Error, never>;

@@ -1,8 +1,8 @@
 import { Array, Effect, Number, Option, pipe, String } from 'effect';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
 import * as Context from 'effect/Context';
-import { doesContainerExist, getContainerLabelValue, getContainerNamesWithLabel, pullImage, rmContainer, runContainer } from '../libs/docker.js';
-import { getFreePort, getLANIPAddress } from '../libs/local-network.js';
+import { doesContainerExist, getContainerLabelValue, getContainerNamesWithLabel, pullImage, rmContainer, runContainer } from "../libs/docker.js";
+import { getFreePort, getLANIPAddress } from "../libs/local-network.js";
 const NGINX_LOCAL_IP_IMAGE = 'medicmobile/nginx-local-ip';
 const CHTX_LOCAL_IP_PREFIX = 'chtx_local_ip';
 const CHTX_LOCAL_IP_LABEL = 'chtx.instance.local-ip';

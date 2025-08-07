@@ -1,7 +1,7 @@
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import { Array, Schema } from 'effect';
-import { ChtClientService } from '../../services/cht-client.js';
+import { ChtClientService } from '../../services/cht-client.ts';
 
 class CouchDesignDocs extends Schema.Class<CouchDesignDocs>('CouchDesignDocs')({
   rows: Schema.Array(Schema.Struct({

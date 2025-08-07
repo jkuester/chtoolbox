@@ -1,6 +1,6 @@
 import { Effect, Option, Redacted } from 'effect';
 import { Command } from '@effect/platform';
-import { EnvironmentService } from './environment.js';
+import { EnvironmentService } from './environment.ts';
 import { CommandExecutor, ExitCode } from '@effect/platform/CommandExecutor';
 import * as Context from 'effect/Context';
 import { fileURLToPath } from 'node:url';

@@ -1,6 +1,6 @@
 import { Schema } from 'effect';
 import * as Effect from 'effect/Effect';
-import { ChtClientService } from '../../services/cht-client.js';
+import { ChtClientService } from '../../services/cht-client.ts';
 declare const NouveauInfo_base: Schema.Class<NouveauInfo, {
     name: typeof Schema.String;
     search_index: Schema.Struct<{

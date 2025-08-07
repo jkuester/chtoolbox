@@ -1,5 +1,5 @@
 import { Effect, Option } from 'effect';
-import { LocalChtInstance } from '../services/local-instance.js';
+import { LocalChtInstance } from '../services/local-instance.ts';
 export declare const getFreePort: (opts?: {
     port?: number;
     exclude?: number[];

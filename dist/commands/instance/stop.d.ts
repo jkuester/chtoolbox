@@ -1,5 +1,5 @@
 import { Command } from '@effect/cli';
-import { LocalInstanceService } from '../../services/local-instance.js';
+import { LocalInstanceService } from '../../services/local-instance.ts';
 export declare const stop: Command.Command<"stop", LocalInstanceService, Error, {
     readonly names: [string, ...string[]];
 }>;

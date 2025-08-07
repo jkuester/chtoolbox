@@ -1,12 +1,12 @@
 import * as Effect from 'effect/Effect';
-import { CouchDbInfo } from '../libs/couch/dbs-info.js';
-import { CouchDesignInfo } from '../libs/couch/design-info.js';
-import { CouchNodeSystem } from '../libs/couch/node-system.js';
+import { CouchDbInfo } from '../libs/couch/dbs-info.ts';
+import { CouchDesignInfo } from '../libs/couch/design-info.ts';
+import { CouchNodeSystem } from '../libs/couch/node-system.ts';
 import { Option } from 'effect';
-import { LocalDiskUsageService } from './local-disk-usage.js';
+import { LocalDiskUsageService } from './local-disk-usage.ts';
 import { PlatformError } from '@effect/platform/Error';
-import { ChtClientService } from './cht-client.js';
-import { NouveauInfo } from '../libs/couch/nouveau-info.js';
+import { ChtClientService } from './cht-client.ts';
+import { NouveauInfo } from '../libs/couch/nouveau-info.ts';
 interface DatabaseInfo extends CouchDbInfo {
     designs: CouchDesignInfo[];
     nouveau_indexes: NouveauInfo[];

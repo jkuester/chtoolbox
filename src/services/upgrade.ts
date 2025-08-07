@@ -1,6 +1,6 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { getDoc, PouchDBService, saveDoc, streamChanges } from './pouchdb.js';
+import { getDoc, PouchDBService, saveDoc, streamChanges } from './pouchdb.ts';
 import {
   Array,
   Chunk,
@@ -17,14 +17,14 @@ import {
   Stream,
   String
 } from 'effect';
-import { completeChtUpgrade, stageChtUpgrade, upgradeCht } from '../libs/cht/upgrade.js';
-import { ChtClientService } from './cht-client.js';
-import { pouchDB } from '../libs/core.js';
-import { CouchDesign } from '../libs/couch/design.js';
-import { WarmViewsService } from './warm-views.js';
+import { completeChtUpgrade, stageChtUpgrade, upgradeCht } from '../libs/cht/upgrade.ts';
+import { ChtClientService } from './cht-client.ts';
+import { pouchDB } from '../libs/core.ts';
+import { CouchDesign } from '../libs/couch/design.ts';
+import { WarmViewsService } from './warm-views.ts';
 import Attachments = PouchDB.Core.Attachments;
 import FullAttachment = PouchDB.Core.FullAttachment;
-import { CouchActiveTaskStream } from '../libs/couch/active-tasks.js';
+import { CouchActiveTaskStream } from '../libs/couch/active-tasks.ts';
 
 const UPGRADE_LOG_NAME = 'upgrade_log';
 const COMPLETED_STATES = ['finalized', 'aborted', 'errored', 'interrupted'];

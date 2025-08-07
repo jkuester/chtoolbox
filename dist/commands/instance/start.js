@@ -1,7 +1,7 @@
 import { Args, Command, Options } from '@effect/cli';
 import { Array, Effect, pipe, Option } from 'effect';
-import { LocalInstanceService } from '../../services/local-instance.js';
-import { printInstanceTable } from './ls.js';
+import { LocalInstanceService } from "../../services/local-instance.js";
+import { printInstanceTable } from "./ls.js";
 const startChtInstances = (names, directory) => pipe(names, Array.map(name => LocalInstanceService.start(name, directory.pipe(Option.map(dir => `${dir}/${name}`)))), Effect.allWith({ concurrency: 'unbounded' }));
 const directory = Options
     .directory('directory', { exists: 'yes' })

@@ -1,14 +1,14 @@
 import { describe, it } from 'mocha';
 import { Array, Chunk, Effect, Either, Layer, Stream, pipe, Encoding, Option } from 'effect';
 import sinon from 'sinon';
-import { PouchDBService } from '../../src/services/pouchdb.js';
+import { PouchDBService } from '../../src/services/pouchdb.ts';
 import { expect } from 'chai';
-import * as UpgradeSvc from '../../src/services/upgrade.js';
-import { genWithLayer, sandbox } from '../utils/base.js';
-import { ChtClientService } from '../../src/services/cht-client.js';
+import * as UpgradeSvc from '../../src/services/upgrade.ts';
+import { genWithLayer, sandbox } from '../utils/base.ts';
+import { ChtClientService } from '../../src/services/cht-client.ts';
 import esmock from 'esmock';
-import { WarmViewsService } from '../../src/services/warm-views.js';
-import { createActiveTask } from '../utils/data-models.js';
+import { WarmViewsService } from '../../src/services/warm-views.ts';
+import { createActiveTask } from '../utils/data-models.ts';
 
 const version = '3.7.0';
 const EXPECTED_ALL_DOCS_OPTS = {

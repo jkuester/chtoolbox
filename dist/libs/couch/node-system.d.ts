@@ -1,6 +1,6 @@
 import { Schema } from 'effect';
 import * as Effect from 'effect/Effect';
-import { ChtClientService } from '../../services/cht-client.js';
+import { ChtClientService } from '../../services/cht-client.ts';
 declare const CouchNodeSystem_base: Schema.Class<CouchNodeSystem, {
     memory: Schema.Struct<{
         processes_used: typeof Schema.Number;

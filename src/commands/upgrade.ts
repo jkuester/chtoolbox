@@ -1,12 +1,12 @@
 import { Args, Command, Options } from '@effect/cli';
 import { Array, Console, DateTime, Effect, Match, pipe, Schedule, Stream } from 'effect';
-import { initializeUrl } from '../index.js';
-import { UpgradeLog, UpgradeService } from '../services/upgrade.js';
+import { initializeUrl } from '../index.ts';
+import { UpgradeLog, UpgradeService } from '../services/upgrade.ts';
 
-import { clearConsole, clearThen } from '../libs/console.js';
-import { CouchActiveTaskStream, getDisplayDictByPid } from '../libs/couch/active-tasks.js';
-import { ChtClientService } from '../services/cht-client.js';
-import { getTaskDisplayData } from './db/compact.js';
+import { clearConsole, clearThen } from '../libs/console.ts';
+import { CouchActiveTaskStream, getDisplayDictByPid } from '../libs/couch/active-tasks.ts';
+import { ChtClientService } from '../services/cht-client.ts';
+import { getTaskDisplayData } from './db/compact.ts';
 
 const getUpgradeLogDisplay = ({ state_history }: UpgradeLog) => pipe(
   state_history,

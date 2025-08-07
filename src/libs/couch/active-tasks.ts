@@ -1,5 +1,5 @@
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
-import { ChtClientService } from '../../services/cht-client.js';
+import { ChtClientService } from '../../services/cht-client.ts';
 import { Array, Effect, Number, Option, Order, pipe, Record, Schedule, Schema, Stream, String } from 'effect';
 
 const ENDPOINT = '/_active_tasks';

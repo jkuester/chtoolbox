@@ -1,7 +1,7 @@
 import { Command, Options } from '@effect/cli';
 import { Array, Console, Effect, pipe, Schedule } from 'effect';
-import { initializeUrl } from '../index.js';
-import { MonitorService } from '../services/monitor.js';
+import { initializeUrl } from "../index.js";
+import { MonitorService } from "../services/monitor.js";
 const printCsvRow = (row) => pipe(row, Array.map(value => String(value)), Array.join(','), Console.log);
 const monitorData = (trackDirSize) => pipe(MonitorService.getAsCsv(trackDirSize), Effect.tap(printCsvRow), Effect.catchAll(Console.error));
 const interval = Options

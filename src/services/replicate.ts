@@ -1,7 +1,7 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { PouchDBService, saveDoc, streamChanges } from './pouchdb.js';
-import { Environment, EnvironmentService } from './environment.js';
+import { PouchDBService, saveDoc, streamChanges } from './pouchdb.ts';
+import { Environment, EnvironmentService } from './environment.ts';
 import { Array, Match, Option, pipe, Redacted, Schema, Stream } from 'effect';
 
 const SKIP_DDOC_SELECTOR = {

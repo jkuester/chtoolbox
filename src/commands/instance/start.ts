@@ -1,7 +1,7 @@
 import { Args, Command, Options } from '@effect/cli';
 import { Array, Effect, pipe, Option } from 'effect';
-import { LocalInstanceService } from '../../services/local-instance.js';
-import { printInstanceTable } from './ls.js';
+import { LocalInstanceService } from '../../services/local-instance.ts';
+import { printInstanceTable } from './ls.ts';
 
 const startChtInstances = (names: string[], directory: Option.Option<string>) => pipe(
   names,

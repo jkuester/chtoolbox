@@ -1,7 +1,7 @@
 import { Schema } from 'effect';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
-import { ChtClientService } from '../../services/cht-client.js';
+import { ChtClientService } from "../../services/cht-client.js";
 export class CouchDesignInfo extends Schema.Class('CouchDesignInfo')({
     name: Schema.String,
     view_index: Schema.Struct({

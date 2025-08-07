@@ -1,11 +1,11 @@
 import { describe, it } from 'mocha';
 import { Chunk, Effect, Either, Layer, Redacted, Stream } from 'effect';
 import sinon, { SinonStub } from 'sinon';
-import { PouchDBService } from '../../src/services/pouchdb.js';
-import { EnvironmentService } from '../../src/services/environment.js';
+import { PouchDBService } from '../../src/services/pouchdb.ts';
+import { EnvironmentService } from '../../src/services/environment.ts';
 import { expect } from 'chai';
-import * as ReplicateSvc from '../../src/services/replicate.js';
-import { genWithLayer, sandbox } from '../utils/base.js';
+import * as ReplicateSvc from '../../src/services/replicate.ts';
+import { genWithLayer, sandbox } from '../utils/base.ts';
 import esmock from 'esmock';
 
 const FAKE_RESPONSE = { id: 'world' } as const;

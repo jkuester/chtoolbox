@@ -1,6 +1,6 @@
 import * as Effect from 'effect/Effect';
 import { Schema } from 'effect';
-import { ChtClientService } from '../../services/cht-client.js';
+import { ChtClientService } from '../../services/cht-client.ts';
 declare const CouchDbInfo_base: Schema.Class<CouchDbInfo, {
     key: typeof Schema.String;
     info: Schema.Struct<{

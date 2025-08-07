@@ -1,12 +1,12 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { getDoc, PouchDBService, saveDoc, streamChanges } from './pouchdb.js';
+import { getDoc, PouchDBService, saveDoc, streamChanges } from "./pouchdb.js";
 import { Array, Chunk, DateTime, Either, Encoding, Match, Option, pipe, Predicate, Record, Schedule, Schema, Stream, String } from 'effect';
-import { completeChtUpgrade, stageChtUpgrade, upgradeCht } from '../libs/cht/upgrade.js';
-import { ChtClientService } from './cht-client.js';
-import { pouchDB } from '../libs/core.js';
-import { CouchDesign } from '../libs/couch/design.js';
-import { WarmViewsService } from './warm-views.js';
+import { completeChtUpgrade, stageChtUpgrade, upgradeCht } from "../libs/cht/upgrade.js";
+import { ChtClientService } from "./cht-client.js";
+import { pouchDB } from "../libs/core.js";
+import { CouchDesign } from "../libs/couch/design.js";
+import { WarmViewsService } from "./warm-views.js";
 const UPGRADE_LOG_NAME = 'upgrade_log';
 const COMPLETED_STATES = ['finalized', 'aborted', 'errored', 'interrupted'];
 const STAGING_COMPLETE_STATES = ['indexed', ...COMPLETED_STATES];

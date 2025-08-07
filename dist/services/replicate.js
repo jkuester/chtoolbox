@@ -1,7 +1,7 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { PouchDBService, saveDoc, streamChanges } from './pouchdb.js';
-import { EnvironmentService } from './environment.js';
+import { PouchDBService, saveDoc, streamChanges } from "./pouchdb.js";
+import { EnvironmentService } from "./environment.js";
 import { Array, Match, Option, pipe, Redacted, Schema, Stream } from 'effect';
 const SKIP_DDOC_SELECTOR = {
     _id: { '$regex': '^(?!_design/)' },

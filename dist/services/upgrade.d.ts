@@ -1,9 +1,9 @@
 import * as Effect from 'effect/Effect';
-import { PouchDBService } from './pouchdb.js';
+import { PouchDBService } from './pouchdb.ts';
 import { Schema, Stream } from 'effect';
-import { ChtClientService } from './cht-client.js';
-import { WarmViewsService } from './warm-views.js';
-import { CouchActiveTaskStream } from '../libs/couch/active-tasks.js';
+import { ChtClientService } from './cht-client.ts';
+import { WarmViewsService } from './warm-views.ts';
+import { CouchActiveTaskStream } from '../libs/couch/active-tasks.ts';
 declare const UpgradeLog_base: Schema.Class<UpgradeLog, {
     _id: typeof Schema.String;
     state: Schema.SchemaClass<string, string, never>;

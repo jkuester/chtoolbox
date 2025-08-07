@@ -1,11 +1,11 @@
 import { describe, it } from 'mocha';
 import { Array, Chunk, Effect, Layer, Option, Stream } from 'effect';
 import sinon, { SinonStub } from 'sinon';
-import { PouchDBService } from '../../src/services/pouchdb.js';
+import { PouchDBService } from '../../src/services/pouchdb.ts';
 import { expect } from 'chai';
-import * as PurgeSvc from '../../src/services/purge.js';
-import { genWithLayer, sandbox } from '../utils/base.js';
-import { ChtClientService } from '../../src/services/cht-client.js';
+import * as PurgeSvc from '../../src/services/purge.ts';
+import { genWithLayer, sandbox } from '../utils/base.ts';
+import { ChtClientService } from '../../src/services/cht-client.ts';
 import esmock from 'esmock';
 
 const FAKE_DB = { name: 'test-db', allDocs: () => null } as const;

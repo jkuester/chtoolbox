@@ -1,16 +1,16 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { CouchDbInfo, getDbsInfoByName } from '../libs/couch/dbs-info.js';
-import { CouchDesignInfo, getDesignInfo } from '../libs/couch/design-info.js';
-import { CouchNodeSystem, getCouchNodeSystem } from '../libs/couch/node-system.js';
+import { CouchDbInfo, getDbsInfoByName } from '../libs/couch/dbs-info.ts';
+import { CouchDesignInfo, getDesignInfo } from '../libs/couch/design-info.ts';
+import { CouchNodeSystem, getCouchNodeSystem } from '../libs/couch/node-system.ts';
 import { Array, Clock, Number, Option, pipe } from 'effect';
-import { LocalDiskUsageService } from './local-disk-usage.js';
+import { LocalDiskUsageService } from './local-disk-usage.ts';
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { NonEmptyArray } from 'effect/Array';
 import { PlatformError } from '@effect/platform/Error';
-import { ChtClientService } from './cht-client.js';
-import { getNouveauInfo, NouveauInfo } from '../libs/couch/nouveau-info.js';
-import { getChtMonitoringData } from '../libs/cht/monitoring.js';
+import { ChtClientService } from './cht-client.ts';
+import { getNouveauInfo, NouveauInfo } from '../libs/couch/nouveau-info.ts';
+import { getChtMonitoringData } from '../libs/cht/monitoring.ts';
 
 interface DatabaseInfo extends CouchDbInfo {
   designs: CouchDesignInfo[]

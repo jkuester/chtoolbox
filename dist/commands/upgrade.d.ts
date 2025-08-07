@@ -1,6 +1,6 @@
 import { Command } from '@effect/cli';
-import { UpgradeService } from '../services/upgrade.js';
-import { ChtClientService } from '../services/cht-client.js';
+import { UpgradeService } from '../services/upgrade.ts';
+import { ChtClientService } from '../services/cht-client.ts';
 export declare const upgrade: Command.Command<"upgrade", ChtClientService | Command.Command.Context<"chtx"> | import("../services/environment.ts").EnvironmentService | UpgradeService, string | Error, {
     readonly version: string;
     readonly follow: boolean;

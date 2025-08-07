@@ -1,6 +1,6 @@
 import { HttpClientRequest } from '@effect/platform';
 import * as Effect from 'effect/Effect';
-import { ChtClientService } from '../../services/cht-client.js';
+import { ChtClientService } from "../../services/cht-client.js";
 const getWarmRequest = (dbName, designName, viewName) => HttpClientRequest
     .get(`/${dbName}/_design/${designName}/_view/${viewName}`)
     .pipe(HttpClientRequest.setUrlParam('limit', '0'));

@@ -2,12 +2,12 @@ import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { Chunk, Match, Option, pipe, Redacted, Stream, StreamEmit, String } from 'effect';
 import PouchDB from 'pouchdb-core';
-import { pouchDB } from '../libs/core.js';
+import { pouchDB } from '../libs/core.ts';
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
 import PouchDBMapReduce from 'pouchdb-mapreduce';
 // @ts-expect-error no types for this package
 import PouchDBSessionAuthentication from 'pouchdb-session-authentication';
-import { EnvironmentService } from './environment.js';
+import { EnvironmentService } from './environment.ts';
 import https from 'https';
 import { v4 as uuid } from 'uuid';
 import { UnknownException } from 'effect/Cause';

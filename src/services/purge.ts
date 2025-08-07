@@ -1,9 +1,9 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { AllDocsResponseStream, PouchDBService, streamAllDocPages, streamQueryPages } from './pouchdb.js';
+import { AllDocsResponseStream, PouchDBService, streamAllDocPages, streamQueryPages } from './pouchdb.ts';
 import { Array, Option, pipe, Predicate, Schema, Stream, String } from 'effect';
-import { purgeFrom } from '../libs/couch/purge.js';
-import { ChtClientService } from './cht-client.js';
+import { purgeFrom } from '../libs/couch/purge.ts';
+import { ChtClientService } from './cht-client.ts';
 import AllDocsResponse = PouchDB.Core.AllDocsResponse;
 import AllDocsWithKeysResponse = PouchDB.Core.AllDocsWithKeysResponse;
 

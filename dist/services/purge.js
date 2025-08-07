@@ -1,9 +1,9 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { PouchDBService, streamAllDocPages, streamQueryPages } from './pouchdb.js';
+import { PouchDBService, streamAllDocPages, streamQueryPages } from "./pouchdb.js";
 import { Array, Option, pipe, Predicate, Schema, Stream, String } from 'effect';
-import { purgeFrom } from '../libs/couch/purge.js';
-import { ChtClientService } from './cht-client.js';
+import { purgeFrom } from "../libs/couch/purge.js";
+import { ChtClientService } from "./cht-client.js";
 // _purge endpoint only accepts batches of 100.
 // skip: 0 just keeps getting the next 100 (after the last was purged)
 const PAGE_OPTIONS = { limit: 100, skip: 0 };

@@ -1,5 +1,5 @@
 import * as Effect from 'effect/Effect';
-import { ChtClientService } from '../../services/cht-client.js';
+import { ChtClientService } from '../../services/cht-client.ts';
 import { Schema } from 'effect';
 declare const CouchDesign_base: Schema.Class<CouchDesign, {
     _id: typeof Schema.String;

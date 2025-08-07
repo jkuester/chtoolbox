@@ -1,10 +1,10 @@
 import { describe, it } from 'mocha';
 import { Chunk, Effect, Layer, Stream } from 'effect';
 import { expect } from 'chai';
-import { createDesignInfo } from '../utils/data-models.js';
-import * as WarmViewsSvc from '../../src/services/warm-views.js';
-import { genWithLayer, sandbox } from '../utils/base.js';
-import { ChtClientService } from '../../src/services/cht-client.js';
+import { createDesignInfo } from '../utils/data-models.ts';
+import * as WarmViewsSvc from '../../src/services/warm-views.ts';
+import { genWithLayer, sandbox } from '../utils/base.ts';
+import { ChtClientService } from '../../src/services/cht-client.ts';
 import esmock from 'esmock';
 import sinon from 'sinon';
 import { TimeoutException } from 'effect/Cause';
@@ -19,7 +19,7 @@ const mockActiveTasksLib = {
   streamActiveTasks: sandbox.stub(),
 }
 
-const { WarmViewsService } = await esmock<typeof WarmViewsSvc>('../../src/services/warm-views.js', {
+const { WarmViewsService } = await esmock<typeof WarmViewsSvc>('../../src/services/warm-views.ts', {
   '../../src/libs/couch/active-tasks.js': mockActiveTasksLib,
   '../../src/libs/couch/dbs-info.js': mockDbsInfoLib,
   '../../src/libs/couch/design-info.js': mockDesignInfoLib,

@@ -9,8 +9,8 @@ import {
   readJsonFile,
   writeEnvFile,
   writeFile,
-  writeJsonFile,
-} from '../libs/file.js';
+  writeJsonFile
+} from '../libs/file.ts';
 import {
   copyFileFromComposeContainer,
   copyFileToComposeContainer,
@@ -27,7 +27,7 @@ import {
   rmComposeContainer,
   startCompose,
   stopCompose
-} from '../libs/docker.js';
+} from '../libs/docker.ts';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
 import { getFreePorts } from '../libs/local-network.js';
 import { filterStatusOk } from '@effect/platform/HttpClient';

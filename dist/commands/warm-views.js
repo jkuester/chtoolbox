@@ -1,7 +1,7 @@
 import { Command, Options } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe, Schedule } from 'effect';
-import { initializeUrl } from '../index.js';
-import { WarmViewsService } from '../services/warm-views.js';
+import { initializeUrl } from "../index.js";
+import { WarmViewsService } from "../services/warm-views.js";
 const designsCurrentlyUpdating = WarmViewsService
     .designsCurrentlyUpdating()
     .pipe(Effect.map(Array.map(({ dbName, designId }) => `${dbName}/${designId}`)), Effect.tap(Console.log('Designs currently updating:')), Effect.tap(Console.log));

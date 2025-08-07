@@ -7,8 +7,8 @@ import {
   getContainerNamesWithLabel, pullImage,
   rmContainer,
   runContainer
-} from '../libs/docker.js';
-import { getFreePort, getLANIPAddress } from '../libs/local-network.js';
+} from '../libs/docker.ts';
+import { getFreePort, getLANIPAddress } from '../libs/local-network.ts';
 
 const NGINX_LOCAL_IP_IMAGE = 'medicmobile/nginx-local-ip';
 const CHTX_LOCAL_IP_PREFIX = 'chtx_local_ip';
