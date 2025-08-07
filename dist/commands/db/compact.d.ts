@@ -1,8 +1,8 @@
 import { Command } from '@effect/cli';
 import { Effect } from 'effect';
-import { CompactService } from '../../services/compact.js';
-import { CouchActiveTask, CouchActiveTaskStream } from '../../libs/couch/active-tasks.js';
-import { ChtClientService } from '../../services/cht-client.js';
+import { CompactService } from '../../services/compact.ts';
+import { CouchActiveTask, CouchActiveTaskStream } from '../../libs/couch/active-tasks.ts';
+import { ChtClientService } from '../../services/cht-client.ts';
 export declare const getTaskDisplayData: (task: CouchActiveTask) => {
     database: string;
     pid: string;

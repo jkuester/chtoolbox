@@ -1,8 +1,8 @@
 import { Args, Command } from '@effect/cli';
 import { Effect } from 'effect';
-import { initializeUrl } from '../../index.js';
-import { getDbsInfoByName } from '../../libs/couch/dbs-info.js';
-import { logJson } from '../../libs/console.js';
+import { initializeUrl } from "../../index.js";
+import { getDbsInfoByName } from "../../libs/couch/dbs-info.js";
+import { logJson } from "../../libs/console.js";
 const databases = Args
     .text({ name: 'database' })
     .pipe(Args.withDescription('The database to inspect'), Args.atLeast(1));

@@ -1,8 +1,8 @@
 import { Args, Command } from '@effect/cli';
 import { Array, Effect, pipe } from 'effect';
-import { initializeUrl } from '../../index.js';
-import { PouchDBService } from '../../services/pouchdb.js';
-import { logJson } from '../../libs/console.js';
+import { initializeUrl } from "../../index.js";
+import { PouchDBService } from "../../services/pouchdb.js";
+import { logJson } from "../../libs/console.js";
 const createDbs = (dbs) => pipe(dbs, Array.map(PouchDBService.get), Effect.allWith({ concurrency: 'unbounded' }));
 const databases = Args
     .text({ name: 'database' })
