@@ -126,7 +126,8 @@ describe('local network libs', () => {
       name: 'myInst',
       username: 'medic',
       password: Redacted.make('password'),
-      port: Option.some('1234')
+      port: Option.some('1234'),
+      status: 'running'
     });
 
     expect(result).to.deep.equal(Option.some('https://medic:password@192-168-1-111.local-ip.medicmobile.org:1234'));

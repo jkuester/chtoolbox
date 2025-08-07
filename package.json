@@ -20,7 +20,7 @@
     "build-app": "rm -rf dist && tsgo -p tsconfig.build.json && chmod +x dist/index.js",
     "lint": "eslint --color --cache . && knip --production",
     "local": "tsx src/index.ts",
-    "test": "c8 mocha \"test/**/*\""
+    "test": "tsgo -p tsconfig.test.json && c8 mocha \"test/**/*\""
   },
   "license": "AGPL-3.0-only",
   "devDependencies": {

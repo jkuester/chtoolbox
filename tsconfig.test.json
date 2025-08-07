@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  // Do not emit any files, just check types
+  "compilerOptions": { "noEmit": true },
+}
