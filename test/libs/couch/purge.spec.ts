@@ -1,5 +1,5 @@
 import { describe, it } from 'mocha';
-import { Array, Effect, Either, Layer } from 'effect';
+import { Effect, Either, Layer } from 'effect';
 import { expect } from 'chai';
 import { ChtClientService } from '../../../src/services/cht-client.ts';
 import * as PurgeLibs from '../../../src/libs/couch/purge.ts';
@@ -31,7 +31,7 @@ describe('Couch Purge libs', () => {
     requestBuild.returns(Effect.succeed(fakeBuiltClientRequest));
     mockChtClient.request.returns(Effect.succeed(FAKE_CLIENT_RESPONSE));
     const dbName = 'medic';
-    const docs= Array.make({ _id: 'doc1', _rev: 'rev1' }, { _id: 'doc2', _rev: 'rev2' });
+    const docs= [{ _id: 'doc1', _rev: 'rev1' }, { _id: 'doc2', _rev: 'rev2' }] as const;
 
     const response = yield* purgeFrom(dbName)(docs);
 
@@ -50,7 +50,7 @@ describe('Couch Purge libs', () => {
     mockHttpRequest.post.returns(FAKE_CLIENT_REQUEST);
     requestBuild.returns(Effect.fail(expectedError));
     const dbName = 'medic';
-    const docs= Array.make({ _id: 'doc1', _rev: 'rev1' }, { _id: 'doc2', _rev: 'rev2' });
+    const docs= [{ _id: 'doc1', _rev: 'rev1' }, { _id: 'doc2', _rev: 'rev2' }] as const;
 
     const either = yield* Effect.either(purgeFrom(dbName)(docs));
 

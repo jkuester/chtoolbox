@@ -194,7 +194,7 @@ const getEnvParams = (env?: Record<string, string>) => pipe(
   Option.getOrElse(() => [] as string[]),
 );
 
-const getPortParams = (ports: [number, number][]) => pipe(
+const getPortParams = (ports: readonly (readonly [number, number])[]) => pipe(
   ports,
   Array.map(([host, container]) => ['--publish', `${host.toString()}:${container.toString()}`]),
   Array.flatten,
@@ -203,8 +203,8 @@ const getPortParams = (ports: [number, number][]) => pipe(
 export const runContainer = ({ image, name, env, labels = [], ports = [] }: {
   image: string,
   name: string,
-  labels?: string[],
-  ports?: [host: number, container: number][],
+  labels?: readonly string[],
+  ports?: readonly (readonly [host: number, container: number])[],
   env?: Record<string, string>,
 }): Effect.Effect<void, Error | PlatformError, CommandExecutor> => pipe(
   Array.make(

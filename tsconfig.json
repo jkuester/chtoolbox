@@ -11,8 +11,6 @@
     "rewriteRelativeImportExtensions": true,
     "tsBuildInfoFile": "dist/tsconfig.build.tsbuildinfo",
     "verbatimModuleSyntax": true,
-
-    "noUncheckedIndexedAccess": false
   },
   "files": [
     "package.json"

@@ -1,11 +1,13 @@
 import { Command } from '@effect/platform';
-import { Effect, pipe } from 'effect';
+import { Array, Effect, pipe, String } from 'effect';
 import * as Context from 'effect/Context';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
 import { PlatformError } from '@effect/platform/Error';
 
 const parseSize = (output: string) => pipe(
-  output.split(/\s/)[0],
+  output,
+  String.split(/\s/),
+  Array.headNonEmpty,
   parseInt
 );
 

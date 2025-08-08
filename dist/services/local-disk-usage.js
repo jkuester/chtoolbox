@@ -1,9 +1,9 @@
 import { Command } from '@effect/platform';
-import { Effect, pipe } from 'effect';
+import { Array, Effect, pipe, String } from 'effect';
 import * as Context from 'effect/Context';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
 import { PlatformError } from '@effect/platform/Error';
-const parseSize = (output) => pipe(output.split(/\s/)[0], parseInt);
+const parseSize = (output) => pipe(output, String.split(/\s/), Array.headNonEmpty, parseInt);
 const duCommand = (path) => Command
     .make('du', '-s', path)
     .pipe(Command.string, Effect.map(parseSize));

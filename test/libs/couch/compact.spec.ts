@@ -34,8 +34,8 @@ describe('Couch Compact libs', () => {
 
     yield* compactDb(dbName);
 
-    expect(mockHttpRequest.schemaBodyJson.calledOnce).to.be.true;
-    expect(mockHttpRequest.schemaBodyJson.args[0][0]).to.deep.include({ fields: {} });
+    expect(mockHttpRequest.schemaBodyJson).to.have.been.calledOnce;
+    expect(mockHttpRequest.schemaBodyJson).to.have.been.calledWithMatch({ fields: {} });
     expect(mockHttpRequest.post.calledOnceWithExactly(`/${dbName}/_compact`)).to.be.true;
     expect(requestBuild.calledOnceWithExactly(FAKE_CLIENT_REQUEST, {})).to.be.true;
     expect(mockChtClient.request.calledOnceWithExactly(fakeBuiltClientRequest)).to.be.true;
@@ -51,8 +51,8 @@ describe('Couch Compact libs', () => {
 
     yield* compactDesign(dbName, designName);
 
-    expect(mockHttpRequest.schemaBodyJson.calledOnce).to.be.true;
-    expect(mockHttpRequest.schemaBodyJson.args[0][0]).to.deep.include({ fields: {} });
+    expect(mockHttpRequest.schemaBodyJson).to.have.been.calledOnce;
+    expect(mockHttpRequest.schemaBodyJson).to.have.been.calledWithMatch({ fields: {} });
     expect(mockHttpRequest.post.calledOnceWithExactly(`/${dbName}/_compact/${designName}`)).to.be.true;
     expect(requestBuild.calledOnceWithExactly(FAKE_CLIENT_REQUEST, {})).to.be.true;
     expect(mockChtClient.request.calledOnceWithExactly(fakeBuiltClientRequest)).to.be.true;
@@ -69,8 +69,8 @@ describe('Couch Compact libs', () => {
 
     if (Either.isLeft(either)) {
       expect(either.left).to.equal(expectedError);
-      expect(mockHttpRequest.schemaBodyJson.calledOnce).to.be.true;
-      expect(mockHttpRequest.schemaBodyJson.args[0][0]).to.deep.include({ fields: {} });
+      expect(mockHttpRequest.schemaBodyJson).to.have.been.calledOnce;
+      expect(mockHttpRequest.schemaBodyJson).to.have.been.calledWithMatch({ fields: {} });
       expect(mockHttpRequest.post.calledOnceWithExactly(`/${dbName}/_compact`)).to.be.true;
       expect(requestBuild.calledOnceWithExactly(FAKE_CLIENT_REQUEST, {})).to.be.true;
       expect(mockChtClient.request.notCalled).to.be.true;

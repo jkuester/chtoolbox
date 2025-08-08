@@ -4,7 +4,8 @@ import * as Context from 'effect/Context';
 import {
   doesContainerExist,
   getContainerLabelValue,
-  getContainerNamesWithLabel, pullImage,
+  getContainerNamesWithLabel,
+  pullImage,
   rmContainer,
   runContainer
 } from '../libs/docker.ts';
@@ -46,6 +47,7 @@ const getPortsFromLabel = (label: string) => pipe(
   String.split(':'),
   Array.map(Number.parse),
   Array.map(Option.getOrThrow),
+  ([from, ...to]): [number, number] => [from, Option.fromIterable(to).pipe(Option.getOrThrow)],
   ([from, to]) => ({ from, to })
 );
 

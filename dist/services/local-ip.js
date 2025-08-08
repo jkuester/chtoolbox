@@ -18,7 +18,7 @@ const createLocalIpContainer = (toPort) => (fromPort) => runContainer({
     env: { APP_URL: `http://${getLANIPAddress()}:${toPort.toString()}` },
     labels: [`${CHTX_LOCAL_IP_LABEL}=${fromPort.toString()}:${toPort.toString()}`],
 });
-const getPortsFromLabel = (label) => pipe(label, String.split(':'), Array.map(Number.parse), Array.map(Option.getOrThrow), ([from, to]) => ({ from, to }));
+const getPortsFromLabel = (label) => pipe(label, String.split(':'), Array.map(Number.parse), Array.map(Option.getOrThrow), ([from, ...to]) => [from, Option.fromIterable(to).pipe(Option.getOrThrow)], ([from, to]) => ({ from, to }));
 // Continue even if the image pull fails, as it might exist locally.
 const pullLocalIpImage = () => pullImage(NGINX_LOCAL_IP_IMAGE)
     .pipe(Effect.catchAll(() => Effect.log(`Failed to pull Docker image: ${NGINX_LOCAL_IP_IMAGE}`)));

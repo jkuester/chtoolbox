@@ -1,6 +1,6 @@
-import { Config, Effect, Option, Redacted, Ref, String } from 'effect';
+import { Config, Effect, Option, Redacted, Ref, String, Array, Predicate } from 'effect';
 const COUCH_URL_PATTERN = /^(https?:\/\/([^:]+):[^/]+).*$/;
-const parseCouchUrl = (url) => url.pipe(Redacted.value, String.match(COUCH_URL_PATTERN), Option.map(([, url, user]) => ({
+const parseCouchUrl = (url) => url.pipe(Redacted.value, String.match(COUCH_URL_PATTERN), Option.map(([, url, user]) => [url, user]), Option.filter((data) => Array.every(data, Predicate.isNotNullable)), Option.map(([url, user]) => ({
     url: Redacted.make(`${url}/`),
     user
 })), Option.map(Effect.succeed), Option.getOrElse(() => Effect.fail(Error('Could not parse URL.'))));

@@ -119,7 +119,8 @@ volumes:
   cht-nouveau-data:${localVolumePath.pipe(getVolumeConfig(SUB_DIR_NOUVEAU))}
 `;
 
-const SSL_URL_DICT = {
+export type SSLType = 'local-ip' | 'expired' | 'self-signed';
+const SSL_URL_DICT: Record<SSLType, [[string, string], [string, string]]> = {
   'local-ip': [
     [SSL_CERT_FILE_NAME, 'https://local-ip.medicmobile.org/fullchain'],
     [SSL_KEY_FILE_NAME, 'https://local-ip.medicmobile.org/key'],
@@ -145,7 +146,6 @@ const SSL_URL_DICT = {
     ],
   ],
 };
-export type SSLType = keyof typeof SSL_URL_DICT;
 
 class ChtInstanceConfig extends Schema.Class<ChtInstanceConfig>('ChtInstanceConfig')({
   CHT_COMPOSE_PROJECT_NAME: Schema.NonEmptyTrimmedString,

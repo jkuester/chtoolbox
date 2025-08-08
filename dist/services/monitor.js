@@ -94,8 +94,8 @@ const getMonitoringData = (directory) => pipe(Effect.all([
     version,
     databases: dbsInfo.map((dbInfo, i) => ({
         ...dbInfo,
-        designs: designInfos[i],
-        nouveau_indexes: nouveauInfos[i],
+        designs: pipe(Array.get(designInfos, i), Option.getOrThrow),
+        nouveau_indexes: pipe(Array.get(nouveauInfos, i), Option.getOrThrow),
     })),
     directory_size
 })));

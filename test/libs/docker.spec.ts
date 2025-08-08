@@ -412,9 +412,9 @@ describe('docker libs', () => {
         image: 'my-image',
         name: 'my-container',
         labels: ['label1=value1', 'label2=value2'],
-        ports: [[8080, 80], [443, 443]] as [number, number][],
+        ports: [[8080, 80], [443, 443]],
         env: { VAR1: 'value1', VAR2: 'value2' },
-      };
+      } as const;
 
       yield* runContainer(opts);
 

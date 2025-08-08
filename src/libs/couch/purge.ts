@@ -24,7 +24,7 @@ const purgeDb = (dbName: string) => (body: typeof PurgeBody.Type) => getPostRequ
 
 const purgeDocs = (
   dbName: string,
-  docs: NonEmptyArray<RemoveDocument>
+  docs: Readonly<NonEmptyArray<RemoveDocument>>
 ): Effect.Effect<HttpClientResponse, Error, ChtClientService> => pipe(
   docs,
   Array.reduce({}, (acc, doc) => ({ ...acc, [doc._id]: [doc._rev] })),
@@ -32,5 +32,5 @@ const purgeDocs = (
 );
 
 export const purgeFrom = (dbName: string) => (
-  docs: NonEmptyArray<RemoveDocument>
+  docs: Readonly<NonEmptyArray<RemoveDocument>>
 ): Effect.Effect<HttpClientResponse, Error, ChtClientService> => purgeDocs(dbName, docs);

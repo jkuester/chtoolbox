@@ -1,6 +1,6 @@
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
-import { Array, Schema } from 'effect';
+import { Array, Schema, String, Predicate } from 'effect';
 import { ChtClientService } from '../../services/cht-client.ts';
 
 class CouchDesignDocs extends Schema.Class<CouchDesignDocs>('CouchDesignDocs')({
@@ -18,5 +18,7 @@ export const getDesignDocNames = (dbName: string): Effect.Effect<string[], Error
     Effect.scoped,
     Effect.map(designDocs => designDocs.rows),
     Effect.map(Array.map(({ id }) => id)),
-    Effect.map(Array.map(id => id.split('/')[1])),
+    Effect.map(Array.map(String.split('/'))),
+    Effect.map(Array.map(([, name]) => name)),
+    Effect.filterOrFail((names): names is string[] => Array.every(names, Predicate.isNotNullable)),
   );
