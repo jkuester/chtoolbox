@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import { ChtClientService } from '../../../src/services/cht-client.ts';
 import * as ViewLib from '../../../src/libs/couch/view.ts';
 import { genWithLayer, sandbox } from '../../utils/base.ts';
-import esmock from 'esmock'
+import esmock from 'esmock';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
 const mockChtClient = { request: sandbox.stub() };

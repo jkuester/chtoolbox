@@ -21,12 +21,13 @@ const mockCommand = {
   stdout: sandbox.stub(),
   stderr: sandbox.stub(),
   exitCode: sandbox.stub(),
-}
+};
 const envGet = sandbox.stub();
 
-const { TestDataGeneratorService } = await esmock<typeof TestDataGeneratorSvc>('../../src/services/test-data-generator.ts', {
-  '@effect/platform': { Command: mockCommand }
-});
+const { TestDataGeneratorService } = await esmock<typeof TestDataGeneratorSvc>(
+  '../../src/services/test-data-generator.ts',
+  { '@effect/platform': { Command: mockCommand } }
+);
 const run = TestDataGeneratorService.Default.pipe(
   Layer.provide(Layer.succeed(EnvironmentService, {
     get: envGet,

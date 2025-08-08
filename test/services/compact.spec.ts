@@ -10,7 +10,7 @@ import esmock from 'esmock';
 const mockActiveTasksLib = {
   filterStreamByType: sandbox.stub(),
   streamActiveTasks: sandbox.stub(),
-}
+};
 const mockDesignInfoLib = { getDesignInfo: sandbox.stub() };
 const mockDesignDocsLib = { getDesignDocNames: sandbox.stub() };
 const mockDbsInfoLib = {
@@ -67,7 +67,9 @@ describe('Compact service', () => {
       expect(mockDesignDocsLib.getDesignDocNames.args).to.deep.equal([['medic'], ['test']]);
       expect(mockDesignInfoLib.getDesignInfo.notCalled).to.be.true;
       expect(mockActiveTasksLib.streamActiveTasks.calledOnceWithExactly()).to.be.true;
-      expect(mockActiveTasksLib.filterStreamByType.calledOnceWithExactly('database_compaction', 'view_compaction')).to.be.true;
+      expect(mockActiveTasksLib.filterStreamByType.calledOnceWithExactly(
+        'database_compaction', 'view_compaction'
+      )).to.be.true;
       expect(mockCore.untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
     }));
 
@@ -88,7 +90,9 @@ describe('Compact service', () => {
       expect(mockDesignDocsLib.getDesignDocNames.args).to.deep.equal([['medic'], ['test']]);
       expect(mockDesignInfoLib.getDesignInfo.notCalled).to.be.true;
       expect(mockActiveTasksLib.streamActiveTasks.calledOnceWithExactly()).to.be.true;
-      expect(mockActiveTasksLib.filterStreamByType.calledOnceWithExactly('database_compaction', 'view_compaction')).to.be.true;
+      expect(mockActiveTasksLib.filterStreamByType.calledOnceWithExactly(
+        'database_compaction', 'view_compaction'
+      )).to.be.true;
       expect(mockCore.untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
     }));
 
@@ -106,7 +110,9 @@ describe('Compact service', () => {
       expect(mockDesignDocsLib.getDesignDocNames.notCalled).to.be.true;
       expect(mockDesignInfoLib.getDesignInfo.notCalled).to.be.true;
       expect(mockActiveTasksLib.streamActiveTasks.calledOnceWithExactly()).to.be.true;
-      expect(mockActiveTasksLib.filterStreamByType.calledOnceWithExactly('database_compaction', 'view_compaction')).to.be.true;
+      expect(mockActiveTasksLib.filterStreamByType.calledOnceWithExactly(
+        'database_compaction', 'view_compaction'
+      )).to.be.true;
       expect(mockCore.untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
     }));
 
@@ -183,7 +189,9 @@ describe('Compact service', () => {
       expect(mockDesignDocsLib.getDesignDocNames.args).to.deep.equal([['medic']]);
       expect(mockDesignInfoLib.getDesignInfo.notCalled).to.be.true;
       expect(mockActiveTasksLib.streamActiveTasks.calledOnceWithExactly()).to.be.true;
-      expect(mockActiveTasksLib.filterStreamByType.calledOnceWithExactly('database_compaction', 'view_compaction')).to.be.true;
+      expect(mockActiveTasksLib.filterStreamByType.calledOnceWithExactly(
+        'database_compaction', 'view_compaction'
+      )).to.be.true;
       expect(mockCore.untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
     }));
   });

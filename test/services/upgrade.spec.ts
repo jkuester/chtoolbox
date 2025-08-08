@@ -38,7 +38,7 @@ const mockUpgradeLib = {
   upgradeCht: sandbox.stub(),
   stageChtUpgrade: sandbox.stub(),
   completeChtUpgrade: sandbox.stub(),
-}
+};
 const mockCore = { pouchDB: sandbox.stub() };
 
 const { UpgradeService } = await esmock<typeof UpgradeSvc>('../../src/services/upgrade.ts', {
@@ -507,7 +507,7 @@ describe('Upgrade Service', () => {
     } };
     const usersMetaDdocAttachment = { docs: [usersMetaDdoc] };
 
-    const usersDdoc = { _id: '_design/users', views: { 'users_by_field': {} }}
+    const usersDdoc = { _id: '_design/users', views: { 'users_by_field': {} }};
     const usersDdocAttachment = { docs: [usersDdoc] };
 
     const medicActiveTask = createActiveTask({ database: 'medic', design_document: medicDdoc._id });
@@ -531,12 +531,12 @@ describe('Upgrade Service', () => {
       saveDoc = sinon.stub();
       mockPouchSvc.saveDoc.returns(saveDoc);
       stageingDbGet.resolves({ _attachments: {
-          'ddocs/medic.json': { data: pipe(medicDdocAttachment, JSON.stringify, Encoding.encodeBase64) },
-          'ddocs/sentinel.json': { data: pipe(sentinelDdocAttachment, JSON.stringify, Encoding.encodeBase64) },
-          'ddocs/logs.json': { data: pipe(logsDdocAttachment, JSON.stringify, Encoding.encodeBase64) },
-          'ddocs/users-meta.json': { data: pipe(usersMetaDdocAttachment, JSON.stringify, Encoding.encodeBase64) },
-          'ddocs/users.json': { data: pipe(usersDdocAttachment, JSON.stringify, Encoding.encodeBase64) },
-        } });
+        'ddocs/medic.json': { data: pipe(medicDdocAttachment, JSON.stringify, Encoding.encodeBase64) },
+        'ddocs/sentinel.json': { data: pipe(sentinelDdocAttachment, JSON.stringify, Encoding.encodeBase64) },
+        'ddocs/logs.json': { data: pipe(logsDdocAttachment, JSON.stringify, Encoding.encodeBase64) },
+        'ddocs/users-meta.json': { data: pipe(usersMetaDdocAttachment, JSON.stringify, Encoding.encodeBase64) },
+        'ddocs/users.json': { data: pipe(usersDdocAttachment, JSON.stringify, Encoding.encodeBase64) },
+      } });
       warmDesign.withArgs('medic', ':staged:medic').returns(Stream.succeed([medicActiveTask]));
       warmDesign.withArgs('medic', ':staged:medic-client').returns(Stream.succeed([medicClientActiveTask]));
       warmDesign.withArgs('medic-sentinel', ':staged:sentinel').returns(Stream.succeed([sentinelActiveTask]));
@@ -701,8 +701,8 @@ describe('Upgrade Service', () => {
     IN_PROGRESS_STATES.forEach(state => {
       it(`returns error when there is already an existing upgrade with status ${state}`, run(function* () {
         dbAllDocs.resolves({ rows: [{
-            doc: createUpgradeLog({ state })
-          }] });
+          doc: createUpgradeLog({ state })
+        }] });
 
         const either = yield* Effect.either(UpgradeService.preStage(version));
 

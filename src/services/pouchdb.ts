@@ -160,7 +160,11 @@ const cancelChangesFeedIfInterrupted = (feed: PouchDB.Core.Changes<object>) => E
 
 export const streamChanges = (dbName: string) => (
   options?: PouchDB.Core.ChangesOptions
-): Effect.Effect<Stream.Stream<PouchDB.Core.ChangesResponseChange<object>, Error>, never, PouchDBService> => PouchDBService
+): Effect.Effect<
+  Stream.Stream<PouchDB.Core.ChangesResponseChange<object>, Error>,
+  never,
+  PouchDBService
+> => PouchDBService
   .get(dbName)
   .pipe(Effect.map(db => pipe(
     { since: options?.since ?? 0 }, // Caching the since value in case the Stream is retried

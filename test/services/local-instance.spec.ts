@@ -45,7 +45,7 @@ const mockFileLib = {
   writeJsonFile: sandbox.stub(),
   readJsonFile: sandbox.stub(),
   getRemoteFile: sandbox.stub(),
-}
+};
 const mockHttpClient = { filterStatusOk: sandbox.stub() };
 const mockHttpRequest = { get: sandbox.stub() };
 const mockFileSystem = {
@@ -125,7 +125,7 @@ describe('Local Instance Service', () => {
       const couchComposeURL = chtComposeUrl(version, couchComposeName);
       mockFileLib.getRemoteFile.withArgs(coreComposeURL).returns(Effect.succeed('core-compose-file'));
       mockFileLib.getRemoteFile.withArgs(couchComposeURL).returns(Effect.succeed('couch-compose-file'));
-      mockFileSystem.readFileString.returns(Effect.succeed('nouveau:'))
+      mockFileSystem.readFileString.returns(Effect.succeed('nouveau:'));
 
       yield* LocalInstanceService.create(INSTANCE_NAME, version, Option.none());
 
@@ -207,7 +207,7 @@ describe('Local Instance Service', () => {
       const couchComposeURL = chtComposeUrl(version, couchComposeName);
       mockFileLib.getRemoteFile.withArgs(coreComposeURL).returns(Effect.succeed('core-compose-file'));
       mockFileLib.getRemoteFile.withArgs(couchComposeURL).returns(Effect.succeed('couch-compose-file'));
-      mockFileSystem.readFileString.returns(Effect.succeed('instance without nouveau'))
+      mockFileSystem.readFileString.returns(Effect.succeed('instance without nouveau'));
       const dataDir = '/data/directory';
 
       yield* LocalInstanceService.create(INSTANCE_NAME, version, Option.some(dataDir));
@@ -329,7 +329,9 @@ describe('Local Instance Service', () => {
 
       if (Either.isLeft(either)) {
         expect(either.left).to.deep.equal(new Error(`Instance ${INSTANCE_NAME} already exists`));
-        expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
+        expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(
+          `chtx.instance=${INSTANCE_NAME}`
+        )).to.be.true;
         expect(mockNetworkLib.getFreePorts.calledOnceWithExactly()).to.be.true;
         expect(mockFileLib.createTmpDir.calledOnceWithExactly()).to.be.true;
         expect(mockFileLib.getRemoteFile.notCalled).to.be.true;
@@ -529,7 +531,9 @@ describe('Local Instance Service', () => {
 
       if (Either.isLeft(either)) {
         expect(either.left).to.deep.equal(new Error(`Instance ${INSTANCE_NAME} does not exist`));
-        expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
+        expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(
+          `chtx.instance=${INSTANCE_NAME}`
+        )).to.be.true;
         expect(mockDockerLib.getContainersForComposeProject.args).to.deep.equal([
           [INSTANCE_NAME, ...CONTAINER_STATUSES_RUNNING],
           [INSTANCE_NAME, ...CONTAINER_STATUSES_STOPPED],
@@ -705,7 +709,9 @@ describe('Local Instance Service', () => {
 
       if (Either.isLeft(either)) {
         expect(either.left).to.deep.equal(new Error(`Instance ${INSTANCE_NAME} does not exist`));
-        expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
+        expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(
+          `chtx.instance=${INSTANCE_NAME}`
+        )).to.be.true;
         expect(mockDockerLib.stopCompose.args).to.deep.equal([[INSTANCE_NAME], [`${INSTANCE_NAME}-up`]]);
       } else {
         expect.fail('Expected error');
@@ -772,7 +778,9 @@ describe('Local Instance Service', () => {
 
         yield* LocalInstanceService.setSSLCerts(INSTANCE_NAME, sslType as SSLType);
 
-        expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
+        expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(
+          `chtx.instance=${INSTANCE_NAME}`
+        )).to.be.true;
         expect(mockDockerLib.getContainersForComposeProject.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
         expect(mockDockerLib.startCompose.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
         expect(mockDockerLib.getEnvarFromComposeContainer.calledOnceWithExactly(
@@ -810,7 +818,9 @@ describe('Local Instance Service', () => {
 
       if (Either.isLeft(either)) {
         expect(either.left).to.deep.equal(new Error(`Could not get port for instance ${INSTANCE_NAME}`));
-        expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
+        expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(
+          `chtx.instance=${INSTANCE_NAME}`
+        )).to.be.true;
         expect(mockDockerLib.getContainersForComposeProject.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
         expect(mockDockerLib.startCompose.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
         expect(mockDockerLib.getEnvarFromComposeContainer.calledOnceWithExactly(
@@ -913,7 +923,7 @@ describe('Local Instance Service', () => {
       mockDockerLib.getEnvarFromComposeContainer
         .withArgs(...argsForGetEnvarForPasswords)
         .returns(Effect.succeed('password'));
-      mockDockerLib.getContainersForComposeProject.returns(Effect.succeed([]))
+      mockDockerLib.getContainersForComposeProject.returns(Effect.succeed([]));
 
       const results = yield* LocalInstanceService.ls();
 

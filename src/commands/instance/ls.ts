@@ -9,7 +9,7 @@ const filterInstances = (names: string[]) => Match
   .pipe(
     Match.when(true, () => () => true),
     Match.orElse(() => ({ name }: LocalChtInstance) => names.includes(name)),
-  )
+  );
 
 const getPrintableInstanceInfo = (instance: LocalChtInstance) => ({
   name: instance.name,

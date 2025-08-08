@@ -19,7 +19,7 @@ const designsCurrentlyUpdating = () => getDbNames()
 const isDesignUpdating = (dbName, designId) => getDesignInfo(dbName, designId).pipe(Effect.tap(({ view_index }) => Effect.logDebug(`${dbName}/${designId} updater_running: ${view_index.updater_running.toString()}`)), Effect.map(({ view_index }) => view_index.updater_running));
 const warmDesignViews = (dbName, designId) => Effect
     .logDebug(`Warming views for ${dbName}/${designId}`)
-    .pipe(Effect.andThen(getViewNames(dbName, designId)), Effect.map(Array.map(warmCouchView(dbName, designId))), Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })), Effect.timeout(1000), Effect.catchTag("TimeoutException", () => Effect.logDebug(`Timeout warming ${dbName}/${designId}`)));
+    .pipe(Effect.andThen(getViewNames(dbName, designId)), Effect.map(Array.map(warmCouchView(dbName, designId))), Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })), Effect.timeout(1000), Effect.catchTag('TimeoutException', () => Effect.logDebug(`Timeout warming ${dbName}/${designId}`)));
 const isWarm = (dbName, designId) => Effect.all([
     warmDesignViews(dbName, designId),
     isDesignUpdating(dbName, designId)

@@ -4,7 +4,9 @@ import { Array, Boolean, Effect, pipe, Record } from 'effect';
 import { Scope } from 'effect/Scope';
 import { PlatformError } from '@effect/platform/Error';
 
-export const createDir = (dirPath: string): Effect.Effect<void, PlatformError, FileSystem.FileSystem> => FileSystem.FileSystem.pipe(
+export const createDir = (
+  dirPath: string
+): Effect.Effect<void, PlatformError, FileSystem.FileSystem> => FileSystem.FileSystem.pipe(
   Effect.flatMap(fs => fs.makeDirectory(dirPath, { recursive: true }))
 );
 
@@ -57,10 +59,12 @@ export const writeEnvFile = (
 
 export const isDirectoryEmpty = (
   dirPath: string
-): Effect.Effect<boolean, PlatformError, FileSystem.FileSystem> => FileSystem.FileSystem.pipe(Effect.flatMap(fs => fs.exists(dirPath).pipe(
-  Effect.map(Boolean.not),
-  Effect.filterOrElse(
-    dirNotExists => dirNotExists,
-    () => fs.readDirectory(dirPath).pipe(Effect.map(entries => entries.length === 0))
-  )
-)));
+): Effect.Effect<boolean, PlatformError, FileSystem.FileSystem> => FileSystem.FileSystem.pipe(
+  Effect.flatMap(fs => fs.exists(dirPath).pipe(
+    Effect.map(Boolean.not),
+    Effect.filterOrElse(
+      dirNotExists => dirNotExists,
+      () => fs.readDirectory(dirPath).pipe(Effect.map(entries => entries.length === 0))
+    )
+  ))
+);

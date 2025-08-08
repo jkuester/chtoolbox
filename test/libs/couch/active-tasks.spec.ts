@@ -91,13 +91,15 @@ describe('Couch Active Tasks Service', () => {
       const streamedTasks = Chunk.toReadonlyArray(yield* Stream.runCollect(taskStream));
 
       expect(streamedTasks).to.deep.equal([
-          [TASK_MIN_DATA, TASK_ALL_DATA, TASK_LATER],
-          [TASK_MIN_DATA, TASK_ALL_DATA, TASK_LATER],
-          [TASK_MIN_DATA, TASK_ALL_DATA, TASK_LATER],
-        ]);
+        [TASK_MIN_DATA, TASK_ALL_DATA, TASK_LATER],
+        [TASK_MIN_DATA, TASK_ALL_DATA, TASK_LATER],
+        [TASK_MIN_DATA, TASK_ALL_DATA, TASK_LATER],
+      ]);
       expect(mockHttpRequest.get.callCount).to.equal(3);
       expect(mockHttpRequest.get.args).to.deep.equal([['/_active_tasks'], ['/_active_tasks'], ['/_active_tasks']]);
-      expect(mockChtClient.request.args).to.deep.equal([[FAKE_CLIENT_REQUEST], [FAKE_CLIENT_REQUEST], [FAKE_CLIENT_REQUEST]]);
+      expect(mockChtClient.request.args).to.deep.equal(
+        [[FAKE_CLIENT_REQUEST], [FAKE_CLIENT_REQUEST], [FAKE_CLIENT_REQUEST]]
+      );
     }));
 
     it('returns a stream of empty array when there are no tasks', run(function* () {

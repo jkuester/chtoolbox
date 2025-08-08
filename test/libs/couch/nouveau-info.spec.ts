@@ -41,7 +41,9 @@ describe('Couch Nouveau Index Info libs', () => {
       const nouveauInfo = yield* getNouveauInfo(dbName, ddocName, indexName);
 
       expect(nouveauInfo).to.deep.equal(expectedNouveauInfo);
-      expect(mockHttpRequest.get.calledOnceWithExactly(`/${dbName}/_design/${ddocName}/_nouveau_info/${indexName}`)).to.be.true;
+      expect(mockHttpRequest.get.calledOnceWithExactly(
+        `/${dbName}/_design/${ddocName}/_nouveau_info/${indexName}`
+      )).to.be.true;
       expect(mockChtClient.request.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
     }));
   });

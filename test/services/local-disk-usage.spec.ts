@@ -10,7 +10,7 @@ const FAKE_COMMAND = Effect.succeed({ hello: 'world' });
 const mockCommand = {
   make: sandbox.stub(),
   string: sandbox.stub(),
-}
+};
 
 const { LocalDiskUsageService } = await esmock<typeof LocalDiskUsageSvc>('../../src/services/local-disk-usage.ts', {
   '@effect/platform': { Command: mockCommand }

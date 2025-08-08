@@ -41,8 +41,8 @@ const zipArrayStreams = <T, Q>(
 export const mergeArrayStreams = <T, Q>(
   streams: [Stream.Stream<T[], Error, Q>, ...Stream.Stream<T[], Error, Q>[]]
 ): Stream.Stream<T[], Error, Q> => Array
-  .reduce(
-    Array.drop(streams, 1),
-    Array.headNonEmpty(streams),
-    zipArrayStreams
-  );
+    .reduce(
+      Array.drop(streams, 1),
+      Array.headNonEmpty(streams),
+      zipArrayStreams
+    );

@@ -231,7 +231,7 @@ export const doesContainerExist = (
   .pipe(
     runForString,
     Effect.map(String.isNonEmpty),
-  )
+  );
 
 export const rmContainer = (name: string): Effect.Effect<void, Error | PlatformError, CommandExecutor> => Command
   .make('docker', 'rm', '-f', name)

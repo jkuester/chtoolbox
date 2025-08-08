@@ -3,7 +3,11 @@ import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import node from 'eslint-plugin-n';
 import promise from 'eslint-plugin-promise';
-import medic from '@medic/eslint-config';
+import { FlatCompat } from '@eslint/eslintrc';
+
+const compat = new FlatCompat({
+  recommendedConfig: eslint.configs.recommended,
+});
 
 export default tseslint.config(
   { ignores: ['**/eslint.config.js', '**/.mocharc.cjs', '**/dist/', '**/node_modules/', '**/.c8_output/'] },
@@ -14,11 +18,9 @@ export default tseslint.config(
       promise,
     },
     extends: [
-      eslint.configs.recommended,
+      ...compat.extends('@medic'),
       tseslint.configs.strictTypeChecked,
       tseslint.configs.stylisticTypeChecked,
-      // TODO Cannot use medic with eslint 9+ because its format is unsupported
-      // medic
     ],
     languageOptions: {
       globals: globals.node,

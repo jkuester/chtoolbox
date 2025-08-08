@@ -58,7 +58,9 @@ const streamActiveTasks = (
   Effect.tap(clearThen(Console.log('Pre-staging complete.'))),
 );
 
-const getStreamAction = (opts: { preStage: boolean, follow: boolean }) => (stream: Stream.Stream<UpgradeLog, Error> | CouchActiveTaskStream) => Match
+const getStreamAction = (
+  opts: { preStage: boolean, follow: boolean }
+) => (stream: Stream.Stream<UpgradeLog, Error> | CouchActiveTaskStream) => Match
   .value(opts)
   .pipe(
     Match.when({ preStage: true, follow: false }, () => Effect.fail(
@@ -67,7 +69,7 @@ const getStreamAction = (opts: { preStage: boolean, follow: boolean }) => (strea
     Match.when({ preStage: true, follow: true }, () => streamActiveTasks(stream as CouchActiveTaskStream)),
     Match.when({ follow: true }, () => streamUpgradeLog(stream as Stream.Stream<UpgradeLog, Error>)),
     Match.orElse(() => printUpgradeLogId(stream as Stream.Stream<UpgradeLog, Error>)),
-  )
+  );
 
 const follow = Options
   .boolean('follow')

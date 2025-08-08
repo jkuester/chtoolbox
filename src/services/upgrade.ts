@@ -56,11 +56,14 @@ const CHT_DDOC_ATTACHMENT_NAMES = [
   'ddocs/users.json'
 ] as const;
 const STAGING_BUILDS_COUCH_URL = 'https://staging.dev.medicmobile.org/_couch/builds_4';
-const CHT_DATABASE_BY_ATTACHMENT_NAME: Record<typeof CHT_DDOC_ATTACHMENT_NAMES[number], typeof CHT_DATABASES[number]> = pipe(
+const CHT_DATABASE_BY_ATTACHMENT_NAME: Record<
+  typeof CHT_DDOC_ATTACHMENT_NAMES[number],
+  typeof CHT_DATABASES[number]
+> = pipe(
   CHT_DDOC_ATTACHMENT_NAMES,
   Array.zip(CHT_DATABASES),
   Record.fromEntries,
-)
+);
 
 export class UpgradeLog extends Schema.Class<UpgradeLog>('UpgradeLog')({
   _id: Schema.String,
@@ -81,7 +84,7 @@ class DesignDocAttachment extends Schema.Class<DesignDocAttachment>('DesignDocAt
     Either.getOrThrow,
     JSON.parse,
     Schema.decodeUnknown(DesignDocAttachment),
-  )
+  );
 }
 
 const latestUpgradeLog = PouchDBService
@@ -104,9 +107,9 @@ const latestUpgradeLog = PouchDBService
   );
 
 const streamChangesFeed = (upgradeLogId: string) => pipe(
-    { include_docs: true, doc_ids: [upgradeLogId] },
-    streamChanges('medic-logs'),
-  );
+  { include_docs: true, doc_ids: [upgradeLogId] },
+  streamChanges('medic-logs'),
+);
 
 const streamUpgradeLogChanges = (completedStates: readonly string[]) => latestUpgradeLog
   .pipe(

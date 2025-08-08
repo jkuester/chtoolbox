@@ -4,7 +4,7 @@ import { YieldWrap } from 'effect/Utils';
 import { Scope } from 'effect/Scope';
 import { use } from 'chai';
 import deepEqualInAnyOrder from 'deep-equal-in-any-order';
-import chaiExclude from 'chai-exclude'
+import chaiExclude from 'chai-exclude';
 import sinonChai from 'sinon-chai';
 
 use(deepEqualInAnyOrder);

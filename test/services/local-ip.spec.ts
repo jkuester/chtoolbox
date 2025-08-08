@@ -92,7 +92,9 @@ describe('Local IP Service', () => {
       if (Either.isRight(either)) {
         expect.fail('Expected error');
       }
-      expect(either.left).to.deep.equal(new Error(`Local-ip instance already exists for port [${TO_PORT.toString()}].`));
+      expect(either.left).to.deep.equal(
+        new Error(`Local-ip instance already exists for port [${TO_PORT.toString()}].`)
+      );
       expect(mockDockerLib.doesContainerExist.calledOnceWithExactly(`chtx_local_ip_${TO_PORT.toString()}`)).to.be.true;
       expect(mockDockerLib.pullImage.notCalled).to.be.true;
       expect(mockNetworkLib.getFreePort.calledOnceWithExactly()).to.be.true;

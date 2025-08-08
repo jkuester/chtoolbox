@@ -20,7 +20,7 @@ const mockCommand = {
   lines: sandbox.stub(),
   stdout: sandbox.stub(),
   stderr: sandbox.stub(),
-}
+};
 const mockSchedule = { spaced: sandbox.stub() };
 
 const run = Layer

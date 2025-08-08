@@ -32,7 +32,7 @@ describe('Replicate Service', () => {
   beforeEach(() => {
     saveDoc = sinon.stub();
     mockPouchSvc.saveDoc.returns(saveDoc);
-  })
+  });
 
   it('creates a doc in the _replication database', run(function* () {
     const owner = 'medic';
@@ -205,9 +205,9 @@ describe('Replicate Service', () => {
         $or: [
           { type: { $in: contactTypes } },
           { $and: [
-              { type: 'contact', },
-              { contact_type: { $in: contactTypes } }
-            ] }
+            { type: 'contact', },
+            { contact_type: { $in: contactTypes } }
+          ] }
         ]
       },
     })).to.be.true;
@@ -232,7 +232,7 @@ describe('Replicate Service', () => {
     }));
 
     if (Either.isRight(either)) {
-      expect.fail('Expected error to be thrown.')
+      expect.fail('Expected error to be thrown.');
     }
 
     expect(either.left.message).to.equal('Cannot replicate ddocs while also filtering by contact type.');

@@ -17,7 +17,7 @@ const mockDbsInfoLib = { getDbNames: sandbox.stub() };
 const mockActiveTasksLib = {
   filterStreamByType: sandbox.stub(),
   streamActiveTasks: sandbox.stub(),
-}
+};
 
 const { WarmViewsService } = await esmock<typeof WarmViewsSvc>('../../src/services/warm-views.ts', {
   '../../src/libs/couch/active-tasks.ts': mockActiveTasksLib,
@@ -78,7 +78,9 @@ describe('Warm Views Service', () => {
   describe('designsCurrentlyUpdating', () => {
     it('returns info about currently updating designs', run(function* () {
       mockDbsInfoLib.getDbNames.returns(Effect.succeed(['medic', 'test', 'sentinel']));
-      mockDesignDocsLib.getDesignDocNames.withArgs('medic').returns(Effect.succeed(['medic-client', 'medic-sms', 'medic']));
+      mockDesignDocsLib.getDesignDocNames
+        .withArgs('medic')
+        .returns(Effect.succeed(['medic-client', 'medic-sms', 'medic']));
       mockDesignDocsLib.getDesignDocNames.withArgs('test').returns(Effect.succeed(['test-client']));
       mockDesignDocsLib.getDesignDocNames.withArgs('sentinel').returns(Effect.succeed([]));
       mockDesignInfoLib.getDesignInfo
@@ -115,7 +117,9 @@ describe('Warm Views Service', () => {
 
     it('returns an empty array when no views are updating', run(function* () {
       mockDbsInfoLib.getDbNames.returns(Effect.succeed(['medic', 'test', 'sentinel']));
-      mockDesignDocsLib.getDesignDocNames.withArgs('medic').returns(Effect.succeed(['medic-client', 'medic-sms', 'medic']));
+      mockDesignDocsLib.getDesignDocNames
+        .withArgs('medic')
+        .returns(Effect.succeed(['medic-client', 'medic-sms', 'medic']));
       mockDesignDocsLib.getDesignDocNames.withArgs('test').returns(Effect.succeed(['test-client']));
       mockDesignDocsLib.getDesignDocNames.withArgs('sentinel').returns(Effect.succeed([]));
       mockDesignInfoLib.getDesignInfo

@@ -26,7 +26,7 @@ describe('local network libs', () => {
       const args = {
         port: 1234,
         exclude: [5678]
-      }
+      };
       mockGetPort.resolves(args.port);
 
       const result = yield* getFreePort(args);
