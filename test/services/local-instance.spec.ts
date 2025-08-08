@@ -1,10 +1,10 @@
 import { describe, it } from 'mocha';
 import { Array, Effect, Either, Layer, Option, pipe, Redacted, Schedule } from 'effect';
-import sinon, { SinonStub } from 'sinon';
+import sinon, { type SinonStub } from 'sinon';
 import { expect } from 'chai';
-import { genWithLayer, sandbox } from '../utils/base.js';
-import * as LocalInstanceSvc from '../../src/services/local-instance.js';
-import { SSLType } from '../../src/services/local-instance.js';
+import { genWithLayer, sandbox } from '../utils/base.ts';
+import * as LocalInstanceSvc from '../../src/services/local-instance.ts';
+import { type SSLType } from '../../src/services/local-instance.ts';
 import { NodeContext } from '@effect/platform-node';
 import { FileSystem, HttpClient, HttpClientRequest } from '@effect/platform';
 import esmock from 'esmock';
@@ -45,7 +45,7 @@ const mockFileLib = {
   writeJsonFile: sandbox.stub(),
   readJsonFile: sandbox.stub(),
   getRemoteFile: sandbox.stub(),
-}
+};
 const mockHttpClient = { filterStatusOk: sandbox.stub() };
 const mockHttpRequest = { get: sandbox.stub() };
 const mockFileSystem = {
@@ -55,12 +55,12 @@ const mockNetworkLib = { getFreePorts: sandbox.stub() };
 const mockSchedule = { spaced: sandbox.stub() };
 const httpClientExecute = sandbox.stub();
 
-const { LocalInstanceService } = await esmock<typeof LocalInstanceSvc>('../../src/services/local-instance.js', {
-  '../../src/libs/docker.js': mockDockerLib,
-  '../../src/libs/file.js': mockFileLib,
+const { LocalInstanceService } = await esmock<typeof LocalInstanceSvc>('../../src/services/local-instance.ts', {
+  '../../src/libs/docker.ts': mockDockerLib,
+  '../../src/libs/file.ts': mockFileLib,
   '@effect/platform/HttpClient': mockHttpClient,
   '@effect/platform': { HttpClientRequest: mockHttpRequest },
-  '../../src/libs/local-network.js': mockNetworkLib,
+  '../../src/libs/local-network.ts': mockNetworkLib,
   'effect': { Schedule: mockSchedule },
 });
 const run = LocalInstanceService.Default.pipe(
@@ -125,7 +125,7 @@ describe('Local Instance Service', () => {
       const couchComposeURL = chtComposeUrl(version, couchComposeName);
       mockFileLib.getRemoteFile.withArgs(coreComposeURL).returns(Effect.succeed('core-compose-file'));
       mockFileLib.getRemoteFile.withArgs(couchComposeURL).returns(Effect.succeed('couch-compose-file'));
-      mockFileSystem.readFileString.returns(Effect.succeed('nouveau:'))
+      mockFileSystem.readFileString.returns(Effect.succeed('nouveau:'));
 
       yield* LocalInstanceService.create(INSTANCE_NAME, version, Option.none());
 
@@ -141,12 +141,12 @@ describe('Local Instance Service', () => {
         [`${tmpDir}/${couchComposeName}`],
       ]);
       expect(writeFileInner.callCount).to.equal(4);
-      expect(writeFileInner.args[0][0]).to.include('image: public.ecr.aws/s5s3h4s7/cht-upgrade-service:latest');
-      expect(writeFileInner.args[1]).to.deep.equal(['core-compose-file']);
-      expect(writeFileInner.args[2]).to.deep.equal(['couch-compose-file']);
-      expect(writeFileInner.args[3][0]).to.include('cht-couchdb-data:/opt/couchdb/data');
-      expect(writeFileInner.args[3][0]).to.include('cht-nouveau-data:/data/nouveau');
-      expect(writeFileInner.args[3][0]).to.not.include(`device: /data/credentials`);
+      expect(writeFileInner.firstCall.args[0]).to.include('image: public.ecr.aws/s5s3h4s7/cht-upgrade-service:latest');
+      expect(writeFileInner.secondCall.args).to.deep.equal(['core-compose-file']);
+      expect(writeFileInner.thirdCall.args).to.deep.equal(['couch-compose-file']);
+      expect(writeFileInner.lastCall.args[0]).to.include('cht-couchdb-data:/opt/couchdb/data');
+      expect(writeFileInner.lastCall.args[0]).to.include('cht-nouveau-data:/data/nouveau');
+      expect(writeFileInner.lastCall.args[0]).to.not.include(`device: /data/credentials`);
       const expectedEnv = {
         CHT_COMPOSE_PROJECT_NAME: INSTANCE_NAME,
         CHT_NETWORK: INSTANCE_NAME,
@@ -158,8 +158,8 @@ describe('Local Instance Service', () => {
       };
       expect(mockFileLib.writeEnvFile.notCalled).to.be.true;
       expect(mockFileLib.writeJsonFile.calledOnce).to.be.true;
-      expect(mockFileLib.writeJsonFile.args[0][0]).to.equal(`${tmpDir}/env.json`);
-      const actualEnv = mockFileLib.writeJsonFile.args[0][1] as Record<string, string>;
+      expect(mockFileLib.writeJsonFile).to.have.been.calledWith(`${tmpDir}/env.json`);
+      const actualEnv = mockFileLib.writeJsonFile.firstCall.args[1] as Record<string, string>;
       expect(actualEnv).to.deep.include(expectedEnv);
       expect(actualEnv).to.have.property('COUCHDB_SECRET').that.is.a('string').that.has.length(32);
       expect(mockDockerLib.pullComposeImages.calledOnceWithExactly(INSTANCE_NAME, actualEnv)).to.be.true;
@@ -177,16 +177,16 @@ describe('Local Instance Service', () => {
         `${INSTANCE_NAME}-up`, 'cht-upgrade-service'
       )).to.be.true;
       expect(copyFileToComposeContainerInner.callCount).to.equal(4);
-      expect(copyFileToComposeContainerInner.args[0][0]).to.deep.equal(
+      expect(copyFileToComposeContainerInner.firstCall.args[0]).to.deep.equal(
         [`${tmpDir}/${coreComposeName}`, `/docker-compose/${coreComposeName}`]
       );
-      expect(copyFileToComposeContainerInner.args[1][0]).to.deep.equal(
+      expect(copyFileToComposeContainerInner.secondCall.args[0]).to.deep.equal(
         [`${tmpDir}/${couchComposeName}`, `/docker-compose/${couchComposeName}`]
       );
-      expect(copyFileToComposeContainerInner.args[2][0]).to.deep.equal(
+      expect(copyFileToComposeContainerInner.thirdCall.args[0]).to.deep.equal(
         [`${tmpDir}/chtx-override.yaml`, `/docker-compose/chtx-override.yaml`]
       );
-      expect(copyFileToComposeContainerInner.args[3][0]).to.deep.equal(
+      expect(copyFileToComposeContainerInner.lastCall.args[0]).to.deep.equal(
         [`${tmpDir}/env.json`, `/docker-compose/env.json`]
       );
       expect(mockFileSystem.readFileString.calledOnceWithExactly(`${tmpDir}/${couchComposeName}`)).to.be.true;
@@ -207,7 +207,7 @@ describe('Local Instance Service', () => {
       const couchComposeURL = chtComposeUrl(version, couchComposeName);
       mockFileLib.getRemoteFile.withArgs(coreComposeURL).returns(Effect.succeed('core-compose-file'));
       mockFileLib.getRemoteFile.withArgs(couchComposeURL).returns(Effect.succeed('couch-compose-file'));
-      mockFileSystem.readFileString.returns(Effect.succeed('instance without nouveau'))
+      mockFileSystem.readFileString.returns(Effect.succeed('instance without nouveau'));
       const dataDir = '/data/directory';
 
       yield* LocalInstanceService.create(INSTANCE_NAME, version, Option.some(dataDir));
@@ -229,15 +229,15 @@ describe('Local Instance Service', () => {
         [`${tmpDir}/${couchComposeName}`],
       ]);
       expect(writeFileInner.callCount).to.equal(4);
-      expect(writeFileInner.args[0][0]).to.include('image: public.ecr.aws/s5s3h4s7/cht-upgrade-service:latest');
-      expect(writeFileInner.args[0][0]).to.include(`device: ${expectedDataDirs[3]}`);
-      expect(writeFileInner.args[1]).to.deep.equal(['core-compose-file']);
-      expect(writeFileInner.args[2]).to.deep.equal(['couch-compose-file']);
-      expect(writeFileInner.args[3][0]).to.include('cht-couchdb-data:/opt/couchdb/data');
-      expect(writeFileInner.args[3][0]).to.not.include('cht-nouveau-data:/data/nouveau');
+      expect(writeFileInner.firstCall.args[0]).to.include('image: public.ecr.aws/s5s3h4s7/cht-upgrade-service:latest');
+      expect(writeFileInner.firstCall.args[0]).to.include(`device: ${Array.unsafeGet(expectedDataDirs, 3)}`);
+      expect(writeFileInner.secondCall.args).to.deep.equal(['core-compose-file']);
+      expect(writeFileInner.thirdCall.args).to.deep.equal(['couch-compose-file']);
+      expect(writeFileInner.lastCall.args[0]).to.include('cht-couchdb-data:/opt/couchdb/data');
+      expect(writeFileInner.lastCall.args[0]).to.not.include('cht-nouveau-data:/data/nouveau');
       pipe(
         expectedDataDirs.slice(0, 3),
-        Array.forEach(dir => expect(writeFileInner.args[3][0]).to.include(`device: ${dir}`))
+        Array.forEach(dir => expect(writeFileInner.lastCall.args[0]).to.include(`device: ${dir}`))
       );
       const expectedEnv = {
         CHT_COMPOSE_PROJECT_NAME: INSTANCE_NAME,
@@ -248,12 +248,10 @@ describe('Local Instance Service', () => {
         NGINX_HTTP_PORT: httpPort,
         NGINX_HTTPS_PORT: httpsPort,
       };
-      expect(mockFileLib.writeEnvFile.calledOnce).to.be.true;
-      expect(mockFileLib.writeEnvFile.args[0][0]).to.equal(`${dataDir}/.env`);
-      expect(mockFileLib.writeEnvFile.args[0][1]).to.deep.include(expectedEnv);
-      expect(mockFileLib.writeJsonFile.calledOnce).to.be.true;
-      expect(mockFileLib.writeJsonFile.args[0][0]).to.equal(`${tmpDir}/env.json`);
-      const actualEnv = mockFileLib.writeJsonFile.args[0][1] as Record<string, string>;
+      expect(mockFileLib.writeEnvFile).to.have.been.calledOnce;
+      expect(mockFileLib.writeEnvFile).to.have.been.calledWithMatch(`${dataDir}/.env`, expectedEnv);
+      expect(mockFileLib.writeJsonFile).to.have.been.calledOnceWith(`${tmpDir}/env.json`);
+      const actualEnv = mockFileLib.writeJsonFile.firstCall.args[1] as Record<string, string>;
       expect(actualEnv).to.deep.include(expectedEnv);
       expect(actualEnv).to.have.property('COUCHDB_SECRET').that.is.a('string').that.has.length(32);
       expect(mockDockerLib.pullComposeImages.calledOnceWithExactly(INSTANCE_NAME, actualEnv)).to.be.true;
@@ -271,16 +269,16 @@ describe('Local Instance Service', () => {
         `${INSTANCE_NAME}-up`, 'cht-upgrade-service'
       )).to.be.true;
       expect(copyFileToComposeContainerInner.callCount).to.equal(4);
-      expect(copyFileToComposeContainerInner.args[0][0]).to.deep.equal(
+      expect(copyFileToComposeContainerInner.firstCall.args[0]).to.deep.equal(
         [`${tmpDir}/${coreComposeName}`, `/docker-compose/${coreComposeName}`]
       );
-      expect(copyFileToComposeContainerInner.args[1][0]).to.deep.equal(
+      expect(copyFileToComposeContainerInner.secondCall.args[0]).to.deep.equal(
         [`${tmpDir}/${couchComposeName}`, `/docker-compose/${couchComposeName}`]
       );
-      expect(copyFileToComposeContainerInner.args[2][0]).to.deep.equal(
+      expect(copyFileToComposeContainerInner.thirdCall.args[0]).to.deep.equal(
         [`${tmpDir}/chtx-override.yaml`, `/docker-compose/chtx-override.yaml`]
       );
-      expect(copyFileToComposeContainerInner.args[3][0]).to.deep.equal(
+      expect(copyFileToComposeContainerInner.lastCall.args[0]).to.deep.equal(
         [`${tmpDir}/env.json`, `/docker-compose/env.json`]
       );
       expect(mockFileSystem.readFileString.calledOnceWithExactly(`${tmpDir}/${couchComposeName}`)).to.be.true;
@@ -331,7 +329,9 @@ describe('Local Instance Service', () => {
 
       if (Either.isLeft(either)) {
         expect(either.left).to.deep.equal(new Error(`Instance ${INSTANCE_NAME} already exists`));
-        expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
+        expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(
+          `chtx.instance=${INSTANCE_NAME}`
+        )).to.be.true;
         expect(mockNetworkLib.getFreePorts.calledOnceWithExactly()).to.be.true;
         expect(mockFileLib.createTmpDir.calledOnceWithExactly()).to.be.true;
         expect(mockFileLib.getRemoteFile.notCalled).to.be.true;
@@ -503,8 +503,8 @@ describe('Local Instance Service', () => {
         [INSTANCE_NAME, ...CONTAINER_STATUSES_STOPPED]
       ]);
       expect(mockFileLib.writeFile.calledOnceWithExactly(`${tmpDir}/compose.yaml`)).to.be.true;
-      expect(writeFileInner.calledOnce).to.be.true;
-      expect(writeFileInner.args[0][0]).to.include('image: public.ecr.aws/s5s3h4s7/cht-upgrade-service:latest');
+      expect(writeFileInner).to.have.been.calledOnce;
+      expect(writeFileInner.firstCall.args[0]).to.include('image: public.ecr.aws/s5s3h4s7/cht-upgrade-service:latest');
       expect(mockDockerLib.createComposeContainers.args).to.deep.equal([
         [{}, `${tmpDir}/compose.yaml`],
         [env, `${tmpDir}/compose.yaml`]
@@ -531,7 +531,9 @@ describe('Local Instance Service', () => {
 
       if (Either.isLeft(either)) {
         expect(either.left).to.deep.equal(new Error(`Instance ${INSTANCE_NAME} does not exist`));
-        expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
+        expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(
+          `chtx.instance=${INSTANCE_NAME}`
+        )).to.be.true;
         expect(mockDockerLib.getContainersForComposeProject.args).to.deep.equal([
           [INSTANCE_NAME, ...CONTAINER_STATUSES_RUNNING],
           [INSTANCE_NAME, ...CONTAINER_STATUSES_STOPPED],
@@ -586,8 +588,8 @@ describe('Local Instance Service', () => {
         [INSTANCE_NAME, ...CONTAINER_STATUSES_STOPPED]
       ]);
       expect(mockFileLib.writeFile.calledOnceWithExactly(`${tmpDir}/compose.yaml`)).to.be.true;
-      expect(writeFileInner.calledOnce).to.be.true;
-      expect(writeFileInner.args[0][0]).to.include('image: public.ecr.aws/s5s3h4s7/cht-upgrade-service:latest');
+      expect(writeFileInner).to.have.been.calledOnce;
+      expect(writeFileInner.firstCall.args[0]).to.include('image: public.ecr.aws/s5s3h4s7/cht-upgrade-service:latest');
       expect(mockDockerLib.createComposeContainers.args).to.deep.equal([
         [{}, `${tmpDir}/compose.yaml`],
         [env, `${tmpDir}/compose.yaml`]
@@ -707,7 +709,9 @@ describe('Local Instance Service', () => {
 
       if (Either.isLeft(either)) {
         expect(either.left).to.deep.equal(new Error(`Instance ${INSTANCE_NAME} does not exist`));
-        expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
+        expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(
+          `chtx.instance=${INSTANCE_NAME}`
+        )).to.be.true;
         expect(mockDockerLib.stopCompose.args).to.deep.equal([[INSTANCE_NAME], [`${INSTANCE_NAME}-up`]]);
       } else {
         expect.fail('Expected error');
@@ -749,7 +753,7 @@ describe('Local Instance Service', () => {
       mockDockerLib.restartComposeService.returns(Effect.void);
     });
 
-    [
+    ([
       ['local-ip', 'https://local-ip.medicmobile.org/fullchain', 'https://local-ip.medicmobile.org/key'],
       [
         'expired',
@@ -761,7 +765,7 @@ describe('Local Instance Service', () => {
         'https://raw.githubusercontent.com/medic/cht-core/refs/heads/master/scripts/tls_certificates/self-signed.crt',
         'https://raw.githubusercontent.com/medic/cht-core/refs/heads/master/scripts/tls_certificates/self-signed.key'
       ]
-    ].forEach(([sslType, chainURL, keyURL]) => {
+    ] as const).forEach(([sslType, chainURL, keyURL]) => {
       it(`sets the ${sslType} SSL certs for the given project`, run(function* () {
         mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(true));
         mockDockerLib.getContainersForComposeProject.returns(Effect.succeed(['container']));
@@ -774,7 +778,9 @@ describe('Local Instance Service', () => {
 
         yield* LocalInstanceService.setSSLCerts(INSTANCE_NAME, sslType as SSLType);
 
-        expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
+        expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(
+          `chtx.instance=${INSTANCE_NAME}`
+        )).to.be.true;
         expect(mockDockerLib.getContainersForComposeProject.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
         expect(mockDockerLib.startCompose.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
         expect(mockDockerLib.getEnvarFromComposeContainer.calledOnceWithExactly(
@@ -788,11 +794,11 @@ describe('Local Instance Service', () => {
         expect(mockFileLib.writeFile.args).to.deep.equal([[`${tmpDir}/cert.pem`], [`${tmpDir}/key.pem`]]);
         expect(writeFileInner.args).to.deep.equal([[expectedFullChain], [expectedKey]]);
         expect(mockDockerLib.copyFileToComposeContainer.calledOnceWithExactly(INSTANCE_NAME, 'nginx')).to.be.true;
-        expect(copyFileToComposeContainerInner.calledTwice).to.be.true;
-        expect(copyFileToComposeContainerInner.args[0][0]).to.deep.equal(
+        expect(copyFileToComposeContainerInner).to.have.been.calledTwice;
+        expect(copyFileToComposeContainerInner.firstCall.args[0]).to.deep.equal(
           [`${tmpDir}/cert.pem`, '/etc/nginx/private/cert.pem']
         );
-        expect(copyFileToComposeContainerInner.args[1][0]).to.deep.equal(
+        expect(copyFileToComposeContainerInner.secondCall.args[0]).to.deep.equal(
           [`${tmpDir}/key.pem`, '/etc/nginx/private/key.pem']
         );
         expect(mockDockerLib.restartComposeService.calledOnceWithExactly(INSTANCE_NAME, 'nginx')).to.be.true;
@@ -812,7 +818,9 @@ describe('Local Instance Service', () => {
 
       if (Either.isLeft(either)) {
         expect(either.left).to.deep.equal(new Error(`Could not get port for instance ${INSTANCE_NAME}`));
-        expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
+        expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(
+          `chtx.instance=${INSTANCE_NAME}`
+        )).to.be.true;
         expect(mockDockerLib.getContainersForComposeProject.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
         expect(mockDockerLib.startCompose.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
         expect(mockDockerLib.getEnvarFromComposeContainer.calledOnceWithExactly(
@@ -915,7 +923,7 @@ describe('Local Instance Service', () => {
       mockDockerLib.getEnvarFromComposeContainer
         .withArgs(...argsForGetEnvarForPasswords)
         .returns(Effect.succeed('password'));
-      mockDockerLib.getContainersForComposeProject.returns(Effect.succeed([]))
+      mockDockerLib.getContainersForComposeProject.returns(Effect.succeed([]));
 
       const results = yield* LocalInstanceService.ls();
 

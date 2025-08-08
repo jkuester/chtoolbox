@@ -1,7 +1,7 @@
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import { Array, Schema } from 'effect';
-import { ChtClientService } from '../../services/cht-client.js';
+import { ChtClientService } from "../../services/cht-client.js";
 const ENDPOINT = '/_dbs_info';
 const DbsInfoBody = Schema.Struct({ keys: Schema.Array(Schema.String) });
 const getPostRequest = (keys) => DbsInfoBody.pipe(HttpClientRequest.schemaBodyJson, build => build(HttpClientRequest.post(ENDPOINT), { keys }), Effect.mapError(x => x));
@@ -36,4 +36,3 @@ export const getDbsInfoByName = (dbNames) => getPostRequest(dbNames)
     .pipe(Effect.flatMap(request => ChtClientService.request(request)), Effect.flatMap(CouchDbInfo.decodeResponse), Effect.scoped);
 export const getDbNames = () => getAllDbsInfo()
     .pipe(Effect.map(Array.map(({ key }) => key)));
-//# sourceMappingURL=dbs-info.js.map

@@ -1,16 +1,16 @@
 import { describe, it } from 'mocha';
 import { Chunk, Effect, Layer, Stream } from 'effect';
-import { expect } from 'chai';
 import sinon from 'sinon';
-import * as CompactSvc from '../../src/services/compact.js';
-import { genWithLayer, sandbox } from '../utils/base.js';
-import { ChtClientService } from '../../src/services/cht-client.js';
+import { expect } from 'chai';
+import * as CompactSvc from '../../src/services/compact.ts';
+import { genWithLayer, sandbox } from '../utils/base.ts';
+import { ChtClientService } from '../../src/services/cht-client.ts';
 import esmock from 'esmock';
 
 const mockActiveTasksLib = {
   filterStreamByType: sandbox.stub(),
   streamActiveTasks: sandbox.stub(),
-}
+};
 const mockDesignInfoLib = { getDesignInfo: sandbox.stub() };
 const mockDesignDocsLib = { getDesignDocNames: sandbox.stub() };
 const mockDbsInfoLib = {
@@ -23,13 +23,13 @@ const mockCompactLib = {
 };
 const mockCore = { untilEmptyCount: sandbox.stub() };
 
-const { CompactService } = await esmock<typeof CompactSvc>('../../src/services/compact.js', {
-  '../../src/libs/couch/dbs-info.js': mockDbsInfoLib,
-  '../../src/libs/couch/design-info.js': mockDesignInfoLib,
-  '../../src/libs/couch/design-docs.js': mockDesignDocsLib,
-  '../../src/libs/couch/active-tasks.js': mockActiveTasksLib,
-  '../../src/libs/couch/compact.js': mockCompactLib,
-  '../../src/libs/core.js': mockCore,
+const { CompactService } = await esmock<typeof CompactSvc>('../../src/services/compact.ts', {
+  '../../src/libs/couch/dbs-info.ts': mockDbsInfoLib,
+  '../../src/libs/couch/design-info.ts': mockDesignInfoLib,
+  '../../src/libs/couch/design-docs.ts': mockDesignDocsLib,
+  '../../src/libs/couch/active-tasks.ts': mockActiveTasksLib,
+  '../../src/libs/couch/compact.ts': mockCompactLib,
+  '../../src/libs/core.ts': mockCore,
 });
 const run = CompactService.Default
   .pipe(
@@ -67,7 +67,9 @@ describe('Compact service', () => {
       expect(mockDesignDocsLib.getDesignDocNames.args).to.deep.equal([['medic'], ['test']]);
       expect(mockDesignInfoLib.getDesignInfo.notCalled).to.be.true;
       expect(mockActiveTasksLib.streamActiveTasks.calledOnceWithExactly()).to.be.true;
-      expect(mockActiveTasksLib.filterStreamByType.calledOnceWithExactly('database_compaction', 'view_compaction')).to.be.true;
+      expect(mockActiveTasksLib.filterStreamByType.calledOnceWithExactly(
+        'database_compaction', 'view_compaction'
+      )).to.be.true;
       expect(mockCore.untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
     }));
 
@@ -88,7 +90,9 @@ describe('Compact service', () => {
       expect(mockDesignDocsLib.getDesignDocNames.args).to.deep.equal([['medic'], ['test']]);
       expect(mockDesignInfoLib.getDesignInfo.notCalled).to.be.true;
       expect(mockActiveTasksLib.streamActiveTasks.calledOnceWithExactly()).to.be.true;
-      expect(mockActiveTasksLib.filterStreamByType.calledOnceWithExactly('database_compaction', 'view_compaction')).to.be.true;
+      expect(mockActiveTasksLib.filterStreamByType.calledOnceWithExactly(
+        'database_compaction', 'view_compaction'
+      )).to.be.true;
       expect(mockCore.untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
     }));
 
@@ -106,7 +110,9 @@ describe('Compact service', () => {
       expect(mockDesignDocsLib.getDesignDocNames.notCalled).to.be.true;
       expect(mockDesignInfoLib.getDesignInfo.notCalled).to.be.true;
       expect(mockActiveTasksLib.streamActiveTasks.calledOnceWithExactly()).to.be.true;
-      expect(mockActiveTasksLib.filterStreamByType.calledOnceWithExactly('database_compaction', 'view_compaction')).to.be.true;
+      expect(mockActiveTasksLib.filterStreamByType.calledOnceWithExactly(
+        'database_compaction', 'view_compaction'
+      )).to.be.true;
       expect(mockCore.untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
     }));
 
@@ -183,7 +189,9 @@ describe('Compact service', () => {
       expect(mockDesignDocsLib.getDesignDocNames.args).to.deep.equal([['medic']]);
       expect(mockDesignInfoLib.getDesignInfo.notCalled).to.be.true;
       expect(mockActiveTasksLib.streamActiveTasks.calledOnceWithExactly()).to.be.true;
-      expect(mockActiveTasksLib.filterStreamByType.calledOnceWithExactly('database_compaction', 'view_compaction')).to.be.true;
+      expect(mockActiveTasksLib.filterStreamByType.calledOnceWithExactly(
+        'database_compaction', 'view_compaction'
+      )).to.be.true;
       expect(mockCore.untilEmptyCount.calledOnceWithExactly(5)).to.be.true;
     }));
   });

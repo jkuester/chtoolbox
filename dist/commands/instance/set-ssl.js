@@ -1,6 +1,6 @@
 import { Args, Command, Options } from '@effect/cli';
 import { Array, Effect, pipe } from 'effect';
-import { LocalInstanceService } from '../../services/local-instance.js';
+import { LocalInstanceService } from "../../services/local-instance.js";
 const setSSLCertOnInstances = (names, type) => pipe(names, Array.map(name => LocalInstanceService.setSSLCerts(name, type)), Effect.allWith({ concurrency: 'unbounded' }));
 const type = Options
     .choice('type', ['local-ip', 'self-signed', 'expired'])
@@ -11,4 +11,3 @@ const names = Args
 export const setSSL = Command
     .make('set-ssl', { names, type }, ({ names, type }) => setSSLCertOnInstances(names, type))
     .pipe(Command.withDescription(`LOCAL ONLY: Set the SSL certs on a local CHT instance. Requires Docker and Docker Compose.`));
-//# sourceMappingURL=set-ssl.js.map

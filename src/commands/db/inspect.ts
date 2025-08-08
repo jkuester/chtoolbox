@@ -1,9 +1,9 @@
 import { Args, Command } from '@effect/cli';
 import { Effect } from 'effect';
-import { initializeUrl } from '../../index.js';
-import { getDbsInfoByName } from '../../libs/couch/dbs-info.js';
+import { initializeUrl } from '../../index.ts';
+import { getDbsInfoByName } from '../../libs/couch/dbs-info.ts';
 
-import { logJson } from '../../libs/console.js';
+import { logJson } from '../../libs/console.ts';
 
 const databases = Args
   .text({ name: 'database' })

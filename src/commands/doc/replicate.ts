@@ -1,11 +1,11 @@
 import { Args, Command, Options } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe, Predicate, Schema, Stream } from 'effect';
-import { initializeUrl } from '../../index.js';
-import { ReplicateService, ReplicationDoc } from '../../services/replicate.js';
-import { CouchActiveTask, streamActiveTasks } from '../../libs/couch/active-tasks.js';
+import { initializeUrl } from '../../index.ts';
+import { ReplicateService, ReplicationDoc } from '../../services/replicate.ts';
+import { CouchActiveTask, streamActiveTasks } from '../../libs/couch/active-tasks.ts';
 import { ParseError } from 'effect/Cron';
-import { clearThen } from '../../libs/console.js';
-import { PouchDBService } from '../../services/pouchdb.js';
+import { clearThen } from '../../libs/console.ts';
+import { PouchDBService } from '../../services/pouchdb.ts';
 
 const DB_SPECIFIER_DESCRIPTION = `This can either be a database name for the current instance (e.g. 'medic') `
   + `or a full URL to a remote Couch database (including username/password). `
@@ -57,7 +57,9 @@ const watchReplication = (
     .pipe(
       Effect.race(streamReplicationTasks(repDocId)),
       Effect.andThen(getFinalDocCount(repDocId)),
-      Effect.tap(finalDocCount => clearThen(Console.log(`Replication complete. Final doc count: ${finalDocCount.toString()}`))),
+      Effect.tap(finalDocCount => clearThen(Console.log(
+        `Replication complete. Final doc count: ${finalDocCount.toString()}`
+      ))),
     )),
 );
 
@@ -85,17 +87,21 @@ const target = Args
   .pipe(Args.withDescription(`The replication target. ${DB_SPECIFIER_DESCRIPTION}`));
 
 export const replicate = Command
-  .make('replicate', { follow, contacts, source, target, all }, ({ follow, contacts, source, target, all }) => initializeUrl.pipe(
-    Effect.andThen(ReplicateService.replicate(source, target, {
-      includeDdocs: all,
-      contactTypes: contacts
-    })),
-    Effect.map(completionStream => Option.liftPredicate(completionStream, () => follow)),
-    Effect.map(Option.map(watchReplication)),
-    Effect.flatMap(Option.getOrElse(() => clearThen(Console.log(
-      'Replication started. Watch the active tasks for progress: chtx active-tasks -f'
-    )))),
-  ))
+  .make(
+    'replicate',
+    { follow, contacts, source, target, all },
+    ({ follow, contacts, source, target, all }) => initializeUrl.pipe(
+      Effect.andThen(ReplicateService.replicate(source, target, {
+        includeDdocs: all,
+        contactTypes: contacts
+      })),
+      Effect.map(completionStream => Option.liftPredicate(completionStream, () => follow)),
+      Effect.map(Option.map(watchReplication)),
+      Effect.flatMap(Option.getOrElse(() => clearThen(Console.log(
+        'Replication started. Watch the active tasks for progress: chtx active-tasks -f'
+      )))),
+    )
+  )
   .pipe(Command.withDescription(
     'Triggers a one-time server-side replication of the docs from the source to the target database.'
   ));

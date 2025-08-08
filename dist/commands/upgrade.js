@@ -1,10 +1,11 @@
 import { Args, Command, Options } from '@effect/cli';
 import { Array, Console, DateTime, Effect, Match, pipe, Schedule, Stream } from 'effect';
-import { initializeUrl } from '../index.js';
-import { UpgradeService } from '../services/upgrade.js';
-import { clearConsole, clearThen } from '../libs/console.js';
-import { getDisplayDictByPid } from '../libs/couch/active-tasks.js';
-import { getTaskDisplayData } from './db/compact.js';
+import { initializeUrl } from "../index.js";
+import { UpgradeLog, UpgradeService } from "../services/upgrade.js";
+import { clearConsole, clearThen } from "../libs/console.js";
+import { getDisplayDictByPid } from "../libs/couch/active-tasks.js";
+import { ChtClientService } from "../services/cht-client.js";
+import { getTaskDisplayData } from "./db/compact.js";
 const getUpgradeLogDisplay = ({ state_history }) => pipe(state_history, Array.map(({ state, date }) => ({
     state,
     time: DateTime
@@ -45,4 +46,3 @@ const version = Args
 export const upgrade = Command
     .make('upgrade', { version, follow, stage, complete, preStage }, (opts) => initializeUrl.pipe(Effect.andThen(getUpgradeAction(opts)), Effect.flatMap(getStreamAction(opts))))
     .pipe(Command.withDescription(`Run compaction on all databases and views.`));
-//# sourceMappingURL=upgrade.js.map

@@ -1,21 +1,27 @@
 import { afterEach, describe, it } from 'mocha';
 import { Effect, Either, Layer, Option, TestClock } from 'effect';
 import { expect } from 'chai';
-import * as MonitorSvc from '../../src/services/monitor.js';
-import { CouchNodeSystem } from '../../src/libs/couch/node-system.js';
-import { SinonStub } from 'sinon';
-import { CouchDbInfo } from '../../src/libs/couch/dbs-info.js';
-import { CouchDesignInfo } from '../../src/libs/couch/design-info.js';
-import { LocalDiskUsageService } from '../../src/services/local-disk-usage.js';
-import { createDbInfo, createDesignInfo, createNodeSystem, createNouveauInfo, createChtMonitoringData } from '../utils/data-models.js';
+import * as MonitorSvc from '../../src/services/monitor.ts';
+import { CouchNodeSystem } from '../../src/libs/couch/node-system.ts';
+import { type SinonStub } from 'sinon';
+import { CouchDbInfo } from '../../src/libs/couch/dbs-info.ts';
+import { CouchDesignInfo } from '../../src/libs/couch/design-info.ts';
+import { LocalDiskUsageService } from '../../src/services/local-disk-usage.ts';
+import {
+  createChtMonitoringData,
+  createDbInfo,
+  createDesignInfo,
+  createNodeSystem,
+  createNouveauInfo
+} from '../utils/data-models.ts';
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
-import { NonEmptyArray } from 'effect/Array';
-import { genWithLayer, sandbox } from '../utils/base.js';
-import { ChtClientService } from '../../src/services/cht-client.js';
+import { type NonEmptyArray } from 'effect/Array';
+import { genWithLayer, sandbox } from '../utils/base.ts';
+import { ChtClientService } from '../../src/services/cht-client.ts';
 import esmock from 'esmock';
-import { NouveauInfo } from '../../src/libs/couch/nouveau-info.js';
-import { ChtMonitoringData } from '../../src/libs/cht/monitoring.js';
+import { NouveauInfo } from '../../src/libs/couch/nouveau-info.ts';
+import { ChtMonitoringData } from '../../src/libs/cht/monitoring.ts';
 
 const DB_NAMES: NonEmptyArray<string> = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 const EXPECTED_DESIGN_INFO_ARGS = [
@@ -171,12 +177,12 @@ const mockDbsInfoLib = { getDbsInfoByName: sandbox.stub() };
 const mockChtMonitoringLib = { getChtMonitoringData: sandbox.stub() };
 const diskUsageServiceGetSize = sandbox.stub();
 
-const { MonitorService } = await esmock<typeof MonitorSvc>('../../src/services/monitor.js', {
-  '../../src/libs/couch/node-system.js': mockNodeSystemLib,
-  '../../src/libs/couch/dbs-info.js': mockDbsInfoLib,
-  '../../src/libs/couch/design-info.js': mockDesignInfoLib,
-  '../../src/libs/couch/nouveau-info.js': mockNouveauInfoLib,
-  '../../src/libs/cht/monitoring.js': mockChtMonitoringLib,
+const { MonitorService } = await esmock<typeof MonitorSvc>('../../src/services/monitor.ts', {
+  '../../src/libs/couch/node-system.ts': mockNodeSystemLib,
+  '../../src/libs/couch/dbs-info.ts': mockDbsInfoLib,
+  '../../src/libs/couch/design-info.ts': mockDesignInfoLib,
+  '../../src/libs/couch/nouveau-info.ts': mockNouveauInfoLib,
+  '../../src/libs/cht/monitoring.ts': mockChtMonitoringLib,
 });
 const run = MonitorService.Default.pipe(
   Layer.provide(Layer.succeed(ChtClientService, {} as unknown as ChtClientService)),
@@ -222,7 +228,9 @@ describe('Monitor service', () => {
       mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(unix_time * 1000);
-      mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
+      mockDbsInfoLib.getDbsInfoByName.returns(
+        Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo])
+      );
       initializeDesignInfoServiceGet(mockDesignInfoLib.getDesignInfo);
       initializeGetNouveauInfo(mockNouveauInfoLib.getNouveauInfo);
       const directory = 'directory';
@@ -276,15 +284,25 @@ describe('Monitor service', () => {
       mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(unix_time * 1000);
-      mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
+      mockDbsInfoLib.getDbsInfoByName.returns(
+        Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo])
+      );
       mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic').returns(Effect.succeed(medicDesignInfo));
       mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-admin').returns(Effect.succeed(medicAdminDesignInfo));
       mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-client').returns(Effect.succeed(medicClientDesignInfo));
-      mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-conflicts').returns(Effect.succeed(medicConflictsDesignInfo));
-      mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-scripts').returns(Effect.succeed(medicScriptsDesignInfo));
+      mockDesignInfoLib.getDesignInfo
+        .withArgs('medic', 'medic-conflicts')
+        .returns(Effect.succeed(medicConflictsDesignInfo));
+      mockDesignInfoLib.getDesignInfo
+        .withArgs('medic', 'medic-scripts')
+        .returns(Effect.succeed(medicScriptsDesignInfo));
       mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-sms').returns(Effect.succeed(medicSmsDesignInfo));
-      mockDesignInfoLib.getDesignInfo.withArgs('medic-sentinel', 'sentinel').returns(Effect.succeed(sentinelDesignInfo));
-      mockDesignInfoLib.getDesignInfo.withArgs('medic-users-meta', 'users-meta').returns(Effect.succeed(usersMetaDesignInfo));
+      mockDesignInfoLib.getDesignInfo
+        .withArgs('medic-sentinel', 'sentinel')
+        .returns(Effect.succeed(sentinelDesignInfo));
+      mockDesignInfoLib.getDesignInfo
+        .withArgs('medic-users-meta', 'users-meta')
+        .returns(Effect.succeed(usersMetaDesignInfo));
       mockDesignInfoLib.getDesignInfo.withArgs('_users', 'users').returns(Effect.succeed(usersDesignInfo));
       mockDesignInfoLib.getDesignInfo.returns(Effect.fail(new ResponseError({
         request: {} as unknown as HttpClientRequest.HttpClientRequest,
@@ -293,7 +311,7 @@ describe('Monitor service', () => {
       })));
       mockNouveauInfoLib.getNouveauInfo
         .withArgs('medic', 'medic', 'contacts_by_freetext')
-        .returns(Effect.succeed(contactsByFreetextNouveauInfo))
+        .returns(Effect.succeed(contactsByFreetextNouveauInfo));
       mockNouveauInfoLib.getNouveauInfo.returns(Effect.fail(new ResponseError({
         request: {} as unknown as HttpClientRequest.HttpClientRequest,
         response: { status: 404 } as unknown as HttpClientResponse.HttpClientResponse,
@@ -355,15 +373,25 @@ describe('Monitor service', () => {
       mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(unix_time * 1000);
-      mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
+      mockDbsInfoLib.getDbsInfoByName.returns(
+        Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo])
+      );
       mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic').returns(Effect.succeed(medicDesignInfo));
       mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-admin').returns(Effect.succeed(medicAdminDesignInfo));
       mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-client').returns(Effect.succeed(medicClientDesignInfo));
-      mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-conflicts').returns(Effect.succeed(medicConflictsDesignInfo));
-      mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-scripts').returns(Effect.succeed(medicScriptsDesignInfo));
+      mockDesignInfoLib.getDesignInfo
+        .withArgs('medic', 'medic-conflicts')
+        .returns(Effect.succeed(medicConflictsDesignInfo));
+      mockDesignInfoLib.getDesignInfo
+        .withArgs('medic', 'medic-scripts')
+        .returns(Effect.succeed(medicScriptsDesignInfo));
       mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-sms').returns(Effect.succeed(medicSmsDesignInfo));
-      mockDesignInfoLib.getDesignInfo.withArgs('medic-sentinel', 'sentinel').returns(Effect.succeed(sentinelDesignInfo));
-      mockDesignInfoLib.getDesignInfo.withArgs('medic-users-meta', 'users-meta').returns(Effect.succeed(usersMetaDesignInfo));
+      mockDesignInfoLib.getDesignInfo
+        .withArgs('medic-sentinel', 'sentinel')
+        .returns(Effect.succeed(sentinelDesignInfo));
+      mockDesignInfoLib.getDesignInfo
+        .withArgs('medic-users-meta', 'users-meta')
+        .returns(Effect.succeed(usersMetaDesignInfo));
       mockDesignInfoLib.getDesignInfo.withArgs('_users', 'users').returns(Effect.succeed(usersDesignInfo));
       const expectedError = new ResponseError({
         request: {} as unknown as HttpClientRequest.HttpClientRequest,
@@ -372,8 +400,8 @@ describe('Monitor service', () => {
       });
       mockDesignInfoLib.getDesignInfo.returns(Effect.fail(expectedError));
       mockNouveauInfoLib.getNouveauInfo
-                        .withArgs('medic', 'medic', 'contacts_by_freetext')
-                        .returns(Effect.succeed(contactsByFreetextNouveauInfo))
+        .withArgs('medic', 'medic', 'contacts_by_freetext')
+        .returns(Effect.succeed(contactsByFreetextNouveauInfo));
       mockNouveauInfoLib.getNouveauInfo.returns(Effect.fail(new ResponseError({
         request: {} as unknown as HttpClientRequest.HttpClientRequest,
         response: { status: 404 } as unknown as HttpClientResponse.HttpClientResponse,
@@ -406,7 +434,9 @@ describe('Monitor service', () => {
       mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(unix_time * 1000);
-      mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
+      mockDbsInfoLib.getDbsInfoByName.returns(
+        Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo])
+      );
       initializeDesignInfoServiceGet(mockDesignInfoLib.getDesignInfo);
       initializeGetNouveauInfo(mockNouveauInfoLib.getNouveauInfo);
       const directory = 'directory';
@@ -528,7 +558,9 @@ describe('Monitor service', () => {
       mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(unix_time * 1000);
-      mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
+      mockDbsInfoLib.getDbsInfoByName.returns(
+        Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo])
+      );
       initializeDesignInfoServiceGet(mockDesignInfoLib.getDesignInfo);
       initializeGetNouveauInfo(mockNouveauInfoLib.getNouveauInfo);
       mockChtMonitoringLib.getChtMonitoringData.returns(Effect.succeed(chtMonitoringData));
@@ -550,15 +582,25 @@ describe('Monitor service', () => {
       mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(unix_time * 1000);
-      mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
+      mockDbsInfoLib.getDbsInfoByName.returns(
+        Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo])
+      );
       mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic').returns(Effect.succeed(medicDesignInfo));
       mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-admin').returns(Effect.succeed(medicAdminDesignInfo));
       mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-client').returns(Effect.succeed(medicClientDesignInfo));
-      mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-conflicts').returns(Effect.succeed(medicConflictsDesignInfo));
-      mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-scripts').returns(Effect.succeed(medicScriptsDesignInfo));
+      mockDesignInfoLib.getDesignInfo
+        .withArgs('medic', 'medic-conflicts')
+        .returns(Effect.succeed(medicConflictsDesignInfo));
+      mockDesignInfoLib.getDesignInfo
+        .withArgs('medic', 'medic-scripts')
+        .returns(Effect.succeed(medicScriptsDesignInfo));
       mockDesignInfoLib.getDesignInfo.withArgs('medic', 'medic-sms').returns(Effect.succeed(medicSmsDesignInfo));
-      mockDesignInfoLib.getDesignInfo.withArgs('medic-sentinel', 'sentinel').returns(Effect.succeed(sentinelDesignInfo));
-      mockDesignInfoLib.getDesignInfo.withArgs('medic-users-meta', 'users-meta').returns(Effect.succeed(usersMetaDesignInfo));
+      mockDesignInfoLib.getDesignInfo
+        .withArgs('medic-sentinel', 'sentinel')
+        .returns(Effect.succeed(sentinelDesignInfo));
+      mockDesignInfoLib.getDesignInfo
+        .withArgs('medic-users-meta', 'users-meta')
+        .returns(Effect.succeed(usersMetaDesignInfo));
       mockDesignInfoLib.getDesignInfo.withArgs('_users', 'users').returns(Effect.succeed(usersDesignInfo));
       mockDesignInfoLib.getDesignInfo.returns(Effect.fail(new ResponseError({
         request: {} as unknown as HttpClientRequest.HttpClientRequest,
@@ -567,7 +609,7 @@ describe('Monitor service', () => {
       })));
       mockNouveauInfoLib.getNouveauInfo
         .withArgs('medic', 'medic', 'contacts_by_freetext')
-        .returns(Effect.succeed(contactsByFreetextNouveauInfo))
+        .returns(Effect.succeed(contactsByFreetextNouveauInfo));
       mockNouveauInfoLib.getNouveauInfo.returns(Effect.fail(new ResponseError({
         request: {} as unknown as HttpClientRequest.HttpClientRequest,
         response: { status: 404 } as unknown as HttpClientResponse.HttpClientResponse,
@@ -626,7 +668,9 @@ describe('Monitor service', () => {
       mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(123456789458);
-      mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]));
+      mockDbsInfoLib.getDbsInfoByName.returns(
+        Effect.succeed([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo])
+      );
       mockChtMonitoringLib.getChtMonitoringData.returns(Effect.succeed(chtMonitoringData));
       initializeDesignInfoServiceGet(mockDesignInfoLib.getDesignInfo);
       initializeGetNouveauInfo(mockNouveauInfoLib.getNouveauInfo);

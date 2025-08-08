@@ -1,7 +1,7 @@
 import { Args, Command, Options } from '@effect/cli';
 import { Array, Effect, pipe, Option } from 'effect';
-import { LocalInstanceService } from '../../services/local-instance.js';
-import { printInstanceTable } from './ls.js';
+import { LocalInstanceService } from "../../services/local-instance.js";
+import { printInstanceTable } from "./ls.js";
 const startChtInstances = (names, directory) => pipe(names, Array.map(name => LocalInstanceService.start(name, directory.pipe(Option.map(dir => `${dir}/${name}`)))), Effect.allWith({ concurrency: 'unbounded' }));
 const directory = Options
     .directory('directory', { exists: 'yes' })
@@ -16,4 +16,3 @@ export const start = Command
     .pipe(Effect.flatMap(printInstanceTable)))
     .pipe(Command.withDescription('LOCAL ONLY: Start a local CHT instance. The instance must already have been created. ' +
     'Requires Docker and Docker Compose.'));
-//# sourceMappingURL=start.js.map

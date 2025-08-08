@@ -1,6 +1,6 @@
 import { HttpClientRequest } from '@effect/platform';
 import * as Effect from 'effect/Effect';
-import { ChtClientService } from '../../services/cht-client.js';
+import { ChtClientService } from "../../services/cht-client.js";
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { Schema } from 'effect';
 const ENDPOINT_UPGRADE = '/api/v1/upgrade';
@@ -20,4 +20,3 @@ export const upgradeCht = (version) => postUpgrade(ENDPOINT_UPGRADE, version);
 export const stageChtUpgrade = (version) => postUpgrade(ENDPOINT_STAGE, version);
 export const completeChtUpgrade = (version) => postUpgrade(ENDPOINT_COMPLETE, version)
     .pipe(Effect.catchIf((err) => err instanceof ResponseError && err.response.status === 502, () => Effect.void), Effect.scoped);
-//# sourceMappingURL=upgrade.js.map

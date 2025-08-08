@@ -20,5 +20,4 @@ const zipArrayStreams = (self, other) => Stream.zipAllWith(self, {
     onBoth: (s, o) => [...s, ...o],
 });
 export const mergeArrayStreams = (streams) => Array
-    .reduce(streams.slice(1), streams[0], zipArrayStreams);
-//# sourceMappingURL=core.js.map
+    .reduce(Array.drop(streams, 1), Array.headNonEmpty(streams), zipArrayStreams);

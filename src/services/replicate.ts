@@ -1,7 +1,7 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { PouchDBService, saveDoc, streamChanges } from './pouchdb.js';
-import { Environment, EnvironmentService } from './environment.js';
+import { PouchDBService, saveDoc, streamChanges } from './pouchdb.ts';
+import { type Environment, EnvironmentService } from './environment.ts';
 import { Array, Match, Option, pipe, Redacted, Schema, Stream } from 'effect';
 
 const SKIP_DDOC_SELECTOR = {
@@ -38,7 +38,7 @@ const getSelector = (opts: ReplicationOptions) => Match
     Match.when(({ includeDdocs }) => !!includeDdocs, () => Effect.succeed({})),
     Match.when(hasContactTypes, (opts) => Effect.succeed(getContactTypeSelector(opts.contactTypes))),
     Match.orElse(() => Effect.succeed(SKIP_DDOC_SELECTOR))
-  )
+  );
 
 const getCouchDbUrl = (env: Environment, name: string) => pipe(
   name,
@@ -79,12 +79,12 @@ export class ReplicationDoc extends Schema.Class<ReplicationDoc>('ReplicationDoc
 }
 
 const streamReplicationDocChanges = (repDocId: string) => pipe(
-    { include_docs: true, doc_ids: [repDocId], },
-    streamChanges('_replicator'),
-    Effect.map(Stream.map(({ doc }) => doc)),
-    Effect.map(Stream.mapEffect(Schema.decodeUnknown(ReplicationDoc))),
-    Effect.map(Stream.takeUntil(({ _replication_state }) => _replication_state === 'completed')),
-  );
+  { include_docs: true, doc_ids: [repDocId], },
+  streamChanges('_replicator'),
+  Effect.map(Stream.map(({ doc }) => doc)),
+  Effect.map(Stream.mapEffect(Schema.decodeUnknown(ReplicationDoc))),
+  Effect.map(Stream.takeUntil(({ _replication_state }) => _replication_state === 'completed')),
+);
 
 const serviceContext = Effect
   .all([

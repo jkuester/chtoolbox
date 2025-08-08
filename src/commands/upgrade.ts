@@ -1,12 +1,12 @@
 import { Args, Command, Options } from '@effect/cli';
 import { Array, Console, DateTime, Effect, Match, pipe, Schedule, Stream } from 'effect';
-import { initializeUrl } from '../index.js';
-import { UpgradeLog, UpgradeService } from '../services/upgrade.js';
+import { initializeUrl } from '../index.ts';
+import { UpgradeLog, UpgradeService } from '../services/upgrade.ts';
 
-import { clearConsole, clearThen } from '../libs/console.js';
-import { CouchActiveTaskStream, getDisplayDictByPid } from '../libs/couch/active-tasks.js';
-import { ChtClientService } from '../services/cht-client.js';
-import { getTaskDisplayData } from './db/compact.js';
+import { clearConsole, clearThen } from '../libs/console.ts';
+import { type CouchActiveTaskStream, getDisplayDictByPid } from '../libs/couch/active-tasks.ts';
+import { ChtClientService } from '../services/cht-client.ts';
+import { getTaskDisplayData } from './db/compact.ts';
 
 const getUpgradeLogDisplay = ({ state_history }: UpgradeLog) => pipe(
   state_history,
@@ -58,7 +58,9 @@ const streamActiveTasks = (
   Effect.tap(clearThen(Console.log('Pre-staging complete.'))),
 );
 
-const getStreamAction = (opts: { preStage: boolean, follow: boolean }) => (stream: Stream.Stream<UpgradeLog, Error> | CouchActiveTaskStream) => Match
+const getStreamAction = (
+  opts: { preStage: boolean, follow: boolean }
+) => (stream: Stream.Stream<UpgradeLog, Error> | CouchActiveTaskStream) => Match
   .value(opts)
   .pipe(
     Match.when({ preStage: true, follow: false }, () => Effect.fail(
@@ -67,7 +69,7 @@ const getStreamAction = (opts: { preStage: boolean, follow: boolean }) => (strea
     Match.when({ preStage: true, follow: true }, () => streamActiveTasks(stream as CouchActiveTaskStream)),
     Match.when({ follow: true }, () => streamUpgradeLog(stream as Stream.Stream<UpgradeLog, Error>)),
     Match.orElse(() => printUpgradeLogId(stream as Stream.Stream<UpgradeLog, Error>)),
-  )
+  );
 
 const follow = Options
   .boolean('follow')

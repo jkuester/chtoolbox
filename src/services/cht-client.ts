@@ -1,5 +1,5 @@
-import { EnvironmentService } from './environment.js';
-import { HttpClientResponse } from '@effect/platform/HttpClientResponse';
+import { EnvironmentService } from './environment.ts';
+import type { HttpClientResponse } from '@effect/platform/HttpClientResponse';
 import { Scope } from 'effect/Scope';
 import * as Effect from 'effect/Effect';
 import { HttpClient, HttpClientRequest } from '@effect/platform';
@@ -39,4 +39,3 @@ export class ChtClientService extends Effect.Service<ChtClientService>()('chtool
   accessors: true,
 }) {
 }
-

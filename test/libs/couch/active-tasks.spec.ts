@@ -1,10 +1,10 @@
 import { describe, it } from 'mocha';
 import { Chunk, Effect, Layer, Option, Schedule, Stream } from 'effect';
 import { expect } from 'chai';
-import { ChtClientService } from '../../../src/services/cht-client.js';
-import * as ActiveTasksLib from '../../../src/libs/couch/active-tasks.js';
-import { createActiveTask } from '../../utils/data-models.js';
-import { genWithLayer, sandbox } from '../../utils/base.js';
+import { ChtClientService } from '../../../src/services/cht-client.ts';
+import * as ActiveTasksLib from '../../../src/libs/couch/active-tasks.ts';
+import { createActiveTask } from '../../utils/data-models.ts';
+import { genWithLayer, sandbox } from '../../utils/base.ts';
 import esmock from 'esmock';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
@@ -40,7 +40,7 @@ const {
   getPid,
   getProgressPct,
   streamActiveTasks
-} = await esmock<typeof ActiveTasksLib>('../../../src/libs/couch/active-tasks.js', {
+} = await esmock<typeof ActiveTasksLib>('../../../src/libs/couch/active-tasks.ts', {
   '@effect/platform': { HttpClientRequest: mockHttpRequest },
   'effect': { Schedule: mockSchedule },
 });
@@ -91,13 +91,15 @@ describe('Couch Active Tasks Service', () => {
       const streamedTasks = Chunk.toReadonlyArray(yield* Stream.runCollect(taskStream));
 
       expect(streamedTasks).to.deep.equal([
-          [TASK_MIN_DATA, TASK_ALL_DATA, TASK_LATER],
-          [TASK_MIN_DATA, TASK_ALL_DATA, TASK_LATER],
-          [TASK_MIN_DATA, TASK_ALL_DATA, TASK_LATER],
-        ]);
+        [TASK_MIN_DATA, TASK_ALL_DATA, TASK_LATER],
+        [TASK_MIN_DATA, TASK_ALL_DATA, TASK_LATER],
+        [TASK_MIN_DATA, TASK_ALL_DATA, TASK_LATER],
+      ]);
       expect(mockHttpRequest.get.callCount).to.equal(3);
       expect(mockHttpRequest.get.args).to.deep.equal([['/_active_tasks'], ['/_active_tasks'], ['/_active_tasks']]);
-      expect(mockChtClient.request.args).to.deep.equal([[FAKE_CLIENT_REQUEST], [FAKE_CLIENT_REQUEST], [FAKE_CLIENT_REQUEST]]);
+      expect(mockChtClient.request.args).to.deep.equal(
+        [[FAKE_CLIENT_REQUEST], [FAKE_CLIENT_REQUEST], [FAKE_CLIENT_REQUEST]]
+      );
     }));
 
     it('returns a stream of empty array when there are no tasks', run(function* () {

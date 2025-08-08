@@ -1,7 +1,7 @@
 import { Args, Command } from '@effect/cli';
 import { Array, Console, Effect, Match, Option, pipe, Record, Redacted } from 'effect';
-import { LocalInstanceService } from '../../services/local-instance.js';
-import { getLocalIpUrl, getLocalIpUrlBasicAuth } from '../../libs/local-network.js';
+import { LocalInstanceService } from "../../services/local-instance.js";
+import { getLocalIpUrl, getLocalIpUrlBasicAuth } from "../../libs/local-network.js";
 const filterInstances = (names) => Match
     .value(Array.isEmptyArray(names))
     .pipe(Match.when(true, () => () => true), Match.orElse(() => ({ name }) => names.includes(name)));
@@ -28,4 +28,3 @@ export const ls = Command
     .ls()
     .pipe(Effect.flatMap(print(names))))
     .pipe(Command.withDescription(`LOCAL ONLY: List the local CHT instances and their URLs. Requires Docker and Docker Compose.`));
-//# sourceMappingURL=ls.js.map

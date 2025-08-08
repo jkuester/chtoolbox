@@ -1,14 +1,14 @@
 import { describe, it } from 'mocha';
 import { Array, Chunk, Effect, Either, Layer, Stream, pipe, Encoding, Option } from 'effect';
 import sinon from 'sinon';
-import { PouchDBService } from '../../src/services/pouchdb.js';
+import { PouchDBService } from '../../src/services/pouchdb.ts';
 import { expect } from 'chai';
-import * as UpgradeSvc from '../../src/services/upgrade.js';
-import { genWithLayer, sandbox } from '../utils/base.js';
-import { ChtClientService } from '../../src/services/cht-client.js';
+import * as UpgradeSvc from '../../src/services/upgrade.ts';
+import { genWithLayer, sandbox } from '../utils/base.ts';
+import { ChtClientService } from '../../src/services/cht-client.ts';
 import esmock from 'esmock';
-import { WarmViewsService } from '../../src/services/warm-views.js';
-import { createActiveTask } from '../utils/data-models.js';
+import { WarmViewsService } from '../../src/services/warm-views.ts';
+import { createActiveTask } from '../utils/data-models.ts';
 
 const version = '3.7.0';
 const EXPECTED_ALL_DOCS_OPTS = {
@@ -38,13 +38,13 @@ const mockUpgradeLib = {
   upgradeCht: sandbox.stub(),
   stageChtUpgrade: sandbox.stub(),
   completeChtUpgrade: sandbox.stub(),
-}
+};
 const mockCore = { pouchDB: sandbox.stub() };
 
-const { UpgradeService } = await esmock<typeof UpgradeSvc>('../../src/services/upgrade.js', {
-  '../../src/libs/core.js': mockCore,
-  '../../src/services/pouchdb.js': mockPouchSvc,
-  '../../src/libs/cht/upgrade.js': mockUpgradeLib,
+const { UpgradeService } = await esmock<typeof UpgradeSvc>('../../src/services/upgrade.ts', {
+  '../../src/libs/core.ts': mockCore,
+  '../../src/services/pouchdb.ts': mockPouchSvc,
+  '../../src/libs/cht/upgrade.ts': mockUpgradeLib,
 });
 const run = UpgradeService.Default.pipe(
   Layer.provideMerge(Layer.succeed(ChtClientService, { } as unknown as ChtClientService)),
@@ -69,9 +69,8 @@ describe('Upgrade Service', () => {
         yield* UpgradeService.upgrade(version);
 
         expect(pouchGet.args).to.deep.equal(Array.replicate(['medic-logs'], 2));
-        expect(dbAllDocs.calledTwice).to.be.true;
-        expect(dbAllDocs.args[0][0]).to.deep.include(EXPECTED_ALL_DOCS_OPTS);
-        expect(dbAllDocs.args[1][0]).to.deep.include(EXPECTED_ALL_DOCS_OPTS);
+        expect(dbAllDocs).to.have.been.calledTwice;
+        expect(dbAllDocs).to.always.have.been.calledWithMatch(EXPECTED_ALL_DOCS_OPTS);
         expect(mockUpgradeLib.upgradeCht.calledOnceWithExactly(version)).to.be.true;
         expect(mockUpgradeLib.stageChtUpgrade.notCalled).to.be.true;
         expect(mockUpgradeLib.completeChtUpgrade.notCalled).to.be.true;
@@ -94,8 +93,8 @@ describe('Upgrade Service', () => {
         if (Either.isLeft(either)) {
           expect(either.left.message).to.equal('Upgrade already in progress.');
           expect(pouchGet.args).to.deep.equal([['medic-logs']]);
-          expect(dbAllDocs.calledOnce).to.be.true;
-          expect(dbAllDocs.args[0][0]).to.deep.include(EXPECTED_ALL_DOCS_OPTS);
+          expect(dbAllDocs).to.have.been.calledOnce;
+          expect(dbAllDocs).to.have.been.calledWithMatch(EXPECTED_ALL_DOCS_OPTS);
           expect(mockUpgradeLib.upgradeCht.calledOnceWithExactly(version)).to.be.true;
           expect(mockUpgradeLib.stageChtUpgrade.notCalled).to.be.true;
           expect(mockUpgradeLib.completeChtUpgrade.notCalled).to.be.true;
@@ -137,14 +136,8 @@ describe('Upgrade Service', () => {
         include_docs: true,
         doc_ids: [initUpgradeLog._id],
       })).to.be.true;
-      expect(dbAllDocs.calledTwice).to.be.true;
-      expect(dbAllDocs.args[0][0]).to.deep.include({
-        endkey: 'upgrade_log:0:',
-        descending: true,
-        limit: 1,
-        include_docs: true
-      });
-      expect(dbAllDocs.args[1][0]).to.deep.include({
+      expect(dbAllDocs).to.have.been.calledTwice;
+      expect(dbAllDocs).to.always.have.been.calledWithMatch({
         endkey: 'upgrade_log:0:',
         descending: true,
         limit: 1,
@@ -180,14 +173,8 @@ describe('Upgrade Service', () => {
           include_docs: true,
           doc_ids: [initUpgradeLog._id],
         })).to.be.true;
-        expect(dbAllDocs.calledTwice).to.be.true;
-        expect(dbAllDocs.args[0][0]).to.deep.include({
-          endkey: 'upgrade_log:0:',
-          descending: true,
-          limit: 1,
-          include_docs: true
-        });
-        expect(dbAllDocs.args[1][0]).to.deep.include({
+        expect(dbAllDocs).to.have.been.calledTwice;
+        expect(dbAllDocs).to.always.have.been.calledWithMatch({
           endkey: 'upgrade_log:0:',
           descending: true,
           limit: 1,
@@ -213,14 +200,8 @@ describe('Upgrade Service', () => {
         expect(either.left).to.be.instanceOf(Error);
         expect((either.left as Error).message).to.equal('No upgrade log found');
         expect(pouchGet.args).to.deep.equal(Array.replicate(['medic-logs'], 2));
-        expect(dbAllDocs.calledTwice).to.be.true;
-        expect(dbAllDocs.args[0][0]).to.deep.include({
-          endkey: 'upgrade_log:0:',
-          descending: true,
-          limit: 1,
-          include_docs: true
-        });
-        expect(dbAllDocs.args[1][0]).to.deep.include({
+        expect(dbAllDocs).to.have.been.calledTwice;
+        expect(dbAllDocs).to.always.have.been.calledWithMatch({
           endkey: 'upgrade_log:0:',
           descending: true,
           limit: 1,
@@ -247,9 +228,8 @@ describe('Upgrade Service', () => {
         yield* UpgradeService.stage(version);
 
         expect(pouchGet.args).to.deep.equal(Array.replicate(['medic-logs'], 2));
-        expect(dbAllDocs.calledTwice).to.be.true;
-        expect(dbAllDocs.args[0][0]).to.deep.include(EXPECTED_ALL_DOCS_OPTS);
-        expect(dbAllDocs.args[1][0]).to.deep.include(EXPECTED_ALL_DOCS_OPTS);
+        expect(dbAllDocs).to.have.been.calledTwice;
+        expect(dbAllDocs).to.always.have.been.calledWithMatch(EXPECTED_ALL_DOCS_OPTS);
         expect(mockUpgradeLib.upgradeCht.notCalled).to.be.true;
         expect(mockUpgradeLib.stageChtUpgrade.calledOnceWithExactly(version)).to.be.true;
         expect(mockUpgradeLib.completeChtUpgrade.notCalled).to.be.true;
@@ -272,8 +252,8 @@ describe('Upgrade Service', () => {
         if (Either.isLeft(either)) {
           expect(either.left.message).to.equal('Upgrade already in progress.');
           expect(pouchGet.args).to.deep.equal([['medic-logs']]);
-          expect(dbAllDocs.calledOnce).to.be.true;
-          expect(dbAllDocs.args[0][0]).to.deep.include(EXPECTED_ALL_DOCS_OPTS);
+          expect(dbAllDocs).to.have.been.calledOnce;
+          expect(dbAllDocs).to.have.been.calledWithMatch(EXPECTED_ALL_DOCS_OPTS);
           expect(mockUpgradeLib.upgradeCht.notCalled).to.be.true;
           expect(mockUpgradeLib.stageChtUpgrade.calledOnceWithExactly(version)).to.be.true;
           expect(mockUpgradeLib.completeChtUpgrade.notCalled).to.be.true;
@@ -314,14 +294,8 @@ describe('Upgrade Service', () => {
         include_docs: true,
         doc_ids: [initUpgradeLog._id],
       })).to.be.true;
-      expect(dbAllDocs.calledTwice).to.be.true;
-      expect(dbAllDocs.args[0][0]).to.deep.include({
-        endkey: 'upgrade_log:0:',
-        descending: true,
-        limit: 1,
-        include_docs: true
-      });
-      expect(dbAllDocs.args[1][0]).to.deep.include({
+      expect(dbAllDocs).to.have.been.calledTwice;
+      expect(dbAllDocs).to.always.have.been.calledWithMatch({
         endkey: 'upgrade_log:0:',
         descending: true,
         limit: 1,
@@ -357,14 +331,8 @@ describe('Upgrade Service', () => {
           include_docs: true,
           doc_ids: [initUpgradeLog._id],
         })).to.be.true;
-        expect(dbAllDocs.calledTwice).to.be.true;
-        expect(dbAllDocs.args[0][0]).to.deep.include({
-          endkey: 'upgrade_log:0:',
-          descending: true,
-          limit: 1,
-          include_docs: true
-        });
-        expect(dbAllDocs.args[1][0]).to.deep.include({
+        expect(dbAllDocs).to.have.been.calledTwice;
+        expect(dbAllDocs).to.always.have.been.calledWithMatch({
           endkey: 'upgrade_log:0:',
           descending: true,
           limit: 1,
@@ -387,9 +355,8 @@ describe('Upgrade Service', () => {
       yield* UpgradeService.complete(version);
 
       expect(pouchGet.args).to.deep.equal(Array.replicate(['medic-logs'], 2));
-      expect(dbAllDocs.calledTwice).to.be.true;
-      expect(dbAllDocs.args[0][0]).to.deep.include(EXPECTED_ALL_DOCS_OPTS);
-      expect(dbAllDocs.args[1][0]).to.deep.include(EXPECTED_ALL_DOCS_OPTS);
+      expect(dbAllDocs).to.have.been.calledTwice;
+      expect(dbAllDocs).to.always.have.been.calledWithMatch(EXPECTED_ALL_DOCS_OPTS);
       expect(mockUpgradeLib.upgradeCht.notCalled).to.be.true;
       expect(mockUpgradeLib.stageChtUpgrade.notCalled).to.be.true;
       expect(mockUpgradeLib.completeChtUpgrade.calledOnceWithExactly(version)).to.be.true;
@@ -411,8 +378,8 @@ describe('Upgrade Service', () => {
         if (Either.isLeft(either)) {
           expect(either.left.message).to.equal('No upgrade ready for completion.');
           expect(pouchGet.args).to.deep.equal([['medic-logs']]);
-          expect(dbAllDocs.calledOnce).to.be.true;
-          expect(dbAllDocs.args[0][0]).to.deep.include(EXPECTED_ALL_DOCS_OPTS);
+          expect(dbAllDocs).to.have.been.calledOnce;
+          expect(dbAllDocs).to.have.been.calledWithMatch(EXPECTED_ALL_DOCS_OPTS);
           expect(mockUpgradeLib.upgradeCht.notCalled).to.be.true;
           expect(mockUpgradeLib.stageChtUpgrade.notCalled).to.be.true;
           expect(mockUpgradeLib.completeChtUpgrade.calledOnceWithExactly(version)).to.be.true;
@@ -453,14 +420,8 @@ describe('Upgrade Service', () => {
         include_docs: true,
         doc_ids: [initUpgradeLog._id],
       })).to.be.true;
-      expect(dbAllDocs.calledTwice).to.be.true;
-      expect(dbAllDocs.args[0][0]).to.deep.include({
-        endkey: 'upgrade_log:0:',
-        descending: true,
-        limit: 1,
-        include_docs: true
-      });
-      expect(dbAllDocs.args[1][0]).to.deep.include({
+      expect(dbAllDocs).to.have.been.calledTwice;
+      expect(dbAllDocs).to.always.have.been.calledWithMatch({
         endkey: 'upgrade_log:0:',
         descending: true,
         limit: 1,
@@ -495,14 +456,8 @@ describe('Upgrade Service', () => {
           include_docs: true,
           doc_ids: [initUpgradeLog._id],
         })).to.be.true;
-        expect(dbAllDocs.calledTwice).to.be.true;
-        expect(dbAllDocs.args[0][0]).to.deep.include({
-          endkey: 'upgrade_log:0:',
-          descending: true,
-          limit: 1,
-          include_docs: true
-        });
-        expect(dbAllDocs.args[1][0]).to.deep.include({
+        expect(dbAllDocs).to.have.been.calledTwice;
+        expect(dbAllDocs).to.always.have.been.calledWithMatch({
           endkey: 'upgrade_log:0:',
           descending: true,
           limit: 1,
@@ -552,7 +507,7 @@ describe('Upgrade Service', () => {
     } };
     const usersMetaDdocAttachment = { docs: [usersMetaDdoc] };
 
-    const usersDdoc = { _id: '_design/users', views: { 'users_by_field': {} }}
+    const usersDdoc = { _id: '_design/users', views: { 'users_by_field': {} }};
     const usersDdocAttachment = { docs: [usersDdoc] };
 
     const medicActiveTask = createActiveTask({ database: 'medic', design_document: medicDdoc._id });
@@ -576,12 +531,12 @@ describe('Upgrade Service', () => {
       saveDoc = sinon.stub();
       mockPouchSvc.saveDoc.returns(saveDoc);
       stageingDbGet.resolves({ _attachments: {
-          'ddocs/medic.json': { data: pipe(medicDdocAttachment, JSON.stringify, Encoding.encodeBase64) },
-          'ddocs/sentinel.json': { data: pipe(sentinelDdocAttachment, JSON.stringify, Encoding.encodeBase64) },
-          'ddocs/logs.json': { data: pipe(logsDdocAttachment, JSON.stringify, Encoding.encodeBase64) },
-          'ddocs/users-meta.json': { data: pipe(usersMetaDdocAttachment, JSON.stringify, Encoding.encodeBase64) },
-          'ddocs/users.json': { data: pipe(usersDdocAttachment, JSON.stringify, Encoding.encodeBase64) },
-        } });
+        'ddocs/medic.json': { data: pipe(medicDdocAttachment, JSON.stringify, Encoding.encodeBase64) },
+        'ddocs/sentinel.json': { data: pipe(sentinelDdocAttachment, JSON.stringify, Encoding.encodeBase64) },
+        'ddocs/logs.json': { data: pipe(logsDdocAttachment, JSON.stringify, Encoding.encodeBase64) },
+        'ddocs/users-meta.json': { data: pipe(usersMetaDdocAttachment, JSON.stringify, Encoding.encodeBase64) },
+        'ddocs/users.json': { data: pipe(usersDdocAttachment, JSON.stringify, Encoding.encodeBase64) },
+      } });
       warmDesign.withArgs('medic', ':staged:medic').returns(Stream.succeed([medicActiveTask]));
       warmDesign.withArgs('medic', ':staged:medic-client').returns(Stream.succeed([medicClientActiveTask]));
       warmDesign.withArgs('medic-sentinel', ':staged:sentinel').returns(Stream.succeed([sentinelActiveTask]));
@@ -606,8 +561,8 @@ describe('Upgrade Service', () => {
         [usersMetaActiveTask],
         [usersActiveTask]
       ]);
-      expect(dbAllDocs.calledOnce).to.be.true;
-      expect(dbAllDocs.args[0][0]).to.deep.include(EXPECTED_ALL_DOCS_OPTS);
+      expect(dbAllDocs).to.have.been.calledOnce;
+      expect(dbAllDocs).to.have.been.calledWithMatch(EXPECTED_ALL_DOCS_OPTS);
       expect(mockCore.pouchDB.calledOnceWithExactly(STAGING_BUILDS_COUCH_URL)).to.be.true;
       expect(stageingDbGet.calledOnceWithExactly(`medic:medic:${version}`, { attachments: true })).to.be.true;
       expect(warmDesign.args).to.deep.equal([
@@ -668,8 +623,8 @@ describe('Upgrade Service', () => {
         [usersMetaActiveTask],
         [usersActiveTask]
       ]);
-      expect(dbAllDocs.calledOnce).to.be.true;
-      expect(dbAllDocs.args[0][0]).to.deep.include(EXPECTED_ALL_DOCS_OPTS);
+      expect(dbAllDocs).to.have.been.calledOnce;
+      expect(dbAllDocs).to.have.been.calledWithMatch(EXPECTED_ALL_DOCS_OPTS);
       expect(mockCore.pouchDB.calledOnceWithExactly(STAGING_BUILDS_COUCH_URL)).to.be.true;
       expect(stageingDbGet.calledOnceWithExactly(`medic:medic:${version}`, { attachments: true })).to.be.true;
       expect(warmDesign.args).to.deep.equal([
@@ -712,8 +667,8 @@ describe('Upgrade Service', () => {
 
         yield* UpgradeService.preStage(version);
 
-        expect(dbAllDocs.calledOnce).to.be.true;
-        expect(dbAllDocs.args[0][0]).to.deep.include(EXPECTED_ALL_DOCS_OPTS);
+        expect(dbAllDocs).to.have.been.calledOnce;
+        expect(dbAllDocs).to.have.been.calledWithMatch(EXPECTED_ALL_DOCS_OPTS);
         expect(mockCore.pouchDB.calledOnceWithExactly(STAGING_BUILDS_COUCH_URL)).to.be.true;
         expect(stageingDbGet.calledOnceWithExactly(`medic:medic:${version}`, { attachments: true })).to.be.true;
         expect(warmDesign.args).to.deep.equal([
@@ -746,8 +701,8 @@ describe('Upgrade Service', () => {
     IN_PROGRESS_STATES.forEach(state => {
       it(`returns error when there is already an existing upgrade with status ${state}`, run(function* () {
         dbAllDocs.resolves({ rows: [{
-            doc: createUpgradeLog({ state })
-          }] });
+          doc: createUpgradeLog({ state })
+        }] });
 
         const either = yield* Effect.either(UpgradeService.preStage(version));
 
@@ -756,8 +711,8 @@ describe('Upgrade Service', () => {
         }
 
         expect(either.left.message).to.equal('Upgrade already in progress.');
-        expect(dbAllDocs.calledOnce).to.be.true;
-        expect(dbAllDocs.args[0][0]).to.deep.include(EXPECTED_ALL_DOCS_OPTS);
+        expect(dbAllDocs).to.have.been.calledOnce;
+        expect(dbAllDocs).to.have.been.calledWithMatch(EXPECTED_ALL_DOCS_OPTS);
         expect(mockCore.pouchDB.calledOnceWithExactly(STAGING_BUILDS_COUCH_URL)).to.be.true;
         expect(stageingDbGet.notCalled).to.be.true;
         expect(warmDesign.notCalled).to.be.true;

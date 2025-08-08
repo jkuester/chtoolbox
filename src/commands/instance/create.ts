@@ -1,9 +1,9 @@
 import { FileSystem } from '@effect/platform';
 import { Args, Command, Options } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe } from 'effect';
-import { LocalInstanceService } from '../../services/local-instance.js';
-import { clearThen } from '../../libs/console.js';
-import { printInstanceTable } from './ls.js';
+import { LocalInstanceService } from '../../services/local-instance.ts';
+import { clearThen } from '../../libs/console.ts';
+import { printInstanceTable } from './ls.ts';
 
 const createChtInstances = (names: string[], version: string, directory: Option.Option<string>) =>  directory.pipe(
   Option.map(dir => FileSystem.FileSystem.pipe(Effect.flatMap(fs => fs.realPath(dir)))),

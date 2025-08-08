@@ -2,8 +2,8 @@ import { describe, it } from 'mocha';
 import { Array, Effect, Either, Layer, Option } from 'effect';
 import sinon from 'sinon';
 import { expect } from 'chai';
-import { genWithLayer, sandbox } from '../utils/base.js';
-import * as LocalIpSvc from '../../src/services/local-ip.js';
+import { genWithLayer, sandbox } from '../utils/base.ts';
+import * as LocalIpSvc from '../../src/services/local-ip.ts';
 import { NodeContext } from '@effect/platform-node';
 import esmock from 'esmock';
 
@@ -20,9 +20,9 @@ const mockNetworkLib = {
   getLANIPAddress: sandbox.stub(),
 };
 
-const { LocalIpService } = await esmock<typeof LocalIpSvc>('../../src/services/local-ip.js', {
-  '../../src/libs/docker.js': mockDockerLib,
-  '../../src/libs/local-network.js': mockNetworkLib,
+const { LocalIpService } = await esmock<typeof LocalIpSvc>('../../src/services/local-ip.ts', {
+  '../../src/libs/docker.ts': mockDockerLib,
+  '../../src/libs/local-network.ts': mockNetworkLib,
 });
 const run = LocalIpService.Default.pipe(
   Layer.provide(NodeContext.layer),
@@ -92,7 +92,9 @@ describe('Local IP Service', () => {
       if (Either.isRight(either)) {
         expect.fail('Expected error');
       }
-      expect(either.left).to.deep.equal(new Error(`Local-ip instance already exists for port [${TO_PORT.toString()}].`));
+      expect(either.left).to.deep.equal(
+        new Error(`Local-ip instance already exists for port [${TO_PORT.toString()}].`)
+      );
       expect(mockDockerLib.doesContainerExist.calledOnceWithExactly(`chtx_local_ip_${TO_PORT.toString()}`)).to.be.true;
       expect(mockDockerLib.pullImage.notCalled).to.be.true;
       expect(mockNetworkLib.getFreePort.calledOnceWithExactly()).to.be.true;

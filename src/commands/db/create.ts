@@ -1,9 +1,9 @@
 import { Args, Command } from '@effect/cli';
 import { Array, Effect, pipe } from 'effect';
-import { initializeUrl } from '../../index.js';
-import { PouchDBService } from '../../services/pouchdb.js';
+import { initializeUrl } from '../../index.ts';
+import { PouchDBService } from '../../services/pouchdb.ts';
 
-import { logJson } from '../../libs/console.js';
+import { logJson } from '../../libs/console.ts';
 
 const createDbs = (dbs: string[]) => pipe(
   dbs,

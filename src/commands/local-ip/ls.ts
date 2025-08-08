@@ -1,7 +1,7 @@
 import { Command } from '@effect/cli';
 import { Array, Console, Effect, pipe, Record } from 'effect';
-import { getLocalIpUrl } from '../../libs/local-network.js';
-import { LocalIpService } from '../../services/local-ip.js';
+import { getLocalIpUrl } from '../../libs/local-network.ts';
+import { LocalIpService } from '../../services/local-ip.ts';
 
 export const printLocalIpInstances = (ports: { from: number, to: number }[]): Effect.Effect<void> => pipe(
   ports,

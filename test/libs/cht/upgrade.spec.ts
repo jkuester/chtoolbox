@@ -1,11 +1,11 @@
 import { describe, it } from 'mocha';
 import { Effect, Either, Layer } from 'effect';
 import { expect } from 'chai';
-import { ChtClientService } from '../../../src/services/cht-client.js';
+import { ChtClientService } from '../../../src/services/cht-client.ts';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
-import * as UpgradeLibs from '../../../src/libs/cht/upgrade.js';
+import * as UpgradeLibs from '../../../src/libs/cht/upgrade.ts';
 import { ResponseError } from '@effect/platform/HttpClientError';
-import { genWithLayer, sandbox } from '../../utils/base.js';
+import { genWithLayer, sandbox } from '../../utils/base.ts';
 import esmock from 'esmock';
 
 const version = '3.7.0';
@@ -25,7 +25,7 @@ const {
   completeChtUpgrade,
   stageChtUpgrade,
   upgradeCht
-}  = await esmock<typeof UpgradeLibs>('../../../src/libs/cht/upgrade.js', {
+}  = await esmock<typeof UpgradeLibs>('../../../src/libs/cht/upgrade.ts', {
   '@effect/platform': { HttpClientRequest: mockHttpRequest }
 });
 

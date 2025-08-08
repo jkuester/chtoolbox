@@ -1,7 +1,7 @@
 import { Args, Command, Options, Prompt } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe } from 'effect';
-import { initializeUrl } from '../../index.js';
-import { PouchDBService } from '../../services/pouchdb.js';
+import { initializeUrl } from '../../index.ts';
+import { PouchDBService } from '../../services/pouchdb.ts';
 
 const destroyDbs = (dbs: string[]) => pipe(
   dbs,

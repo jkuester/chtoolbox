@@ -1,5 +1,5 @@
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
-import { ChtClientService } from '../../services/cht-client.js';
+import { ChtClientService } from "../../services/cht-client.js";
 import { Array, Effect, Number, Option, Order, pipe, Record, Schedule, Schema, Stream, String } from 'effect';
 const ENDPOINT = '/_active_tasks';
 export class CouchActiveTask extends Schema.Class('CouchActiveTask')({
@@ -32,4 +32,3 @@ const orderByStartedOn = Order.make((a, b) => Number.Order(a.started_on, b.start
 const activeTasks = ChtClientService.pipe(Effect.flatMap(couch => couch.request(HttpClientRequest.get(ENDPOINT))), Effect.flatMap(CouchActiveTask.decodeResponse), Effect.scoped, Effect.map(Array.sort(orderByStartedOn)));
 export const getActiveTasks = () => activeTasks;
 export const streamActiveTasks = (interval = 1000) => Stream.repeat(activeTasks, Schedule.spaced(interval));
-//# sourceMappingURL=active-tasks.js.map

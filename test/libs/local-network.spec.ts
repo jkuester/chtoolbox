@@ -2,9 +2,9 @@ import { describe, it } from 'mocha';
 import { Option, Redacted, TestContext } from 'effect';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { genWithLayer, sandbox } from '../utils/base.js';
+import { genWithLayer, sandbox } from '../utils/base.ts';
 import OS from 'node:os';
-import * as LocalNetworkLibs from '../../src/libs/local-network.js';
+import * as LocalNetworkLibs from '../../src/libs/local-network.ts';
 import esmock from 'esmock';
 
 const mockGetPort = sandbox.stub();
@@ -16,7 +16,7 @@ const {
   getLANIPAddress,
   getLocalIpUrl,
   getLocalIpUrlBasicAuth
-} = await esmock<typeof LocalNetworkLibs>('../../src/libs/local-network.js', {
+} = await esmock<typeof LocalNetworkLibs>('../../src/libs/local-network.ts', {
   'get-port': mockGetPort
 });
 
@@ -26,7 +26,7 @@ describe('local network libs', () => {
       const args = {
         port: 1234,
         exclude: [5678]
-      }
+      };
       mockGetPort.resolves(args.port);
 
       const result = yield* getFreePort(args);
@@ -126,7 +126,8 @@ describe('local network libs', () => {
       name: 'myInst',
       username: 'medic',
       password: Redacted.make('password'),
-      port: Option.some('1234')
+      port: Option.some('1234'),
+      status: 'running'
     });
 
     expect(result).to.deep.equal(Option.some('https://medic:password@192-168-1-111.local-ip.medicmobile.org:1234'));

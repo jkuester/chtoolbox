@@ -1,4 +1,4 @@
-import { Config, Effect, Option, Redacted, Ref, String } from 'effect';
+import { Config, Effect, Option, Redacted, Ref, String, Array, Predicate } from 'effect';
 
 const COUCH_URL_PATTERN = /^(https?:\/\/([^:]+):[^/]+).*$/;
 
@@ -10,7 +10,9 @@ export interface Environment {
 const parseCouchUrl = (url: Redacted.Redacted): Effect.Effect<Environment, Error> => url.pipe(
   Redacted.value,
   String.match(COUCH_URL_PATTERN),
-  Option.map(([, url, user]) => ({
+  Option.map(([, url, user]) => [url, user]),
+  Option.filter((data): data is [string, string] => Array.every(data, Predicate.isNotNullable)),
+  Option.map(([url, user]) => ({
     url: Redacted.make(`${url}/`),
     user
   })),

@@ -1,10 +1,10 @@
 import { describe, it } from 'mocha';
 import { Effect, Layer } from 'effect';
 import { expect } from 'chai';
-import { ChtClientService } from '../../../src/services/cht-client.js';
-import * as MonitoringLibs from '../../../src/libs/cht/monitoring.js';
-import { createChtMonitoringData } from '../../utils/data-models.js';
-import { genWithLayer, sandbox } from '../../utils/base.js';
+import { ChtClientService } from '../../../src/services/cht-client.ts';
+import * as MonitoringLibs from '../../../src/libs/cht/monitoring.ts';
+import { createChtMonitoringData } from '../../utils/data-models.ts';
+import { genWithLayer, sandbox } from '../../utils/base.ts';
 import esmock from 'esmock';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
@@ -14,7 +14,7 @@ const mockHttpRequest = { get: sandbox.stub() };
 const run = Layer
   .succeed(ChtClientService, mockChtClient as unknown as ChtClientService)
   .pipe(genWithLayer);
-const { getChtMonitoringData } = await esmock<typeof MonitoringLibs>('../../../src/libs/cht/monitoring.js', {
+const { getChtMonitoringData } = await esmock<typeof MonitoringLibs>('../../../src/libs/cht/monitoring.ts', {
   '@effect/platform': { HttpClientRequest: mockHttpRequest }
 });
 

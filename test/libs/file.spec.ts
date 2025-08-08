@@ -3,8 +3,8 @@ import { describe, it } from 'mocha';
 import { Effect, Layer } from 'effect';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { genWithLayer, sandbox } from '../utils/base.js';
-import * as FileLibs from '../../src/libs/file.js';
+import { genWithLayer, sandbox } from '../utils/base.ts';
+import * as FileLibs from '../../src/libs/file.ts';
 import esmock from 'esmock';
 
 const mockHttpClient = { filterStatusOk: sandbox.stub() };
@@ -41,7 +41,7 @@ const {
   writeFile,
   writeJsonFile,
   writeEnvFile
-} = await esmock<typeof FileLibs>('../../src/libs/file.js', {
+} = await esmock<typeof FileLibs>('../../src/libs/file.ts', {
   '@effect/platform': { HttpClientRequest: mockHttpRequest },
   '@effect/platform/HttpClient': mockHttpClient
 });

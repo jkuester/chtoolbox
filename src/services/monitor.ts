@@ -1,16 +1,16 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { CouchDbInfo, getDbsInfoByName } from '../libs/couch/dbs-info.js';
-import { CouchDesignInfo, getDesignInfo } from '../libs/couch/design-info.js';
-import { CouchNodeSystem, getCouchNodeSystem } from '../libs/couch/node-system.js';
+import { CouchDbInfo, getDbsInfoByName } from '../libs/couch/dbs-info.ts';
+import { CouchDesignInfo, getDesignInfo } from '../libs/couch/design-info.ts';
+import { CouchNodeSystem, getCouchNodeSystem } from '../libs/couch/node-system.ts';
 import { Array, Clock, Number, Option, pipe } from 'effect';
-import { LocalDiskUsageService } from './local-disk-usage.js';
+import { LocalDiskUsageService } from './local-disk-usage.ts';
 import { ResponseError } from '@effect/platform/HttpClientError';
-import { NonEmptyArray } from 'effect/Array';
+import type { NonEmptyArray } from 'effect/Array';
 import { PlatformError } from '@effect/platform/Error';
-import { ChtClientService } from './cht-client.js';
-import { getNouveauInfo, NouveauInfo } from '../libs/couch/nouveau-info.js';
-import { getChtMonitoringData } from '../libs/cht/monitoring.js';
+import { ChtClientService } from './cht-client.ts';
+import { getNouveauInfo, NouveauInfo } from '../libs/couch/nouveau-info.ts';
+import { getChtMonitoringData } from '../libs/cht/monitoring.ts';
 
 interface DatabaseInfo extends CouchDbInfo {
   designs: CouchDesignInfo[]
@@ -32,8 +32,9 @@ const currentTimeSec = Clock.currentTimeMillis.pipe(
   Effect.map(Math.floor)
 );
 
-const DB_NAMES: NonEmptyArray<string> = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
-const VIEW_INDEXES_BY_DB: Record<typeof DB_NAMES[number], string[]> = {
+type DbName = 'medic' | 'medic-sentinel' | 'medic-users-meta' | '_users';
+const DB_NAMES: NonEmptyArray<DbName> = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
+const VIEW_INDEXES_BY_DB: Record<DbName, string[]> = {
   medic: [
     'medic',
     'medic-admin',
@@ -73,7 +74,7 @@ const emptyDesignInfo: CouchDesignInfo = {
     },
   },
 } as CouchDesignInfo;
-const getCouchDesignInfosForDb = (dbName: string) => Effect.all(pipe(
+const getCouchDesignInfosForDb = (dbName: DbName) => Effect.all(pipe(
   VIEW_INDEXES_BY_DB[dbName],
   Array.map(designName => getDesignInfo(dbName, designName)),
   Array.map(Effect.catchIf(
@@ -108,7 +109,7 @@ const emptyNouveauInfo: NouveauInfo = {
   },
 };
 
-const getNouveauInfosForDb = (dbName: string) => Effect.all(pipe(
+const getNouveauInfosForDb = (dbName: DbName) => Effect.all(pipe(
   NOUVEAU_INDEXES_BY_DB[dbName],
   Array.map(([ddoc, index]) => getNouveauInfo(dbName, ddoc, index)),
   Array.map(Effect.catchIf(
@@ -163,8 +164,8 @@ const getMonitoringData = (directory: Option.Option<string>) => pipe(
     version,
     databases: dbsInfo.map((dbInfo, i) => ({
       ...dbInfo,
-      designs: designInfos[i],
-      nouveau_indexes: nouveauInfos[i],
+      designs: pipe(Array.get(designInfos, i), Option.getOrThrow),
+      nouveau_indexes: pipe(Array.get(nouveauInfos, i), Option.getOrThrow),
     })),
     directory_size
   })),

@@ -1,7 +1,7 @@
 import { Command, Options } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe, Schedule } from 'effect';
-import { initializeUrl } from '../index.js';
-import { WarmViewsService } from '../services/warm-views.js';
+import { initializeUrl } from "../index.js";
+import { WarmViewsService } from "../services/warm-views.js";
 const designsCurrentlyUpdating = WarmViewsService
     .designsCurrentlyUpdating()
     .pipe(Effect.map(Array.map(({ dbName, designId }) => `${dbName}/${designId}`)), Effect.tap(Console.log('Designs currently updating:')), Effect.tap(Console.log));
@@ -19,4 +19,3 @@ const follow = Options
 export const warmViews = Command
     .make('warm-views', { follow }, ({ follow }) => pipe(initializeUrl, Effect.tap(Console.log('Warming views...')), Effect.andThen(WarmViewsService.warmAll()), Effect.andThen(() => followIndexing.pipe(Option.liftPredicate(() => follow), Option.getOrElse(() => Console.log('View warming started. Watch the active tasks for progress: chtx active-tasks -f'))))))
     .pipe(Command.withDescription(`Warm all view indexes.`));
-//# sourceMappingURL=warm-views.js.map

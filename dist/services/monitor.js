@@ -1,14 +1,15 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { getDbsInfoByName } from '../libs/couch/dbs-info.js';
-import { getDesignInfo } from '../libs/couch/design-info.js';
-import { getCouchNodeSystem } from '../libs/couch/node-system.js';
+import { CouchDbInfo, getDbsInfoByName } from "../libs/couch/dbs-info.js";
+import { CouchDesignInfo, getDesignInfo } from "../libs/couch/design-info.js";
+import { CouchNodeSystem, getCouchNodeSystem } from "../libs/couch/node-system.js";
 import { Array, Clock, Number, Option, pipe } from 'effect';
-import { LocalDiskUsageService } from './local-disk-usage.js';
+import { LocalDiskUsageService } from "./local-disk-usage.js";
 import { ResponseError } from '@effect/platform/HttpClientError';
-import { ChtClientService } from './cht-client.js';
-import { getNouveauInfo } from '../libs/couch/nouveau-info.js';
-import { getChtMonitoringData } from '../libs/cht/monitoring.js';
+import { PlatformError } from '@effect/platform/Error';
+import { ChtClientService } from "./cht-client.js";
+import { getNouveauInfo, NouveauInfo } from "../libs/couch/nouveau-info.js";
+import { getChtMonitoringData } from "../libs/cht/monitoring.js";
 const currentTimeSec = Clock.currentTimeMillis.pipe(Effect.map(Number.unsafeDivide(1000)), Effect.map(Math.floor));
 const DB_NAMES = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 const VIEW_INDEXES_BY_DB = {
@@ -93,8 +94,8 @@ const getMonitoringData = (directory) => pipe(Effect.all([
     version,
     databases: dbsInfo.map((dbInfo, i) => ({
         ...dbInfo,
-        designs: designInfos[i],
-        nouveau_indexes: nouveauInfos[i],
+        designs: pipe(Array.get(designInfos, i), Option.getOrThrow),
+        nouveau_indexes: pipe(Array.get(nouveauInfos, i), Option.getOrThrow),
     })),
     directory_size
 })));
@@ -163,4 +164,3 @@ export class MonitorService extends Effect.Service()('chtoolbox/MonitorService',
     accessors: true,
 }) {
 }
-//# sourceMappingURL=monitor.js.map

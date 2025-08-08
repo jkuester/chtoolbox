@@ -1,7 +1,7 @@
 import { Command } from '@effect/cli';
-import { create } from './create.js';
-import { ls } from './ls.js';
-import { rm } from './rm.js';
+import { create } from './create.ts';
+import { ls } from './ls.ts';
+import { rm } from './rm.ts';
 
 export const localIp = Command
   .make('local-ip', {})

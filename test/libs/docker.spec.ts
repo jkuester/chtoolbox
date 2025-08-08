@@ -3,10 +3,10 @@ import { describe, it } from 'mocha';
 import { Effect, Layer, Logger, LogLevel, Schedule } from 'effect';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import * as DockerLibs from '../../src/libs/docker.js';
+import * as DockerLibs from '../../src/libs/docker.ts';
 import { PlatformError } from '@effect/platform/Error';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
-import { genWithLayer, sandbox } from '../utils/base.js';
+import { genWithLayer, sandbox } from '../utils/base.ts';
 import esmock from 'esmock';
 
 const PROJECT_NAME = 'projectName';
@@ -20,7 +20,7 @@ const mockCommand = {
   lines: sandbox.stub(),
   stdout: sandbox.stub(),
   stderr: sandbox.stub(),
-}
+};
 const mockSchedule = { spaced: sandbox.stub() };
 
 const run = Layer
@@ -48,7 +48,7 @@ const {
   runContainer,
   doesContainerExist,
   rmContainer
-} = await esmock<typeof DockerLibs>('../../src/libs/docker.js', {
+} = await esmock<typeof DockerLibs>('../../src/libs/docker.ts', {
   '@effect/platform': { Command: mockCommand },
   'effect': { Schedule: mockSchedule },
 });
@@ -412,9 +412,9 @@ describe('docker libs', () => {
         image: 'my-image',
         name: 'my-container',
         labels: ['label1=value1', 'label2=value2'],
-        ports: [[8080, 80], [443, 443]] as [number, number][],
+        ports: [[8080, 80], [443, 443]],
         env: { VAR1: 'value1', VAR2: 'value2' },
-      };
+      } as const;
 
       yield* runContainer(opts);
 

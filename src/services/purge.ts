@@ -1,18 +1,18 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { AllDocsResponseStream, PouchDBService, streamAllDocPages, streamQueryPages } from './pouchdb.js';
+import { type AllDocsResponseStream, PouchDBService, streamAllDocPages, streamQueryPages } from './pouchdb.ts';
 import { Array, Option, pipe, Predicate, Schema, Stream, String } from 'effect';
-import { purgeFrom } from '../libs/couch/purge.js';
-import { ChtClientService } from './cht-client.js';
-import AllDocsResponse = PouchDB.Core.AllDocsResponse;
-import AllDocsWithKeysResponse = PouchDB.Core.AllDocsWithKeysResponse;
+import { purgeFrom } from '../libs/couch/purge.ts';
+import { ChtClientService } from './cht-client.ts';
+type AllDocsResponse = PouchDB.Core.AllDocsResponse<object>;
+type AllDocsWithKeysResponse = PouchDB.Core.AllDocsWithKeysResponse<object>;
 
 // _purge endpoint only accepts batches of 100.
 // skip: 0 just keeps getting the next 100 (after the last was purged)
 const PAGE_OPTIONS = { limit: 100, skip: 0 };
 
 const AllDocsRow = Schema.Struct({ id: Schema.String, value: Schema.Struct({ rev: Schema.String }) });
-const convertAllDocsResponse = (response: AllDocsResponse<object> | AllDocsWithKeysResponse<object>) => pipe(
+const convertAllDocsResponse = (response: AllDocsResponse | AllDocsWithKeysResponse) => pipe(
   response.rows as unknown[],
   Array.filter(Schema.is(AllDocsRow)),
   Array.map(({ id, value: { rev } }) => ({ _id: id, _rev: rev }))

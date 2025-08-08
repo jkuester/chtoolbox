@@ -1,6 +1,6 @@
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
-import { ChtClientService } from '../../services/cht-client.js';
+import { ChtClientService } from '../../services/cht-client.ts';
 import { Schema } from 'effect';
 
 const ENDPOINT = '/api/v2/monitoring';

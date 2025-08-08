@@ -1,10 +1,10 @@
 import { describe, it } from 'mocha';
 import { Effect, Layer, pipe } from 'effect';
 import { expect } from 'chai';
-import { ChtClientService } from '../../../src/services/cht-client.js';
-import * as ViewLib from '../../../src/libs/couch/view.js';
-import { genWithLayer, sandbox } from '../../utils/base.js';
-import esmock from 'esmock'
+import { ChtClientService } from '../../../src/services/cht-client.ts';
+import * as ViewLib from '../../../src/libs/couch/view.ts';
+import { genWithLayer, sandbox } from '../../utils/base.ts';
+import esmock from 'esmock';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
 const mockChtClient = { request: sandbox.stub() };
@@ -16,7 +16,7 @@ const mockHttpRequest = {
 const run = Layer
   .succeed(ChtClientService, mockChtClient as unknown as ChtClientService)
   .pipe(genWithLayer);
-const { warmView } = await esmock<typeof ViewLib>('../../../src/libs/couch/view.js', {
+const { warmView } = await esmock<typeof ViewLib>('../../../src/libs/couch/view.ts', {
   '@effect/platform': { HttpClientRequest: mockHttpRequest }
 });
 

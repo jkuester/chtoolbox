@@ -1,9 +1,9 @@
 import { FileSystem } from '@effect/platform';
 import { Args, Command, Options } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe } from 'effect';
-import { LocalInstanceService } from '../../services/local-instance.js';
-import { clearThen } from '../../libs/console.js';
-import { printInstanceTable } from './ls.js';
+import { LocalInstanceService } from "../../services/local-instance.js";
+import { clearThen } from "../../libs/console.js";
+import { printInstanceTable } from "./ls.js";
 const createChtInstances = (names, version, directory) => directory.pipe(Option.map(dir => FileSystem.FileSystem.pipe(Effect.flatMap(fs => fs.realPath(dir)))), Effect.transposeOption, Effect.flatMap(dirPath => pipe(names, Array.map(name => LocalInstanceService.create(name, version, dirPath.pipe(Option.map(path => `${path}/${name}`)))), Effect.allWith({ concurrency: 0 }))));
 const startChtInstances = (names) => pipe(names, Array.map(name => LocalInstanceService.start(name, Option.none())), Effect.allWith({ concurrency: 'unbounded' }));
 const setLocalIpSSLCerts = (names) => pipe(names, Array.map(name => LocalInstanceService.setSSLCerts(name, 'local-ip')), Effect.allWith({ concurrency: 'unbounded' }));
@@ -22,4 +22,3 @@ export const create = Command
     .log('Pulling Docker images (this may take awhile depending on network speeds)...')
     .pipe(Effect.andThen(createChtInstances(names, version, directory)), Effect.andThen(clearThen(Console.log('Starting instance(s)...'))), Effect.andThen(startChtInstances(names)), Effect.tap(setLocalIpSSLCerts(names)), Effect.flatMap(printInstanceTable)))
     .pipe(Command.withDescription(`LOCAL ONLY: Create (and start) a new local CHT instance. Requires Docker and Docker Compose.`));
-//# sourceMappingURL=create.js.map

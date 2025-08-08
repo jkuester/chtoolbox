@@ -1,10 +1,11 @@
 import { Args, Command, Options } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe, Predicate, Schema, Stream } from 'effect';
-import { initializeUrl } from '../../index.js';
-import { ReplicateService, ReplicationDoc } from '../../services/replicate.js';
-import { streamActiveTasks } from '../../libs/couch/active-tasks.js';
-import { clearThen } from '../../libs/console.js';
-import { PouchDBService } from '../../services/pouchdb.js';
+import { initializeUrl } from "../../index.js";
+import { ReplicateService, ReplicationDoc } from "../../services/replicate.js";
+import { CouchActiveTask, streamActiveTasks } from "../../libs/couch/active-tasks.js";
+import { ParseError } from 'effect/Cron';
+import { clearThen } from "../../libs/console.js";
+import { PouchDBService } from "../../services/pouchdb.js";
 const DB_SPECIFIER_DESCRIPTION = `This can either be a database name for the current instance (e.g. 'medic') `
     + `or a full URL to a remote Couch database (including username/password). `
     + `E.g. 'https://medic:password@192-168-1-80.local-ip.medicmobile.org:38593/medic'`;
@@ -42,4 +43,3 @@ export const replicate = Command
     contactTypes: contacts
 })), Effect.map(completionStream => Option.liftPredicate(completionStream, () => follow)), Effect.map(Option.map(watchReplication)), Effect.flatMap(Option.getOrElse(() => clearThen(Console.log('Replication started. Watch the active tasks for progress: chtx active-tasks -f'))))))
     .pipe(Command.withDescription('Triggers a one-time server-side replication of the docs from the source to the target database.'));
-//# sourceMappingURL=replicate.js.map

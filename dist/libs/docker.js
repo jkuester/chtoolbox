@@ -1,6 +1,8 @@
 import { Command } from '@effect/platform';
 import { Array, Boolean, Effect, Option, pipe, Schedule, String } from 'effect';
-import { debugLoggingEnabled } from './console.js';
+import { CommandExecutor } from '@effect/platform/CommandExecutor';
+import { PlatformError } from '@effect/platform/Error';
+import { debugLoggingEnabled } from "./console.js";
 const dockerCompose = (projectName, ...args) => Command.make('docker', 'compose', '-p', projectName, ...args);
 const getComposeFileParams = (composeFilePaths) => pipe(composeFilePaths, Array.map(path => ['-f', path]), Array.flatten);
 const printCommandWhenDebugLogging = (command) => Effect
@@ -61,4 +63,3 @@ export const doesContainerExist = (containerName) => Command
 export const rmContainer = (name) => Command
     .make('docker', 'rm', '-f', name)
     .pipe(runForExitCode);
-//# sourceMappingURL=docker.js.map

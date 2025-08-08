@@ -1,10 +1,10 @@
 import { describe, it } from 'mocha';
 import { Effect, Layer } from 'effect';
 import { expect } from 'chai';
-import { ChtClientService } from '../../../src/services/cht-client.js';
-import { createNodeSystem } from '../../utils/data-models.js';
-import * as NodeSystemLibs from '../../../src/libs/couch/node-system.js';
-import { genWithLayer, sandbox } from '../../utils/base.js';
+import { ChtClientService } from '../../../src/services/cht-client.ts';
+import { createNodeSystem } from '../../utils/data-models.ts';
+import * as NodeSystemLibs from '../../../src/libs/couch/node-system.ts';
+import { genWithLayer, sandbox } from '../../utils/base.ts';
 import esmock from 'esmock';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
@@ -14,7 +14,7 @@ const mockHttpRequest = { get: sandbox.stub() };
 const run = Layer
   .succeed(ChtClientService, mockChtClient as unknown as ChtClientService)
   .pipe(genWithLayer);
-const { getCouchNodeSystem } = await esmock<typeof NodeSystemLibs>('../../../src/libs/couch/node-system.js', {
+const { getCouchNodeSystem } = await esmock<typeof NodeSystemLibs>('../../../src/libs/couch/node-system.ts', {
   '@effect/platform': { HttpClientRequest: mockHttpRequest }
 });
 

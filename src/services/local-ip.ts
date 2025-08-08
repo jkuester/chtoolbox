@@ -4,11 +4,12 @@ import * as Context from 'effect/Context';
 import {
   doesContainerExist,
   getContainerLabelValue,
-  getContainerNamesWithLabel, pullImage,
+  getContainerNamesWithLabel,
+  pullImage,
   rmContainer,
   runContainer
-} from '../libs/docker.js';
-import { getFreePort, getLANIPAddress } from '../libs/local-network.js';
+} from '../libs/docker.ts';
+import { getFreePort, getLANIPAddress } from '../libs/local-network.ts';
 
 const NGINX_LOCAL_IP_IMAGE = 'medicmobile/nginx-local-ip';
 const CHTX_LOCAL_IP_PREFIX = 'chtx_local_ip';
@@ -46,6 +47,7 @@ const getPortsFromLabel = (label: string) => pipe(
   String.split(':'),
   Array.map(Number.parse),
   Array.map(Option.getOrThrow),
+  ([from, ...to]): [number, number] => [from, Option.fromIterable(to).pipe(Option.getOrThrow)],
   ([from, to]) => ({ from, to })
 );
 

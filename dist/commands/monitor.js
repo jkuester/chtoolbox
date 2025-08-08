@@ -1,7 +1,7 @@
 import { Command, Options } from '@effect/cli';
-import { Array, Console, Effect, pipe, Schedule } from 'effect';
-import { initializeUrl } from '../index.js';
-import { MonitorService } from '../services/monitor.js';
+import { Array, Console, Effect, Option, pipe, Schedule } from 'effect';
+import { initializeUrl } from "../index.js";
+import { MonitorService } from "../services/monitor.js";
 const printCsvRow = (row) => pipe(row, Array.map(value => String(value)), Array.join(','), Console.log);
 const monitorData = (trackDirSize) => pipe(MonitorService.getAsCsv(trackDirSize), Effect.tap(printCsvRow), Effect.catchAll(Console.error));
 const interval = Options
@@ -13,4 +13,3 @@ const trackDirSize = Options
 export const monitor = Command
     .make('monitor', { interval, trackDirSize }, ({ interval, trackDirSize }) => pipe(initializeUrl, Effect.andThen(MonitorService.getCsvHeader(trackDirSize)), Effect.tap(printCsvRow), Effect.andThen(Effect.repeat(monitorData(trackDirSize), Schedule.spaced(interval * 1000)))))
     .pipe(Command.withDescription(`Poll CHT metrics.`));
-//# sourceMappingURL=monitor.js.map

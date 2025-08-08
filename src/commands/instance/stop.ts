@@ -1,6 +1,6 @@
 import { Args, Command } from '@effect/cli';
 import { Array, Console, Effect, pipe } from 'effect';
-import { LocalInstanceService } from '../../services/local-instance.js';
+import { LocalInstanceService } from '../../services/local-instance.ts';
 
 const stopChtInstances = (names: string[]) => pipe(
   names,

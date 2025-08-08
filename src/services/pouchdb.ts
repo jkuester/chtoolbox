@@ -2,12 +2,12 @@ import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { Chunk, Match, Option, pipe, Redacted, Stream, StreamEmit, String } from 'effect';
 import PouchDB from 'pouchdb-core';
-import { pouchDB } from '../libs/core.js';
+import { pouchDB } from '../libs/core.ts';
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
 import PouchDBMapReduce from 'pouchdb-mapreduce';
 // @ts-expect-error no types for this package
 import PouchDBSessionAuthentication from 'pouchdb-session-authentication';
-import { EnvironmentService } from './environment.js';
+import { EnvironmentService } from './environment.ts';
 import https from 'https';
 import { v4 as uuid } from 'uuid';
 import { UnknownException } from 'effect/Cause';
@@ -160,7 +160,11 @@ const cancelChangesFeedIfInterrupted = (feed: PouchDB.Core.Changes<object>) => E
 
 export const streamChanges = (dbName: string) => (
   options?: PouchDB.Core.ChangesOptions
-): Effect.Effect<Stream.Stream<PouchDB.Core.ChangesResponseChange<object>, Error>, never, PouchDBService> => PouchDBService
+): Effect.Effect<
+  Stream.Stream<PouchDB.Core.ChangesResponseChange<object>, Error>,
+  never,
+  PouchDBService
+> => PouchDBService
   .get(dbName)
   .pipe(Effect.map(db => pipe(
     { since: options?.since ?? 0 }, // Caching the since value in case the Stream is retried

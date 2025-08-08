@@ -1,7 +1,7 @@
 import { Schema } from 'effect';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
-import { ChtClientService } from '../../services/cht-client.js';
+import { ChtClientService } from "../../services/cht-client.js";
 export class CouchDesignInfo extends Schema.Class('CouchDesignInfo')({
     name: Schema.String,
     view_index: Schema.Struct({
@@ -30,4 +30,3 @@ export class CouchDesignInfo extends Schema.Class('CouchDesignInfo')({
 export const getDesignInfo = (dbName, designName) => ChtClientService
     .request(HttpClientRequest.get(`/${dbName}/_design/${designName}/_info`))
     .pipe(Effect.flatMap(CouchDesignInfo.decodeResponse), Effect.scoped);
-//# sourceMappingURL=design-info.js.map

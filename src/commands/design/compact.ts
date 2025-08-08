@@ -1,9 +1,9 @@
 import { Args, Command, Options } from '@effect/cli';
 import { Array, Console, Effect, Option } from 'effect';
-import { initializeUrl } from '../../index.js';
-import { CompactService } from '../../services/compact.js';
-import { mergeArrayStreams } from '../../libs/core.js';
-import { streamActiveTasks } from '../db/compact.js';
+import { initializeUrl } from '../../index.ts';
+import { CompactService } from '../../services/compact.ts';
+import { mergeArrayStreams } from '../../libs/core.ts';
+import { streamActiveTasks } from '../db/compact.ts';
 
 const database = Args
   .text({ name: 'database' })

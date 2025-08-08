@@ -1,9 +1,9 @@
 import { Command } from '@effect/cli';
-import { inspect } from './inspect.js';
-import { create } from './create.js';
-import { rm } from './rm.js';
-import { compact } from './compact.js';
-import { ls } from './ls.js';
+import { inspect } from './inspect.ts';
+import { create } from './create.ts';
+import { rm } from './rm.ts';
+import { compact } from './compact.ts';
+import { ls } from './ls.ts';
 
 export const db = Command
   .make('db', {})

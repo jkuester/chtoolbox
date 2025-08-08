@@ -1,7 +1,7 @@
 import { Command, Options } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe, Schedule } from 'effect';
-import { initializeUrl } from '../index.js';
-import { WarmViewsService } from '../services/warm-views.js';
+import { initializeUrl } from '../index.ts';
+import { WarmViewsService } from '../services/warm-views.ts';
 
 const designsCurrentlyUpdating = WarmViewsService
   .designsCurrentlyUpdating()

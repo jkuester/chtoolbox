@@ -1,18 +1,18 @@
 import { Args, Command, Options } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe, Stream, String } from 'effect';
-import { initializeUrl } from '../../index.js';
-import { CompactService } from '../../services/compact.js';
-import { mergeArrayStreams } from '../../libs/core.js';
+import { initializeUrl } from '../../index.ts';
+import { CompactService } from '../../services/compact.ts';
+import { mergeArrayStreams } from '../../libs/core.ts';
 import {
-  CouchActiveTask, CouchActiveTaskStream,
+  CouchActiveTask, type CouchActiveTaskStream,
   getDbName,
   getDesignName,
   getDisplayDictByPid,
   getPid,
   getProgressPct
-} from '../../libs/couch/active-tasks.js';
-import { ChtClientService } from '../../services/cht-client.js';
-import { clearConsole } from '../../libs/console.js';
+} from '../../libs/couch/active-tasks.ts';
+import { ChtClientService } from '../../services/cht-client.ts';
+import { clearConsole } from '../../libs/console.ts';
 
 const getDesignDisplayName = (task: CouchActiveTask) => getDesignName(task)
   .pipe(

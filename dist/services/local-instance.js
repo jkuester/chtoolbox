@@ -2,11 +2,12 @@ import { Array, Effect, Logger, LogLevel, Match, Option, pipe, Redacted, Schedul
 import * as Context from 'effect/Context';
 import { FileSystem, HttpClient, HttpClientRequest } from '@effect/platform';
 import crypto from 'crypto';
-import { createDir, createTmpDir, getRemoteFile, isDirectoryEmpty, readJsonFile, writeEnvFile, writeFile, writeJsonFile, } from '../libs/file.js';
-import { copyFileFromComposeContainer, copyFileToComposeContainer, createComposeContainers, destroyCompose, doesVolumeExistWithLabel, getContainersForComposeProject, getEnvarFromComposeContainer, getVolumeLabelValue, getVolumeNamesWithLabel, pullComposeImages, restartCompose, restartComposeService, rmComposeContainer, startCompose, stopCompose } from '../libs/docker.js';
+import { createDir, createTmpDir, getRemoteFile, isDirectoryEmpty, readJsonFile, writeEnvFile, writeFile, writeJsonFile } from "../libs/file.js";
+import { copyFileFromComposeContainer, copyFileToComposeContainer, createComposeContainers, destroyCompose, doesVolumeExistWithLabel, getContainersForComposeProject, getEnvarFromComposeContainer, getVolumeLabelValue, getVolumeNamesWithLabel, pullComposeImages, restartCompose, restartComposeService, rmComposeContainer, startCompose, stopCompose } from "../libs/docker.js";
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
-import { getFreePorts } from '../libs/local-network.js';
+import { getFreePorts } from "../libs/local-network.js";
 import { filterStatusOk } from '@effect/platform/HttpClient';
+import { PlatformError } from '@effect/platform/Error';
 const CHTX_LABEL_NAME = 'chtx.instance';
 const UPGRADE_SVC_NAME = 'cht-upgrade-service';
 const NGINX_SVC_NAME = 'nginx';
@@ -250,4 +251,3 @@ export class LocalInstanceService extends Effect.Service()('chtoolbox/LocalInsta
     accessors: true,
 }) {
 }
-//# sourceMappingURL=local-instance.js.map

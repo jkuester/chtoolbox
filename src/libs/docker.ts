@@ -2,7 +2,7 @@ import { Command } from '@effect/platform';
 import { Array, Boolean, Effect, Option, pipe, Schedule, String } from 'effect';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
 import { PlatformError } from '@effect/platform/Error';
-import { debugLoggingEnabled } from './console.js';
+import { debugLoggingEnabled } from './console.ts';
 
 const dockerCompose = (
   projectName: string,
@@ -194,7 +194,7 @@ const getEnvParams = (env?: Record<string, string>) => pipe(
   Option.getOrElse(() => [] as string[]),
 );
 
-const getPortParams = (ports: [number, number][]) => pipe(
+const getPortParams = (ports: readonly (readonly [number, number])[]) => pipe(
   ports,
   Array.map(([host, container]) => ['--publish', `${host.toString()}:${container.toString()}`]),
   Array.flatten,
@@ -203,8 +203,8 @@ const getPortParams = (ports: [number, number][]) => pipe(
 export const runContainer = ({ image, name, env, labels = [], ports = [] }: {
   image: string,
   name: string,
-  labels?: string[],
-  ports?: [host: number, container: number][],
+  labels?: readonly string[],
+  ports?: readonly (readonly [host: number, container: number])[],
   env?: Record<string, string>,
 }): Effect.Effect<void, Error | PlatformError, CommandExecutor> => pipe(
   Array.make(
@@ -231,7 +231,7 @@ export const doesContainerExist = (
   .pipe(
     runForString,
     Effect.map(String.isNonEmpty),
-  )
+  );
 
 export const rmContainer = (name: string): Effect.Effect<void, Error | PlatformError, CommandExecutor> => Command
   .make('docker', 'rm', '-f', name)

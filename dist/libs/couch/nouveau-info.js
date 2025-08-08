@@ -1,7 +1,7 @@
 import { Schema } from 'effect';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
-import { ChtClientService } from '../../services/cht-client.js';
+import { ChtClientService } from "../../services/cht-client.js";
 export class NouveauInfo extends Schema.Class('NouveauInfo')({
     name: Schema.String,
     search_index: Schema.Struct({
@@ -16,4 +16,3 @@ export class NouveauInfo extends Schema.Class('NouveauInfo')({
 export const getNouveauInfo = (dbName, ddocName, indexName) => ChtClientService
     .request(HttpClientRequest.get(`/${dbName}/_design/${ddocName}/_nouveau_info/${indexName}`))
     .pipe(Effect.flatMap(NouveauInfo.decodeResponse), Effect.scoped);
-//# sourceMappingURL=nouveau-info.js.map

@@ -1,6 +1,6 @@
-import { Config, Effect, Option, Redacted, Ref, String } from 'effect';
+import { Config, Effect, Option, Redacted, Ref, String, Array, Predicate } from 'effect';
 const COUCH_URL_PATTERN = /^(https?:\/\/([^:]+):[^/]+).*$/;
-const parseCouchUrl = (url) => url.pipe(Redacted.value, String.match(COUCH_URL_PATTERN), Option.map(([, url, user]) => ({
+const parseCouchUrl = (url) => url.pipe(Redacted.value, String.match(COUCH_URL_PATTERN), Option.map(([, url, user]) => [url, user]), Option.filter((data) => Array.every(data, Predicate.isNotNullable)), Option.map(([url, user]) => ({
     url: Redacted.make(`${url}/`),
     user
 })), Option.map(Effect.succeed), Option.getOrElse(() => Effect.fail(Error('Could not parse URL.'))));
@@ -19,4 +19,3 @@ const createEnvironmentService = Ref
 })), Effect.tap((envService) => COUCH_URL.pipe(Config.map(Option.map(envService.setUrl)), Config.map(Option.map(Effect.asVoid)), Effect.flatMap(Option.getOrElse(() => Effect.void)))));
 export class EnvironmentService extends Effect.Service()('chtoolbox/EnvironmentService', { effect: createEnvironmentService, accessors: true, }) {
 }
-//# sourceMappingURL=environment.js.map

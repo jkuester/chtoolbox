@@ -1,10 +1,10 @@
 import { describe, it } from 'mocha';
 import { Effect, Layer } from 'effect';
 import { expect } from 'chai';
-import { ChtClientService } from '../../../src/services/cht-client.js';
-import * as NouveauInfoLibs from '../../../src/libs/couch/nouveau-info.js';
-import { createNouveauInfo } from '../../utils/data-models.js';
-import { genWithLayer, sandbox } from '../../utils/base.js';
+import { ChtClientService } from '../../../src/services/cht-client.ts';
+import * as NouveauInfoLibs from '../../../src/libs/couch/nouveau-info.ts';
+import { createNouveauInfo } from '../../utils/data-models.ts';
+import { genWithLayer, sandbox } from '../../utils/base.ts';
 import esmock from 'esmock';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
@@ -14,7 +14,7 @@ const mockHttpRequest = { get: sandbox.stub() };
 const run = Layer
   .succeed(ChtClientService, mockChtClient as unknown as ChtClientService)
   .pipe(genWithLayer);
-const { getNouveauInfo } = await esmock<typeof NouveauInfoLibs>('../../../src/libs/couch/nouveau-info.js', {
+const { getNouveauInfo } = await esmock<typeof NouveauInfoLibs>('../../../src/libs/couch/nouveau-info.ts', {
   '@effect/platform': { HttpClientRequest: mockHttpRequest }
 });
 
@@ -41,7 +41,9 @@ describe('Couch Nouveau Index Info libs', () => {
       const nouveauInfo = yield* getNouveauInfo(dbName, ddocName, indexName);
 
       expect(nouveauInfo).to.deep.equal(expectedNouveauInfo);
-      expect(mockHttpRequest.get.calledOnceWithExactly(`/${dbName}/_design/${ddocName}/_nouveau_info/${indexName}`)).to.be.true;
+      expect(mockHttpRequest.get.calledOnceWithExactly(
+        `/${dbName}/_design/${ddocName}/_nouveau_info/${indexName}`
+      )).to.be.true;
       expect(mockChtClient.request.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
     }));
   });

@@ -11,4 +11,3 @@ export const getLANIPAddress = () => pipe(OS.networkInterfaces(), netsDict => pi
 const getLANIPAddressHost = () => pipe(getLANIPAddress(), String.replace(/\./g, '-'));
 export const getLocalIpUrl = (port) => pipe(getLANIPAddressHost(), localIpPath => `https://${localIpPath}.local-ip.medicmobile.org:${port}`);
 export const getLocalIpUrlBasicAuth = ({ username, password, port }) => port.pipe(Option.map(port => pipe(getLANIPAddressHost(), localIpPath => `https://${username}:${Redacted.value(password)}@${localIpPath}.local-ip.medicmobile.org:${port}`)));
-//# sourceMappingURL=local-network.js.map

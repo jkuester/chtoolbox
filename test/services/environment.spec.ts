@@ -1,8 +1,8 @@
 import { describe, it } from 'mocha';
 import { ConfigProvider, Effect, Either, Layer, pipe, Redacted, String } from 'effect';
-import { EnvironmentService } from '../../src/services/environment.js';
+import { EnvironmentService } from '../../src/services/environment.ts';
 import { expect } from 'chai';
-import { genWithLayer } from '../utils/base.js';
+import { genWithLayer } from '../utils/base.ts';
 
 const BASE_URL = 'http://medic:password@hostlocal:5984/';
 const URL_WITHOUT_SLASH = pipe(BASE_URL, String.slice(0, -1));

@@ -1,7 +1,7 @@
 import { Args, Command, Options, Prompt } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe } from 'effect';
-import { initializeUrl } from '../../index.js';
-import { PouchDBService } from '../../services/pouchdb.js';
+import { initializeUrl } from "../../index.js";
+import { PouchDBService } from "../../services/pouchdb.js";
 const destroyDbs = (dbs) => pipe(dbs, Array.map(PouchDBService.get), Array.map(Effect.flatMap(db => Effect.promise(() => db.destroy()))), Effect.allWith({ concurrency: 'unbounded' }), Effect.tap(Console.log('Database(s) removed')));
 const getConfirmationPrompt = (dbNames) => Prompt.confirm({
     message: `Are you sure you want to permanently remove ${Array.join(dbNames, ', ')}?`,
@@ -19,4 +19,3 @@ const databases = Args
 export const rm = Command
     .make('rm', { databases, yes }, ({ databases, yes }) => initializeUrl.pipe(Effect.andThen(isRemoveConfirmed(databases, yes)), Effect.map(removeConfirmed => Option.liftPredicate(destroyDbs(databases), () => removeConfirmed)), Effect.flatMap(Option.getOrElse(() => Console.log('Operation cancelled')))))
     .pipe(Command.withDescription(`Remove Couch database. Nothing happens if the database does not exist.`));
-//# sourceMappingURL=rm.js.map

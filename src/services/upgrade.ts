@@ -1,6 +1,6 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { getDoc, PouchDBService, saveDoc, streamChanges } from './pouchdb.js';
+import { getDoc, PouchDBService, saveDoc, streamChanges } from './pouchdb.ts';
 import {
   Array,
   Chunk,
@@ -17,18 +17,18 @@ import {
   Stream,
   String
 } from 'effect';
-import { completeChtUpgrade, stageChtUpgrade, upgradeCht } from '../libs/cht/upgrade.js';
-import { ChtClientService } from './cht-client.js';
-import { pouchDB } from '../libs/core.js';
-import { CouchDesign } from '../libs/couch/design.js';
-import { WarmViewsService } from './warm-views.js';
-import Attachments = PouchDB.Core.Attachments;
-import FullAttachment = PouchDB.Core.FullAttachment;
-import { CouchActiveTaskStream } from '../libs/couch/active-tasks.js';
+import { completeChtUpgrade, stageChtUpgrade, upgradeCht } from '../libs/cht/upgrade.ts';
+import { ChtClientService } from './cht-client.ts';
+import { pouchDB } from '../libs/core.ts';
+import { CouchDesign } from '../libs/couch/design.ts';
+import { WarmViewsService } from './warm-views.ts';
+type Attachments = PouchDB.Core.Attachments;
+type FullAttachment = PouchDB.Core.FullAttachment;
+import { type CouchActiveTaskStream } from '../libs/couch/active-tasks.ts';
 
 const UPGRADE_LOG_NAME = 'upgrade_log';
-const COMPLETED_STATES = ['finalized', 'aborted', 'errored', 'interrupted'];
-const STAGING_COMPLETE_STATES = ['indexed', ...COMPLETED_STATES];
+const COMPLETED_STATES = ['finalized', 'aborted', 'errored', 'interrupted'] as const;
+const STAGING_COMPLETE_STATES = ['indexed', ...COMPLETED_STATES] as const;
 const UPGRADE_LOG_STATES = [
   'initiated',
   'staged',
@@ -38,14 +38,14 @@ const UPGRADE_LOG_STATES = [
   'complete',
   'aborting',
   ...STAGING_COMPLETE_STATES,
-];
+] as const;
 const CHT_DATABASES = [
   'medic',
   'medic-sentinel',
   'medic-logs',
   'medic-users-meta',
   '_users'
-];
+] as const;
 const DDOC_PREFIX = '_design/';
 const STAGED_DDOC_PREFIX = ':staged:';
 const CHT_DDOC_ATTACHMENT_NAMES = [
@@ -54,13 +54,16 @@ const CHT_DDOC_ATTACHMENT_NAMES = [
   'ddocs/logs.json',
   'ddocs/users-meta.json',
   'ddocs/users.json'
-];
+] as const;
 const STAGING_BUILDS_COUCH_URL = 'https://staging.dev.medicmobile.org/_couch/builds_4';
-const CHT_DATABASE_BY_ATTACHMENT_NAME = pipe(
+const CHT_DATABASE_BY_ATTACHMENT_NAME: Record<
+  typeof CHT_DDOC_ATTACHMENT_NAMES[number],
+  typeof CHT_DATABASES[number]
+> = pipe(
   CHT_DDOC_ATTACHMENT_NAMES,
   Array.zip(CHT_DATABASES),
   Record.fromEntries,
-)
+);
 
 export class UpgradeLog extends Schema.Class<UpgradeLog>('UpgradeLog')({
   _id: Schema.String,
@@ -81,7 +84,7 @@ class DesignDocAttachment extends Schema.Class<DesignDocAttachment>('DesignDocAt
     Either.getOrThrow,
     JSON.parse,
     Schema.decodeUnknown(DesignDocAttachment),
-  )
+  );
 }
 
 const latestUpgradeLog = PouchDBService
@@ -104,11 +107,11 @@ const latestUpgradeLog = PouchDBService
   );
 
 const streamChangesFeed = (upgradeLogId: string) => pipe(
-    { include_docs: true, doc_ids: [upgradeLogId] },
-    streamChanges('medic-logs'),
-  );
+  { include_docs: true, doc_ids: [upgradeLogId] },
+  streamChanges('medic-logs'),
+);
 
-const streamUpgradeLogChanges = (completedStates: string[]) => latestUpgradeLog
+const streamUpgradeLogChanges = (completedStates: readonly string[]) => latestUpgradeLog
   .pipe(
     Effect.map(Option.getOrThrowWith(() => new Error('No upgrade log found'))),
     Effect.flatMap(({ _id }) => streamChangesFeed(_id)),
@@ -122,7 +125,7 @@ const assertReadyForUpgrade = latestUpgradeLog.pipe(
   Effect.map(Option.map(({ state }) => state)),
   Effect.map(Match.value),
   Effect.map(Match.when(Option.isNone, () => Effect.void)),
-  Effect.map(Match.when(state => COMPLETED_STATES.includes(Option.getOrThrow(state)), () => Effect.void)),
+  Effect.map(Match.when(state => Array.contains(COMPLETED_STATES, Option.getOrThrow(state)), () => Effect.void)),
   Effect.flatMap(Match.orElse(() => Effect.fail(new Error('Upgrade already in progress.')))),
 );
 
@@ -179,7 +182,7 @@ const preStageDdoc = (dbName: string) => (ddoc: CouchDesign) => WarmViewsService
   .warmDesign(dbName, pipe(ddoc._id, String.replace(DDOC_PREFIX, STAGED_DDOC_PREFIX)))
   .pipe(Effect.map(Stream.onStart(saveStagedDdoc(dbName, ddoc))));
 
-const preStageDdocs = (docsByDb: [DesignDocAttachment, string][]) => pipe(
+const preStageDdocs = (docsByDb: [DesignDocAttachment, typeof CHT_DDOC_ATTACHMENT_NAMES[number]][]) => pipe(
   docsByDb,
   Array.map(([{ docs }, attachmentName]) => pipe(
     docs,

@@ -1,7 +1,7 @@
 import OS from 'node:os';
 import { Array, Effect, Option, pipe, Predicate, Redacted, String } from 'effect';
 import getPort from 'get-port';
-import { LocalChtInstance } from '../services/local-instance.js';
+import type { LocalChtInstance } from '../services/local-instance.ts';
 
 const IPV4_FAMILY_VALUES = ['IPv4', 4];
 const LOCALHOST_IP = '127.0.0.1';

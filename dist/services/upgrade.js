@@ -1,12 +1,13 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { getDoc, PouchDBService, saveDoc, streamChanges } from './pouchdb.js';
+import { getDoc, PouchDBService, saveDoc, streamChanges } from "./pouchdb.js";
 import { Array, Chunk, DateTime, Either, Encoding, Match, Option, pipe, Predicate, Record, Schedule, Schema, Stream, String } from 'effect';
-import { completeChtUpgrade, stageChtUpgrade, upgradeCht } from '../libs/cht/upgrade.js';
-import { ChtClientService } from './cht-client.js';
-import { pouchDB } from '../libs/core.js';
-import { CouchDesign } from '../libs/couch/design.js';
-import { WarmViewsService } from './warm-views.js';
+import { completeChtUpgrade, stageChtUpgrade, upgradeCht } from "../libs/cht/upgrade.js";
+import { ChtClientService } from "./cht-client.js";
+import { pouchDB } from "../libs/core.js";
+import { CouchDesign } from "../libs/couch/design.js";
+import { WarmViewsService } from "./warm-views.js";
+import {} from "../libs/couch/active-tasks.js";
 const UPGRADE_LOG_NAME = 'upgrade_log';
 const COMPLETED_STATES = ['finalized', 'aborted', 'errored', 'interrupted'];
 const STAGING_COMPLETE_STATES = ['indexed', ...COMPLETED_STATES];
@@ -66,7 +67,7 @@ const latestUpgradeLog = PouchDBService
 const streamChangesFeed = (upgradeLogId) => pipe({ include_docs: true, doc_ids: [upgradeLogId] }, streamChanges('medic-logs'));
 const streamUpgradeLogChanges = (completedStates) => latestUpgradeLog
     .pipe(Effect.map(Option.getOrThrowWith(() => new Error('No upgrade log found'))), Effect.flatMap(({ _id }) => streamChangesFeed(_id)), Effect.map(Stream.retry(Schedule.spaced(1000))), Effect.map(Stream.map(({ doc }) => doc)), Effect.map(Stream.map(Schema.decodeUnknownSync(UpgradeLog))), Effect.map(Stream.takeUntil(({ state }) => completedStates.includes(state))));
-const assertReadyForUpgrade = latestUpgradeLog.pipe(Effect.map(Option.map(({ state }) => state)), Effect.map(Match.value), Effect.map(Match.when(Option.isNone, () => Effect.void)), Effect.map(Match.when(state => COMPLETED_STATES.includes(Option.getOrThrow(state)), () => Effect.void)), Effect.flatMap(Match.orElse(() => Effect.fail(new Error('Upgrade already in progress.')))));
+const assertReadyForUpgrade = latestUpgradeLog.pipe(Effect.map(Option.map(({ state }) => state)), Effect.map(Match.value), Effect.map(Match.when(Option.isNone, () => Effect.void)), Effect.map(Match.when(state => Array.contains(COMPLETED_STATES, Option.getOrThrow(state)), () => Effect.void)), Effect.flatMap(Match.orElse(() => Effect.fail(new Error('Upgrade already in progress.')))));
 const assertReadyForComplete = latestUpgradeLog.pipe(Effect.map(Option.map(({ state }) => state)), Effect.map(Match.value), Effect.map(Match.when(state => Option.isSome(state) && Option.getOrThrow(state) === 'indexed', () => Effect.void)), Effect.flatMap(Match.orElse(() => Effect.fail(new Error('No upgrade ready for completion.')))));
 const getStagingDocAttachments = (version) => Effect
     .logDebug(`Getting staging doc attachments for ${version}`)
@@ -105,4 +106,3 @@ export class UpgradeService extends Effect.Service()('chtoolbox/UpgradeService',
     accessors: true,
 }) {
 }
-//# sourceMappingURL=upgrade.js.map

@@ -1,11 +1,11 @@
 import { describe, it } from 'mocha';
 import { Chunk, Effect, Either, Layer, Redacted, Stream } from 'effect';
-import sinon, { SinonStub } from 'sinon';
-import { PouchDBService } from '../../src/services/pouchdb.js';
-import { EnvironmentService } from '../../src/services/environment.js';
+import sinon, { type SinonStub } from 'sinon';
+import { PouchDBService } from '../../src/services/pouchdb.ts';
+import { EnvironmentService } from '../../src/services/environment.ts';
 import { expect } from 'chai';
-import * as ReplicateSvc from '../../src/services/replicate.js';
-import { genWithLayer, sandbox } from '../utils/base.js';
+import * as ReplicateSvc from '../../src/services/replicate.ts';
+import { genWithLayer, sandbox } from '../utils/base.ts';
 import esmock from 'esmock';
 
 const FAKE_RESPONSE = { id: 'world' } as const;
@@ -16,8 +16,8 @@ const mockPouchSvc = {
 
 const environmentGet = sandbox.stub();
 
-const { ReplicateService } = await esmock<typeof ReplicateSvc>('../../src/services/replicate.js', {
-  '../../src/services/pouchdb.js': mockPouchSvc,
+const { ReplicateService } = await esmock<typeof ReplicateSvc>('../../src/services/replicate.ts', {
+  '../../src/services/pouchdb.ts': mockPouchSvc,
 });
 const run = ReplicateService.Default.pipe(
   Layer.provide(Layer.succeed(PouchDBService, { } as unknown as PouchDBService)),
@@ -32,7 +32,7 @@ describe('Replicate Service', () => {
   beforeEach(() => {
     saveDoc = sinon.stub();
     mockPouchSvc.saveDoc.returns(saveDoc);
-  })
+  });
 
   it('creates a doc in the _replication database', run(function* () {
     const owner = 'medic';
@@ -205,9 +205,9 @@ describe('Replicate Service', () => {
         $or: [
           { type: { $in: contactTypes } },
           { $and: [
-              { type: 'contact', },
-              { contact_type: { $in: contactTypes } }
-            ] }
+            { type: 'contact', },
+            { contact_type: { $in: contactTypes } }
+          ] }
         ]
       },
     })).to.be.true;
@@ -232,7 +232,7 @@ describe('Replicate Service', () => {
     }));
 
     if (Either.isRight(either)) {
-      expect.fail('Expected error to be thrown.')
+      expect.fail('Expected error to be thrown.');
     }
 
     expect(either.left.message).to.equal('Cannot replicate ddocs while also filtering by contact type.');

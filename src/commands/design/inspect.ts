@@ -1,10 +1,10 @@
 import { Args, Command } from '@effect/cli';
 import { Array, Effect, pipe } from 'effect';
-import { initializeUrl } from '../../index.js';
-import { getDesignInfo } from '../../libs/couch/design-info.js';
-import { getViewNames } from '../../libs/couch/design.js';
+import { initializeUrl } from '../../index.ts';
+import { getDesignInfo } from '../../libs/couch/design-info.ts';
+import { getViewNames } from '../../libs/couch/design.ts';
 
-import { logJson } from '../../libs/console.js';
+import { logJson } from '../../libs/console.ts';
 
 const getViewData = (database: string) => (design: string) => Effect
   .all([

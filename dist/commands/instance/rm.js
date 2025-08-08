@@ -1,6 +1,6 @@
 import { Args, Command, Options, Prompt } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe } from 'effect';
-import { LocalInstanceService } from '../../services/local-instance.js';
+import { LocalInstanceService } from "../../services/local-instance.js";
 const getConfirmationPrompt = (names) => Prompt.confirm({
     message: `Are you sure you want to permanently remove ${Array.join(names, ', ')}?`,
     initial: false,
@@ -21,4 +21,3 @@ export const rm = Command
     .pipe(Command.withDescription('LOCAL ONLY: Remove a local CHT instance, completely deleting all associated data. ' +
     'If the data for this instance was mapped to a local directory when the instance was created (via the ' +
     '--directory flag) this data will NOT be deleted. Requires Docker and Docker Compose.'));
-//# sourceMappingURL=rm.js.map
