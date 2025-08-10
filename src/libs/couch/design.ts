@@ -14,7 +14,7 @@ export class CouchDesign extends Schema.Class<CouchDesign>('CouchDesign')({
   static readonly decodeResponse = HttpClientResponse.schemaBodyJson(CouchDesign);
 }
 
-export const getViewNames = (
+export const getViewNames = Effect.fn((
   dbName: string,
   designName: string
 ): Effect.Effect<string[], Error, ChtClientService> => ChtClientService
@@ -26,4 +26,4 @@ export const getViewNames = (
     Effect.map(Option.fromNullable),
     Effect.map(Option.map(Object.keys)),
     Effect.map(Option.getOrElse(() => [])),
-  );
+  ));

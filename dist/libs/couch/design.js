@@ -12,6 +12,6 @@ export class CouchDesign extends Schema.Class('CouchDesign')({
 }) {
     static decodeResponse = HttpClientResponse.schemaBodyJson(CouchDesign);
 }
-export const getViewNames = (dbName, designName) => ChtClientService
+export const getViewNames = Effect.fn((dbName, designName) => ChtClientService
     .request(HttpClientRequest.get(`/${dbName}/_design/${designName}`))
-    .pipe(Effect.flatMap(CouchDesign.decodeResponse), Effect.scoped, Effect.map(design => design.views), Effect.map(Option.fromNullable), Effect.map(Option.map(Object.keys)), Effect.map(Option.getOrElse(() => [])));
+    .pipe(Effect.flatMap(CouchDesign.decodeResponse), Effect.scoped, Effect.map(design => design.views), Effect.map(Option.fromNullable), Effect.map(Option.map(Object.keys)), Effect.map(Option.getOrElse(() => []))));

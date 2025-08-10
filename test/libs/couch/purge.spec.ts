@@ -54,17 +54,17 @@ describe('Couch Purge libs', () => {
 
     const either = yield* Effect.either(purgeFrom(dbName)(docs));
 
-    if (Either.isLeft(either)) {
-      expect(either.left).to.equal(expectedError);
-      expect(mockChtClient.request.notCalled).to.be.true;
-      expect(requestBuild.calledOnceWithExactly(
-        FAKE_CLIENT_REQUEST,
-        { [docs[0]._id]: [docs[0]._rev], [docs[1]._id]: [docs[1]._rev] }
-      )).to.be.true;
-      expect(mockHttpRequest.schemaBodyJson.calledOnce).to.be.true;
-      expect(mockHttpRequest.post.calledOnceWithExactly(`/${dbName}/_purge`)).to.be.true;
-    } else {
+    if (Either.isRight(either)) {
       expect.fail('Expected error to be thrown.');
     }
+
+    expect(either.left).to.include(expectedError);
+    expect(mockChtClient.request.notCalled).to.be.true;
+    expect(requestBuild.calledOnceWithExactly(
+      FAKE_CLIENT_REQUEST,
+      { [docs[0]._id]: [docs[0]._rev], [docs[1]._id]: [docs[1]._rev] }
+    )).to.be.true;
+    expect(mockHttpRequest.schemaBodyJson.calledOnce).to.be.true;
+    expect(mockHttpRequest.post.calledOnceWithExactly(`/${dbName}/_purge`)).to.be.true;
   }));
 });

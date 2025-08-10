@@ -71,17 +71,17 @@ describe('CHT Client Service', () => {
 
     const either = yield* Effect.either(ChtClientService.request(request));
 
-    if (Either.isLeft(either)) {
-      expect(either.left).to.equal(expectedError);
-      expect(environmentGet.calledOnceWithExactly()).to.be.true;
-      expect(mockHttpClient.filterStatusOk.calledOnce).to.be.true;
-      expect(mockHttpRequest.prependUrl.calledOnceWithExactly(url)).to.be.true;
-      expect(innerPrependUrl.notCalled).to.be.true;
-      expect(mockHttpClient.mapRequest.calledOnceWithExactly(innerPrependUrl)).to.be.true;
-      expect(innerMapRequest.calledOnceWithExactly(fakeHttpClientEffect)).to.be.true;
-      expect(execute.calledOnceWithExactly(request)).to.be.true;
-    } else {
-      expect.fail('Expected error to be thrown.');
+    if (Either.isRight(either)) {
+      expect.fail('Expected error');
     }
+
+    expect(either.left).to.deep.include(expectedError);
+    expect(environmentGet.calledOnceWithExactly()).to.be.true;
+    expect(mockHttpClient.filterStatusOk.calledOnce).to.be.true;
+    expect(mockHttpRequest.prependUrl.calledOnceWithExactly(url)).to.be.true;
+    expect(innerPrependUrl.notCalled).to.be.true;
+    expect(mockHttpClient.mapRequest.calledOnceWithExactly(innerPrependUrl)).to.be.true;
+    expect(innerMapRequest.calledOnceWithExactly(fakeHttpClientEffect)).to.be.true;
+    expect(execute.calledOnceWithExactly(request)).to.be.true;
   }));
 });

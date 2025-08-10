@@ -4,9 +4,11 @@ import { ChtClientService } from '../../services/cht-client.ts';
 
 const getWarmRequest = (dbName: string, designName: string, viewName: string) => HttpClientRequest
   .get(`/${dbName}/_design/${designName}/_view/${viewName}`)
-  .pipe(HttpClientRequest.setUrlParam('limit', '0'));
+  .pipe(
+    HttpClientRequest.setUrlParam('limit', '0'),
+  );
 
-export const warmView = (
+export const warmView = Effect.fn((
   dbName: string,
   designName: string,
   viewName: string
@@ -15,4 +17,4 @@ export const warmView = (
   .pipe(
     Effect.andThen(Effect.void),
     Effect.scoped,
-  );
+  ));

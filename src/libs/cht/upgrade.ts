@@ -16,36 +16,34 @@ const UpgradeBody = Schema.Struct({
     version: Schema.String,
   })
 });
-const getPostRequest = (endpoint: string, version: string) => UpgradeBody.pipe(
+const getPostRequest = Effect.fn((endpoint: string, version: string) => UpgradeBody.pipe(
   HttpClientRequest.schemaBodyJson,
   build => build(
     HttpClientRequest.post(endpoint),
     { build: { version, namespace: 'medic', application: 'medic' } }
   ),
   Effect.mapError(x => x as unknown as Error),
+));
+
+const postUpgrade = Effect.fn(
+  (endpoint: string, version: string) => getPostRequest(endpoint, version),
+  Effect.flatMap(ChtClientService.request),
+  Effect.scoped
 );
 
-const postUpgrade = (endpoint: string, version: string) => getPostRequest(endpoint, version)
-  .pipe(
-    Effect.flatMap(ChtClientService.request),
-    Effect.scoped,
-  );
-
-export const upgradeCht = (
+export const upgradeCht = Effect.fn((
   version: string
-): Effect.Effect<HttpClientResponse, Error, ChtClientService> => postUpgrade(ENDPOINT_UPGRADE, version);
+): Effect.Effect<HttpClientResponse, Error, ChtClientService> => postUpgrade(ENDPOINT_UPGRADE, version));
 
-export const stageChtUpgrade = (
+export const stageChtUpgrade = Effect.fn((
   version: string
-): Effect.Effect<HttpClientResponse, Error, ChtClientService> => postUpgrade(ENDPOINT_STAGE, version);
+): Effect.Effect<HttpClientResponse, Error, ChtClientService> => postUpgrade(ENDPOINT_STAGE, version));
 
-export const completeChtUpgrade = (
-  version: string
-): Effect.Effect<void, Error, ChtClientService> => postUpgrade(ENDPOINT_COMPLETE, version)
-  .pipe(
-    Effect.catchIf(
-      (err) => err instanceof ResponseError && err.response.status === 502,
-      () => Effect.void, // The api server is restarting, so we can ignore this error
-    ),
-    Effect.scoped,
-  );
+export const completeChtUpgrade = Effect.fn(
+  (version: string): Effect.Effect<void, Error, ChtClientService> => postUpgrade(ENDPOINT_COMPLETE, version),
+  Effect.catchIf(
+    (err) => err instanceof ResponseError && err.response.status === 502,
+    () => Effect.void, // The api server is restarting, so we can ignore this error
+  ),
+  Effect.scoped,
+);

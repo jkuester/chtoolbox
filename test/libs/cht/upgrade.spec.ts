@@ -67,18 +67,18 @@ describe('CHT Upgrade libs', () => {
 
         const either = yield* Effect.either(fn(version));
 
-        if (Either.isLeft(either)) {
-          expect(either.left).to.equal(expectedError);
-          expect(mockChtClient.request.notCalled).to.be.true;
-          expect(requestBuild.calledOnceWithExactly(
-            FAKE_CLIENT_REQUEST,
-            { build: { namespace: 'medic', application: 'medic', version } }
-          )).to.be.true;
-          expect(mockHttpRequest.schemaBodyJson.calledOnce).to.be.true;
-          expect(mockHttpRequest.post.calledOnceWithExactly(endpoint)).to.be.true;
-        } else {
+        if (Either.isRight(either)) {
           expect.fail('Expected error to be thrown.');
         }
+
+        expect(either.left).to.include(expectedError);
+        expect(mockChtClient.request.notCalled).to.be.true;
+        expect(requestBuild.calledOnceWithExactly(
+          FAKE_CLIENT_REQUEST,
+          { build: { namespace: 'medic', application: 'medic', version } }
+        )).to.be.true;
+        expect(mockHttpRequest.schemaBodyJson.calledOnce).to.be.true;
+        expect(mockHttpRequest.post.calledOnceWithExactly(endpoint)).to.be.true;
       }));
     });
   });

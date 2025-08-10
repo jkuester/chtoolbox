@@ -10,14 +10,14 @@ import PouchDB from 'pouchdb-core';
 export const untilEmptyCount = (target: number): (data: unknown[]) => Effect.Effect<boolean> => Ref
   .unsafeMake(0)
   .pipe(
-    countRef => (data: unknown[]) => countRef.pipe(
+    countRef => Effect.fn((data: unknown[]) => countRef.pipe(
       Ref.get,
       Effect.map(Option.liftPredicate(() => Array.isEmptyArray(data))),
       Effect.map(Option.map(Number.increment)),
       Effect.map(Option.getOrElse(() => 0)),
       Effect.tap(count => countRef.pipe(Ref.set(count))),
       Effect.map(count => count === target),
-    ),
+    )),
   );
 
 /**

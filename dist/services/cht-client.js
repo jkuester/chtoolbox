@@ -3,7 +3,7 @@ import { Scope } from 'effect/Scope';
 import * as Effect from 'effect/Effect';
 import { HttpClient, HttpClientRequest } from '@effect/platform';
 import * as Context from 'effect/Context';
-import { pipe, Redacted } from 'effect';
+import { Redacted } from 'effect';
 import { filterStatusOk, mapRequest } from '@effect/platform/HttpClient';
 const couchUrl = EnvironmentService
     .get()
@@ -19,7 +19,7 @@ const serviceContext = Effect
     .pipe(Context.add(HttpClient.HttpClient, client))));
 export class ChtClientService extends Effect.Service()('chtoolbox/ChtClientService', {
     effect: serviceContext.pipe(Effect.map(context => ({
-        request: (request) => pipe(clientWithUrl, Effect.flatMap(client => client.execute(request)), Effect.mapError(x => x), Effect.provide(context))
+        request: Effect.fn((request) => clientWithUrl.pipe(Effect.flatMap(client => client.execute(request)), Effect.mapError(x => x), Effect.provide(context))),
     }))),
     accessors: true,
 }) {

@@ -21,11 +21,11 @@ export const clearConsole = Effect.void.pipe(
   })
 );
 
-export const clearThen = (
+export const clearThen = Effect.fn((
   printEffect: Effect.Effect<void>
-): Effect.Effect<void> => clearConsole.pipe(Effect.tap(printEffect));
+): Effect.Effect<void> => clearConsole.pipe(Effect.tap(printEffect)));
 
-export const logJson = (data: unknown): Effect.Effect<void> => pipe(
+export const logJson = Effect.fn((data: unknown): Effect.Effect<void> => pipe(
   JSON.stringify(data, null, 2),
   Console.log
-);
+));

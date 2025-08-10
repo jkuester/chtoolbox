@@ -11,6 +11,6 @@ export class ChtMonitoringData extends Schema.Class('ChtMonitoringData')({
 }) {
     static decodeResponse = HttpClientResponse.schemaBodyJson(ChtMonitoringData);
 }
-export const getChtMonitoringData = () => ChtClientService
+export const getChtMonitoringData = Effect.fn(() => ChtClientService
     .request(HttpClientRequest.get(ENDPOINT))
-    .pipe(Effect.flatMap(ChtMonitoringData.decodeResponse), Effect.scoped);
+    .pipe(Effect.flatMap(ChtMonitoringData.decodeResponse), Effect.scoped));

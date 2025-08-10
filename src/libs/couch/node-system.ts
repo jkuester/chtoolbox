@@ -14,9 +14,11 @@ export class CouchNodeSystem extends Schema.Class<CouchNodeSystem>('CouchNodeSys
   static readonly decodeResponse = HttpClientResponse.schemaBodyJson(CouchNodeSystem);
 }
 
-export const getCouchNodeSystem = (): Effect.Effect<CouchNodeSystem, Error, ChtClientService> => ChtClientService
+export const getCouchNodeSystem = Effect.fn((): Effect.Effect<
+  CouchNodeSystem, Error, ChtClientService
+> => ChtClientService
   .request(HttpClientRequest.get(ENDPOINT))
   .pipe(
     Effect.flatMap(CouchNodeSystem.decodeResponse),
     Effect.scoped,
-  );
+  ));

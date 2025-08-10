@@ -30,5 +30,5 @@ const taskHasType = (types) => (task) => pipe(types, Array.contains(task.type));
 export const filterStreamByType = (...types) => (taskStream) => taskStream.pipe(Stream.map(Array.filter(taskHasType(types))));
 const orderByStartedOn = Order.make((a, b) => Number.Order(a.started_on, b.started_on));
 const activeTasks = ChtClientService.pipe(Effect.flatMap(couch => couch.request(HttpClientRequest.get(ENDPOINT))), Effect.flatMap(CouchActiveTask.decodeResponse), Effect.scoped, Effect.map(Array.sort(orderByStartedOn)));
-export const getActiveTasks = () => activeTasks;
+export const getActiveTasks = Effect.fn(() => activeTasks);
 export const streamActiveTasks = (interval = 1000) => Stream.repeat(activeTasks, Schedule.spaced(interval));

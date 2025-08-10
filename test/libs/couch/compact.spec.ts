@@ -67,15 +67,15 @@ describe('Couch Compact libs', () => {
 
     const either = yield* Effect.either(compactDb(dbName));
 
-    if (Either.isLeft(either)) {
-      expect(either.left).to.equal(expectedError);
-      expect(mockHttpRequest.schemaBodyJson).to.have.been.calledOnce;
-      expect(mockHttpRequest.schemaBodyJson).to.have.been.calledWithMatch({ fields: {} });
-      expect(mockHttpRequest.post.calledOnceWithExactly(`/${dbName}/_compact`)).to.be.true;
-      expect(requestBuild.calledOnceWithExactly(FAKE_CLIENT_REQUEST, {})).to.be.true;
-      expect(mockChtClient.request.notCalled).to.be.true;
-    } else {
+    if (Either.isRight(either)) {
       expect.fail('Expected error to be thrown.');
     }
+
+    expect(either.left).to.include(expectedError);
+    expect(mockHttpRequest.schemaBodyJson).to.have.been.calledOnce;
+    expect(mockHttpRequest.schemaBodyJson).to.have.been.calledWithMatch({ fields: {} });
+    expect(mockHttpRequest.post.calledOnceWithExactly(`/${dbName}/_compact`)).to.be.true;
+    expect(requestBuild.calledOnceWithExactly(FAKE_CLIENT_REQUEST, {})).to.be.true;
+    expect(mockChtClient.request.notCalled).to.be.true;
   }));
 });

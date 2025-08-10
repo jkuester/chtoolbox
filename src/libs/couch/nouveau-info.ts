@@ -15,7 +15,7 @@ export class NouveauInfo extends Schema.Class<NouveauInfo>('NouveauInfo')({
   static readonly decodeResponse = HttpClientResponse.schemaBodyJson(NouveauInfo);
 }
 
-export const getNouveauInfo = (
+export const getNouveauInfo = Effect.fn((
   dbName: string,
   ddocName: string,
   indexName: string
@@ -24,4 +24,4 @@ export const getNouveauInfo = (
   .pipe(
     Effect.flatMap(NouveauInfo.decodeResponse),
     Effect.scoped,
-  );
+  ));

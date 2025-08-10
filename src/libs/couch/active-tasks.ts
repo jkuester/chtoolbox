@@ -72,7 +72,7 @@ const activeTasks = ChtClientService.pipe(
   Effect.map(Array.sort(orderByStartedOn)),
 );
 
-export const getActiveTasks = (): Effect.Effect<CouchActiveTask[], Error, ChtClientService> => activeTasks;
+export const getActiveTasks = Effect.fn((): Effect.Effect<CouchActiveTask[], Error, ChtClientService> => activeTasks);
 
 export type CouchActiveTaskStream = Stream.Stream<CouchActiveTask[], Error, ChtClientService>;
 

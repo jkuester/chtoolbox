@@ -7,30 +7,32 @@ import type { NonEmptyArray } from 'effect/Array';
 type RemoveDocument = PouchDB.Core.RemoveDocument;
 
 const PurgeBody = Schema.Record({ key: Schema.String, value: Schema.Array(Schema.String) });
-const getPostRequest = (dbName: string, body: typeof PurgeBody.Type) => PurgeBody.pipe(
+const getPostRequest = Effect.fn((dbName: string, body: typeof PurgeBody.Type) => PurgeBody.pipe(
   HttpClientRequest.schemaBodyJson,
   build => build(
     HttpClientRequest.post(`/${dbName}/_purge`),
     body
   ),
   Effect.mapError(x => x as unknown as Error),
+));
+
+const purgeDb = (dbName: string) => Effect.fn(
+  (body: typeof PurgeBody.Type) => getPostRequest(dbName, body),
+  Effect.flatMap(ChtClientService.request),
+  Effect.scoped,
 );
 
-const purgeDb = (dbName: string) => (body: typeof PurgeBody.Type) => getPostRequest(dbName, body)
-  .pipe(
-    Effect.flatMap(ChtClientService.request),
-    Effect.scoped,
-  );
-
-const purgeDocs = (
+const purgeDocs = Effect.fn((
   dbName: string,
   docs: Readonly<NonEmptyArray<RemoveDocument>>
 ): Effect.Effect<HttpClientResponse, Error, ChtClientService> => pipe(
   docs,
   Array.reduce({}, (acc, doc) => ({ ...acc, [doc._id]: [doc._rev] })),
   purgeDb(dbName),
-);
+));
 
-export const purgeFrom = (dbName: string) => (
+export const purgeFrom = (
+  dbName: string
+): (
   docs: Readonly<NonEmptyArray<RemoveDocument>>
-): Effect.Effect<HttpClientResponse, Error, ChtClientService> => purgeDocs(dbName, docs);
+) => Effect.Effect<HttpClientResponse, Error, ChtClientService> => Effect.fn((docs) => purgeDocs(dbName, docs));

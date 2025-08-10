@@ -14,5 +14,5 @@ export const clearConsole = Effect.void.pipe(Effect.filterEffectOrElse({
     predicate: () => debugLoggingEnabled,
     orElse: () => Console.clear
 }));
-export const clearThen = (printEffect) => clearConsole.pipe(Effect.tap(printEffect));
-export const logJson = (data) => pipe(JSON.stringify(data, null, 2), Console.log);
+export const clearThen = Effect.fn((printEffect) => clearConsole.pipe(Effect.tap(printEffect)));
+export const logJson = Effect.fn((data) => pipe(JSON.stringify(data, null, 2), Console.log));

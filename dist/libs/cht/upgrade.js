@@ -13,10 +13,8 @@ const UpgradeBody = Schema.Struct({
         version: Schema.String,
     })
 });
-const getPostRequest = (endpoint, version) => UpgradeBody.pipe(HttpClientRequest.schemaBodyJson, build => build(HttpClientRequest.post(endpoint), { build: { version, namespace: 'medic', application: 'medic' } }), Effect.mapError(x => x));
-const postUpgrade = (endpoint, version) => getPostRequest(endpoint, version)
-    .pipe(Effect.flatMap(ChtClientService.request), Effect.scoped);
-export const upgradeCht = (version) => postUpgrade(ENDPOINT_UPGRADE, version);
-export const stageChtUpgrade = (version) => postUpgrade(ENDPOINT_STAGE, version);
-export const completeChtUpgrade = (version) => postUpgrade(ENDPOINT_COMPLETE, version)
-    .pipe(Effect.catchIf((err) => err instanceof ResponseError && err.response.status === 502, () => Effect.void), Effect.scoped);
+const getPostRequest = Effect.fn((endpoint, version) => UpgradeBody.pipe(HttpClientRequest.schemaBodyJson, build => build(HttpClientRequest.post(endpoint), { build: { version, namespace: 'medic', application: 'medic' } }), Effect.mapError(x => x)));
+const postUpgrade = Effect.fn((endpoint, version) => getPostRequest(endpoint, version), Effect.flatMap(ChtClientService.request), Effect.scoped);
+export const upgradeCht = Effect.fn((version) => postUpgrade(ENDPOINT_UPGRADE, version));
+export const stageChtUpgrade = Effect.fn((version) => postUpgrade(ENDPOINT_STAGE, version));
+export const completeChtUpgrade = Effect.fn((version) => postUpgrade(ENDPOINT_COMPLETE, version), Effect.catchIf((err) => err instanceof ResponseError && err.response.status === 502, () => Effect.void), Effect.scoped);

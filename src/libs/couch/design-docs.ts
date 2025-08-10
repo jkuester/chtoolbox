@@ -11,7 +11,9 @@ class CouchDesignDocs extends Schema.Class<CouchDesignDocs>('CouchDesignDocs')({
   static readonly decodeResponse = HttpClientResponse.schemaBodyJson(CouchDesignDocs);
 }
 
-export const getDesignDocNames = (dbName: string): Effect.Effect<string[], Error, ChtClientService> => ChtClientService
+export const getDesignDocNames = Effect.fn((
+  dbName: string
+): Effect.Effect<string[], Error, ChtClientService> => ChtClientService
   .request(HttpClientRequest.get(`/${dbName}/_design_docs`))
   .pipe(
     Effect.flatMap(CouchDesignDocs.decodeResponse),
@@ -21,4 +23,4 @@ export const getDesignDocNames = (dbName: string): Effect.Effect<string[], Error
     Effect.map(Array.map(String.split('/'))),
     Effect.map(Array.map(([, name]) => name)),
     Effect.filterOrFail((names): names is string[] => Array.every(names, Predicate.isNotNullable)),
-  );
+  ));

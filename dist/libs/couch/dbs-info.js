@@ -4,7 +4,7 @@ import { Array, Schema } from 'effect';
 import { ChtClientService } from "../../services/cht-client.js";
 const ENDPOINT = '/_dbs_info';
 const DbsInfoBody = Schema.Struct({ keys: Schema.Array(Schema.String) });
-const getPostRequest = (keys) => DbsInfoBody.pipe(HttpClientRequest.schemaBodyJson, build => build(HttpClientRequest.post(ENDPOINT), { keys }), Effect.mapError(x => x));
+const getPostRequest = Effect.fn((keys) => DbsInfoBody.pipe(HttpClientRequest.schemaBodyJson, build => build(HttpClientRequest.post(ENDPOINT), { keys }), Effect.mapError(x => x)));
 export class CouchDbInfo extends Schema.Class('CouchDbInfo')({
     key: Schema.String,
     info: Schema.Struct({
@@ -31,8 +31,8 @@ export class CouchDbInfo extends Schema.Class('CouchDbInfo')({
 }) {
     static decodeResponse = HttpClientResponse.schemaBodyJson(Schema.Array(CouchDbInfo));
 }
-export const getAllDbsInfo = () => ChtClientService.pipe(Effect.flatMap(couch => couch.request(HttpClientRequest.get(ENDPOINT))), Effect.flatMap(CouchDbInfo.decodeResponse), Effect.scoped);
-export const getDbsInfoByName = (dbNames) => getPostRequest(dbNames)
-    .pipe(Effect.flatMap(request => ChtClientService.request(request)), Effect.flatMap(CouchDbInfo.decodeResponse), Effect.scoped);
-export const getDbNames = () => getAllDbsInfo()
-    .pipe(Effect.map(Array.map(({ key }) => key)));
+export const getAllDbsInfo = Effect.fn(() => ChtClientService.request(HttpClientRequest.get(ENDPOINT)).pipe(Effect.flatMap(CouchDbInfo.decodeResponse), Effect.scoped));
+export const getDbsInfoByName = Effect.fn((dbNames) => getPostRequest(dbNames)
+    .pipe(Effect.flatMap(request => ChtClientService.request(request)), Effect.flatMap(CouchDbInfo.decodeResponse), Effect.scoped));
+export const getDbNames = Effect.fn(() => getAllDbsInfo()
+    .pipe(Effect.map(Array.map(({ key }) => key))));

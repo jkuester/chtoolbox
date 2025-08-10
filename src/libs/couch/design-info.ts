@@ -29,7 +29,7 @@ export class CouchDesignInfo extends Schema.Class<CouchDesignInfo>('CouchDesignI
   static readonly decodeResponse = HttpClientResponse.schemaBodyJson(CouchDesignInfo);
 }
 
-export const getDesignInfo = (
+export const getDesignInfo = Effect.fn((
   dbName: string,
   designName: string
 ): Effect.Effect<CouchDesignInfo, Error, ChtClientService> => ChtClientService
@@ -37,4 +37,4 @@ export const getDesignInfo = (
   .pipe(
     Effect.flatMap(CouchDesignInfo.decodeResponse),
     Effect.scoped,
-  );
+  ));

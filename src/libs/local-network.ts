@@ -6,16 +6,18 @@ import type { LocalChtInstance } from '../services/local-instance.ts';
 const IPV4_FAMILY_VALUES = ['IPv4', 4];
 const LOCALHOST_IP = '127.0.0.1';
 
-export const getFreePort = (
+export const getFreePort = Effect.fn((
   opts?: { port?: number, exclude?: number[] }
-): Effect.Effect<number> => Effect.promise(() => getPort(opts));
+) => Effect.promise(() => getPort(opts)));
 
-export const getFreePorts = (): Effect.Effect<[number, number]> => getFreePort()
-  .pipe(Effect.flatMap(port => getFreePort({ exclude: [port] })
+export const getFreePorts = Effect.fn(
+  () => getFreePort(),
+  Effect.flatMap(port => getFreePort({ exclude: [port] })
     .pipe(
       Effect.tap(secondPort => Effect.logDebug(`Found free ports: ${port.toString()}, ${secondPort.toString()}`)),
       Effect.map(secondPort => [port, secondPort]),
-    )));
+    ))
+);
 
 export const getLANIPAddress = (): string => pipe(
   OS.networkInterfaces(),
@@ -32,7 +34,7 @@ export const getLANIPAddress = (): string => pipe(
   ),
 );
 
-const getLANIPAddressHost = (): string => pipe(
+const getLANIPAddressHost = () => pipe(
   getLANIPAddress(),
   String.replace(/\./g, '-'),
 );

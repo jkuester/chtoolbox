@@ -115,19 +115,19 @@ describe('Couch Dbs Info libs', () => {
 
       const either = yield* Effect.either(getDbsInfoByName(dbNames));
 
-      if (Either.isLeft(either)) {
-        expect(either.left).to.equal(expectedError);
-        expect(mockHttpRequest.get.notCalled).to.be.true;
-        expect(mockChtClient.request.notCalled).to.be.true;
-        expect(requestBuild.calledOnceWithExactly(
-          FAKE_CLIENT_REQUEST,
-          { keys: dbNames }
-        )).to.be.true;
-        expect(mockHttpRequest.schemaBodyJson.calledOnce).to.be.true;
-        expect(mockHttpRequest.post.calledOnceWithExactly('/_dbs_info')).to.be.true;
-      } else {
+      if (Either.isRight(either)) {
         expect.fail('Expected error to be thrown.');
       }
+
+      expect(either.left).to.include(expectedError);
+      expect(mockHttpRequest.get.notCalled).to.be.true;
+      expect(mockChtClient.request.notCalled).to.be.true;
+      expect(requestBuild.calledOnceWithExactly(
+        FAKE_CLIENT_REQUEST,
+        { keys: dbNames }
+      )).to.be.true;
+      expect(mockHttpRequest.schemaBodyJson.calledOnce).to.be.true;
+      expect(mockHttpRequest.post.calledOnceWithExactly('/_dbs_info')).to.be.true;
     }));
   });
 });

@@ -7,14 +7,14 @@ import type { NonEmptyArray } from 'effect/Array';
 const ENDPOINT = '/_dbs_info';
 
 const DbsInfoBody = Schema.Struct({ keys: Schema.Array(Schema.String) });
-const getPostRequest = (keys: NonEmptyArray<string>) => DbsInfoBody.pipe(
+const getPostRequest = Effect.fn((keys: NonEmptyArray<string>) => DbsInfoBody.pipe(
   HttpClientRequest.schemaBodyJson,
   build => build(
     HttpClientRequest.post(ENDPOINT),
     { keys }
   ),
   Effect.mapError(x => x as unknown as Error),
-);
+));
 
 export class CouchDbInfo extends Schema.Class<CouchDbInfo>('CouchDbInfo')({
   key: Schema.String,
@@ -43,22 +43,21 @@ export class CouchDbInfo extends Schema.Class<CouchDbInfo>('CouchDbInfo')({
   static readonly decodeResponse = HttpClientResponse.schemaBodyJson(Schema.Array(CouchDbInfo));
 }
 
-export const getAllDbsInfo = (): Effect.Effect<
+export const getAllDbsInfo = Effect.fn((): Effect.Effect<
   readonly CouchDbInfo[], Error, ChtClientService
-> => ChtClientService.pipe(
-  Effect.flatMap(couch => couch.request(HttpClientRequest.get(ENDPOINT))),
+> => ChtClientService.request(HttpClientRequest.get(ENDPOINT)).pipe(
   Effect.flatMap(CouchDbInfo.decodeResponse),
   Effect.scoped,
-);
+));
 
-export const getDbsInfoByName = (
+export const getDbsInfoByName = Effect.fn((
   dbNames: NonEmptyArray<string>
 ): Effect.Effect<readonly CouchDbInfo[], Error, ChtClientService> => getPostRequest(dbNames)
   .pipe(
     Effect.flatMap(request => ChtClientService.request(request)),
     Effect.flatMap(CouchDbInfo.decodeResponse),
     Effect.scoped,
-  );
+  ));
 
-export const getDbNames = (): Effect.Effect<string[], Error, ChtClientService> => getAllDbsInfo()
-  .pipe(Effect.map(Array.map(({ key }) => key)));
+export const getDbNames = Effect.fn((): Effect.Effect<string[], Error, ChtClientService> => getAllDbsInfo()
+  .pipe(Effect.map(Array.map(({ key }) => key))));
