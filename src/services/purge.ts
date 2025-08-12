@@ -26,13 +26,13 @@ const filterDdoc = (purgeDdocs: boolean) => (doc: { _id: string }) => Option
     Option.getOrElse(() => true),
   );
 
-const purgeRows = (dbName: string) => (rows: { _id: string, _rev: string }[]) => Option
+const purgeRows = (dbName: string) => Effect.fn((rows: { _id: string, _rev: string }[]) => Option
   .liftPredicate(rows, Array.isNonEmptyArray)
   .pipe(
     Option.map(purgeFrom(dbName)),
     Option.map(Effect.andThen(Effect.void)),
     Option.getOrElse(() => Effect.void),
-  );
+  ));
 
 const getReportQueryOptions = (
   { since, before }: { since: Option.Option<Date>, before: Option.Option<Date> },
@@ -48,25 +48,25 @@ const getReportQueryOptions = (
   ),
 });
 
-const getAllDocs = (dbName: string) => (keys: string[]) => PouchDBService
+const getAllDocs = (dbName: string) => Effect.fn((keys: string[]) => PouchDBService
   .get(dbName)
-  .pipe(Effect.flatMap(db => Effect.promise(() => db.allDocs({ keys }))));
+  .pipe(Effect.flatMap(db => Effect.promise(() => db.allDocs({ keys })))));
 
-const purgeDocsFromResponse = (dbName: string) => (response: PouchDB.Query.Response<object>) => pipe(
+const purgeDocsFromResponse = (dbName: string) => Effect.fn((response: PouchDB.Query.Response<object>) => pipe(
   response.rows,
   Array.map(({ id }) => id as string),
   getAllDocs(dbName),
   Effect.map(convertAllDocsResponse),
   Effect.flatMap(purgeRows(dbName)),
-);
+));
 
-const purgeByViewQuery = (dbName: string, viewName: string) => (
+const purgeByViewQuery = (dbName: string, viewName: string) => Effect.fn((
   opts: PouchDB.Query.Options<object, object>
 ) => pipe(
   opts,
   streamQueryPages(dbName, viewName),
   Effect.map(Stream.tap(purgeDocsFromResponse(dbName))),
-);
+));
 
 const serviceContext = Effect
   .all([
@@ -82,7 +82,11 @@ const serviceContext = Effect
 
 export class PurgeService extends Effect.Service<PurgeService>()('chtoolbox/PurgeService', {
   effect: serviceContext.pipe(Effect.map(context => ({
-    purgeAll: (dbName: string, purgeDdocs = false): Effect.Effect<AllDocsResponseStream, Error> => pipe(
+    purgeAll: Effect.fn((
+      dbName: string,
+      // eslint-disable-next-line @typescript-eslint/no-inferrable-types
+      purgeDdocs: boolean = false
+    ): Effect.Effect<AllDocsResponseStream, Error> => pipe(
       PAGE_OPTIONS,
       streamAllDocPages(dbName),
       Effect.map(Stream.tap(response => pipe(
@@ -92,8 +96,8 @@ export class PurgeService extends Effect.Service<PurgeService>()('chtoolbox/Purg
       ))),
       Effect.map(Stream.provideContext(context)),
       Effect.provide(context),
-    ),
-    purgeReports: (
+    )),
+    purgeReports: Effect.fn((
       dbName: string,
       opts: { since: Option.Option<Date>, before: Option.Option<Date> }
     ): Effect.Effect<AllDocsResponseStream, Error> => pipe(
@@ -101,8 +105,8 @@ export class PurgeService extends Effect.Service<PurgeService>()('chtoolbox/Purg
       purgeByViewQuery(dbName, 'medic-client/reports_by_date'),
       Effect.map(Stream.provideContext(context)),
       Effect.provide(context),
-    ),
-    purgeContacts: (
+    )),
+    purgeContacts: Effect.fn((
       dbName: string,
       type: string,
     ): Effect.Effect<AllDocsResponseStream, Error> => pipe(
@@ -110,7 +114,7 @@ export class PurgeService extends Effect.Service<PurgeService>()('chtoolbox/Purg
       purgeByViewQuery(dbName, 'medic-client/contacts_by_type'),
       Effect.map(Stream.provideContext(context)),
       Effect.provide(context),
-    )
+    ))
   }))),
   accessors: true,
 }) {

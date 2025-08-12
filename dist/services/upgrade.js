@@ -64,28 +64,28 @@ const latestUpgradeLog = PouchDBService
     limit: 1,
     include_docs: true,
 }))), Effect.map(({ rows }) => rows), Effect.map(Option.liftPredicate(Array.isNonEmptyArray)), Effect.map(Option.map(([{ doc }]) => doc)), Effect.map(Option.flatMap(Option.fromNullable)), Effect.map(Option.flatMap(Schema.decodeUnknownOption(UpgradeLog))));
-const streamChangesFeed = (upgradeLogId) => pipe({ include_docs: true, doc_ids: [upgradeLogId] }, streamChanges('medic-logs'));
-const streamUpgradeLogChanges = (completedStates) => latestUpgradeLog
-    .pipe(Effect.map(Option.getOrThrowWith(() => new Error('No upgrade log found'))), Effect.flatMap(({ _id }) => streamChangesFeed(_id)), Effect.map(Stream.retry(Schedule.spaced(1000))), Effect.map(Stream.map(({ doc }) => doc)), Effect.map(Stream.map(Schema.decodeUnknownSync(UpgradeLog))), Effect.map(Stream.takeUntil(({ state }) => completedStates.includes(state))));
+const streamChangesFeed = Effect.fn((upgradeLogId) => pipe({ include_docs: true, doc_ids: [upgradeLogId] }, streamChanges('medic-logs')));
+const streamUpgradeLogChanges = Effect.fn((completedStates) => latestUpgradeLog
+    .pipe(Effect.map(Option.getOrThrowWith(() => new Error('No upgrade log found'))), Effect.flatMap(({ _id }) => streamChangesFeed(_id)), Effect.map(Stream.retry(Schedule.spaced(1000))), Effect.map(Stream.map(({ doc }) => doc)), Effect.map(Stream.map(Schema.decodeUnknownSync(UpgradeLog))), Effect.map(Stream.takeUntil(({ state }) => completedStates.includes(state)))));
 const assertReadyForUpgrade = latestUpgradeLog.pipe(Effect.map(Option.map(({ state }) => state)), Effect.map(Match.value), Effect.map(Match.when(Option.isNone, () => Effect.void)), Effect.map(Match.when(state => Array.contains(COMPLETED_STATES, Option.getOrThrow(state)), () => Effect.void)), Effect.flatMap(Match.orElse(() => Effect.fail(new Error('Upgrade already in progress.')))));
 const assertReadyForComplete = latestUpgradeLog.pipe(Effect.map(Option.map(({ state }) => state)), Effect.map(Match.value), Effect.map(Match.when(state => Option.isSome(state) && Option.getOrThrow(state) === 'indexed', () => Effect.void)), Effect.flatMap(Match.orElse(() => Effect.fail(new Error('No upgrade ready for completion.')))));
-const getStagingDocAttachments = (version) => Effect
+const getStagingDocAttachments = Effect.fn((version) => Effect
     .logDebug(`Getting staging doc attachments for ${version}`)
-    .pipe(Effect.andThen(pouchDB(STAGING_BUILDS_COUCH_URL)), Effect.flatMap(db => Effect.promise(() => db.get(`medic:medic:${version}`, { attachments: true }))), Effect.map(({ _attachments }) => _attachments), Effect.filterOrFail(Predicate.isNotNullable));
-const decodeStagingDocAttachments = (attachments) => pipe(CHT_DDOC_ATTACHMENT_NAMES, Array.map(name => attachments[name]), Array.map(DesignDocAttachment.decode), Effect.allWith({ concurrency: 'unbounded' }));
-const getExistingStagedDdocRev = (dbName, ddocId) => pipe(ddocId, String.replace(DDOC_PREFIX, `${DDOC_PREFIX}${STAGED_DDOC_PREFIX}`), getDoc(dbName), Effect.tap(doc => pipe(doc, Option.map(doc => Effect.logDebug(`Found existing staged ddoc ${doc._id} with rev ${doc._rev}`)), Option.getOrElse(() => Effect.logDebug(`No existing staged ddoc found for ${ddocId}`)))), Effect.map(Option.map(({ _rev }) => ({ _rev }))), Effect.map(Option.getOrElse(() => ({}))));
-const saveStagedDdoc = (dbName, ddoc) => Effect
+    .pipe(Effect.andThen(pouchDB(STAGING_BUILDS_COUCH_URL)), Effect.flatMap(db => Effect.promise(() => db.get(`medic:medic:${version}`, { attachments: true }))), Effect.map(({ _attachments }) => _attachments), Effect.filterOrFail(Predicate.isNotNullable)));
+const decodeStagingDocAttachments = Effect.fn((attachments) => pipe(CHT_DDOC_ATTACHMENT_NAMES, Array.map(name => attachments[name]), Array.map(DesignDocAttachment.decode), Effect.allWith({ concurrency: 'unbounded' })));
+const getExistingStagedDdocRev = Effect.fn((dbName, ddocId) => pipe(ddocId, String.replace(DDOC_PREFIX, `${DDOC_PREFIX}${STAGED_DDOC_PREFIX}`), getDoc(dbName), Effect.tap(doc => pipe(doc, Option.map(doc => Effect.logDebug(`Found existing staged ddoc ${doc._id} with rev ${doc._rev}`)), Option.getOrElse(() => Effect.logDebug(`No existing staged ddoc found for ${ddocId}`)))), Effect.map(Option.map(({ _rev }) => ({ _rev }))), Effect.map(Option.getOrElse(() => ({})))));
+const saveStagedDdoc = Effect.fn((dbName, ddoc) => Effect
     .logDebug(`Saving staging ddoc for ${dbName}/${ddoc._id}`)
     .pipe(Effect.andThen(getExistingStagedDdocRev(dbName, ddoc._id)), Effect.map(existingDdoc => ({
     ...existingDdoc,
     ...ddoc,
     _id: pipe(ddoc._id, String.replace(DDOC_PREFIX, `${DDOC_PREFIX}${STAGED_DDOC_PREFIX}`)),
     deploy_info: { user: 'Pre-staged by chtoolbox' }
-})), Effect.flatMap(saveDoc(dbName)));
-const preStageDdoc = (dbName) => (ddoc) => WarmViewsService
+})), Effect.flatMap(saveDoc(dbName))));
+const preStageDdoc = (dbName) => Effect.fn((ddoc) => WarmViewsService
     .warmDesign(dbName, pipe(ddoc._id, String.replace(DDOC_PREFIX, STAGED_DDOC_PREFIX)))
-    .pipe(Effect.map(Stream.onStart(saveStagedDdoc(dbName, ddoc))));
-const preStageDdocs = (docsByDb) => pipe(docsByDb, Array.map(([{ docs }, attachmentName]) => pipe(docs, Array.map(preStageDdoc(CHT_DATABASE_BY_ATTACHMENT_NAME[attachmentName])), Effect.all, Effect.map(Chunk.fromIterable), Effect.map(Stream.concatAll))), Effect.all, Effect.map(Chunk.fromIterable), Effect.map(Stream.concatAll));
+    .pipe(Effect.map(Stream.onStart(saveStagedDdoc(dbName, ddoc)))));
+const preStageDdocs = Effect.fn((docsByDb) => pipe(docsByDb, Array.map(([{ docs }, attachmentName]) => pipe(docs, Array.map(preStageDdoc(CHT_DATABASE_BY_ATTACHMENT_NAME[attachmentName])), Effect.all, Effect.map(Chunk.fromIterable), Effect.map(Stream.concatAll))), Effect.all, Effect.map(Chunk.fromIterable), Effect.map(Stream.concatAll)));
 const serviceContext = Effect
     .all([
     ChtClientService,
@@ -97,11 +97,11 @@ const serviceContext = Effect
     .pipe(Context.add(ChtClientService, chtClient), Context.add(WarmViewsService, warmViews))));
 export class UpgradeService extends Effect.Service()('chtoolbox/UpgradeService', {
     effect: serviceContext.pipe(Effect.map(context => ({
-        upgrade: (version) => assertReadyForUpgrade.pipe(Effect.andThen(upgradeCht(version)), Effect.andThen(streamUpgradeLogChanges(COMPLETED_STATES)), Effect.provide(context)),
-        stage: (version) => assertReadyForUpgrade.pipe(Effect.andThen(stageChtUpgrade(version)), Effect.andThen(streamUpgradeLogChanges(STAGING_COMPLETE_STATES)), Effect.provide(context)),
-        complete: (version) => assertReadyForComplete.pipe(Effect.andThen(completeChtUpgrade(version)), Effect.andThen(streamUpgradeLogChanges(COMPLETED_STATES)
-            .pipe(Effect.retry(Schedule.spaced(1000)))), Effect.provide(context)),
-        preStage: (version) => assertReadyForUpgrade.pipe(Effect.andThen(getStagingDocAttachments(version)), Effect.flatMap(decodeStagingDocAttachments), Effect.map(Array.zip(CHT_DDOC_ATTACHMENT_NAMES)), Effect.flatMap(preStageDdocs), Effect.map(Stream.provideContext(context)), Effect.map(Stream.mapError(x => x)), Effect.provide(context)),
+        upgrade: Effect.fn((version) => assertReadyForUpgrade.pipe(Effect.andThen(upgradeCht(version)), Effect.andThen(streamUpgradeLogChanges(COMPLETED_STATES)), Effect.provide(context))),
+        stage: Effect.fn((version) => assertReadyForUpgrade.pipe(Effect.andThen(stageChtUpgrade(version)), Effect.andThen(streamUpgradeLogChanges(STAGING_COMPLETE_STATES)), Effect.provide(context))),
+        complete: Effect.fn((version) => assertReadyForComplete.pipe(Effect.andThen(completeChtUpgrade(version)), Effect.andThen(streamUpgradeLogChanges(COMPLETED_STATES)
+            .pipe(Effect.retry(Schedule.spaced(1000)))), Effect.provide(context))),
+        preStage: Effect.fn((version) => assertReadyForUpgrade.pipe(Effect.andThen(getStagingDocAttachments(version)), Effect.flatMap(decodeStagingDocAttachments), Effect.map(Array.zip(CHT_DDOC_ATTACHMENT_NAMES)), Effect.flatMap(preStageDdocs), Effect.map(Stream.provideContext(context)), Effect.map(Stream.mapError(x => x)), Effect.provide(context))),
     }))),
     accessors: true,
 }) {

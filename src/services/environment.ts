@@ -7,7 +7,7 @@ export interface Environment {
   readonly user: string;
 }
 
-const parseCouchUrl = (url: Redacted.Redacted): Effect.Effect<Environment, Error> => url.pipe(
+const parseCouchUrl = Effect.fn((url: Redacted.Redacted): Effect.Effect<Environment, Error> => url.pipe(
   Redacted.value,
   String.match(COUCH_URL_PATTERN),
   Option.map(([, url, user]) => [url, user]),
@@ -18,7 +18,7 @@ const parseCouchUrl = (url: Redacted.Redacted): Effect.Effect<Environment, Error
   })),
   Option.map(Effect.succeed),
   Option.getOrElse(() => Effect.fail(Error('Could not parse URL.'))),
-);
+));
 
 const COUCH_URL = Config
   .redacted('COUCH_URL')

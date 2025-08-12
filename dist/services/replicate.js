@@ -19,11 +19,11 @@ const getContactTypeSelector = (contactTypes) => Match
 })));
 const hasContactTypes = (opts) => Array.isArray(opts.contactTypes)
     && Array.isNonEmptyArray(opts.contactTypes);
-const getSelector = (opts) => Match
+const getSelector = Effect.fn((opts) => Match
     .value(opts)
-    .pipe(Match.when((opts) => !!opts.includeDdocs && hasContactTypes(opts), () => Effect.fail(new Error('Cannot replicate ddocs while also filtering by contact type.'))), Match.when(({ includeDdocs }) => !!includeDdocs, () => Effect.succeed({})), Match.when(hasContactTypes, (opts) => Effect.succeed(getContactTypeSelector(opts.contactTypes))), Match.orElse(() => Effect.succeed(SKIP_DDOC_SELECTOR)));
+    .pipe(Match.when((opts) => !!opts.includeDdocs && hasContactTypes(opts), () => Effect.fail(new Error('Cannot replicate ddocs while also filtering by contact type.'))), Match.when(({ includeDdocs }) => !!includeDdocs, () => Effect.succeed({})), Match.when(hasContactTypes, (opts) => Effect.succeed(getContactTypeSelector(opts.contactTypes))), Match.orElse(() => Effect.succeed(SKIP_DDOC_SELECTOR))));
 const getCouchDbUrl = (env, name) => pipe(name, Schema.decodeOption(Schema.URL), Option.map(url => url.toString()), Option.getOrElse(() => `${Redacted.value(env.url)}${name}`));
-const createReplicationDoc = (source, target, opts) => Effect
+const createReplicationDoc = Effect.fn((source, target, opts) => Effect
     .all([
     EnvironmentService.get(),
     getSelector(opts),
@@ -39,7 +39,7 @@ const createReplicationDoc = (source, target, opts) => Effect
     continuous: false,
     owner: env.user,
     selector,
-})));
+}))));
 export class ReplicationDoc extends Schema.Class('ReplicationDoc')({
     _id: Schema.String,
     _replication_state: Schema.optional(Schema.String),
@@ -48,7 +48,7 @@ export class ReplicationDoc extends Schema.Class('ReplicationDoc')({
     })),
 }) {
 }
-const streamReplicationDocChanges = (repDocId) => pipe({ include_docs: true, doc_ids: [repDocId], }, streamChanges('_replicator'), Effect.map(Stream.map(({ doc }) => doc)), Effect.map(Stream.mapEffect(Schema.decodeUnknown(ReplicationDoc))), Effect.map(Stream.takeUntil(({ _replication_state }) => _replication_state === 'completed')));
+const streamReplicationDocChanges = Effect.fn((repDocId) => pipe({ include_docs: true, doc_ids: [repDocId], }, streamChanges('_replicator'), Effect.map(Stream.map(({ doc }) => doc)), Effect.map(Stream.mapEffect(Schema.decodeUnknown(ReplicationDoc))), Effect.map(Stream.takeUntil(({ _replication_state }) => _replication_state === 'completed'))));
 const serviceContext = Effect
     .all([
     EnvironmentService,
@@ -59,8 +59,8 @@ const serviceContext = Effect
     .pipe(Context.add(EnvironmentService, env))));
 export class ReplicateService extends Effect.Service()('chtoolbox/ReplicateService', {
     effect: serviceContext.pipe(Effect.map(context => ({
-        replicate: (source, target, opts = {}) => createReplicationDoc(source, target, opts)
-            .pipe(Effect.flatMap(saveDoc('_replicator')), Effect.map(({ id }) => id), Effect.flatMap(streamReplicationDocChanges), Effect.mapError(x => x), Effect.provide(context)),
+        replicate: Effect.fn((source, target, opts = {}) => createReplicationDoc(source, target, opts)
+            .pipe(Effect.flatMap(saveDoc('_replicator')), Effect.map(({ id }) => id), Effect.flatMap(streamReplicationDocChanges), Effect.mapError(x => x), Effect.provide(context))),
     }))),
     accessors: true,
 }) {

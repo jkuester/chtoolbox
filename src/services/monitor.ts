@@ -74,20 +74,20 @@ const emptyDesignInfo: CouchDesignInfo = {
     },
   },
 } as CouchDesignInfo;
-const getCouchDesignInfosForDb = (dbName: DbName) => Effect.all(pipe(
+const getCouchDesignInfosForDb = Effect.fn((dbName: DbName) => Effect.all(pipe(
   VIEW_INDEXES_BY_DB[dbName],
   Array.map(designName => getDesignInfo(dbName, designName)),
   Array.map(Effect.catchIf(
     (error) => error instanceof ResponseError && error.response.status === 404,
     () => Effect.succeed(emptyDesignInfo),
   )),
-), { concurrency: 'unbounded' });
+), { concurrency: 'unbounded' }));
 
-const getCouchDesignInfos = () => pipe(
+const getCouchDesignInfos = Effect.fn(() => pipe(
   DB_NAMES,
   Array.map(getCouchDesignInfosForDb),
   Effect.allWith({ concurrency: 'unbounded' }),
-);
+));
 
 const NOUVEAU_INDEXES_BY_DB: Record<typeof DB_NAMES[number], [string, string][]> = {
   medic: [
@@ -109,38 +109,38 @@ const emptyNouveauInfo: NouveauInfo = {
   },
 };
 
-const getNouveauInfosForDb = (dbName: DbName) => Effect.all(pipe(
+const getNouveauInfosForDb = Effect.fn((dbName: DbName) => Effect.all(pipe(
   NOUVEAU_INDEXES_BY_DB[dbName],
   Array.map(([ddoc, index]) => getNouveauInfo(dbName, ddoc, index)),
   Array.map(Effect.catchIf(
     (error) => error instanceof ResponseError && error.response.status === 404,
     () => Effect.succeed(emptyNouveauInfo),
   )),
-), { concurrency: 'unbounded' });
-const getNouveauInfos = () => pipe(
+), { concurrency: 'unbounded' }));
+const getNouveauInfos = Effect.fn(() => pipe(
   DB_NAMES,
   Array.map(getNouveauInfosForDb),
   Effect.allWith({ concurrency: 'unbounded' }),
-);
+));
 
-const getDirectorySize = (directory: Option.Option<string>) => LocalDiskUsageService.pipe(
+const getDirectorySize = Effect.fn((directory: Option.Option<string>) => LocalDiskUsageService.pipe(
   Effect.flatMap(service => directory.pipe(
     Option.map(dir => service.getSize(dir)),
     Option.getOrElse(() => Effect.succeed(null))
   )),
   Effect.map(Option.fromNullable),
-);
+));
 
-const getChtMonitoring = () => getChtMonitoringData().pipe(
+const getChtMonitoring = Effect.fn(() => getChtMonitoringData().pipe(
   Effect.catchAll((error) => {
     if (error instanceof ResponseError && error.response.status === 404) {
       return Effect.succeed({ version: { app: '', couchdb: '' } });
     }
     return Effect.fail(error);
   }),
-);
+));
 
-const getMonitoringData = (directory: Option.Option<string>) => pipe(
+const getMonitoringData = Effect.fn((directory: Option.Option<string>) => pipe(
   Effect.all([
     currentTimeSec,
     getCouchNodeSystem(),
@@ -169,7 +169,7 @@ const getMonitoringData = (directory: Option.Option<string>) => pipe(
     })),
     directory_size
   })),
-);
+));
 
 const getCsvHeader = (directory: Option.Option<string>): string[] => [
   'unix_time',
@@ -199,7 +199,7 @@ const getCsvHeader = (directory: Option.Option<string>): string[] => [
   )),
 ];
 
-const getAsCsv = (directory: Option.Option<string>) => pipe(
+const getAsCsv = Effect.fn((directory: Option.Option<string>) => pipe(
   getMonitoringData(directory),
   Effect.map(data => [
     data.unix_time.toString(),
@@ -228,7 +228,7 @@ const getAsCsv = (directory: Option.Option<string>) => pipe(
       Option.getOrElse(() => []),
     )),
   ]),
-);
+));
 
 const serviceContext = Effect
   .all([
@@ -244,13 +244,15 @@ const serviceContext = Effect
 
 export class MonitorService extends Effect.Service<MonitorService>()('chtoolbox/MonitorService', {
   effect: serviceContext.pipe(Effect.map(context => ({
-    get: (
+    get: Effect.fn((
       directory: Option.Option<string>
     ): Effect.Effect<MonitoringData, Error | PlatformError> => getMonitoringData(directory)
-      .pipe(Effect.provide(context)),
+      .pipe(Effect.provide(context))),
     getCsvHeader,
-    getAsCsv: (directory: Option.Option<string>): Effect.Effect<string[], Error | PlatformError> => getAsCsv(directory)
-      .pipe(Effect.provide(context)),
+    getAsCsv: Effect.fn((
+      directory: Option.Option<string>
+    ): Effect.Effect<string[], Error | PlatformError> => getAsCsv(directory)
+      .pipe(Effect.provide(context))),
   }))),
   accessors: true,
 }) {

@@ -9,13 +9,13 @@ import { untilEmptyCount } from "../libs/core.js";
 import { ChtClientService } from "./cht-client.js";
 const TYPE_DB_COMPACT = 'database_compaction';
 const TYPE_VIEW_COMPACT = 'view_compaction';
-const compactDbViews = (dbName) => getDesignDocNames(dbName)
-    .pipe(Effect.map(Array.map(compactCouchDesign(dbName))), Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })));
-const compactCouchDb = (dbName, compactDesigns) => compactDb(dbName)
-    .pipe(Effect.filterOrElse(() => !compactDesigns, () => compactDbViews(dbName)));
-const compactCouchDesign = (dbName) => (designName) => compactDesign(dbName, designName);
-const compactAll = (compactDesigns) => getDbNames()
-    .pipe(Effect.map(Array.map(dbName => compactCouchDb(dbName, compactDesigns))), Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })));
+const compactDbViews = Effect.fn((dbName) => getDesignDocNames(dbName)
+    .pipe(Effect.map(Array.map(compactCouchDesign(dbName))), Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' }))));
+const compactCouchDb = Effect.fn((dbName, compactDesigns) => compactDb(dbName)
+    .pipe(Effect.filterOrElse(() => !compactDesigns, () => compactDbViews(dbName))));
+const compactCouchDesign = (dbName) => Effect.fn((designName) => compactDesign(dbName, designName));
+const compactAll = Effect.fn((compactDesigns) => getDbNames()
+    .pipe(Effect.map(Array.map(dbName => compactCouchDb(dbName, compactDesigns))), Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' }))));
 const streamActiveTasksUntilEmpty = () => streamActiveTasks()
     .pipe(Stream.takeUntilEffect(untilEmptyCount(5)));
 const getActiveTaskTypeFilter = (compactDesigns) => pipe([TYPE_DB_COMPACT, TYPE_VIEW_COMPACT], Option.liftPredicate(() => compactDesigns), Option.getOrElse(() => [TYPE_DB_COMPACT]), types => filterStreamByType(...types));
@@ -29,12 +29,12 @@ const streamDesign = (dbName, designName) => streamActiveTasksUntilEmpty()
 const serviceContext = ChtClientService.pipe(Effect.map(cht => Context.make(ChtClientService, cht)));
 export class CompactService extends Effect.Service()('chtoolbox/CompactService', {
     effect: serviceContext.pipe(Effect.map(context => ({
-        compactAll: (compactDesigns) => compactAll(compactDesigns)
-            .pipe(Effect.andThen(streamAll(compactDesigns)), Effect.provide(context)),
-        compactDb: (dbName, compactDesigns) => compactCouchDb(dbName, compactDesigns)
-            .pipe(Effect.andThen(streamDb(dbName, compactDesigns)), Effect.provide(context)),
-        compactDesign: (dbName) => (designName) => compactCouchDesign(dbName)(designName)
-            .pipe(Effect.andThen(streamDesign(dbName, designName)), Effect.provide(context)),
+        compactAll: Effect.fn((compactDesigns) => compactAll(compactDesigns)
+            .pipe(Effect.andThen(streamAll(compactDesigns)), Effect.provide(context))),
+        compactDb: Effect.fn((dbName, compactDesigns) => compactCouchDb(dbName, compactDesigns)
+            .pipe(Effect.andThen(streamDb(dbName, compactDesigns)), Effect.provide(context))),
+        compactDesign: (dbName) => Effect.fn((designName) => compactCouchDesign(dbName)(designName)
+            .pipe(Effect.andThen(streamDesign(dbName, designName)), Effect.provide(context))),
     }))),
     accessors: true,
 }) {

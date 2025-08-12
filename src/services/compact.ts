@@ -17,25 +17,25 @@ import { ChtClientService } from './cht-client.ts';
 const TYPE_DB_COMPACT = 'database_compaction';
 const TYPE_VIEW_COMPACT = 'view_compaction';
 
-const compactDbViews = (dbName: string) => getDesignDocNames(dbName)
+const compactDbViews = Effect.fn((dbName: string) => getDesignDocNames(dbName)
   .pipe(
     Effect.map(Array.map(compactCouchDesign(dbName))),
     Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })),
-  );
+  ));
 
-const compactCouchDb = (dbName: string, compactDesigns: boolean) => compactDb(dbName)
+const compactCouchDb = Effect.fn((dbName: string, compactDesigns: boolean) => compactDb(dbName)
   .pipe(Effect.filterOrElse(
     () => !compactDesigns,
     () => compactDbViews(dbName),
-  ));
+  )));
 
-const compactCouchDesign = (dbName: string) => (designName: string) => compactDesign(dbName, designName);
+const compactCouchDesign = (dbName: string) => Effect.fn((designName: string) => compactDesign(dbName, designName));
 
-const compactAll = (compactDesigns: boolean) => getDbNames()
+const compactAll = Effect.fn((compactDesigns: boolean) => getDbNames()
   .pipe(
     Effect.map(Array.map(dbName => compactCouchDb(dbName, compactDesigns))),
     Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })),
-  );
+  ));
 
 const streamActiveTasksUntilEmpty = () => streamActiveTasks()
   .pipe(Stream.takeUntilEffect(untilEmptyCount(5)));
@@ -69,28 +69,28 @@ const serviceContext = ChtClientService.pipe(Effect.map(cht => Context.make(ChtC
 
 export class CompactService extends Effect.Service<CompactService>()('chtoolbox/CompactService', {
   effect: serviceContext.pipe(Effect.map(context => ({
-    compactAll: (
+    compactAll: Effect.fn((
       compactDesigns: boolean
     ): Effect.Effect<CouchActiveTaskStream, Error> => compactAll(compactDesigns)
       .pipe(
         Effect.andThen(streamAll(compactDesigns)),
         Effect.provide(context),
-      ),
-    compactDb: (
+      )),
+    compactDb: Effect.fn((
       dbName: string,
       compactDesigns: boolean
     ): Effect.Effect<CouchActiveTaskStream, Error> => compactCouchDb(dbName, compactDesigns)
       .pipe(
         Effect.andThen(streamDb(dbName, compactDesigns)),
         Effect.provide(context),
-      ),
-    compactDesign: (dbName: string) => (
+      )),
+    compactDesign: (dbName: string) => Effect.fn((
       designName: string
     ): Effect.Effect<CouchActiveTaskStream, Error> => compactCouchDesign(dbName)(designName)
       .pipe(
         Effect.andThen(streamDesign(dbName, designName)),
         Effect.provide(context),
-      ),
+      )),
   }))),
   accessors: true,
 }) {

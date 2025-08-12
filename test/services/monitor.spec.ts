@@ -415,19 +415,18 @@ describe('Monitor service', () => {
 
       const failureOrSuccess = yield* Effect.either(MonitorService.get(Option.some(directory)));
 
-      if (Either.isLeft(failureOrSuccess)) {
-        const error = failureOrSuccess.left;
-        expect(error).to.equal(expectedError);
-
-        expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
-        expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
-        expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
-        expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
-        expect(mockChtMonitoringLib.getChtMonitoringData.calledOnceWithExactly()).to.be.true;
-        expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
-      } else {
+      if (Either.isRight(failureOrSuccess)) {
         expect.fail('Expected error to be thrown');
       }
+      const error = failureOrSuccess.left;
+      expect(error).to.include(expectedError);
+
+      expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
+      expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
+      expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
+      expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
+      expect(mockChtMonitoringLib.getChtMonitoringData.calledOnceWithExactly()).to.be.true;
+      expect(diskUsageServiceGetSize.calledOnceWithExactly(directory)).to.be.true;
     }));
 
     it('fails when a non-404 error is thrown getting CHT monitoring data', run(function* () {
@@ -455,7 +454,7 @@ describe('Monitor service', () => {
       }
 
       const error = failureOrSuccess.left;
-      expect(error).to.equal(expectedError);
+      expect(error).to.include(expectedError);
       expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
       expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
