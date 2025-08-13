@@ -6,8 +6,8 @@ import { getDbNames } from '../../libs/couch/dbs-info.ts';
 
 import { logJson } from '../../libs/console.ts';
 
-const printDesignDocNames = (dbName: string) => getDesignDocNames(dbName)
-  .pipe(Effect.flatMap(logJson));
+const printDesignDocNames = Effect.fn((dbName: string) => getDesignDocNames(dbName)
+  .pipe(Effect.flatMap(logJson)));
 
 const getDisplayDict = (data: [readonly string[], string][]) => Array.reduce(
   data,
@@ -34,9 +34,9 @@ const database = Args
   );
 
 export const ls = Command
-  .make('ls', { database }, ({ database }) => initializeUrl.pipe(
+  .make('ls', { database }, Effect.fn(({ database }) => initializeUrl.pipe(
     Effect.andThen(Effect.succeed(database)),
     Effect.map(Option.map(printDesignDocNames)),
     Effect.flatMap(Option.getOrElse(() => printAllDesignDocNames)),
-  ))
+  )))
   .pipe(Command.withDescription(`List designs for a Couch database`));

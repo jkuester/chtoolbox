@@ -7,5 +7,5 @@ const databases = Args
     .text({ name: 'database' })
     .pipe(Args.withDescription('The database to inspect'), Args.atLeast(1));
 export const inspect = Command
-    .make('inspect', { databases }, ({ databases }) => initializeUrl.pipe(Effect.andThen(getDbsInfoByName(databases)), Effect.tap(logJson)))
+    .make('inspect', { databases }, Effect.fn(({ databases }) => initializeUrl.pipe(Effect.andThen(getDbsInfoByName(databases)), Effect.tap(logJson))))
     .pipe(Command.withDescription(`Display detailed information on one or more Couch databases`));

@@ -25,5 +25,5 @@ const follow = Options
     .boolean('follow')
     .pipe(Options.withAlias('f'), Options.withDescription('Continuously poll the active tasks.'));
 export const activeTasks = Command
-    .make('active-tasks', { follow }, ({ follow }) => initializeUrl.pipe(Effect.andThen(followActiveTasks), Option.liftPredicate(() => follow), Option.getOrElse(() => printCurrentTasks)))
+    .make('active-tasks', { follow }, Effect.fn(({ follow }) => initializeUrl.pipe(Effect.andThen(followActiveTasks), Option.liftPredicate(() => follow), Option.getOrElse(() => printCurrentTasks))))
     .pipe(Command.withDescription(`Force compaction on databases and views.`));

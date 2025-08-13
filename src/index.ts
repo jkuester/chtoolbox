@@ -38,7 +38,7 @@ const url = Options
 
 const chtx = Command.make('chtx', { url });
 
-const setEnv = (url: Redacted.Redacted) => Effect.flatMap(EnvironmentService, envSvc => envSvc.setUrl(url));
+const setEnv = Effect.fn((url: Redacted.Redacted) => Effect.flatMap(EnvironmentService, envSvc => envSvc.setUrl(url)));
 const getEnv = Effect.flatMap(EnvironmentService, envSvc => envSvc.get());
 
 export const initializeUrl = chtx.pipe(

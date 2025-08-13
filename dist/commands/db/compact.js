@@ -13,11 +13,11 @@ export const getTaskDisplayData = (task) => ({
     pid: getPid(task),
     progress: getProgressPct(task),
 });
-export const streamActiveTasks = (taskStream) => taskStream.pipe(Stream.map(Array.map(getTaskDisplayData)), Stream.map(getDisplayDictByPid), Stream.runForEach(taskDict => clearConsole.pipe(Effect.tap(Console.log('Currently compacting:')), Effect.tap(Console.table(taskDict)))), Effect.tap(clearConsole.pipe(Effect.tap(Console.log('Compaction complete.')))));
-const compactAll = (compactDesigns) => CompactService
+export const streamActiveTasks = Effect.fn((taskStream) => taskStream.pipe(Stream.map(Array.map(getTaskDisplayData)), Stream.map(getDisplayDictByPid), Stream.runForEach(taskDict => clearConsole.pipe(Effect.tap(Console.log('Currently compacting:')), Effect.tap(Console.table(taskDict)))), Effect.tap(clearConsole.pipe(Effect.tap(Console.log('Compaction complete.'))))));
+const compactAll = Effect.fn((compactDesigns) => CompactService
     .compactAll(compactDesigns)
-    .pipe(Effect.map(Array.make));
-const doCompaction = (databases, all) => pipe(databases, Option.liftPredicate(Array.isNonEmptyArray), Option.map(Array.map(dbName => CompactService.compactDb(dbName, all))), Option.map(Effect.allWith({ concurrency: 'unbounded' })), Option.getOrElse(() => compactAll(all)));
+    .pipe(Effect.map(Array.make)));
+const doCompaction = Effect.fn((databases, all) => pipe(databases, Option.liftPredicate(Array.isNonEmptyArray), Option.map(Array.map(dbName => CompactService.compactDb(dbName, all))), Option.map(Effect.allWith({ concurrency: 'unbounded' })), Option.getOrElse(() => compactAll(all))));
 const databases = Args
     .text({ name: 'database' })
     .pipe(Args.withDescription('The database(s) to compact. Leave empty to compact all databases.'), Args.atLeast(0));
@@ -28,6 +28,6 @@ const follow = Options
     .boolean('follow')
     .pipe(Options.withAlias('f'), Options.withDescription('After triggering compaction, wait for all compacting jobs to complete.'));
 export const compact = Command
-    .make('compact', { follow, databases, all }, ({ follow, databases, all }) => initializeUrl.pipe(Effect.andThen(() => doCompaction(databases, all)), Effect.map(Option.liftPredicate(() => follow)), Effect.map(Option.map(mergeArrayStreams)), Effect.map(Option.map(streamActiveTasks)), Effect.flatMap(Option.getOrElse(() => Console.log('Compaction started. Watch the active tasks for progress: chtx active-tasks -f')))))
+    .make('compact', { follow, databases, all }, Effect.fn(({ follow, databases, all }) => initializeUrl.pipe(Effect.andThen(() => doCompaction(databases, all)), Effect.map(Option.liftPredicate(() => follow)), Effect.map(Option.map(mergeArrayStreams)), Effect.map(Option.map(streamActiveTasks)), Effect.flatMap(Option.getOrElse(() => Console.log('Compaction started. Watch the active tasks for progress: chtx active-tasks -f'))))))
     .pipe(Command.withDescription(`Run compaction on one or more Couch databases. `
     + `The \`design compact\` command can be used to compact individual designs.`));

@@ -8,5 +8,5 @@ const getDbDisplay = ({ info: { db_name, doc_count } }) => ({
     doc_count,
 });
 export const ls = Command
-    .make('ls', {}, () => initializeUrl.pipe(Effect.andThen(getAllDbsInfo()), Effect.map(Array.map(getDbDisplay)), Effect.map(getDisplayDictByPid), Effect.tap(Console.table)))
+    .make('ls', {}, Effect.fn(() => initializeUrl.pipe(Effect.andThen(getAllDbsInfo()), Effect.map(Array.map(getDbDisplay)), Effect.map(getDisplayDictByPid), Effect.tap(Console.table))))
     .pipe(Command.withDescription(`List Couch databases`));

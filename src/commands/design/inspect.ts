@@ -6,7 +6,7 @@ import { getViewNames } from '../../libs/couch/design.ts';
 
 import { logJson } from '../../libs/console.ts';
 
-const getViewData = (database: string) => (design: string) => Effect
+const getViewData = (database: string) => Effect.fn((design: string) => Effect
   .all([
     getDesignInfo(database, design),
     getViewNames(database, design),
@@ -16,7 +16,7 @@ const getViewData = (database: string) => (design: string) => Effect
       ...designInfo,
       views
     })),
-  );
+  ));
 
 const database = Args
   .text({ name: 'database' })
@@ -32,12 +32,12 @@ const designs = Args
   );
 
 export const inspect = Command
-  .make('inspect', { database, designs }, ({ database, designs }) => initializeUrl.pipe(
+  .make('inspect', { database, designs }, Effect.fn(({ database, designs }) => initializeUrl.pipe(
     Effect.andThen(pipe(
       designs,
       Array.map(getViewData(database)),
       Effect.allWith({ concurrency: 'unbounded' }),
     )),
     Effect.tap(logJson),
-  ))
+  )))
   .pipe(Command.withDescription(`Display detailed information on one or more designs for a Couch database`));

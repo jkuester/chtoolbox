@@ -5,7 +5,11 @@ import { LocalInstanceService } from '../../services/local-instance.ts';
 import { clearThen } from '../../libs/console.ts';
 import { printInstanceTable } from './ls.ts';
 
-const createChtInstances = (names: string[], version: string, directory: Option.Option<string>) =>  directory.pipe(
+const createChtInstances = Effect.fn((
+  names: string[],
+  version: string,
+  directory: Option.Option<string>
+) =>  directory.pipe(
   Option.map(dir => FileSystem.FileSystem.pipe(Effect.flatMap(fs => fs.realPath(dir)))),
   Effect.transposeOption,
   Effect.flatMap(dirPath => pipe(
@@ -13,19 +17,19 @@ const createChtInstances = (names: string[], version: string, directory: Option.
     Array.map(name => LocalInstanceService.create(name, version, dirPath.pipe(Option.map(path => `${path}/${name}`)))),
     Effect.allWith({ concurrency: 0 }), // Avoid port conflicts
   )),
-);
+));
 
-const startChtInstances = (names: string[]) => pipe(
+const startChtInstances = Effect.fn((names: string[]) => pipe(
   names,
   Array.map(name => LocalInstanceService.start(name, Option.none())),
   Effect.allWith({ concurrency: 'unbounded' }),
-);
+));
 
-const setLocalIpSSLCerts = (names: string[]) => pipe(
+const setLocalIpSSLCerts = Effect.fn((names: string[]) => pipe(
   names,
   Array.map(name => LocalInstanceService.setSSLCerts(name, 'local-ip')),
   Effect.allWith({ concurrency: 'unbounded' }),
-);
+));
 
 const names = Args
   .text({ name: 'name' })
@@ -56,7 +60,7 @@ const directory = Options
   );
 
 export const create = Command
-  .make('create', { names, version, directory }, ({ names, version, directory }) => Console
+  .make('create', { names, version, directory }, Effect.fn(({ names, version, directory }) => Console
     .log('Pulling Docker images (this may take awhile depending on network speeds)...')
     .pipe(
       Effect.andThen(createChtInstances(names, version, directory)),
@@ -64,7 +68,7 @@ export const create = Command
       Effect.andThen(startChtInstances(names)),
       Effect.tap(setLocalIpSSLCerts(names)),
       Effect.flatMap(printInstanceTable),
-    ))
+    )))
   .pipe(Command.withDescription(
     `LOCAL ONLY: Create (and start) a new local CHT instance. Requires Docker and Docker Compose.`
   ));

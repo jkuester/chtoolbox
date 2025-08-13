@@ -17,39 +17,39 @@ const isRepTask = (id: string): Predicate.Predicate<CouchActiveTask> => pipe(
   Predicate.and(({ docs_written }) => docs_written !== undefined),
 );
 
-const printReplicatingDocs = (id: string) => (tasks: CouchActiveTask[]) => pipe(
+const printReplicatingDocs = (id: string) => Effect.fn((tasks: CouchActiveTask[]) => pipe(
   tasks,
   Array.findFirst(isRepTask(id)),
   Option.map(({ docs_written }) => docs_written?.toString() ?? ''),
   Option.map(docs_written => clearThen(Console.log(`Replicating docs: ${docs_written}`))),
   Option.getOrElse(() => Effect.void),
   Effect.tap(Effect.logDebug('Printed replication doc task')),
-);
+));
 
-const streamReplicationTasks = (id: string) => streamActiveTasks()
+const streamReplicationTasks = Effect.fn((id: string) => streamActiveTasks()
   .pipe(
     Stream.tap(printReplicatingDocs(id)),
     Stream.runDrain,
-  );
+  ));
 
-const getReplicationDocId = (completionStream: Stream.Stream<ReplicationDoc, Error | ParseError>) => Stream
+const getReplicationDocId = Effect.fn((completionStream: Stream.Stream<ReplicationDoc, Error | ParseError>) => Stream
   .take(completionStream, 1)
   .pipe(
     Stream.runHead,
     Effect.map(Option.getOrThrow),
     Effect.map(({ _id }) => _id),
-  );
+  ));
 
-const getFinalDocCount = (repDocId: string) => PouchDBService
+const getFinalDocCount = Effect.fn((repDocId: string) => PouchDBService
   .get('_replicator')
   .pipe(
     Effect.flatMap(db => Effect.promise(() => db.get(repDocId))),
     Effect.flatMap(Schema.decodeUnknown(ReplicationDoc)),
     Effect.map(({ _replication_stats }) => Option.fromNullable(_replication_stats?.docs_written)),
     Effect.map(Option.getOrElse(() => 0)),
-  );
+  ));
 
-const watchReplication = (
+const watchReplication = Effect.fn((
   completionStream: Stream.Stream<ReplicationDoc, Error | ParseError>
 ) => getReplicationDocId(completionStream).pipe(
   Effect.flatMap(repDocId => Stream
@@ -61,7 +61,7 @@ const watchReplication = (
         `Replication complete. Final doc count: ${finalDocCount.toString()}`
       ))),
     )),
-);
+));
 
 const follow = Options
   .boolean('follow')
@@ -90,7 +90,7 @@ export const replicate = Command
   .make(
     'replicate',
     { follow, contacts, source, target, all },
-    ({ follow, contacts, source, target, all }) => initializeUrl.pipe(
+    Effect.fn(({ follow, contacts, source, target, all }) => initializeUrl.pipe(
       Effect.andThen(ReplicateService.replicate(source, target, {
         includeDdocs: all,
         contactTypes: contacts
@@ -100,7 +100,7 @@ export const replicate = Command
       Effect.flatMap(Option.getOrElse(() => clearThen(Console.log(
         'Replication started. Watch the active tasks for progress: chtx active-tasks -f'
       )))),
-    )
+    ))
   )
   .pipe(Command.withDescription(
     'Triggers a one-time server-side replication of the docs from the source to the target database.'

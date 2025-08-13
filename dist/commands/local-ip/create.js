@@ -10,7 +10,7 @@ const fromPort = Options
     .pipe(Options.withDescription('The port requests will be proxied from. This is the port the local-ip instance will listen on. '
     + 'If no from port is specified, a random open port will be used.'), Options.optional);
 export const create = Command
-    .make('create', { toPort, fromPort }, ({ toPort, fromPort }) => LocalIpService
+    .make('create', { toPort, fromPort }, Effect.fn(({ toPort, fromPort }) => LocalIpService
     .create(toPort, fromPort)
-    .pipe(Effect.map(from => ({ from, to: toPort })), Effect.map(Array.make), Effect.flatMap(printLocalIpInstances)))
+    .pipe(Effect.map(from => ({ from, to: toPort })), Effect.map(Array.make), Effect.flatMap(printLocalIpInstances))))
     .pipe(Command.withDescription(`LOCAL ONLY: Create (and start) a new nginx-local-ip instance. Requires Docker.`));

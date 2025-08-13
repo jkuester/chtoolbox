@@ -20,13 +20,13 @@ const fromPort = Options
   );
 
 export const create = Command
-  .make('create', { toPort, fromPort }, ({ toPort, fromPort }) => LocalIpService
+  .make('create', { toPort, fromPort }, Effect.fn(({ toPort, fromPort }) => LocalIpService
     .create(toPort, fromPort)
     .pipe(
       Effect.map(from => ({ from, to: toPort })),
       Effect.map(Array.make),
       Effect.flatMap(printLocalIpInstances),
-    ))
+    )))
   .pipe(Command.withDescription(
     `LOCAL ONLY: Create (and start) a new nginx-local-ip instance. Requires Docker.`
   ));

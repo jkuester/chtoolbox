@@ -18,7 +18,7 @@ const dateQualifiersProvidedWithoutReports: Predicate.Predicate<PurgeOptions> = 
   Predicate.and(({ reports }) => !reports),
 );
 
-const assertOpts = (opts: PurgeOptions) => Match
+const assertOpts = Effect.fn((opts: PurgeOptions) => Match
   .value(opts)
   .pipe(
     Match.when(
@@ -30,9 +30,9 @@ const assertOpts = (opts: PurgeOptions) => Match
       () => Effect.fail(new Error('Can only specify --before or --since when using --reports'))
     ),
     Match.orElse(() => Effect.void),
-  );
+  ));
 
-const purgeAction = (opts: PurgeOptions) => Match
+const purgeAction = Effect.fn((opts: PurgeOptions) => Match
   .value(opts)
   .pipe(
     Match.when(
@@ -44,16 +44,16 @@ const purgeAction = (opts: PurgeOptions) => Match
       ({ database, contacts, }) => PurgeService.purgeContacts(database, contacts.pipe(Option.getOrThrow))
     ),
     Match.orElse(({ database, all }) => PurgeService.purgeAll(database, all)),
-  );
+  ));
 
-const purgeDocs = (opts: PurgeOptions) => purgeAction(opts)
+const purgeDocs = Effect.fn((opts: PurgeOptions): Effect.Effect<void, Error, PurgeService> => purgeAction(opts)
   .pipe(
     Effect.map(Stream.scan(0, (acc, next) => acc + next.rows.length)),
     Effect.map(Stream.tap((count) => clearThen(Console.log(`Purging docs: ${count.toString()}`)))),
     Effect.flatMap(Stream.run(Sink.last())),
     Effect.map(Option.getOrThrow),
     Effect.tap((count) => clearThen(Console.log(`Purged docs: ${count.toString()}`))),
-  );
+  ));
 
 const getConfirmationPrompt = ({ database }: PurgeOptions) => Prompt
   .confirm({
@@ -61,12 +61,12 @@ const getConfirmationPrompt = ({ database }: PurgeOptions) => Prompt
     initial: false,
   });
 
-const isPurgeConfirmed = (opts: PurgeOptions) => Effect
+const isPurgeConfirmed = Effect.fn((opts: PurgeOptions) => Effect
   .succeed(true)
   .pipe(Effect.filterOrElse(
     () => opts.yes,
     () => getConfirmationPrompt(opts),
-  ));
+  )));
 
 const yes = Options
   .boolean('yes')
@@ -122,12 +122,16 @@ interface PurgeOptions {
 }
 
 export const purge = Command
-  .make('purge', { contacts, database, yes, all, reports, before, since }, (opts: PurgeOptions) => initializeUrl.pipe(
-    Effect.andThen(assertOpts(opts)),
-    Effect.andThen(isPurgeConfirmed(opts)),
-    Effect.map(confirmed => Option.liftPredicate(purgeDocs(opts), () => confirmed)),
-    Effect.flatMap(Option.getOrElse(() => Console.log('Operation cancelled'))),
-  ))
+  .make(
+    'purge',
+    { contacts, database, yes, all, reports, before, since },
+    Effect.fn((opts: PurgeOptions) => initializeUrl.pipe(
+      Effect.andThen(assertOpts(opts)),
+      Effect.andThen(isPurgeConfirmed(opts)),
+      Effect.map(confirmed => Option.liftPredicate(purgeDocs(opts), () => confirmed)),
+      Effect.flatMap(Option.getOrElse(() => Console.log('Operation cancelled'))),
+    ))
+  )
   .pipe(Command.withDescription(
     'Purge docs from a database. This operation is inefficient with large numbers of docs. When possible, simply ' +
     'delete and recreate the database. The results of a purge operation will NOT be replicated to client dbs, so ' +
