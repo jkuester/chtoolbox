@@ -11,7 +11,7 @@ import sinon, { type SinonStub } from 'sinon';
 
 const version = '3.7.0';
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
-const FAKE_CLIENT_RESPONSE = { goodby: 'world' } as const;
+const FAKE_CLIENT_RESPONSE = { goodbye: 'world' } as const;
 const mockChtClient = { request: sandbox.stub() };
 const mockHttpClient = { buildPostRequest: sandbox.stub() };
 

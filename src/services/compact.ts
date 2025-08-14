@@ -11,7 +11,7 @@ import {
   getDesignName,
   streamActiveTasks
 } from '../libs/couch/active-tasks.ts';
-import { untilEmptyCount } from '../libs/core.ts';
+import { mapErrorToGeneric, untilEmptyCount } from '../libs/core.ts';
 import { ChtClientService } from './cht-client.ts';
 
 const TYPE_DB_COMPACT = 'database_compaction';
@@ -74,6 +74,7 @@ export class CompactService extends Effect.Service<CompactService>()('chtoolbox/
     ): Effect.Effect<CouchActiveTaskStream, Error> => compactAll(compactDesigns)
       .pipe(
         Effect.andThen(streamAll(compactDesigns)),
+        mapErrorToGeneric,
         Effect.provide(context),
       )),
     compactDb: Effect.fn((
@@ -82,6 +83,7 @@ export class CompactService extends Effect.Service<CompactService>()('chtoolbox/
     ): Effect.Effect<CouchActiveTaskStream, Error> => compactCouchDb(dbName, compactDesigns)
       .pipe(
         Effect.andThen(streamDb(dbName, compactDesigns)),
+        mapErrorToGeneric,
         Effect.provide(context),
       )),
     compactDesign: (dbName: string) => Effect.fn((
@@ -89,6 +91,7 @@ export class CompactService extends Effect.Service<CompactService>()('chtoolbox/
     ): Effect.Effect<CouchActiveTaskStream, Error> => compactCouchDesign(dbName)(designName)
       .pipe(
         Effect.andThen(streamDesign(dbName, designName)),
+        mapErrorToGeneric,
         Effect.provide(context),
       )),
   }))),

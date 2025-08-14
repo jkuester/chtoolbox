@@ -33,7 +33,7 @@ const run = Layer
   .pipe(genWithLayer);
 const {
   filterStreamByType,
-  getActiveTasks,
+  activeTasksEffect,
   getDbName,
   getDesignName,
   getDisplayDictByPid,
@@ -46,14 +46,14 @@ const {
 });
 
 describe('Couch Active Tasks Service', () => {
-  describe('get', () => {
+  describe('activeTasksEffect', () => {
     it('returns active tasks ordered by started_on', run(function* () {
       mockHttpRequest.get.returns(FAKE_CLIENT_REQUEST);
       mockChtClient.request.returns(Effect.succeed({
         json: Effect.succeed([TASK_LATER, TASK_ALL_DATA, TASK_MIN_DATA]),
       }));
 
-      const tasks = yield* getActiveTasks();
+      const tasks = yield* activeTasksEffect;
 
       expect(tasks).to.deep.equal([TASK_MIN_DATA, TASK_ALL_DATA, TASK_LATER]);
       expect(mockHttpRequest.get.calledOnceWithExactly('/_active_tasks')).to.be.true;
@@ -66,7 +66,7 @@ describe('Couch Active Tasks Service', () => {
         json: Effect.succeed([]),
       }));
 
-      const tasks = yield* getActiveTasks();
+      const tasks = yield* activeTasksEffect;
 
       expect(tasks).to.deep.equal([]);
       expect(mockHttpRequest.get.calledOnceWithExactly('/_active_tasks')).to.be.true;

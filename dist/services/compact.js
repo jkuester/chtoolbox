@@ -5,7 +5,7 @@ import { getDbNames } from "../libs/couch/dbs-info.js";
 import { getDesignDocNames } from "../libs/couch/design-docs.js";
 import { compactDb, compactDesign } from "../libs/couch/compact.js";
 import { filterStreamByType, getDbName, getDesignName, streamActiveTasks } from "../libs/couch/active-tasks.js";
-import { untilEmptyCount } from "../libs/core.js";
+import { mapErrorToGeneric, untilEmptyCount } from "../libs/core.js";
 import { ChtClientService } from "./cht-client.js";
 const TYPE_DB_COMPACT = 'database_compaction';
 const TYPE_VIEW_COMPACT = 'view_compaction';
@@ -30,11 +30,11 @@ const serviceContext = ChtClientService.pipe(Effect.map(cht => Context.make(ChtC
 export class CompactService extends Effect.Service()('chtoolbox/CompactService', {
     effect: serviceContext.pipe(Effect.map(context => ({
         compactAll: Effect.fn((compactDesigns) => compactAll(compactDesigns)
-            .pipe(Effect.andThen(streamAll(compactDesigns)), Effect.provide(context))),
+            .pipe(Effect.andThen(streamAll(compactDesigns)), mapErrorToGeneric, Effect.provide(context))),
         compactDb: Effect.fn((dbName, compactDesigns) => compactCouchDb(dbName, compactDesigns)
-            .pipe(Effect.andThen(streamDb(dbName, compactDesigns)), Effect.provide(context))),
+            .pipe(Effect.andThen(streamDb(dbName, compactDesigns)), mapErrorToGeneric, Effect.provide(context))),
         compactDesign: (dbName) => Effect.fn((designName) => compactCouchDesign(dbName)(designName)
-            .pipe(Effect.andThen(streamDesign(dbName, designName)), Effect.provide(context))),
+            .pipe(Effect.andThen(streamDesign(dbName, designName)), mapErrorToGeneric, Effect.provide(context))),
     }))),
     accessors: true,
 }) {
