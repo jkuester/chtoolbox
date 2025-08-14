@@ -1,8 +1,8 @@
-import { HttpClientRequest } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import { ChtClientService } from '../../services/cht-client.ts';
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { pipe, Schema } from 'effect';
+import { buildPostRequest } from '../http-client.js';
 
 const ENDPOINT_UPGRADE = '/api/v1/upgrade';
 const ENDPOINT_STAGE = `${ENDPOINT_UPGRADE}/stage`;
@@ -18,14 +18,9 @@ const UpgradeBody = Schema.Struct({
   })
 });
 
-const setBody = (version: string) => pipe(
-  { build: { version, namespace: NAMESPACE, application: APPLICATION } } as const,
-  body => UpgradeBody.pipe(HttpClientRequest.schemaBodyJson)(body),
-);
-
 const postUpgrade = (endpoint: string) => Effect.fn((version: string) => pipe(
-  HttpClientRequest.post(endpoint),
-  setBody(version),
+  { build: { version, namespace: NAMESPACE, application: APPLICATION } },
+  buildPostRequest(endpoint, UpgradeBody),
   Effect.flatMap(ChtClientService.request),
   Effect.scoped
 ));
