@@ -14,7 +14,7 @@ const mockHttpRequest = { get: sandbox.stub() };
 const run = Layer
   .succeed(ChtClientService, mockChtClient as unknown as ChtClientService)
   .pipe(genWithLayer);
-const { getChtMonitoringData } = await esmock<typeof MonitoringLibs>('../../../src/libs/cht/monitoring.ts', {
+const { chtMonitoringDataEffect } = await esmock<typeof MonitoringLibs>('../../../src/libs/cht/monitoring.ts', {
   '@effect/platform': { HttpClientRequest: mockHttpRequest }
 });
 
@@ -32,7 +32,7 @@ describe('CHT Monitoring libs', () => {
         json: Effect.succeed(expectedChtMonitoringData),
       }));
 
-      const monitoringData = yield* getChtMonitoringData();
+      const monitoringData = yield* chtMonitoringDataEffect;
 
       expect(monitoringData).to.deep.equal(expectedChtMonitoringData);
       expect(mockHttpRequest.get.calledOnceWithExactly('/api/v2/monitoring')).to.be.true;

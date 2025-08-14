@@ -19,7 +19,7 @@ import {
 } from 'effect';
 import { completeChtUpgrade, stageChtUpgrade, upgradeCht } from '../libs/cht/upgrade.ts';
 import { ChtClientService } from './cht-client.ts';
-import { pouchDB } from '../libs/core.ts';
+import { mapErrorToGeneric, pouchDB } from '../libs/core.ts';
 import { CouchDesign } from '../libs/couch/design.ts';
 import { WarmViewsService } from './warm-views.ts';
 type Attachments = PouchDB.Core.Attachments;
@@ -220,11 +220,13 @@ export class UpgradeService extends Effect.Service<UpgradeService>()('chtoolbox/
     upgrade: Effect.fn((version: string): UpgradeLogStreamEffect => assertReadyForUpgrade.pipe(
       Effect.andThen(upgradeCht(version)),
       Effect.andThen(streamUpgradeLogChanges(COMPLETED_STATES)),
+      mapErrorToGeneric,
       Effect.provide(context),
     )),
     stage: Effect.fn((version: string): UpgradeLogStreamEffect => assertReadyForUpgrade.pipe(
       Effect.andThen(stageChtUpgrade(version)),
       Effect.andThen(streamUpgradeLogChanges(STAGING_COMPLETE_STATES)),
+      mapErrorToGeneric,
       Effect.provide(context),
     )),
     complete: Effect.fn((version: string): UpgradeLogStreamEffect => assertReadyForComplete.pipe(
@@ -233,6 +235,7 @@ export class UpgradeService extends Effect.Service<UpgradeService>()('chtoolbox/
         .pipe(
           Effect.retry(Schedule.spaced(1000)), // Getting the upgrade log may fail while the server is still restarting
         )),
+      mapErrorToGeneric,
       Effect.provide(context),
     )),
     preStage: Effect.fn((version: string): Effect.Effect<CouchActiveTaskStream, Error> => assertReadyForUpgrade.pipe(

@@ -9,7 +9,7 @@ import { ResponseError } from '@effect/platform/HttpClientError';
 import { PlatformError } from '@effect/platform/Error';
 import { ChtClientService } from "./cht-client.js";
 import { getNouveauInfo, NouveauInfo } from "../libs/couch/nouveau-info.js";
-import { getChtMonitoringData } from "../libs/cht/monitoring.js";
+import { chtMonitoringDataEffect } from "../libs/cht/monitoring.js";
 const currentTimeSec = Clock.currentTimeMillis.pipe(Effect.map(Number.unsafeDivide(1000)), Effect.map(Math.floor));
 const DB_NAMES = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 const VIEW_INDEXES_BY_DB = {
@@ -74,7 +74,7 @@ const emptyNouveauInfo = {
 const getNouveauInfosForDb = Effect.fn((dbName) => Effect.all(pipe(NOUVEAU_INDEXES_BY_DB[dbName], Array.map(([ddoc, index]) => getNouveauInfo(dbName, ddoc, index)), Array.map(Effect.catchIf((error) => error instanceof ResponseError && error.response.status === 404, () => Effect.succeed(emptyNouveauInfo)))), { concurrency: 'unbounded' }));
 const getNouveauInfos = Effect.fn(() => pipe(DB_NAMES, Array.map(getNouveauInfosForDb), Effect.allWith({ concurrency: 'unbounded' })));
 const getDirectorySize = Effect.fn((directory) => LocalDiskUsageService.pipe(Effect.flatMap(service => directory.pipe(Option.map(dir => service.getSize(dir)), Option.getOrElse(() => Effect.succeed(null)))), Effect.map(Option.fromNullable)));
-const getChtMonitoring = Effect.fn(() => getChtMonitoringData().pipe(Effect.catchAll((error) => {
+const getChtMonitoring = Effect.fn(() => chtMonitoringDataEffect.pipe(Effect.catchAll((error) => {
     if (error instanceof ResponseError && error.response.status === 404) {
         return Effect.succeed({ version: { app: '', couchdb: '' } });
     }

@@ -4,7 +4,7 @@ import { getDoc, PouchDBService, saveDoc, streamChanges } from "./pouchdb.js";
 import { Array, Chunk, DateTime, Either, Encoding, Match, Option, pipe, Predicate, Record, Schedule, Schema, Stream, String } from 'effect';
 import { completeChtUpgrade, stageChtUpgrade, upgradeCht } from "../libs/cht/upgrade.js";
 import { ChtClientService } from "./cht-client.js";
-import { pouchDB } from "../libs/core.js";
+import { mapErrorToGeneric, pouchDB } from "../libs/core.js";
 import { CouchDesign } from "../libs/couch/design.js";
 import { WarmViewsService } from "./warm-views.js";
 import {} from "../libs/couch/active-tasks.js";
@@ -97,10 +97,10 @@ const serviceContext = Effect
     .pipe(Context.add(ChtClientService, chtClient), Context.add(WarmViewsService, warmViews))));
 export class UpgradeService extends Effect.Service()('chtoolbox/UpgradeService', {
     effect: serviceContext.pipe(Effect.map(context => ({
-        upgrade: Effect.fn((version) => assertReadyForUpgrade.pipe(Effect.andThen(upgradeCht(version)), Effect.andThen(streamUpgradeLogChanges(COMPLETED_STATES)), Effect.provide(context))),
-        stage: Effect.fn((version) => assertReadyForUpgrade.pipe(Effect.andThen(stageChtUpgrade(version)), Effect.andThen(streamUpgradeLogChanges(STAGING_COMPLETE_STATES)), Effect.provide(context))),
+        upgrade: Effect.fn((version) => assertReadyForUpgrade.pipe(Effect.andThen(upgradeCht(version)), Effect.andThen(streamUpgradeLogChanges(COMPLETED_STATES)), mapErrorToGeneric, Effect.provide(context))),
+        stage: Effect.fn((version) => assertReadyForUpgrade.pipe(Effect.andThen(stageChtUpgrade(version)), Effect.andThen(streamUpgradeLogChanges(STAGING_COMPLETE_STATES)), mapErrorToGeneric, Effect.provide(context))),
         complete: Effect.fn((version) => assertReadyForComplete.pipe(Effect.andThen(completeChtUpgrade(version)), Effect.andThen(streamUpgradeLogChanges(COMPLETED_STATES)
-            .pipe(Effect.retry(Schedule.spaced(1000)))), Effect.provide(context))),
+            .pipe(Effect.retry(Schedule.spaced(1000)))), mapErrorToGeneric, Effect.provide(context))),
         preStage: Effect.fn((version) => assertReadyForUpgrade.pipe(Effect.andThen(getStagingDocAttachments(version)), Effect.flatMap(decodeStagingDocAttachments), Effect.map(Array.zip(CHT_DDOC_ATTACHMENT_NAMES)), Effect.flatMap(preStageDdocs), Effect.map(Stream.provideContext(context)), Effect.map(Stream.mapError(x => x)), Effect.provide(context))),
     }))),
     accessors: true,

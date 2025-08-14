@@ -10,7 +10,7 @@ import type { NonEmptyArray } from 'effect/Array';
 import { PlatformError } from '@effect/platform/Error';
 import { ChtClientService } from './cht-client.ts';
 import { getNouveauInfo, NouveauInfo } from '../libs/couch/nouveau-info.ts';
-import { getChtMonitoringData } from '../libs/cht/monitoring.ts';
+import { chtMonitoringDataEffect } from '../libs/cht/monitoring.ts';
 
 interface DatabaseInfo extends CouchDbInfo {
   designs: CouchDesignInfo[]
@@ -131,7 +131,7 @@ const getDirectorySize = Effect.fn((directory: Option.Option<string>) => LocalDi
   Effect.map(Option.fromNullable),
 ));
 
-const getChtMonitoring = Effect.fn(() => getChtMonitoringData().pipe(
+const getChtMonitoring = Effect.fn(() => chtMonitoringDataEffect.pipe(
   Effect.catchAll((error) => {
     if (error instanceof ResponseError && error.response.status === 404) {
       return Effect.succeed({ version: { app: '', couchdb: '' } });
