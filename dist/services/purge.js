@@ -4,6 +4,7 @@ import { PouchDBService, streamAllDocPages, streamQueryPages } from "./pouchdb.j
 import { Array, Option, pipe, Predicate, Schema, Stream, String } from 'effect';
 import { purgeFrom } from "../libs/couch/purge.js";
 import { ChtClientService } from "./cht-client.js";
+import { mapStreamErrorToGeneric } from '../libs/core.js';
 // _purge endpoint only accepts batches of 100.
 // skip: 0 just keeps getting the next 100 (after the last was purged)
 const PAGE_OPTIONS = { limit: 100, skip: 0 };
@@ -37,9 +38,9 @@ export class PurgeService extends Effect.Service()('chtoolbox/PurgeService', {
     effect: serviceContext.pipe(Effect.map(context => ({
         purgeAll: Effect.fn((dbName, 
         // eslint-disable-next-line @typescript-eslint/no-inferrable-types
-        purgeDdocs = false) => pipe(PAGE_OPTIONS, streamAllDocPages(dbName), Effect.map(Stream.tap(response => pipe(convertAllDocsResponse(response), Array.filter(filterDdoc(purgeDdocs)), purgeRows(dbName)))), Effect.map(Stream.provideContext(context)), Effect.provide(context))),
-        purgeReports: Effect.fn((dbName, opts) => pipe(getReportQueryOptions(opts), purgeByViewQuery(dbName, 'medic-client/reports_by_date'), Effect.map(Stream.provideContext(context)), Effect.provide(context))),
-        purgeContacts: Effect.fn((dbName, type) => pipe({ ...PAGE_OPTIONS, key: [type] }, purgeByViewQuery(dbName, 'medic-client/contacts_by_type'), Effect.map(Stream.provideContext(context)), Effect.provide(context)))
+        purgeDdocs = false) => pipe(PAGE_OPTIONS, streamAllDocPages(dbName), Effect.map(Stream.tap(response => pipe(convertAllDocsResponse(response), Array.filter(filterDdoc(purgeDdocs)), purgeRows(dbName)))), Effect.map(mapStreamErrorToGeneric), Effect.map(Stream.provideContext(context)), Effect.provide(context))),
+        purgeReports: Effect.fn((dbName, opts) => pipe(getReportQueryOptions(opts), purgeByViewQuery(dbName, 'medic-client/reports_by_date'), Effect.map(mapStreamErrorToGeneric), Effect.map(Stream.provideContext(context)), Effect.provide(context))),
+        purgeContacts: Effect.fn((dbName, type) => pipe({ ...PAGE_OPTIONS, key: [type] }, purgeByViewQuery(dbName, 'medic-client/contacts_by_type'), Effect.map(mapStreamErrorToGeneric), Effect.map(Stream.provideContext(context)), Effect.provide(context)))
     }))),
     accessors: true,
 }) {

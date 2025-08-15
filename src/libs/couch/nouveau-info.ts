@@ -1,4 +1,4 @@
-import { Schema } from 'effect';
+import { pipe, Schema } from 'effect';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import { ChtClientService } from '../../services/cht-client.ts';
@@ -19,9 +19,9 @@ export const getNouveauInfo = Effect.fn((
   dbName: string,
   ddocName: string,
   indexName: string
-): Effect.Effect<NouveauInfo, Error, ChtClientService> => ChtClientService
-  .request(HttpClientRequest.get(`/${dbName}/_design/${ddocName}/_nouveau_info/${indexName}`))
-  .pipe(
-    Effect.flatMap(NouveauInfo.decodeResponse),
-    Effect.scoped,
-  ));
+) => pipe(
+  HttpClientRequest.get(`/${dbName}/_design/${ddocName}/_nouveau_info/${indexName}`),
+  ChtClientService.request,
+  Effect.flatMap(NouveauInfo.decodeResponse),
+  Effect.scoped,
+));

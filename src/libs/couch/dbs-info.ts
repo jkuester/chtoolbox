@@ -1,19 +1,19 @@
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
-import { Array, Schema } from 'effect';
+import { Array, pipe, Schema } from 'effect';
 import { ChtClientService } from '../../services/cht-client.ts';
 import type { NonEmptyArray } from 'effect/Array';
+import { buildPostRequest } from '../http-client.js';
 
 const ENDPOINT = '/_dbs_info';
 
-const DbsInfoBody = Schema.Struct({ keys: Schema.Array(Schema.String) });
-const getPostRequest = Effect.fn((keys: NonEmptyArray<string>) => DbsInfoBody.pipe(
-  HttpClientRequest.schemaBodyJson,
-  build => build(
-    HttpClientRequest.post(ENDPOINT),
-    { keys }
-  ),
-  Effect.mapError(x => x as unknown as Error),
+const DbsInfoBody = Schema.Struct({
+  keys: Schema.Array(Schema.String)
+});
+
+const getPostRequest = Effect.fn((keys: NonEmptyArray<string>) => pipe(
+  { keys },
+  buildPostRequest(ENDPOINT, DbsInfoBody)
 ));
 
 export class CouchDbInfo extends Schema.Class<CouchDbInfo>('CouchDbInfo')({
@@ -40,24 +40,24 @@ export class CouchDbInfo extends Schema.Class<CouchDbInfo>('CouchDbInfo')({
     instance_start_time: Schema.String,
   }),
 }) {
-  static readonly decodeResponse = HttpClientResponse.schemaBodyJson(Schema.Array(CouchDbInfo));
+  static readonly decodeResponse = Schema.Array(CouchDbInfo).pipe(HttpClientResponse.schemaBodyJson);
 }
 
-export const getAllDbsInfo = Effect.fn((): Effect.Effect<
-  readonly CouchDbInfo[], Error, ChtClientService
-> => ChtClientService.request(HttpClientRequest.get(ENDPOINT)).pipe(
+export const allDbsInfoEffect = Effect.suspend(() => pipe(
+  HttpClientRequest.get(ENDPOINT),
+  ChtClientService.request,
   Effect.flatMap(CouchDbInfo.decodeResponse),
   Effect.scoped,
 ));
 
 export const getDbsInfoByName = Effect.fn((
   dbNames: NonEmptyArray<string>
-): Effect.Effect<readonly CouchDbInfo[], Error, ChtClientService> => getPostRequest(dbNames)
+) => getPostRequest(dbNames)
   .pipe(
     Effect.flatMap(request => ChtClientService.request(request)),
     Effect.flatMap(CouchDbInfo.decodeResponse),
     Effect.scoped,
   ));
 
-export const getDbNames = Effect.fn((): Effect.Effect<string[], Error, ChtClientService> => getAllDbsInfo()
+export const getDbNames = Effect.fn((): Effect.Effect<string[], Error, ChtClientService> => allDbsInfoEffect
   .pipe(Effect.map(Array.map(({ key }) => key))));

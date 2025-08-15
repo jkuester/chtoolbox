@@ -1,6 +1,6 @@
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
-import { Array, Schema, String, Predicate } from 'effect';
+import { Array, pipe, Schema, String } from 'effect';
 import { ChtClientService } from "../../services/cht-client.js";
 class CouchDesignDocs extends Schema.Class('CouchDesignDocs')({
     rows: Schema.Array(Schema.Struct({
@@ -9,6 +9,5 @@ class CouchDesignDocs extends Schema.Class('CouchDesignDocs')({
 }) {
     static decodeResponse = HttpClientResponse.schemaBodyJson(CouchDesignDocs);
 }
-export const getDesignDocNames = Effect.fn((dbName) => ChtClientService
-    .request(HttpClientRequest.get(`/${dbName}/_design_docs`))
-    .pipe(Effect.flatMap(CouchDesignDocs.decodeResponse), Effect.scoped, Effect.map(designDocs => designDocs.rows), Effect.map(Array.map(({ id }) => id)), Effect.map(Array.map(String.split('/'))), Effect.map(Array.map(([, name]) => name)), Effect.filterOrFail((names) => Array.every(names, Predicate.isNotNullable))));
+const getDdocNameFromId = ({ id }) => pipe(id, String.split('/'), ([, name]) => name, Effect.fromNullable);
+export const getDesignDocNames = Effect.fn((dbName) => pipe(HttpClientRequest.get(`/${dbName}/_design_docs`), ChtClientService.request, Effect.flatMap(CouchDesignDocs.decodeResponse), Effect.scoped, Effect.map(designDocs => designDocs.rows), Effect.map(Array.map(getDdocNameFromId)), Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' }))));

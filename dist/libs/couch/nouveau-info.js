@@ -1,4 +1,4 @@
-import { Schema } from 'effect';
+import { pipe, Schema } from 'effect';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import { ChtClientService } from "../../services/cht-client.js";
@@ -13,6 +13,4 @@ export class NouveauInfo extends Schema.Class('NouveauInfo')({
 }) {
     static decodeResponse = HttpClientResponse.schemaBodyJson(NouveauInfo);
 }
-export const getNouveauInfo = Effect.fn((dbName, ddocName, indexName) => ChtClientService
-    .request(HttpClientRequest.get(`/${dbName}/_design/${ddocName}/_nouveau_info/${indexName}`))
-    .pipe(Effect.flatMap(NouveauInfo.decodeResponse), Effect.scoped));
+export const getNouveauInfo = Effect.fn((dbName, ddocName, indexName) => pipe(HttpClientRequest.get(`/${dbName}/_design/${ddocName}/_nouveau_info/${indexName}`), ChtClientService.request, Effect.flatMap(NouveauInfo.decodeResponse), Effect.scoped));

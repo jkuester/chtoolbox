@@ -1,7 +1,13 @@
 import { describe, it } from 'mocha';
 import { Chunk, Effect, Either, Stream, TestContext } from 'effect';
 import { expect } from 'chai';
-import { mergeArrayStreams, pouchDB, untilEmptyCount, mapErrorToGeneric } from '../../src/libs/core.ts';
+import {
+  mapErrorToGeneric,
+  mapStreamErrorToGeneric,
+  mergeArrayStreams,
+  pouchDB,
+  untilEmptyCount
+} from '../../src/libs/core.ts';
 import PouchDB from 'pouchdb-core';
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
 import { SocketGenericError } from '@effect/platform/Socket';
@@ -20,6 +26,24 @@ describe('Core libs', () => {
         mapErrorToGeneric,
         Effect.either
       );
+
+    if (Either.isRight(either)) {
+      expect.fail('Expected error.');
+    }
+
+    expect(either.left).to.equal(error);
+  })));
+
+  it('mapStreamErrorToGeneric', run(Effect.gen(function* () {
+    const error = new SocketGenericError({ reason: 'Write', cause: 'error' });
+
+    const stream: Stream.Stream<void, Error> = Stream
+      .fail(error)
+      .pipe(mapStreamErrorToGeneric);
+    const either = yield* stream.pipe(
+      Stream.runDrain,
+      Effect.either
+    );
 
     if (Either.isRight(either)) {
       expect.fail('Expected error.');

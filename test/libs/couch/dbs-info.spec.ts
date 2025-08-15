@@ -7,29 +7,32 @@ import { type NonEmptyArray } from 'effect/Array';
 import { genWithLayer, sandbox } from '../../utils/base.ts';
 import * as DbsInfoLibs from '../../../src/libs/couch/dbs-info.ts';
 import esmock from 'esmock';
+import sinon, { type SinonStub } from 'sinon';
 
 const FAKE_CLIENT_REQUEST = { hello: 'world' } as const;
 const mockChtClient = { request: sandbox.stub() };
-const mockHttpRequest = {
-  schemaBodyJson: sandbox.stub(),
-  post: sandbox.stub(),
-  get: sandbox.stub()
-};
-const requestBuild = sandbox.stub();
+const mockHttpRequest = { get: sandbox.stub() };
+const mockHttpClient = { buildPostRequest: sandbox.stub() };
 
 const run = Layer
   .succeed(ChtClientService, mockChtClient as unknown as ChtClientService)
   .pipe(genWithLayer);
 const {
-  getAllDbsInfo,
+  allDbsInfoEffect,
   getDbNames,
   getDbsInfoByName
 } = await esmock<typeof DbsInfoLibs>('../../../src/libs/couch/dbs-info.ts', {
-  '@effect/platform': { HttpClientRequest: mockHttpRequest }
+  '@effect/platform': { HttpClientRequest: mockHttpRequest },
+  '../../../src/libs/http-client.ts': mockHttpClient
 });
 
 describe('Couch Dbs Info libs', () => {
-  beforeEach(() => mockHttpRequest.schemaBodyJson.returns(requestBuild));
+  let buildPostRequestInner: SinonStub;
+
+  beforeEach(() => {
+    buildPostRequestInner = sinon.stub();
+    mockHttpClient.buildPostRequest.returns(buildPostRequestInner);
+  });
 
   it('gets db info for all databases', run(function* () {
     mockHttpRequest.get.returns(FAKE_CLIENT_REQUEST);
@@ -52,14 +55,12 @@ describe('Couch Dbs Info libs', () => {
       json: Effect.succeed([testDbInfo, emptyDbInfo]),
     }));
 
-    const dbInfos = yield* getAllDbsInfo();
+    const dbInfos = yield* allDbsInfoEffect;
 
     expect(dbInfos).to.deep.equal([testDbInfo, emptyDbInfo]);
     expect(mockHttpRequest.get.calledOnceWithExactly('/_dbs_info')).to.be.true;
     expect(mockChtClient.request.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
-    expect(requestBuild.notCalled).to.be.true;
-    expect(mockHttpRequest.schemaBodyJson.notCalled).to.be.true;
-    expect(mockHttpRequest.post.notCalled).to.be.true;
+    expect(mockHttpClient.buildPostRequest).to.not.be.called;
   }));
 
   it('gets db names for all databases', run(function* () {
@@ -75,16 +76,12 @@ describe('Couch Dbs Info libs', () => {
     expect(dbNames).to.deep.equal([testDbInfo.key, emptyDbInfo.key]);
     expect(mockHttpRequest.get.calledOnceWithExactly('/_dbs_info')).to.be.true;
     expect(mockChtClient.request.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
-    expect(requestBuild.notCalled).to.be.true;
-    expect(mockHttpRequest.schemaBodyJson.notCalled).to.be.true;
-    expect(mockHttpRequest.post.notCalled).to.be.true;
+    expect(mockHttpClient.buildPostRequest).to.not.be.called;
   }));
 
   describe('post', () => {
     it('posts db info for specified databases', run(function* () {
-      const fakeBuiltClientRequest = { ...FAKE_CLIENT_REQUEST, built: true };
-      mockHttpRequest.post.returns(FAKE_CLIENT_REQUEST);
-      requestBuild.returns(Effect.succeed(fakeBuiltClientRequest));
+      buildPostRequestInner.returns(Effect.succeed(FAKE_CLIENT_REQUEST));
       const medicDbInfo = createDbInfo({ key: 'medic', compact_running: true, file: 123, active: 234 });
       const sentinelDbInfo = createDbInfo({ key: 'medic-sentinel', file: 12 });
       const usersMetaDbInfo = createDbInfo({ key: 'medic-users-meta', compact_running: true, active: 23412 });
@@ -98,19 +95,14 @@ describe('Couch Dbs Info libs', () => {
 
       expect(dbInfos).to.deep.equal([medicDbInfo, sentinelDbInfo, usersMetaDbInfo, usersDbInfo]);
       expect(mockHttpRequest.get.notCalled).to.be.true;
-      expect(mockChtClient.request.calledOnceWithExactly(fakeBuiltClientRequest)).to.be.true;
-      expect(requestBuild.calledOnceWithExactly(
-        FAKE_CLIENT_REQUEST,
-        { keys: dbNames }
-      )).to.be.true;
-      expect(mockHttpRequest.schemaBodyJson.calledOnce).to.be.true;
-      expect(mockHttpRequest.post.calledOnceWithExactly('/_dbs_info')).to.be.true;
+      expect(mockChtClient.request.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
+      expect(mockHttpClient.buildPostRequest.calledOnceWith('/_dbs_info')).to.be.true;
+      expect(buildPostRequestInner.calledOnceWithExactly({ keys: dbNames })).to.be.true;
     }));
 
     it('returns error if request cannot be built', run(function* () {
       const expectedError = Error('Cannot build request.');
-      mockHttpRequest.post.returns(FAKE_CLIENT_REQUEST);
-      requestBuild.returns(Effect.fail(expectedError));
+      buildPostRequestInner.returns(Effect.fail(expectedError));
       const dbNames: NonEmptyArray<string> = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 
       const either = yield* Effect.either(getDbsInfoByName(dbNames));
@@ -122,12 +114,8 @@ describe('Couch Dbs Info libs', () => {
       expect(either.left).to.include(expectedError);
       expect(mockHttpRequest.get.notCalled).to.be.true;
       expect(mockChtClient.request.notCalled).to.be.true;
-      expect(requestBuild.calledOnceWithExactly(
-        FAKE_CLIENT_REQUEST,
-        { keys: dbNames }
-      )).to.be.true;
-      expect(mockHttpRequest.schemaBodyJson.calledOnce).to.be.true;
-      expect(mockHttpRequest.post.calledOnceWithExactly('/_dbs_info')).to.be.true;
+      expect(mockHttpClient.buildPostRequest.calledOnceWith('/_dbs_info')).to.be.true;
+      expect(buildPostRequestInner.calledOnceWithExactly({ keys: dbNames })).to.be.true;
     }));
   });
 });

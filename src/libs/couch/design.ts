@@ -1,7 +1,7 @@
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import { ChtClientService } from '../../services/cht-client.ts';
-import { Option, Schema } from 'effect';
+import { Option, pipe, Schema } from 'effect';
 
 export class CouchDesign extends Schema.Class<CouchDesign>('CouchDesign')({
   _id: Schema.String,
@@ -14,16 +14,12 @@ export class CouchDesign extends Schema.Class<CouchDesign>('CouchDesign')({
   static readonly decodeResponse = HttpClientResponse.schemaBodyJson(CouchDesign);
 }
 
-export const getViewNames = Effect.fn((
-  dbName: string,
-  designName: string
-): Effect.Effect<string[], Error, ChtClientService> => ChtClientService
-  .request(HttpClientRequest.get(`/${dbName}/_design/${designName}`))
-  .pipe(
-    Effect.flatMap(CouchDesign.decodeResponse),
-    Effect.scoped,
-    Effect.map(design => design.views),
-    Effect.map(Option.fromNullable),
-    Effect.map(Option.map(Object.keys)),
-    Effect.map(Option.getOrElse(() => [])),
-  ));
+export const getViewNames = Effect.fn((dbName: string, designName: string) => pipe(
+  HttpClientRequest.get(`/${dbName}/_design/${designName}`),
+  ChtClientService.request,
+  Effect.flatMap(CouchDesign.decodeResponse),
+  Effect.scoped,
+  Effect.map(({ views }) => Option.fromNullable(views)),
+  Effect.map(Option.map(Object.keys)),
+  Effect.map(Option.getOrElse(() => [])),
+));

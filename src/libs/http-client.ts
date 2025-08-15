@@ -1,16 +1,15 @@
 import { Function, pipe, Schema, Tuple } from 'effect';
 import * as Effect from 'effect/Effect';
 import { HttpClientRequest } from '@effect/platform';
-import { Struct } from 'effect/Schema';
 import type { HttpBodyError } from '@effect/platform/HttpBody';
 
-export const buildPostRequest = <T extends Struct.Fields>(
+export const buildPostRequest = <A, I, R>(
   endpoint: string,
-  struct: Schema.Struct<T>
-): (body: typeof struct.Type) => Effect.Effect<
+  struct: Schema.Schema<A, I, R>
+): (body: A) => Effect.Effect<
   HttpClientRequest.HttpClientRequest,
   HttpBodyError,
-  Schema.Schema.Context<T[keyof T]>
+  R
 > => Effect.fn((body) => pipe(
     Tuple.make(
       HttpClientRequest.post(endpoint),

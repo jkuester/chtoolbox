@@ -1,4 +1,4 @@
-import { Schema } from 'effect';
+import { pipe, Schema } from 'effect';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import { ChtClientService } from '../../services/cht-client.ts';
@@ -32,9 +32,9 @@ export class CouchDesignInfo extends Schema.Class<CouchDesignInfo>('CouchDesignI
 export const getDesignInfo = Effect.fn((
   dbName: string,
   designName: string
-): Effect.Effect<CouchDesignInfo, Error, ChtClientService> => ChtClientService
-  .request(HttpClientRequest.get(`/${dbName}/_design/${designName}/_info`))
-  .pipe(
-    Effect.flatMap(CouchDesignInfo.decodeResponse),
-    Effect.scoped,
-  ));
+) => pipe(
+  HttpClientRequest.get(`/${dbName}/_design/${designName}/_info`),
+  ChtClientService.request,
+  Effect.flatMap(CouchDesignInfo.decodeResponse),
+  Effect.scoped,
+));

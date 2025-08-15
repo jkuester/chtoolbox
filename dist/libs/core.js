@@ -1,6 +1,7 @@
 import { Array, Effect, Function, Number, Option, Ref, Stream } from 'effect';
 import PouchDB from 'pouchdb-core';
 export const mapErrorToGeneric = (effect) => effect.pipe(Effect.mapError(x => x));
+export const mapStreamErrorToGeneric = (stream) => stream.pipe(Stream.mapError(x => x));
 /**
  * Returns a function that takes an array. The function will return `false` until
  * it has been called `target` times with an empty array.

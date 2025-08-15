@@ -169,7 +169,7 @@ const chtMonitoringData = createChtMonitoringData({
   versionCouchDb: 'couchdb-version',
 });
 
-const mockNodeSystemLib = { getCouchNodeSystem: sandbox.stub() };
+const getCouchNodeSystemEffect = sandbox.stub();
 const mockDesignInfoLib = { getDesignInfo: sandbox.stub() };
 const mockNouveauInfoLib = { getNouveauInfo: sandbox.stub() };
 const mockDbsInfoLib = { getDbsInfoByName: sandbox.stub() };
@@ -177,7 +177,9 @@ const getChtMonitoringDataEffect = sandbox.stub();
 const diskUsageServiceGetSize = sandbox.stub();
 
 const { MonitorService } = await esmock<typeof MonitorSvc>('../../src/services/monitor.ts', {
-  '../../src/libs/couch/node-system.ts': mockNodeSystemLib,
+  '../../src/libs/couch/node-system.ts': {
+    couchNodeSystemEffect: Effect.suspend(() => getCouchNodeSystemEffect() as Effect.Effect<unknown>)
+  },
   '../../src/libs/couch/dbs-info.ts': mockDbsInfoLib,
   '../../src/libs/couch/design-info.ts': mockDesignInfoLib,
   '../../src/libs/couch/nouveau-info.ts': mockNouveauInfoLib,
@@ -198,7 +200,7 @@ describe('Monitor service', () => {
   describe('get', () => {
     it('returns empty monitoring data', run(function* () {
       const nodeSystem = createNodeSystem();
-      mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
+      getCouchNodeSystemEffect.returns(Effect.succeed(nodeSystem));
       mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([]));
       mockDesignInfoLib.getDesignInfo.returns(Effect.void);
       mockNouveauInfoLib.getNouveauInfo.returns(Effect.void);
@@ -217,7 +219,7 @@ describe('Monitor service', () => {
         databases: [],
         directory_size: Option.none(),
       });
-      expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
+      expect(getCouchNodeSystemEffect.calledOnceWithExactly()).to.be.true;
       expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
@@ -226,7 +228,7 @@ describe('Monitor service', () => {
     }));
 
     it('returns complete monitoring data', run(function* () {
-      mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
+      getCouchNodeSystemEffect.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(unix_time * 1000);
       mockDbsInfoLib.getDbsInfoByName.returns(
@@ -273,7 +275,7 @@ describe('Monitor service', () => {
         ],
         directory_size: Option.some(directorySize),
       });
-      expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
+      expect(getCouchNodeSystemEffect.calledOnceWithExactly()).to.be.true;
       expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
@@ -282,7 +284,7 @@ describe('Monitor service', () => {
     }));
 
     it('includes empty data for calls that 404', run(function* () {
-      mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
+      getCouchNodeSystemEffect.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(unix_time * 1000);
       mockDbsInfoLib.getDbsInfoByName.returns(
@@ -362,7 +364,7 @@ describe('Monitor service', () => {
         ],
         directory_size: Option.some(directorySize),
       });
-      expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
+      expect(getCouchNodeSystemEffect.calledOnceWithExactly()).to.be.true;
       expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
@@ -371,7 +373,7 @@ describe('Monitor service', () => {
     }));
 
     it('fails when a non-404 error is thrown getting design infos', run(function* () {
-      mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
+      getCouchNodeSystemEffect.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(unix_time * 1000);
       mockDbsInfoLib.getDbsInfoByName.returns(
@@ -422,7 +424,7 @@ describe('Monitor service', () => {
       const error = failureOrSuccess.left;
       expect(error).to.include(expectedError);
 
-      expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
+      expect(getCouchNodeSystemEffect.calledOnceWithExactly()).to.be.true;
       expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
@@ -431,7 +433,7 @@ describe('Monitor service', () => {
     }));
 
     it('fails when a non-404 error is thrown getting CHT monitoring data', run(function* () {
-      mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
+      getCouchNodeSystemEffect.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(unix_time * 1000);
       mockDbsInfoLib.getDbsInfoByName.returns(
@@ -456,7 +458,7 @@ describe('Monitor service', () => {
 
       const error = failureOrSuccess.left;
       expect(error).to.include(expectedError);
-      expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
+      expect(getCouchNodeSystemEffect.calledOnceWithExactly()).to.be.true;
       expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
@@ -466,7 +468,7 @@ describe('Monitor service', () => {
 
     it('trims milliseconds from unix_time value', run(function* () {
       const nodeSystem = createNodeSystem();
-      mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
+      getCouchNodeSystemEffect.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(123456789458);
       mockDbsInfoLib.getDbsInfoByName.returns(Effect.succeed([]));
@@ -487,7 +489,7 @@ describe('Monitor service', () => {
         databases: [],
         directory_size: Option.none(),
       });
-      expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
+      expect(getCouchNodeSystemEffect.calledOnceWithExactly()).to.be.true;
       expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
@@ -555,7 +557,7 @@ describe('Monitor service', () => {
     ];
 
     it('returns complete monitoring data', run(function* () {
-      mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
+      getCouchNodeSystemEffect.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(unix_time * 1000);
       mockDbsInfoLib.getDbsInfoByName.returns(
@@ -570,7 +572,7 @@ describe('Monitor service', () => {
 
       const data = yield* MonitorService.getAsCsv(Option.some(directory));
       expect(data).to.deep.equal([unix_time.toString(), ...expectedCsvData, directorySize.toString()]);
-      expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
+      expect(getCouchNodeSystemEffect.calledOnceWithExactly()).to.be.true;
       expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
@@ -579,7 +581,7 @@ describe('Monitor service', () => {
     }));
 
     it('includes empty data for designs that do not exist', run(function* () {
-      mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
+      getCouchNodeSystemEffect.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(unix_time * 1000);
       mockDbsInfoLib.getDbsInfoByName.returns(
@@ -657,7 +659,7 @@ describe('Monitor service', () => {
         directorySize.toString(),
       ];
       expect(data).to.deep.equal(expectedCsvData);
-      expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
+      expect(getCouchNodeSystemEffect.calledOnceWithExactly()).to.be.true;
       expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
@@ -665,7 +667,7 @@ describe('Monitor service', () => {
     }));
 
     it('does not include directory_size column when no directory provided', run(function* () {
-      mockNodeSystemLib.getCouchNodeSystem.returns(Effect.succeed(nodeSystem));
+      getCouchNodeSystemEffect.returns(Effect.succeed(nodeSystem));
       const unix_time = 123456789;
       yield* TestClock.setTime(123456789458);
       mockDbsInfoLib.getDbsInfoByName.returns(
@@ -678,7 +680,7 @@ describe('Monitor service', () => {
       const data = yield* MonitorService.getAsCsv(Option.none());
 
       expect(data).to.deep.equal([unix_time.toString(), ...expectedCsvData]);
-      expect(mockNodeSystemLib.getCouchNodeSystem.calledOnceWithExactly()).to.be.true;
+      expect(getCouchNodeSystemEffect.calledOnceWithExactly()).to.be.true;
       expect(mockDbsInfoLib.getDbsInfoByName.calledOnceWithExactly(DB_NAMES)).to.be.true;
       expect(mockDesignInfoLib.getDesignInfo.args).to.deep.equal(EXPECTED_DESIGN_INFO_ARGS);
       expect(mockNouveauInfoLib.getNouveauInfo.args).to.deep.equal(EXPECTED_NOUVEAU_INFO_ARGS);
@@ -786,7 +788,7 @@ describe('Monitor service', () => {
     ];
 
     afterEach(() => {
-      expect(mockNodeSystemLib.getCouchNodeSystem.notCalled).to.be.true;
+      expect(getCouchNodeSystemEffect.notCalled).to.be.true;
       expect(mockDbsInfoLib.getDbsInfoByName.notCalled).to.be.true;
       expect(mockDesignInfoLib.getDesignInfo.notCalled).to.be.true;
       expect(diskUsageServiceGetSize.notCalled).to.be.true;

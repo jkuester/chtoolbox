@@ -2,7 +2,7 @@ import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { CouchDbInfo, getDbsInfoByName } from '../libs/couch/dbs-info.ts';
 import { CouchDesignInfo, getDesignInfo } from '../libs/couch/design-info.ts';
-import { CouchNodeSystem, getCouchNodeSystem } from '../libs/couch/node-system.ts';
+import { CouchNodeSystem, couchNodeSystemEffect } from '../libs/couch/node-system.ts';
 import { Array, Clock, Number, Option, pipe } from 'effect';
 import { LocalDiskUsageService } from './local-disk-usage.ts';
 import { ResponseError } from '@effect/platform/HttpClientError';
@@ -11,6 +11,7 @@ import { PlatformError } from '@effect/platform/Error';
 import { ChtClientService } from './cht-client.ts';
 import { getNouveauInfo, NouveauInfo } from '../libs/couch/nouveau-info.ts';
 import { chtMonitoringDataEffect } from '../libs/cht/monitoring.ts';
+import { mapErrorToGeneric } from '../libs/core.js';
 
 interface DatabaseInfo extends CouchDbInfo {
   designs: CouchDesignInfo[]
@@ -143,7 +144,7 @@ const getChtMonitoring = Effect.fn(() => chtMonitoringDataEffect.pipe(
 const getMonitoringData = Effect.fn((directory: Option.Option<string>) => pipe(
   Effect.all([
     currentTimeSec,
-    getCouchNodeSystem(),
+    couchNodeSystemEffect,
     getDbsInfoByName(DB_NAMES),
     getCouchDesignInfos(),
     getNouveauInfos(),
@@ -247,12 +248,18 @@ export class MonitorService extends Effect.Service<MonitorService>()('chtoolbox/
     get: Effect.fn((
       directory: Option.Option<string>
     ): Effect.Effect<MonitoringData, Error | PlatformError> => getMonitoringData(directory)
-      .pipe(Effect.provide(context))),
+      .pipe(
+        mapErrorToGeneric,
+        Effect.provide(context)
+      )),
     getCsvHeader,
     getAsCsv: Effect.fn((
       directory: Option.Option<string>
     ): Effect.Effect<string[], Error | PlatformError> => getAsCsv(directory)
-      .pipe(Effect.provide(context))),
+      .pipe(
+        mapErrorToGeneric,
+        Effect.provide(context)
+      )),
   }))),
   accessors: true,
 }) {

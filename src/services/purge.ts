@@ -4,6 +4,7 @@ import { type AllDocsResponseStream, PouchDBService, streamAllDocPages, streamQu
 import { Array, Option, pipe, Predicate, Schema, Stream, String } from 'effect';
 import { purgeFrom } from '../libs/couch/purge.ts';
 import { ChtClientService } from './cht-client.ts';
+import { mapStreamErrorToGeneric } from '../libs/core.js';
 type AllDocsResponse = PouchDB.Core.AllDocsResponse<object>;
 type AllDocsWithKeysResponse = PouchDB.Core.AllDocsWithKeysResponse<object>;
 
@@ -94,6 +95,7 @@ export class PurgeService extends Effect.Service<PurgeService>()('chtoolbox/Purg
         Array.filter(filterDdoc(purgeDdocs)),
         purgeRows(dbName),
       ))),
+      Effect.map(mapStreamErrorToGeneric),
       Effect.map(Stream.provideContext(context)),
       Effect.provide(context),
     )),
@@ -103,6 +105,7 @@ export class PurgeService extends Effect.Service<PurgeService>()('chtoolbox/Purg
     ): Effect.Effect<AllDocsResponseStream, Error> => pipe(
       getReportQueryOptions(opts),
       purgeByViewQuery(dbName, 'medic-client/reports_by_date'),
+      Effect.map(mapStreamErrorToGeneric),
       Effect.map(Stream.provideContext(context)),
       Effect.provide(context),
     )),
@@ -112,6 +115,7 @@ export class PurgeService extends Effect.Service<PurgeService>()('chtoolbox/Purg
     ): Effect.Effect<AllDocsResponseStream, Error> => pipe(
       { ...PAGE_OPTIONS, key: [type] },
       purgeByViewQuery(dbName, 'medic-client/contacts_by_type'),
+      Effect.map(mapStreamErrorToGeneric),
       Effect.map(Stream.provideContext(context)),
       Effect.provide(context),
     ))
