@@ -2,7 +2,7 @@ import { Args, Command, Options } from '@effect/cli';
 import { Array, Console, DateTime, Effect, Match, pipe, Schedule, Stream } from 'effect';
 import { initializeUrl } from "../index.js";
 import { UpgradeLog, UpgradeService } from "../services/upgrade.js";
-import { clearConsole, clearThen } from "../libs/console.js";
+import { clearConsoleEffect, clearThen } from "../libs/console.js";
 import { getDisplayDictByPid } from "../libs/couch/active-tasks.js";
 import { getTaskDisplayData } from "./db/compact.js";
 const getUpgradeLogDisplay = ({ state_history }) => pipe(state_history, Array.map(({ state, date }) => ({
@@ -19,7 +19,7 @@ const getUpgradeAction = Effect.fn((opts) => Match
 const getCurrentTime = () => DateTime
     .unsafeNow()
     .pipe(DateTime.formatLocal({ hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
-const streamActiveTasks = Effect.fn((taskStream) => taskStream.pipe(Stream.map(Array.map(getTaskDisplayData)), Stream.map(getDisplayDictByPid), Stream.tapError(e => Effect.logError(`${JSON.stringify(e, null, 2)}\n\nRetrying...`)), Stream.retry(Schedule.spaced(5000)), Stream.runForEach(taskDict => clearConsole.pipe(Effect.tap(Console.log(`Currently indexing: [${getCurrentTime()}]`)), Effect.tap(Console.table(taskDict)))), Effect.tap(clearThen(Console.log('Pre-staging complete.')))));
+const streamActiveTasks = Effect.fn((taskStream) => taskStream.pipe(Stream.map(Array.map(getTaskDisplayData)), Stream.map(getDisplayDictByPid), Stream.tapError(e => Effect.logError(`${JSON.stringify(e, null, 2)}\n\nRetrying...`)), Stream.retry(Schedule.spaced(5000)), Stream.runForEach(taskDict => clearConsoleEffect.pipe(Effect.tap(Console.log(`Currently indexing: [${getCurrentTime()}]`)), Effect.tap(Console.table(taskDict)))), Effect.tap(clearThen(Console.log('Pre-staging complete.')))));
 const getStreamAction = (opts) => Effect.fn((stream) => Match
     .value(opts)
     .pipe(Match.when({ preStage: true, follow: false }, () => Effect.fail('Cannot pre-stage without actively following the progress. The with the -f option must be used.')), Match.when({ preStage: true, follow: true }, () => streamActiveTasks(stream)), Match.when({ follow: true }, () => streamUpgradeLog(stream)), Match.orElse(() => printUpgradeLogId(stream))));

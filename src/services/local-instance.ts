@@ -29,7 +29,7 @@ import {
   stopCompose
 } from '../libs/docker.ts';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
-import { getFreePorts } from '../libs/local-network.ts';
+import { freePortsEffect } from '../libs/local-network.ts';
 import { filterStatusOk } from '@effect/platform/HttpClient';
 import { PlatformError } from '@effect/platform/Error';
 
@@ -157,7 +157,7 @@ class ChtInstanceConfig extends Schema.Class<ChtInstanceConfig>('ChtInstanceConf
   NGINX_HTTP_PORT: Schema.Number,
   NGINX_HTTPS_PORT: Schema.Number,
 }) {
-  static readonly generate = Effect.fn((instanceName: string) => getFreePorts()
+  static readonly generate = Effect.fn((instanceName: string) => freePortsEffect
     .pipe(
       Effect.map(([NGINX_HTTPS_PORT, NGINX_HTTP_PORT]) => ({
         CHT_COMPOSE_PROJECT_NAME: instanceName,

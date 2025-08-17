@@ -3,7 +3,7 @@ import { Array, Console, DateTime, Effect, Match, pipe, Schedule, Stream } from 
 import { initializeUrl } from '../index.ts';
 import { UpgradeLog, UpgradeService } from '../services/upgrade.ts';
 
-import { clearConsole, clearThen } from '../libs/console.ts';
+import { clearConsoleEffect, clearThen } from '../libs/console.ts';
 import { type CouchActiveTaskStream, getDisplayDictByPid } from '../libs/couch/active-tasks.ts';
 import { getTaskDisplayData } from './db/compact.ts';
 
@@ -52,7 +52,7 @@ const streamActiveTasks = Effect.fn((
   Stream.map(getDisplayDictByPid),
   Stream.tapError(e => Effect.logError(`${JSON.stringify(e, null, 2)}\n\nRetrying...`)),
   Stream.retry(Schedule.spaced(5000)),
-  Stream.runForEach(taskDict => clearConsole.pipe(
+  Stream.runForEach(taskDict => clearConsoleEffect.pipe(
     Effect.tap(Console.log(`Currently indexing: [${getCurrentTime()}]`)),
     Effect.tap(Console.table(taskDict)),
   )),

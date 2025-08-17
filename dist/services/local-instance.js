@@ -5,7 +5,7 @@ import crypto from 'crypto';
 import { createDir, createTmpDir, getRemoteFile, isDirectoryEmpty, readJsonFile, writeEnvFile, writeFile, writeJsonFile } from "../libs/file.js";
 import { copyFileFromComposeContainer, copyFileToComposeContainer, createComposeContainers, destroyCompose, doesVolumeExistWithLabel, getContainersForComposeProject, getEnvarFromComposeContainer, getVolumeLabelValue, getVolumeNamesWithLabel, pullComposeImages, restartCompose, restartComposeService, rmComposeContainer, startCompose, stopCompose } from "../libs/docker.js";
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
-import { getFreePorts } from "../libs/local-network.js";
+import { freePortsEffect } from "../libs/local-network.js";
 import { filterStatusOk } from '@effect/platform/HttpClient';
 import { PlatformError } from '@effect/platform/Error';
 const CHTX_LABEL_NAME = 'chtx.instance';
@@ -119,7 +119,7 @@ class ChtInstanceConfig extends Schema.Class('ChtInstanceConfig')({
     NGINX_HTTP_PORT: Schema.Number,
     NGINX_HTTPS_PORT: Schema.Number,
 }) {
-    static generate = Effect.fn((instanceName) => getFreePorts()
+    static generate = Effect.fn((instanceName) => freePortsEffect
         .pipe(Effect.map(([NGINX_HTTPS_PORT, NGINX_HTTP_PORT]) => ({
         CHT_COMPOSE_PROJECT_NAME: instanceName,
         CHT_NETWORK: instanceName,

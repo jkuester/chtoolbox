@@ -3,9 +3,7 @@ import { filterStatusOk } from '@effect/platform/HttpClient';
 import { Array, Boolean, Effect, pipe, Record } from 'effect';
 import { PlatformError } from '@effect/platform/Error';
 
-export const createDir = Effect.fn((
-  dirPath: string
-) => FileSystem.FileSystem.pipe(
+export const createDir = Effect.fn((dirPath: string) => FileSystem.FileSystem.pipe(
   Effect.flatMap(fs => fs.makeDirectory(dirPath, { recursive: true }))
 ));
 
@@ -51,21 +49,18 @@ export const writeEnvFile = Effect.fn((
   Record.toEntries,
   Array.map(([key, value]) => `${key}=${value}`),
   Array.join('\n'),
-  envData => FileSystem.FileSystem.pipe(Effect.flatMap(fs => fs.writeFileString(path, envData)))
+  writeFile(path),
 ));
 
-export const isDirectoryEmpty = Effect.fn((
-  dirPath: string
-) => FileSystem.FileSystem.pipe(
-  Effect.flatMap(fs => fs
-    .exists(dirPath)
-    .pipe(
-      Effect.map(Boolean.not),
-      Effect.filterOrElse(
-        dirNotExists => dirNotExists,
-        () => fs
-          .readDirectory(dirPath)
-          .pipe(Effect.map(entries => entries.length === 0))
-      )
-    ))
+export const isDirectoryEmpty = Effect.fn((dirPath: string) => FileSystem.FileSystem.pipe(
+  Effect.flatMap(fs => pipe(
+    fs.exists(dirPath),
+    Effect.map(Boolean.not),
+    Effect.filterOrElse(
+      dirNotExists => dirNotExists,
+      () => fs
+        .readDirectory(dirPath)
+        .pipe(Effect.map(entries => entries.length === 0))
+    )
+  ))
 ));

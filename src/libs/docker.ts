@@ -1,5 +1,5 @@
 import { Command } from '@effect/platform';
-import { Array, Boolean, Effect, Option, pipe, Schedule, String } from 'effect';
+import { Array, Boolean, Effect, Function, Option, pipe, Schedule, String } from 'effect';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
 import { PlatformError } from '@effect/platform/Error';
 import { debugLoggingEnabled } from './console.ts';
@@ -15,21 +15,23 @@ const getComposeFileParams = (composeFilePaths: string[]) => pipe(
   Array.flatten,
 );
 
-const printCommandWhenDebugLogging = Effect.fn((command: Command.Command) => Effect
-  .succeed(command)
-  .pipe(
-    Effect.filterEffectOrElse({
-      predicate: () => debugLoggingEnabled.pipe(Effect.map(Boolean.not)),
-      orElse: () => Effect.succeed(command.pipe(
-        Command.stdout('inherit'),
-        Command.stderr('inherit'),
-      ))
-    }),
-  ));
+const setCommandStdOut = (destination: 'inherit' | 'pipe') => Effect.fn((command: Command.Command) => command.pipe(
+  Command.stdout(destination),
+  Command.stderr(destination),
+  Effect.succeed,
+));
+
+const printCommandWhenDebugLogging = Effect.fn((command: Command.Command) => pipe(
+  Effect.succeed(command),
+  Effect.filterEffectOrElse({
+    predicate: () => debugLoggingEnabled.pipe(Effect.map(Boolean.not)),
+    orElse: setCommandStdOut('inherit')
+  }),
+));
 
 const runForExitCode = Effect.fn((command: Command.Command) => printCommandWhenDebugLogging(command)
   .pipe(
-    Effect.flatMap(command => command.pipe(Command.exitCode)),
+    Effect.flatMap(Command.exitCode),
     Effect.filterOrFail(
       exitCode => exitCode === 0,
       exitCode => new Error(`Docker command failed. Exit code: ${exitCode.toString()}`)
@@ -46,12 +48,16 @@ export const pullImage = Effect.fn((image: string) => Command
   .make('docker', 'pull', image)
   .pipe(runForExitCode));
 
+const pullImagesForComposeFiles = (
+  projectName: string
+) => (composeFileParams: string[]) => dockerCompose(projectName, ...composeFileParams, 'pull');
+
 export const pullComposeImages = (
   projectName: string,
   env: Record<string, string>
 ): (p: string[]) => Effect.Effect<void, Error | PlatformError, CommandExecutor> => Effect.fn((composeFilePaths) => pipe(
   getComposeFileParams(composeFilePaths),
-  composeFileParams => dockerCompose(projectName, ...composeFileParams, 'pull'),
+  pullImagesForComposeFiles(projectName),
   Command.env(env),
   runForExitCode,
   // Pulling all the images at once can result in rate limiting
@@ -60,15 +66,22 @@ export const pullComposeImages = (
 
 type DockerContainerStatus = 'running' | 'exited' | 'created' | 'paused' | 'restarting' | 'removing' | 'dead';
 
+const getStatusParams = (statuses: DockerContainerStatus[]) => pipe(
+  statuses,
+  Array.flatMap(status => ['--status', status])
+);
+
+const psComposeProject = (projectName: string) => (args: string[]) => dockerCompose(projectName, 'ps', '-q', ...args);
+
 export const getContainersForComposeProject = Effect.fn((
   projectName: string,
   ...statuses: DockerContainerStatus[]
 ) => Option
   .liftPredicate(statuses, Array.isNonEmptyArray)
   .pipe(
-    Option.map(Array.flatMap(status => ['--status', status])),
+    Option.map(getStatusParams),
     Option.getOrElse(() => ['-a']),
-    statusArgs => dockerCompose(projectName, 'ps', '-q', ...statusArgs),
+    psComposeProject(projectName),
     runForString,
     Effect.map(String.split('\n')),
     Effect.map(Array.map(String.trim)),
@@ -83,23 +96,15 @@ const getEntityWithLabel = (entity: 'volume' | 'container') => Effect.fn((label:
     Effect.map(Array.map(String.trim)),
     Effect.map(Array.filter(String.isNonEmpty)),
   ));
-export const getVolumeNamesWithLabel: (
-  label: string
-) => Effect.Effect<string[], PlatformError, CommandExecutor> = getEntityWithLabel('volume');
-export const getContainerNamesWithLabel: (
-  label: string
-) => Effect.Effect<string[], PlatformError, CommandExecutor> = getEntityWithLabel('container');
+export const getVolumeNamesWithLabel = getEntityWithLabel('volume');
+export const getContainerNamesWithLabel = getEntityWithLabel('container');
 
-export const doesVolumeExistWithLabel = Effect.fn((
-  label: string
-) => getVolumeNamesWithLabel(label)
+export const doesVolumeExistWithLabel = Effect.fn((label: string) => getVolumeNamesWithLabel(label)
   .pipe(Effect.map(Array.isNonEmptyArray)));
 
 export const getVolumeLabelValue = (
   labelName: string
-): (v: string) => Effect.Effect<string, PlatformError, CommandExecutor> => Effect.fn((
-  volumeName: string,
-) => Command
+): (v: string) => Effect.Effect<string, PlatformError, CommandExecutor> => Effect.fn((volumeName) => Command
   .make('docker', 'volume', 'inspect', volumeName, '--format', `'{{ index .Labels "${labelName}" }}'`)
   .pipe(
     runForString,
@@ -107,9 +112,7 @@ export const getVolumeLabelValue = (
   ));
 export const getContainerLabelValue = (
   labelName: string
-): (c: string) => Effect.Effect<string, PlatformError, CommandExecutor> => Effect.fn((
-  container: string,
-) => Command
+): (c: string) => Effect.Effect<string, PlatformError, CommandExecutor> => Effect.fn((container) => Command
   .make('docker', 'container', 'inspect', container, '--format', `'{{ index .Config.Labels "${labelName}" }}'`)
   .pipe(
     runForString,
@@ -168,19 +171,19 @@ export const restartComposeService = Effect.fn((
 export const stopCompose = Effect.fn((projectName: string) => dockerCompose(projectName, 'stop')
   .pipe(runForExitCode));
 
-export const destroyCompose = Effect.fn((
-  projectName: string,
-) => dockerCompose(projectName, 'kill')
-  .pipe(
-    runForExitCode,
-    Effect.andThen(dockerCompose(projectName, 'down', '-v')
-      .pipe(runForExitCode)),
-  ));
+const downCompose = Effect.fn((projectName: string) => dockerCompose(projectName, 'down', '-v')
+  .pipe(runForExitCode));
+
+export const destroyCompose = Effect.fn((projectName: string) => pipe(
+  dockerCompose(projectName, 'kill'),
+  runForExitCode,
+  Effect.andThen(downCompose(projectName)),
+));
 
 export const rmComposeContainer = (
   serviceName: string
 ): (projectName: string) => Effect.Effect<void, Error | PlatformError, CommandExecutor> => Effect.fn((
-  projectName: string
+  projectName
 ) => dockerCompose(projectName, 'rm', '-f', serviceName)
   .pipe(runForExitCode));
 
@@ -225,7 +228,7 @@ export const runContainer = Effect.fn(({ image, name, env, labels = [], ports = 
   Array.appendAll(getEnvParams(env)),
   Array.appendAll(getPortParams(ports)),
   Array.append(image),
-  ([command, ...args]) => Command.make(command, ...args),
+  Function.tupled(Command.make),
   runForExitCode
 ));
 

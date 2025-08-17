@@ -8,16 +8,18 @@ const LOCALHOST_IP = '127.0.0.1';
 
 export const getFreePort = Effect.fn((
   opts?: { port?: number, exclude?: number[] }
-) => Effect.promise(() => getPort(opts)));
+) => Effect.promise(() => getPort(opts))
+  .pipe(Effect.tap(port => Effect.logDebug(`Found free port: ${port.toString()}.`))));
 
-export const getFreePorts = Effect.fn(
-  () => getFreePort(),
-  Effect.flatMap(port => getFreePort({ exclude: [port] })
-    .pipe(
-      Effect.tap(secondPort => Effect.logDebug(`Found free ports: ${port.toString()}, ${secondPort.toString()}`)),
-      Effect.map(secondPort => [port, secondPort]),
-    ))
+const getAnotherFreePort = (firstPort: number) => pipe(
+  getFreePort({ exclude: [firstPort] }),
+  Effect.map(secondPort => [firstPort, secondPort]),
 );
+
+export const freePortsEffect = Effect.suspend(() => pipe(
+  getFreePort(),
+  Effect.flatMap(getAnotherFreePort)
+));
 
 export const getLANIPAddress = (): string => pipe(
   OS.networkInterfaces(),

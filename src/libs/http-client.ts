@@ -11,9 +11,6 @@ export const buildPostRequest = <A, I, R>(
   HttpBodyError,
   R
 > => Effect.fn((body) => pipe(
-    Tuple.make(
-      HttpClientRequest.post(endpoint),
-      body
-    ),
+    Tuple.make(HttpClientRequest.post(endpoint), body),
     Function.tupled(HttpClientRequest.schemaBodyJson(struct)),
   ));

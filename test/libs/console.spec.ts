@@ -2,7 +2,7 @@ import { describe, it } from 'mocha';
 import { Console, Effect, Logger, LogLevel, TestContext } from 'effect';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { clearConsole, clearThen, debugLoggingEnabled, logJson } from '../../src/libs/console.ts';
+import { clearConsoleEffect, clearThen, debugLoggingEnabled, logJson } from '../../src/libs/console.ts';
 
 describe('Console libs', () => {
   const run = (test:  Effect.Effect<void, Error>) => async () => {
@@ -31,12 +31,12 @@ describe('Console libs', () => {
     })));
   });
 
-  describe('clearConsole', () => {
+  describe('clearConsoleEffect', () => {
     // Return string when clearing so we can detect it in tests.
     const fakeConsole = { clear: Effect.succeed('cleared') } as unknown as Console.Console;
 
     it('does nothing when DEBUG logging is enabled', run(Effect.gen(function* () {
-      const result = yield* clearConsole.pipe(
+      const result = yield* clearConsoleEffect.pipe(
         Console.withConsole(fakeConsole),
         Logger.withMinimumLogLevel(LogLevel.Debug)
       );
@@ -44,7 +44,7 @@ describe('Console libs', () => {
     })));
 
     it('clears console when DEBUG logging is not enabled', run(Effect.gen(function* () {
-      const result = yield* clearConsole.pipe(
+      const result = yield* clearConsoleEffect.pipe(
         Console.withConsole(fakeConsole),
         Logger.withMinimumLogLevel(LogLevel.Info)
       );

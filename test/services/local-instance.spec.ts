@@ -51,7 +51,7 @@ const mockHttpRequest = { get: sandbox.stub() };
 const mockFileSystem = {
   readFileString: sandbox.stub(),
 };
-const mockNetworkLib = { getFreePorts: sandbox.stub() };
+const getFreePorts = sandbox.stub();
 const mockSchedule = { spaced: sandbox.stub() };
 const httpClientExecute = sandbox.stub();
 
@@ -60,7 +60,7 @@ const { LocalInstanceService } = await esmock<typeof LocalInstanceSvc>('../../sr
   '../../src/libs/file.ts': mockFileLib,
   '@effect/platform/HttpClient': mockHttpClient,
   '@effect/platform': { HttpClientRequest: mockHttpRequest },
-  '../../src/libs/local-network.ts': mockNetworkLib,
+  '../../src/libs/local-network.ts': { freePortsEffect: Effect.suspend(getFreePorts) },
   'effect': { Schedule: mockSchedule },
 });
 const run = LocalInstanceService.Default.pipe(
@@ -116,7 +116,7 @@ describe('Local Instance Service', () => {
       mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(false));
       const httpsPort = 1234;
       const httpPort = 5678;
-      mockNetworkLib.getFreePorts.returns(Effect.succeed([httpsPort, httpPort]));
+      getFreePorts.returns(Effect.succeed([httpsPort, httpPort]));
       const tmpDir = '/tmp/asdfasdfas';
       mockFileLib.createTmpDir.returns(Effect.succeed(tmpDir));
       const coreComposeName = 'cht-core.yml';
@@ -130,7 +130,7 @@ describe('Local Instance Service', () => {
       yield* LocalInstanceService.create(INSTANCE_NAME, version, Option.none());
 
       expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
-      expect(mockNetworkLib.getFreePorts.calledOnceWithExactly()).to.be.true;
+      expect(getFreePorts.calledOnceWithExactly()).to.be.true;
       expect(mockFileLib.createTmpDir.calledOnceWithExactly()).to.be.true;
       expect(mockFileLib.getRemoteFile.args).to.deep.equal([[coreComposeURL], [couchComposeURL]]);
       expect(mockFileLib.createDir.notCalled).to.be.true;
@@ -197,7 +197,7 @@ describe('Local Instance Service', () => {
       mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(false));
       const httpsPort = 1234;
       const httpPort = 5678;
-      mockNetworkLib.getFreePorts.returns(Effect.succeed([httpsPort, httpPort]));
+      getFreePorts.returns(Effect.succeed([httpsPort, httpPort]));
       const tmpDir = '/tmp/asdfasdfas';
       mockFileLib.createTmpDir.returns(Effect.succeed(tmpDir));
       mockFileLib.isDirectoryEmpty.returns(Effect.succeed(true));
@@ -213,7 +213,7 @@ describe('Local Instance Service', () => {
       yield* LocalInstanceService.create(INSTANCE_NAME, version, Option.some(dataDir));
 
       expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
-      expect(mockNetworkLib.getFreePorts.calledOnceWithExactly()).to.be.true;
+      expect(getFreePorts.calledOnceWithExactly()).to.be.true;
       expect(mockFileLib.createTmpDir.calledOnceWithExactly()).to.be.true;
       expect(mockFileLib.getRemoteFile.args).to.deep.equal([[coreComposeURL], [couchComposeURL]]);
       const expectedDataDirs = pipe(
@@ -289,7 +289,7 @@ describe('Local Instance Service', () => {
       mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(false));
       const httpsPort = 1234;
       const httpPort = 5678;
-      mockNetworkLib.getFreePorts.returns(Effect.succeed([httpsPort, httpPort]));
+      getFreePorts.returns(Effect.succeed([httpsPort, httpPort]));
       const tmpDir = '/tmp/asdfasdfas';
       mockFileLib.createTmpDir.returns(Effect.succeed(tmpDir));
       mockFileLib.isDirectoryEmpty.returns(Effect.succeed(false));
@@ -304,7 +304,7 @@ describe('Local Instance Service', () => {
 
       expect(either.left).to.deep.include(new Error(`Local directory ${dataDir} is not empty.`));
       expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
-      expect(mockNetworkLib.getFreePorts.calledOnceWithExactly()).to.be.true;
+      expect(getFreePorts.calledOnceWithExactly()).to.be.true;
       expect(mockFileLib.createTmpDir.calledOnceWithExactly()).to.be.true;
       expect(mockFileLib.isDirectoryEmpty.calledOnceWithExactly(dataDir)).to.be.true;
       expect(mockFileLib.createDir.notCalled).to.be.true;
@@ -320,7 +320,7 @@ describe('Local Instance Service', () => {
     it('returns error if chtx volume already exists with the same name', run(function* () {
       const version = '3.7.0';
       mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(true));
-      mockNetworkLib.getFreePorts.returns(Effect.succeed([1234, 5678]));
+      getFreePorts.returns(Effect.succeed([1234, 5678]));
       mockFileLib.createTmpDir.returns(Effect.succeed('/tmp/asdfasdfas'));
 
       const either = yield* LocalInstanceService
@@ -335,7 +335,7 @@ describe('Local Instance Service', () => {
       expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(
         `chtx.instance=${INSTANCE_NAME}`
       )).to.be.true;
-      expect(mockNetworkLib.getFreePorts.calledOnceWithExactly()).to.be.true;
+      expect(getFreePorts.notCalled).to.be.true;
       expect(mockFileLib.createTmpDir.calledOnceWithExactly()).to.be.true;
       expect(mockFileLib.getRemoteFile.notCalled).to.be.true;
       expect(mockFileLib.writeFile.notCalled).to.be.true;

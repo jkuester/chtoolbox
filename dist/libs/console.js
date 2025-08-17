@@ -10,9 +10,9 @@ import { Console, Effect, FiberRef, LogLevel, pipe } from 'effect';
 export const debugLoggingEnabled = FiberRef
     .get(FiberRef.currentMinimumLogLevel)
     .pipe(Effect.map(LogLevel.lessThanEqual(LogLevel.Debug)));
-export const clearConsole = Effect.void.pipe(Effect.filterEffectOrElse({
+export const clearConsoleEffect = Effect.void.pipe(Effect.filterEffectOrElse({
     predicate: () => debugLoggingEnabled,
     orElse: () => Console.clear
 }));
-export const clearThen = Effect.fn((printEffect) => clearConsole.pipe(Effect.tap(printEffect)));
+export const clearThen = Effect.fn((printEffect) => clearConsoleEffect.pipe(Effect.tap(printEffect)));
 export const logJson = Effect.fn((data) => pipe(JSON.stringify(data, null, 2), Console.log));
