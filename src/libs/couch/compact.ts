@@ -17,11 +17,12 @@ const getCompactRequest = Effect.fn((dbName: string, designName?: string) => pip
   buildRequest(dbName, designName),
 ));
 
-const compact = Effect.fn(
-  (dbName: string, designName?: string) => getCompactRequest(dbName, designName),
+const compact = Effect.fn((dbName: string, designName?: string) => pipe(
+  Effect.logDebug(`Compacting ${dbName}/${designName ?? ''}`),
+  Effect.andThen(getCompactRequest(dbName, designName)),
   Effect.flatMap(request => ChtClientService.request(request)),
   Effect.scoped,
-);
+));
 
 export const compactDb = Effect.fn((dbName: string) => compact(dbName));
 export const compactDesign = Effect.fn((dbName: string, designName: string) => compact(dbName, designName));

@@ -4,18 +4,24 @@ import { Scope } from 'effect/Scope';
 import * as Effect from 'effect/Effect';
 import { HttpClient, HttpClientRequest } from '@effect/platform';
 import * as Context from 'effect/Context';
-import { Redacted } from 'effect';
+import { pipe, Redacted } from 'effect';
 import { filterStatusOk, mapRequest } from '@effect/platform/HttpClient';
 
-const couchUrl = EnvironmentService
-  .get()
-  .pipe(Effect.map(({ url }) => url));
+const couchUrl = pipe(
+  EnvironmentService.get(),
+  Effect.map(({ url }) => url),
+  Effect.map(Redacted.value),
+);
 
-const clientWithUrl = couchUrl.pipe(
-  Effect.flatMap(url => HttpClient.HttpClient.pipe(
-    Effect.map(filterStatusOk),
-    Effect.map(mapRequest(HttpClientRequest.prependUrl(Redacted.value(url)))),
-  )),
+const getClientForUrl = Effect.fn((url: string) => pipe(
+  HttpClient.HttpClient,
+  Effect.map(mapRequest(HttpClientRequest.prependUrl(url))),
+));
+
+const clientWithUrl = pipe(
+  couchUrl,
+  Effect.flatMap(getClientForUrl),
+  Effect.map(filterStatusOk),
 );
 
 const serviceContext = Effect
