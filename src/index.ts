@@ -25,6 +25,8 @@ import { instance } from './commands/instance/index.ts';
 import { LocalInstanceService } from './services/local-instance.ts';
 import { localIp } from './commands/local-ip/index.ts';
 import { LocalIpService } from './services/local-ip.ts';
+import { SentinelBacklogService } from './services/sentinel-backlog.js';
+import { sentinelBacklog } from './commands/sentinel-backlog/index.js';
 
 const url = Options
   .text('url')
@@ -54,7 +56,7 @@ export const initializeUrl = chtx.pipe(
 );
 
 const command = chtx.pipe(Command.withSubcommands([
-  design, doc, localIp, monitor, warmViews, activeTasks, db, upgrade, instance
+  design, doc, localIp, monitor, warmViews, activeTasks, db, upgrade, instance, sentinelBacklog
 ]));
 
 const cli = Command.run(command, {
@@ -77,6 +79,7 @@ cli(process.argv)
     Effect.provide(UpgradeService.Default),
     Effect.provide(WarmViewsService.Default),
     Effect.provide(ReplicateService.Default),
+    Effect.provide(SentinelBacklogService.Default),
     Effect.provide(TestDataGeneratorService.Default),
     Effect.provide(PouchDBService.Default),
     Effect.provide(ChtClientService.Default.pipe(httpClientNoSslVerify)),
