@@ -189,14 +189,16 @@ const assertLocalVolumeEmpty = Effect.fn((localVolumePath: string) => isDirector
   Effect.map(() => localVolumePath),
 ));
 
+const createLocalVolumeDirsAtPath = Effect.fn((localVolumePath: string) => pipe(
+  Array.make(SUB_DIR_CREDENTIALS, SUB_DIR_COUCHDB, SUB_DIR_NOUVEAU, SUB_DIR_DOCKER_COMPOSE),
+  Array.map(subDir => `${localVolumePath}/${subDir}`),
+  Array.map(createDir),
+  Effect.allWith({ concurrency: 'unbounded' }),
+));
+
 const createLocalVolumeDirs = Effect.fn((localVolumePath: Option.Option<string>) => localVolumePath.pipe(
   Option.map(path => assertLocalVolumeEmpty(path)),
-  Option.map(Effect.flatMap(path => pipe(
-    Array.make(SUB_DIR_CREDENTIALS, SUB_DIR_COUCHDB, SUB_DIR_NOUVEAU, SUB_DIR_DOCKER_COMPOSE),
-    Array.map(subDir => `${path}/${subDir}`),
-    Array.map(createDir),
-    Effect.allWith({ concurrency: 'unbounded' }),
-  ))),
+  Option.map(Effect.flatMap(createLocalVolumeDirsAtPath)),
   Option.getOrElse(() => Effect.void),
 ));
 
