@@ -27,6 +27,8 @@ import { localIp } from './commands/local-ip/index.ts';
 import { LocalIpService } from './services/local-ip.ts';
 import { SentinelBacklogService } from './services/sentinel-backlog.js';
 import { sentinelBacklog } from './commands/sentinel-backlog/index.js';
+import { updatePasswordChangeRequired } from './commands/update-password-change-required.js';
+import { UserPermissionsService } from './services/user-permissions.js';
 
 const url = Options
   .text('url')
@@ -56,7 +58,8 @@ export const initializeUrl = chtx.pipe(
 );
 
 const command = chtx.pipe(Command.withSubcommands([
-  design, doc, localIp, monitor, warmViews, activeTasks, db, upgrade, instance, sentinelBacklog
+  design, doc, localIp, monitor, warmViews, activeTasks, db, upgrade, instance, sentinelBacklog,
+  updatePasswordChangeRequired
 ]));
 
 const cli = Command.run(command, {
@@ -70,6 +73,7 @@ const httpClientNoSslVerify = Layer.provide(NodeHttpClient.layerWithoutAgent.pip
 
 cli(process.argv)
   .pipe(
+    Effect.provide(UserPermissionsService.Default),
     Effect.provide(CompactService.Default),
     Effect.provide(MonitorService.Default),
     Effect.provide(LocalDiskUsageService.Default),
