@@ -15,8 +15,8 @@ const entry = resolve(__dirname, '..', 'src', 'index.ts');
 const result = spawnSync(
   'node',
   [
-    '--experimental-strip-types',
-    '--no-warnings=ExperimentalWarning',
+    '--import',
+    'tsx',
     entry,
     ...process.argv.slice(2)
   ],
