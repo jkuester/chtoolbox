@@ -14,15 +14,14 @@ class ChtMonitoringData extends Schema.Class<ChtMonitoringData>('ChtMonitoringDa
   static readonly decodeResponse = HttpClientResponse.schemaBodyJson(ChtMonitoringData);
 }
 
-const requestMonitoringData = Effect.fn(() => pipe(
+const requestMonitoringData = Effect.suspend(() => pipe(
   ENDPOINT,
   HttpClientRequest.get,
   ChtClientService.request
 ));
 
-export const chtMonitoringDataEffect = Effect
-  .suspend(requestMonitoringData)
-  .pipe(
-    Effect.flatMap(ChtMonitoringData.decodeResponse),
-    Effect.scoped,
-  );
+export const chtMonitoringDataEffect = pipe(
+  requestMonitoringData,
+  Effect.flatMap(ChtMonitoringData.decodeResponse),
+  Effect.scoped,
+);
