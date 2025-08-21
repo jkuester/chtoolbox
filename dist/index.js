@@ -27,6 +27,8 @@ import { localIp } from "./commands/local-ip/index.js";
 import { LocalIpService } from "./services/local-ip.js";
 import { SentinelBacklogService } from './services/sentinel-backlog.js';
 import { sentinelBacklog } from './commands/sentinel-backlog/index.js';
+import { updatePasswordChangeRequired } from './commands/update-password-change-required.js';
+import { UserPermissionsService } from './services/user-permissions.js';
 const url = Options
     .text('url')
     .pipe(Options.withDescription('The URL of the CouchDB server. Defaults to the COUCH_URL environment variable. Note that since this tool is ' +
@@ -36,7 +38,8 @@ const setEnv = Effect.fn((url) => Effect.flatMap(EnvironmentService, envSvc => e
 const getEnv = Effect.flatMap(EnvironmentService, envSvc => envSvc.get());
 export const initializeUrl = chtx.pipe(Effect.map(({ url }) => url), Effect.map(Option.map(Redacted.make)), Effect.map(Option.map(setEnv)), Effect.flatMap(Option.getOrElse(() => getEnv)), Effect.map(({ url }) => Redacted.value(url)), Effect.map(Option.liftPredicate(String.isNonEmpty)), Effect.map(Option.getOrThrowWith(() => new Error('A value must be set for the COUCH_URL envar or the --url option.'))));
 const command = chtx.pipe(Command.withSubcommands([
-    design, doc, localIp, monitor, warmViews, activeTasks, db, upgrade, instance, sentinelBacklog
+    design, doc, localIp, monitor, warmViews, activeTasks, db, upgrade, instance, sentinelBacklog,
+    updatePasswordChangeRequired
 ]));
 const cli = Command.run(command, {
     name: 'CHT Toolbox',
@@ -44,4 +47,4 @@ const cli = Command.run(command, {
 });
 const httpClientNoSslVerify = Layer.provide(NodeHttpClient.layerWithoutAgent.pipe(Layer.provide(NodeHttpClient.makeAgentLayer({ rejectUnauthorized: false }))));
 cli(process.argv)
-    .pipe(Effect.provide(CompactService.Default), Effect.provide(MonitorService.Default), Effect.provide(LocalDiskUsageService.Default), Effect.provide(LocalInstanceService.Default.pipe(httpClientNoSslVerify)), Effect.provide(LocalIpService.Default), Effect.provide(PurgeService.Default), Effect.provide(UpgradeService.Default), Effect.provide(WarmViewsService.Default), Effect.provide(ReplicateService.Default), Effect.provide(SentinelBacklogService.Default), Effect.provide(TestDataGeneratorService.Default), Effect.provide(PouchDBService.Default), Effect.provide(ChtClientService.Default.pipe(httpClientNoSslVerify)), Effect.provide(EnvironmentService.Default), Effect.provide(NodeContext.layer), NodeRuntime.runMain);
+    .pipe(Effect.provide(UserPermissionsService.Default), Effect.provide(CompactService.Default), Effect.provide(MonitorService.Default), Effect.provide(LocalDiskUsageService.Default), Effect.provide(LocalInstanceService.Default.pipe(httpClientNoSslVerify)), Effect.provide(LocalIpService.Default), Effect.provide(PurgeService.Default), Effect.provide(UpgradeService.Default), Effect.provide(WarmViewsService.Default), Effect.provide(ReplicateService.Default), Effect.provide(SentinelBacklogService.Default), Effect.provide(TestDataGeneratorService.Default), Effect.provide(PouchDBService.Default), Effect.provide(ChtClientService.Default.pipe(httpClientNoSslVerify)), Effect.provide(EnvironmentService.Default), Effect.provide(NodeContext.layer), NodeRuntime.runMain);

@@ -1,6 +1,6 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { Chunk, Match, Option, pipe, Redacted, Stream, StreamEmit, String } from 'effect';
+import { Chunk, Match, Option, pipe, Redacted, Stream, StreamEmit, String, Array } from 'effect';
 import PouchDB from 'pouchdb-core';
 import { pouchDB } from "../libs/core.js";
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
@@ -39,15 +39,9 @@ export const streamAllDocPages = (dbName) => Effect.fn((options = {}) => PouchDB
 //     Effect.map(Array.map(({ doc }) => doc)),
 //     Effect.map(Array.filter(Predicate.isNotNullable)),
 //   );
-// const bulkDocs = (dbName: string) => (
-//   docs: PouchDB.Core.PutDocument<object>[]
-// ) => PouchDBService
-//     .get(dbName)
-//     .pipe(
-//       Effect.flatMap(db => Effect.promise(() => db.bulkDocs(docs))),
-//       Effect.map(Array.map(getPouchResponse)),
-//       Effect.flatMap(Effect.all),
-//     );
+export const bulkDocs = (dbName) => Effect.fn((docs) => PouchDBService
+    .get(dbName)
+    .pipe(Effect.flatMap(db => Effect.promise(() => db.bulkDocs(docs))), Effect.map(Array.map(getPouchResponse)), Effect.flatMap(Effect.all)));
 //
 // export const deleteDocs = (dbName: string) => (
 //   docs: NonEmptyArray<Doc>

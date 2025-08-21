@@ -1,6 +1,6 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { Chunk, Match, Option, pipe, Redacted, Stream, StreamEmit, String } from 'effect';
+import { Chunk, Match, Option, pipe, Redacted, Stream, StreamEmit, String, Array } from 'effect';
 import PouchDB from 'pouchdb-core';
 import { pouchDB } from '../libs/core.ts';
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
@@ -73,15 +73,19 @@ type Doc = PouchDB.Core.AllDocsMeta & PouchDB.Core.IdMeta & PouchDB.Core.Revisio
 //     Effect.map(Array.filter(Predicate.isNotNullable)),
 //   );
 
-// const bulkDocs = (dbName: string) => (
-//   docs: PouchDB.Core.PutDocument<object>[]
-// ) => PouchDBService
-//     .get(dbName)
-//     .pipe(
-//       Effect.flatMap(db => Effect.promise(() => db.bulkDocs(docs))),
-//       Effect.map(Array.map(getPouchResponse)),
-//       Effect.flatMap(Effect.all),
-//     );
+export const bulkDocs = (
+  dbName: string
+): (
+  docs: PouchDB.Core.PutDocument<object>[]
+) => Effect.Effect<PouchDB.Core.Response[], PouchDB.Core.Error, PouchDBService> => Effect.fn((
+  docs
+) => PouchDBService
+  .get(dbName)
+  .pipe(
+    Effect.flatMap(db => Effect.promise(() => db.bulkDocs(docs))),
+    Effect.map(Array.map(getPouchResponse)),
+    Effect.flatMap(Effect.all),
+  ));
 //
 // export const deleteDocs = (dbName: string) => (
 //   docs: NonEmptyArray<Doc>
