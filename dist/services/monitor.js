@@ -2,14 +2,15 @@ import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { CouchDbInfo, getDbsInfoByName } from "../libs/couch/dbs-info.js";
 import { CouchDesignInfo, getDesignInfo } from "../libs/couch/design-info.js";
-import { CouchNodeSystem, getCouchNodeSystem } from "../libs/couch/node-system.js";
+import { CouchNodeSystem, couchNodeSystemEffect } from "../libs/couch/node-system.js";
 import { Array, Clock, Number, Option, pipe } from 'effect';
 import { LocalDiskUsageService } from "./local-disk-usage.js";
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { PlatformError } from '@effect/platform/Error';
 import { ChtClientService } from "./cht-client.js";
 import { getNouveauInfo, NouveauInfo } from "../libs/couch/nouveau-info.js";
-import { getChtMonitoringData } from "../libs/cht/monitoring.js";
+import { chtMonitoringDataEffect } from "../libs/cht/monitoring.js";
+import { mapErrorToGeneric } from '../libs/core.js';
 const currentTimeSec = Clock.currentTimeMillis.pipe(Effect.map(Number.unsafeDivide(1000)), Effect.map(Math.floor));
 const DB_NAMES = ['medic', 'medic-sentinel', 'medic-users-meta', '_users'];
 const VIEW_INDEXES_BY_DB = {
@@ -51,8 +52,8 @@ const emptyDesignInfo = {
         },
     },
 };
-const getCouchDesignInfosForDb = (dbName) => Effect.all(pipe(VIEW_INDEXES_BY_DB[dbName], Array.map(designName => getDesignInfo(dbName, designName)), Array.map(Effect.catchIf((error) => error instanceof ResponseError && error.response.status === 404, () => Effect.succeed(emptyDesignInfo)))), { concurrency: 'unbounded' });
-const getCouchDesignInfos = () => pipe(DB_NAMES, Array.map(getCouchDesignInfosForDb), Effect.allWith({ concurrency: 'unbounded' }));
+const getCouchDesignInfosForDb = Effect.fn((dbName) => Effect.all(pipe(VIEW_INDEXES_BY_DB[dbName], Array.map(designName => getDesignInfo(dbName, designName)), Array.map(Effect.catchIf((error) => error instanceof ResponseError && error.response.status === 404, () => Effect.succeed(emptyDesignInfo)))), { concurrency: 'unbounded' }));
+const getCouchDesignInfos = Effect.fn(() => pipe(DB_NAMES, Array.map(getCouchDesignInfosForDb), Effect.allWith({ concurrency: 'unbounded' })));
 const NOUVEAU_INDEXES_BY_DB = {
     medic: [
         ['medic', 'contacts_by_freetext'],
@@ -71,18 +72,18 @@ const emptyNouveauInfo = {
         num_docs: 0,
     },
 };
-const getNouveauInfosForDb = (dbName) => Effect.all(pipe(NOUVEAU_INDEXES_BY_DB[dbName], Array.map(([ddoc, index]) => getNouveauInfo(dbName, ddoc, index)), Array.map(Effect.catchIf((error) => error instanceof ResponseError && error.response.status === 404, () => Effect.succeed(emptyNouveauInfo)))), { concurrency: 'unbounded' });
-const getNouveauInfos = () => pipe(DB_NAMES, Array.map(getNouveauInfosForDb), Effect.allWith({ concurrency: 'unbounded' }));
-const getDirectorySize = (directory) => LocalDiskUsageService.pipe(Effect.flatMap(service => directory.pipe(Option.map(dir => service.getSize(dir)), Option.getOrElse(() => Effect.succeed(null)))), Effect.map(Option.fromNullable));
-const getChtMonitoring = () => getChtMonitoringData().pipe(Effect.catchAll((error) => {
+const getNouveauInfosForDb = Effect.fn((dbName) => Effect.all(pipe(NOUVEAU_INDEXES_BY_DB[dbName], Array.map(([ddoc, index]) => getNouveauInfo(dbName, ddoc, index)), Array.map(Effect.catchIf((error) => error instanceof ResponseError && error.response.status === 404, () => Effect.succeed(emptyNouveauInfo)))), { concurrency: 'unbounded' }));
+const getNouveauInfos = Effect.fn(() => pipe(DB_NAMES, Array.map(getNouveauInfosForDb), Effect.allWith({ concurrency: 'unbounded' })));
+const getDirectorySize = Effect.fn((directory) => LocalDiskUsageService.pipe(Effect.flatMap(service => directory.pipe(Option.map(dir => service.getSize(dir)), Option.getOrElse(() => Effect.succeed(null)))), Effect.map(Option.fromNullable)));
+const getChtMonitoring = Effect.fn(() => chtMonitoringDataEffect.pipe(Effect.catchAll((error) => {
     if (error instanceof ResponseError && error.response.status === 404) {
         return Effect.succeed({ version: { app: '', couchdb: '' } });
     }
     return Effect.fail(error);
-}));
-const getMonitoringData = (directory) => pipe(Effect.all([
+})));
+const getMonitoringData = Effect.fn((directory) => pipe(Effect.all([
     currentTimeSec,
-    getCouchNodeSystem(),
+    couchNodeSystemEffect,
     getDbsInfoByName(DB_NAMES),
     getCouchDesignInfos(),
     getNouveauInfos(),
@@ -98,7 +99,7 @@ const getMonitoringData = (directory) => pipe(Effect.all([
         nouveau_indexes: pipe(Array.get(nouveauInfos, i), Option.getOrThrow),
     })),
     directory_size
-})));
+}))));
 const getCsvHeader = (directory) => [
     'unix_time',
     'version_app',
@@ -122,7 +123,7 @@ const getCsvHeader = (directory) => [
     'memory_binary',
     ...(directory.pipe(Option.map(() => 'directory_size'), Option.map(Array.of), Option.getOrElse(() => []))),
 ];
-const getAsCsv = (directory) => pipe(getMonitoringData(directory), Effect.map(data => [
+const getAsCsv = Effect.fn((directory) => pipe(getMonitoringData(directory), Effect.map(data => [
     data.unix_time.toString(),
     data.version.app,
     data.version.couchdb,
@@ -144,7 +145,7 @@ const getAsCsv = (directory) => pipe(getMonitoringData(directory), Effect.map(da
     data.memory.processes_used.toString(),
     data.memory.binary.toString(),
     ...(data.directory_size.pipe(Option.map(value => value.toString()), Option.map(Array.of), Option.getOrElse(() => []))),
-]));
+])));
 const serviceContext = Effect
     .all([
     LocalDiskUsageService,
@@ -155,11 +156,11 @@ const serviceContext = Effect
     .pipe(Context.add(ChtClientService, chtClient))));
 export class MonitorService extends Effect.Service()('chtoolbox/MonitorService', {
     effect: serviceContext.pipe(Effect.map(context => ({
-        get: (directory) => getMonitoringData(directory)
-            .pipe(Effect.provide(context)),
+        get: Effect.fn((directory) => getMonitoringData(directory)
+            .pipe(mapErrorToGeneric, Effect.provide(context))),
         getCsvHeader,
-        getAsCsv: (directory) => getAsCsv(directory)
-            .pipe(Effect.provide(context)),
+        getAsCsv: Effect.fn((directory) => getAsCsv(directory)
+            .pipe(mapErrorToGeneric, Effect.provide(context))),
     }))),
     accessors: true,
 }) {

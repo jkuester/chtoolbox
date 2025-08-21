@@ -37,7 +37,7 @@ const follow = Options
   );
 
 export const warmViews = Command
-  .make('warm-views', { follow }, ({ follow }) => pipe(
+  .make('warm-views', { follow }, Effect.fn(({ follow }) => pipe(
     initializeUrl,
     Effect.tap(Console.log('Warming views...')),
     Effect.andThen(WarmViewsService.warmAll()),
@@ -47,5 +47,5 @@ export const warmViews = Command
         'View warming started. Watch the active tasks for progress: chtx active-tasks -f'
       )),
     )),
-  ))
+  )))
   .pipe(Command.withDescription(`Warm all view indexes.`));

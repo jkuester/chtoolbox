@@ -32,7 +32,7 @@ const url = Options
     .pipe(Options.withDescription('The URL of the CouchDB server. Defaults to the COUCH_URL environment variable. Note that since this tool is ' +
     'intended for testing/development usage, invalid SSL certificates (e.g. self-signed) are allowed by default.'), Options.optional);
 const chtx = Command.make('chtx', { url });
-const setEnv = (url) => Effect.flatMap(EnvironmentService, envSvc => envSvc.setUrl(url));
+const setEnv = Effect.fn((url) => Effect.flatMap(EnvironmentService, envSvc => envSvc.setUrl(url)));
 const getEnv = Effect.flatMap(EnvironmentService, envSvc => envSvc.get());
 export const initializeUrl = chtx.pipe(Effect.map(({ url }) => url), Effect.map(Option.map(Redacted.make)), Effect.map(Option.map(setEnv)), Effect.flatMap(Option.getOrElse(() => getEnv)), Effect.map(({ url }) => Redacted.value(url)), Effect.map(Option.liftPredicate(String.isNonEmpty)), Effect.map(Option.getOrThrowWith(() => new Error('A value must be set for the COUCH_URL envar or the --url option.'))));
 const command = chtx.pipe(Command.withSubcommands([

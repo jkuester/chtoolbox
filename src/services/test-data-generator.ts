@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 const tdgPath = fileURLToPath(import.meta.resolve('test-data-generator'));
 
-const tdgCommand = (designScriptPath: string) => EnvironmentService
+const tdgCommand = Effect.fn((designScriptPath: string) => EnvironmentService
   .get()
   .pipe(Effect.flatMap(env => Command
     .make('node', tdgPath, designScriptPath)
@@ -16,7 +16,7 @@ const tdgCommand = (designScriptPath: string) => EnvironmentService
       Command.stdout('inherit'),
       Command.stderr('inherit'),
       Command.exitCode,
-    )));
+    ))));
 
 const serviceContext = Effect
   .all([
@@ -36,13 +36,13 @@ export class TestDataGeneratorService extends Effect.Service<TestDataGeneratorSe
   'chtoolbox/TestDataGeneratorService',
   {
     effect: serviceContext.pipe(Effect.map(context => ({
-      generate: (designScriptPath: string): Effect.Effect<ExitCode, Error> => tdgCommand(designScriptPath)
+      generate: Effect.fn((designScriptPath: string): Effect.Effect<ExitCode, Error> => tdgCommand(designScriptPath)
         .pipe(
           Effect.mapError(x => x as unknown as Error),
           Effect.map(Option.liftPredicate(exitCode => exitCode === 0)),
           Effect.map(Option.getOrThrow),
           Effect.provide(context),
-        ),
+        )),
     }))),
     accessors: true,
   }

@@ -1,6 +1,14 @@
 import { Array, Effect, Function, Number, Option, Ref, Stream } from 'effect';
 import PouchDB from 'pouchdb-core';
 
+export const mapErrorToGeneric = <A, E, R>(
+  effect: Effect.Effect<A, E, R>
+): Effect.Effect<A, Error, R> => effect.pipe(Effect.mapError(x => x as unknown as Error));
+
+export const mapStreamErrorToGeneric = <A, E, R>(
+  stream: Stream.Stream<A, E, R>
+): Stream.Stream<A, Error, R> => stream.pipe(Stream.mapError(x => x as unknown as Error));
+
 /**
  * Returns a function that takes an array. The function will return `false` until
  * it has been called `target` times with an empty array.
@@ -10,14 +18,14 @@ import PouchDB from 'pouchdb-core';
 export const untilEmptyCount = (target: number): (data: unknown[]) => Effect.Effect<boolean> => Ref
   .unsafeMake(0)
   .pipe(
-    countRef => (data: unknown[]) => countRef.pipe(
+    countRef => Effect.fn((data: unknown[]) => countRef.pipe(
       Ref.get,
       Effect.map(Option.liftPredicate(() => Array.isEmptyArray(data))),
       Effect.map(Option.map(Number.increment)),
       Effect.map(Option.getOrElse(() => 0)),
       Effect.tap(count => countRef.pipe(Ref.set(count))),
       Effect.map(count => count === target),
-    ),
+    )),
   );
 
 /**

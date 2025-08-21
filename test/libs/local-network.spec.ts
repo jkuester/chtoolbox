@@ -12,7 +12,7 @@ const mockGetPort = sandbox.stub();
 const run = TestContext.TestContext.pipe(genWithLayer);
 const {
   getFreePort,
-  getFreePorts,
+  freePortsEffect,
   getLANIPAddress,
   getLocalIpUrl,
   getLocalIpUrlBasicAuth
@@ -50,7 +50,7 @@ describe('local network libs', () => {
     mockGetPort.onFirstCall().resolves(1234);
     mockGetPort.onSecondCall().resolves(5678);
 
-    const result = yield* getFreePorts();
+    const result = yield* freePortsEffect;
 
     expect(result).to.deep.equal([1234, 5678]);
     expect(mockGetPort.calledTwice).to.be.true;

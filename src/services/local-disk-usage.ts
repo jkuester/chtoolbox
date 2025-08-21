@@ -11,19 +11,19 @@ const parseSize = (output: string) => pipe(
   parseInt
 );
 
-const duCommand = (path: string) => Command
+const duCommand = Effect.fn((path: string) => Command
   .make('du', '-s', path)
   .pipe(
     Command.string,
     Effect.map(parseSize),
-  );
+  ));
 
 const serviceContext = CommandExecutor.pipe(Effect.map(executor => Context.make(CommandExecutor, executor)));
 
 export class LocalDiskUsageService extends Effect.Service<LocalDiskUsageService>()('chtoolbox/LocalDiskUsageService', {
   effect: serviceContext.pipe(Effect.map(context => ({
-    getSize: (path: string): Effect.Effect<number, Error | PlatformError> => duCommand(path)
-      .pipe(Effect.provide(context)),
+    getSize: Effect.fn((path: string): Effect.Effect<number, Error | PlatformError> => duCommand(path)
+      .pipe(Effect.provide(context))),
   }))),
   accessors: true,
 }) {

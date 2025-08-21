@@ -1,30 +1,28 @@
-import { Schema } from 'effect';
-import { HttpClientRequest } from '@effect/platform';
+import { Function, pipe, Schema, Tuple } from 'effect';
 import * as Effect from 'effect/Effect';
 import { ChtClientService } from '../../services/cht-client.ts';
+import { buildPostRequest } from '../http-client.js';
 
 const getDesignPath = (designName?: string) => designName ? `/${designName}` : '';
 
-const getCompactRequest = (dbName: string, designName?: string) => Schema
-  .Struct({})
-  .pipe(
-    HttpClientRequest.schemaBodyJson,
-    build => build(HttpClientRequest.post(`/${dbName}/_compact${getDesignPath(designName)}`), {}),
-    Effect.mapError(x => x as unknown as Error),
-  );
+const buildRequest = (dbName: string, designName?: string) => pipe(
+  getDesignPath(designName),
+  designPath => Tuple.make(`/${dbName}/_compact${designPath}`),
+  Tuple.appendElement(Schema.Struct({})),
+  Function.tupled(buildPostRequest)
+);
 
-const compact = (
-  dbName: string,
-  designName?: string
-) => getCompactRequest(dbName, designName)
-  .pipe(
-    Effect.flatMap(request => ChtClientService.request(request)),
-    Effect.andThen(Effect.void),
-    Effect.scoped,
-  );
+const getCompactRequest = Effect.fn((dbName: string, designName?: string) => pipe(
+  {}, // Empty body
+  buildRequest(dbName, designName),
+));
 
-export const compactDb = (dbName: string): Effect.Effect<void, Error, ChtClientService> => compact(dbName);
-export const compactDesign = (
-  dbName: string,
-  designName: string
-): Effect.Effect<void, Error, ChtClientService> => compact(dbName, designName);
+const compact = Effect.fn((dbName: string, designName?: string) => pipe(
+  Effect.logDebug(`Compacting ${dbName}/${designName ?? ''}`),
+  Effect.andThen(getCompactRequest(dbName, designName)),
+  Effect.flatMap(request => ChtClientService.request(request)),
+  Effect.scoped,
+));
+
+export const compactDb = Effect.fn((dbName: string) => compact(dbName));
+export const compactDesign = Effect.fn((dbName: string, designName: string) => compact(dbName, designName));

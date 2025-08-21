@@ -23,40 +23,42 @@ const isPouchResponse = (
   value: PouchDB.Core.Response | PouchDB.Core.Error
 ): value is PouchDB.Core.Response => 'ok' in value && value.ok;
 
-const getPouchResponse = (
+const getPouchResponse = Effect.fn((
   value: PouchDB.Core.Response | PouchDB.Core.Error
 ): Effect.Effect<PouchDB.Core.Response, PouchDB.Core.Error> => pipe(
   Option.liftPredicate(value, isPouchResponse),
   Option.map(Effect.succeed),
   Option.getOrElse(() => Effect.fail(value as PouchDB.Core.Error)),
-);
+));
 
 type AllDocsOptions = PouchDB.Core.AllDocsWithKeyOptions |
   PouchDB.Core.AllDocsWithinRangeOptions |
   PouchDB.Core.AllDocsOptions |
   PouchDB.Core.AllDocsWithKeysOptions;
 type AllDocsOptionsWithLimit = Omit<AllDocsOptions, 'limit'> & { limit: number };
-const allDocs = (db: PouchDB.Database, options: AllDocsOptions) => Effect
-  .promise(() => db.allDocs(options));
+const allDocs = Effect.fn((db: PouchDB.Database, options: AllDocsOptions) => Effect
+  .promise(() => db.allDocs(options)));
 const getAllDocsPage = (
   db: PouchDB.Database,
   options: AllDocsOptionsWithLimit,
-) => (
+) => Effect.fn((
   skip: number
 ): Effect.Effect<[PouchDB.Core.AllDocsResponse<object>, Option.Option<number>]> => allDocs(db, { skip, ...options })
   .pipe(Effect.map((response) => [
     response,
     Option.liftPredicate(skip + options.limit, () => response.rows.length === options.limit),
-  ]));
+  ])));
 export type AllDocsResponseStream = Stream.Stream<PouchDB.Core.AllDocsResponse<object>, Error>;
-export const streamAllDocPages = (dbName: string) => (
+export const streamAllDocPages = (
+  dbName: string
+): (o?: AllDocsOptions) => Effect.Effect<AllDocsResponseStream, never, PouchDBService> => Effect.fn((
   options: AllDocsOptions = {}
-): Effect.Effect<AllDocsResponseStream, never, PouchDBService> => PouchDBService
+) => PouchDBService
   .get(dbName)
   .pipe(
     Effect.map(db => getAllDocsPage(db, { ...options, limit: options.limit ?? 1000 })),
     Effect.map(pageFn => Stream.paginateEffect(0, pageFn)),
-  );
+  ));
 
 type Doc = PouchDB.Core.AllDocsMeta & PouchDB.Core.IdMeta & PouchDB.Core.RevisionIdMeta;
 
@@ -89,21 +91,25 @@ type Doc = PouchDB.Core.AllDocsMeta & PouchDB.Core.IdMeta & PouchDB.Core.Revisio
 //   bulkDocs(dbName),
 // );
 
-export const saveDoc = (dbName: string) => (
-  doc:  object
-): Effect.Effect<PouchDB.Core.Response, PouchDB.Core.Error, PouchDBService> => PouchDBService
-  .get(dbName)
-  .pipe(
-    Effect.flatMap(db => Effect.promise(() => db.put({
-      ...doc,
-      _id: (doc as { _id?: string })._id ?? uuid(),
-    }))),
-    Effect.flatMap(getPouchResponse),
-  );
+export const saveDoc = (
+  dbName: string
+): (d: object) => Effect.Effect<PouchDB.Core.Response, PouchDB.Core.Error, PouchDBService> => Effect.fn(
+  (doc) => PouchDBService
+    .get(dbName)
+    .pipe(
+      Effect.flatMap(db => Effect.promise(() => db.put({
+        ...doc,
+        _id: (doc as { _id?: string })._id ?? uuid(),
+      }))),
+      Effect.flatMap(getPouchResponse),
+    )
+);
 
-export const getDoc = (dbName: string) => (
-  id: string
-): Effect.Effect<Option.Option<Doc>, UnknownException, PouchDBService> => PouchDBService
+export const getDoc = (
+  dbName: string
+): (id: string) => Effect.Effect<Option.Option<Doc>, UnknownException, PouchDBService> => Effect.fn((
+  id
+) => PouchDBService
   .get(dbName)
   .pipe(
     Effect.flatMap(db => Effect.tryPromise(() => db.get(id))),
@@ -112,31 +118,36 @@ export const getDoc = (dbName: string) => (
       () => Effect.succeed(null)
     ),
     Effect.map(Option.fromNullable),
-  );
+  ));
 
 type QueryOptionsWithLimit = Omit<PouchDB.Query.Options<object, object>, 'limit'> & { limit: number };
-const query = (db: PouchDB.Database, viewIndex: string, options: QueryOptionsWithLimit) => Effect
-  .promise(() => db.query(viewIndex, options));
+const query = Effect.fn((db: PouchDB.Database, viewIndex: string, options: QueryOptionsWithLimit) => Effect
+  .promise(() => db.query(viewIndex, options)));
 const getQueryPage = (
   db: PouchDB.Database,
   viewIndex: string,
   options: QueryOptionsWithLimit
-) => (
+) => Effect.fn((
   skip: number
 ): Effect.Effect<[PouchDB.Query.Response<object>, Option.Option<number>]> => query(db, viewIndex, { skip, ...options })
   .pipe(Effect.map((response) => [
     response,
     Option.liftPredicate(skip + options.limit, () => response.rows.length === options.limit),
-  ]));
+  ])));
 
-export const streamQueryPages = (dbName: string, viewIndex: string) => (
-  options: PouchDB.Query.Options<object, object> = {}
-): Effect.Effect<Stream.Stream<PouchDB.Query.Response<object>>, never, PouchDBService> => PouchDBService
+export const streamQueryPages = (
+  dbName: string,
+  viewIndex: string
+): (
+  o?: PouchDB.Query.Options<object, object>
+) => Effect.Effect<Stream.Stream<PouchDB.Query.Response<object>>, never, PouchDBService> => Effect.fn((
+  options = {}
+) => PouchDBService
   .get(dbName)
   .pipe(
     Effect.map(db => getQueryPage(db, viewIndex, { ...options, limit: options.limit ?? 1000 })),
     Effect.map(pageFn => Stream.paginateEffect(0, pageFn)),
-  );
+  ));
 
 type ChangeEmit = StreamEmit.Emit<never, Error, PouchDB.Core.ChangesResponseChange<object>, void>;
 const failStreamForError = (emit: ChangeEmit) => (err: unknown) => Effect
@@ -151,20 +162,22 @@ const endStream = (emit: ChangeEmit) => () => Effect
     Effect.andThen(Effect.fail(Option.none())),
     emit,
   );
-const cancelChangesFeedIfInterrupted = (feed: PouchDB.Core.Changes<object>) => Effect
+const cancelChangesFeedIfInterrupted = Effect.fn((feed: PouchDB.Core.Changes<object>) => Effect
   .succeed(() => feed.cancel())
   .pipe(
     Effect.map(fn => fn()),
     Effect.andThen(Effect.logDebug('Changes feed canceled because the stream was interrupted')),
-  );
+  ));
 
-export const streamChanges = (dbName: string) => (
-  options?: PouchDB.Core.ChangesOptions
-): Effect.Effect<
+export const streamChanges = (
+  dbName: string
+): (o?: PouchDB.Core.ChangesOptions) => Effect.Effect<
   Stream.Stream<PouchDB.Core.ChangesResponseChange<object>, Error>,
   never,
   PouchDBService
-> => PouchDBService
+> => Effect.fn((
+  options
+) => PouchDBService
   .get(dbName)
   .pipe(Effect.map(db => pipe(
     { since: options?.since ?? 0 }, // Caching the since value in case the Stream is retried
@@ -182,7 +195,7 @@ export const streamChanges = (dbName: string) => (
           )),
       cancelChangesFeedIfInterrupted,
     )),
-  )));
+  ))));
 
 const couchUrl = EnvironmentService
   .get()
@@ -195,11 +208,11 @@ const getAgent = (url: string) => Match
     Match.orElse(() => undefined),
   );
 
-const getPouchDB = (dbName: string) => couchUrl.pipe(Effect.map(url => pouchDB(
+const getPouchDB = Effect.fn((dbName: string) => couchUrl.pipe(Effect.map(url => pouchDB(
   `${Redacted.value(url)}${dbName}`,
   // @ts-expect-error Setting the `agent` option is not in the PouchDB types for some reason
   { fetch: (url, opts) => PouchDB.fetch(url, { ...opts, agent: getAgent(url) }) }
-)));
+))));
 
 const serviceContext = EnvironmentService.pipe(Effect.map(env => Context.make(EnvironmentService, env)));
 
@@ -210,8 +223,8 @@ export class PouchDBService extends Effect.Service<PouchDBService>()('chtoolbox/
       Effect.cachedFunction(getPouchDB),
     ])
     .pipe(Effect.map(([context, memoizedGetPouchDb]) => ({
-      get: (dbName: string) => memoizedGetPouchDb(dbName)
-        .pipe(Effect.provide(context)),
+      get: Effect.fn((dbName: string) => memoizedGetPouchDb(dbName)
+        .pipe(Effect.provide(context))),
     }))),
   accessors: true,
 }) {

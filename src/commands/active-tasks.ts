@@ -2,8 +2,8 @@ import { Command, Options } from '@effect/cli';
 import { Array, Console, DateTime, Effect, Number, Option, pipe, Stream, String } from 'effect';
 import { initializeUrl } from '../index.ts';
 import {
+  activeTasksEffect,
   CouchActiveTask,
-  getActiveTasks,
   getDbName,
   getDesignName,
   getDisplayDictByPid,
@@ -37,7 +37,7 @@ const getPrintableTasks = (tasks: CouchActiveTask[]) => pipe(
   Option.getOrElse(() => 'No active tasks.'),
 );
 
-const printCurrentTasks = getActiveTasks()
+const printCurrentTasks = activeTasksEffect
   .pipe(
     Effect.map(getPrintableTasks),
     Effect.tap(Console.table),
@@ -56,9 +56,9 @@ const follow = Options
   );
 
 export const activeTasks = Command
-  .make('active-tasks', { follow }, ({ follow }) => initializeUrl.pipe(
+  .make('active-tasks', { follow }, Effect.fn(({ follow }) => initializeUrl.pipe(
     Effect.andThen(followActiveTasks),
     Option.liftPredicate(() => follow),
     Option.getOrElse(() => printCurrentTasks),
-  ))
+  )))
   .pipe(Command.withDescription(`Force compaction on databases and views.`));

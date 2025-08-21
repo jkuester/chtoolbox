@@ -1,22 +1,21 @@
-import { HttpClientRequest } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import { ChtClientService } from "../../services/cht-client.js";
 import { ResponseError } from '@effect/platform/HttpClientError';
-import { Schema } from 'effect';
+import { pipe, Schema } from 'effect';
+import { buildPostRequest } from '../http-client.js';
 const ENDPOINT_UPGRADE = '/api/v1/upgrade';
 const ENDPOINT_STAGE = `${ENDPOINT_UPGRADE}/stage`;
 const ENDPOINT_COMPLETE = `${ENDPOINT_UPGRADE}/complete`;
+const NAMESPACE = 'medic';
+const APPLICATION = 'medic';
 const UpgradeBody = Schema.Struct({
     build: Schema.Struct({
-        namespace: Schema.Literal('medic'),
-        application: Schema.Literal('medic'),
+        namespace: Schema.Literal(NAMESPACE),
+        application: Schema.Literal(APPLICATION),
         version: Schema.String,
     })
 });
-const getPostRequest = (endpoint, version) => UpgradeBody.pipe(HttpClientRequest.schemaBodyJson, build => build(HttpClientRequest.post(endpoint), { build: { version, namespace: 'medic', application: 'medic' } }), Effect.mapError(x => x));
-const postUpgrade = (endpoint, version) => getPostRequest(endpoint, version)
-    .pipe(Effect.flatMap(ChtClientService.request), Effect.scoped);
-export const upgradeCht = (version) => postUpgrade(ENDPOINT_UPGRADE, version);
-export const stageChtUpgrade = (version) => postUpgrade(ENDPOINT_STAGE, version);
-export const completeChtUpgrade = (version) => postUpgrade(ENDPOINT_COMPLETE, version)
-    .pipe(Effect.catchIf((err) => err instanceof ResponseError && err.response.status === 502, () => Effect.void), Effect.scoped);
+const postUpgrade = (endpoint) => Effect.fn((version) => pipe({ build: { version, namespace: NAMESPACE, application: APPLICATION } }, buildPostRequest(endpoint, UpgradeBody), Effect.flatMap(ChtClientService.request), Effect.scoped));
+export const upgradeCht = postUpgrade(ENDPOINT_UPGRADE);
+export const stageChtUpgrade = postUpgrade(ENDPOINT_STAGE);
+export const completeChtUpgrade = Effect.fn((version) => pipe(version, postUpgrade(ENDPOINT_COMPLETE), Effect.catchIf((err) => err instanceof ResponseError && err.response.status === 502, () => Effect.void), Effect.scoped));

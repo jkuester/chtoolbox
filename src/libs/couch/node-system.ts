@@ -1,4 +1,4 @@
-import { Schema } from 'effect';
+import { pipe, Schema } from 'effect';
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import { ChtClientService } from '../../services/cht-client.ts';
@@ -14,9 +14,9 @@ export class CouchNodeSystem extends Schema.Class<CouchNodeSystem>('CouchNodeSys
   static readonly decodeResponse = HttpClientResponse.schemaBodyJson(CouchNodeSystem);
 }
 
-export const getCouchNodeSystem = (): Effect.Effect<CouchNodeSystem, Error, ChtClientService> => ChtClientService
-  .request(HttpClientRequest.get(ENDPOINT))
-  .pipe(
-    Effect.flatMap(CouchNodeSystem.decodeResponse),
-    Effect.scoped,
-  );
+export const couchNodeSystemEffect = Effect.suspend(() => pipe(
+  HttpClientRequest.get(ENDPOINT),
+  ChtClientService.request,
+  Effect.flatMap(CouchNodeSystem.decodeResponse),
+  Effect.scoped,
+));

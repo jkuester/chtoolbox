@@ -7,19 +7,19 @@ const getConfirmationPrompt = (names: string[]) => Prompt.confirm({
   initial: false,
 });
 
-const isRemoveConfirmed = (names: string[], yes: boolean) => Effect
+const isRemoveConfirmed = Effect.fn((names: string[], yes: boolean) => Effect
   .succeed(true)
   .pipe(Effect.filterOrElse(
     () => yes,
     () => getConfirmationPrompt(names),
-  ));
+  )));
 
-const rmChtInstances = (names: string[]) => pipe(
+const rmChtInstances = Effect.fn((names: string[]) => pipe(
   names,
   Array.map(LocalInstanceService.rm),
   Effect.allWith({ concurrency: 'unbounded' }),
   Effect.andThen(Console.log('CHT instance(s) removed')),
-);
+));
 
 const yes = Options
   .boolean('yes')
@@ -36,11 +36,11 @@ const names = Args
   );
 
 export const rm = Command
-  .make('rm', { names, yes }, ({ names, yes }) => isRemoveConfirmed(names, yes)
+  .make('rm', { names, yes }, Effect.fn(({ names, yes }) => isRemoveConfirmed(names, yes)
     .pipe(
       Effect.map(removeConfirmed => Option.liftPredicate(rmChtInstances(names), () => removeConfirmed)),
       Effect.flatMap(Option.getOrElse(() => Console.log('Operation cancelled'))),
-    ))
+    )))
   .pipe(Command.withDescription(
     'LOCAL ONLY: Remove a local CHT instance, completely deleting all associated data. ' +
     'If the data for this instance was mapped to a local directory when the instance was created (via the ' +

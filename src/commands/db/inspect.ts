@@ -13,8 +13,8 @@ const databases = Args
   );
 
 export const inspect = Command
-  .make('inspect', { databases }, ({ databases }) => initializeUrl.pipe(
+  .make('inspect', { databases }, Effect.fn(({ databases }) => initializeUrl.pipe(
     Effect.andThen(getDbsInfoByName(databases)),
     Effect.tap(logJson),
-  ))
+  )))
   .pipe(Command.withDescription(`Display detailed information on one or more Couch databases`));

@@ -1,7 +1,7 @@
 import { Args, Command, Options } from '@effect/cli';
 import { Array, Effect, pipe } from 'effect';
 import { LocalInstanceService } from "../../services/local-instance.js";
-const setSSLCertOnInstances = (names, type) => pipe(names, Array.map(name => LocalInstanceService.setSSLCerts(name, type)), Effect.allWith({ concurrency: 'unbounded' }));
+const setSSLCertOnInstances = Effect.fn((names, type) => pipe(names, Array.map(name => LocalInstanceService.setSSLCerts(name, type)), Effect.allWith({ concurrency: 'unbounded' })));
 const type = Options
     .choice('type', ['local-ip', 'self-signed', 'expired'])
     .pipe(Options.withAlias('t'), Options.withDescription('Type of SSL cert to set.'));

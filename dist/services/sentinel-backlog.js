@@ -4,6 +4,7 @@ import { getDoc, PouchDBService, saveDoc } from "./pouchdb.js";
 import { Array, Option, pipe, Record, Schema } from 'effect';
 import { ChtClientService } from "./cht-client.js";
 import { getDbsInfoByName } from "../libs/couch/dbs-info.js";
+import { mapErrorToGeneric } from '../libs/core.js';
 class LocalTransitionsSeq extends Schema.Class('LocalTransitionsSeq')({
     value: Schema.String,
 }) {
@@ -21,7 +22,7 @@ const serviceContext = Effect
     .pipe(Context.add(ChtClientService, chtClient))));
 export class SentinelBacklogService extends Effect.Service()('chtoolbox/SentinelBacklogService', {
     effect: serviceContext.pipe(Effect.map(context => ({
-        getMedicUpdateSeq: () => pipe(medicUpdateSeqEffect, Effect.provide(context)),
+        getMedicUpdateSeq: () => pipe(medicUpdateSeqEffect, mapErrorToGeneric, Effect.provide(context)),
         getTransitionsSeq: () => pipe(localTransitionsSeqEffect, Effect.map(({ value }) => value), Effect.provide(context)),
         setTransitionsSeq: (value) => pipe(setLocalTransitionsSeq(value), Effect.mapError(x => x), Effect.asVoid, Effect.provide(context)),
     }))),

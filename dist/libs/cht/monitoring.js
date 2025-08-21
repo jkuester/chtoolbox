@@ -1,9 +1,9 @@
 import { HttpClientRequest, HttpClientResponse } from '@effect/platform';
 import * as Effect from 'effect/Effect';
 import { ChtClientService } from "../../services/cht-client.js";
-import { Schema } from 'effect';
+import { pipe, Schema } from 'effect';
 const ENDPOINT = '/api/v2/monitoring';
-export class ChtMonitoringData extends Schema.Class('ChtMonitoringData')({
+class ChtMonitoringData extends Schema.Class('ChtMonitoringData')({
     version: Schema.Struct({
         app: Schema.String,
         couchdb: Schema.String,
@@ -11,6 +11,7 @@ export class ChtMonitoringData extends Schema.Class('ChtMonitoringData')({
 }) {
     static decodeResponse = HttpClientResponse.schemaBodyJson(ChtMonitoringData);
 }
-export const getChtMonitoringData = () => ChtClientService
-    .request(HttpClientRequest.get(ENDPOINT))
+const requestMonitoringData = Effect.fn(() => pipe(ENDPOINT, HttpClientRequest.get, ChtClientService.request));
+export const chtMonitoringDataEffect = Effect
+    .suspend(requestMonitoringData)
     .pipe(Effect.flatMap(ChtMonitoringData.decodeResponse), Effect.scoped);

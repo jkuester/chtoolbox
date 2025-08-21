@@ -2,11 +2,11 @@ import { Args, Command, Options } from '@effect/cli';
 import { Array, Effect, pipe } from 'effect';
 import { LocalInstanceService, type SSLType } from '../../services/local-instance.ts';
 
-const setSSLCertOnInstances = (names: string[], type: SSLType) => pipe(
+const setSSLCertOnInstances = Effect.fn((names: string[], type: SSLType) => pipe(
   names,
   Array.map(name => LocalInstanceService.setSSLCerts(name, type)),
   Effect.allWith({ concurrency: 'unbounded' }),
-);
+));
 
 const type = Options
   .choice('type', ['local-ip', 'self-signed', 'expired'])

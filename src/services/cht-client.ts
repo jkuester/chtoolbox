@@ -7,15 +7,21 @@ import * as Context from 'effect/Context';
 import { pipe, Redacted } from 'effect';
 import { filterStatusOk, mapRequest } from '@effect/platform/HttpClient';
 
-const couchUrl = EnvironmentService
-  .get()
-  .pipe(Effect.map(({ url }) => url));
+const couchUrl = pipe(
+  EnvironmentService.get(),
+  Effect.map(({ url }) => url),
+  Effect.map(Redacted.value),
+);
 
-const clientWithUrl = couchUrl.pipe(
-  Effect.flatMap(url => HttpClient.HttpClient.pipe(
-    Effect.map(filterStatusOk),
-    Effect.map(mapRequest(HttpClientRequest.prependUrl(Redacted.value(url)))),
-  )),
+const getClientForUrl = Effect.fn((url: string) => pipe(
+  HttpClient.HttpClient,
+  Effect.map(mapRequest(HttpClientRequest.prependUrl(url))),
+));
+
+const clientWithUrl = pipe(
+  couchUrl,
+  Effect.flatMap(getClientForUrl),
+  Effect.map(filterStatusOk),
 );
 
 const serviceContext = Effect
@@ -29,12 +35,13 @@ const serviceContext = Effect
 
 export class ChtClientService extends Effect.Service<ChtClientService>()('chtoolbox/ChtClientService', {
   effect: serviceContext.pipe(Effect.map(context => ({
-    request: (request: HttpClientRequest.HttpClientRequest): Effect.Effect<HttpClientResponse, Error, Scope> => pipe(
-      clientWithUrl,
+    request: Effect.fn((
+      request: HttpClientRequest.HttpClientRequest
+    ): Effect.Effect<HttpClientResponse, Error, Scope> => clientWithUrl.pipe(
       Effect.flatMap(client => client.execute(request)),
       Effect.mapError(x => x as Error),
       Effect.provide(context),
-    )
+    )),
   }))),
   accessors: true,
 }) {

@@ -30,7 +30,7 @@ const buildDictByName = (dict: Record<string, Record<string, string>>, instance:
 );
 const getInstanceDisplayDictByName = (instances: LocalChtInstance[]) => Array.reduce(instances, {}, buildDictByName);
 
-export const printInstanceTable = (instances: LocalChtInstance[]): Effect.Effect<void> => Match
+export const printInstanceTable = Effect.fn((instances: LocalChtInstance[]): Effect.Effect<void> => Match
   .value(Array.isEmptyArray(instances))
   .pipe(
     Match.when(true, () => Console.log('No instances found')),
@@ -38,25 +38,25 @@ export const printInstanceTable = (instances: LocalChtInstance[]): Effect.Effect
       getInstanceDisplayDictByName(instances),
       Console.table,
     )),
-  );
+  ));
 
-const printUrls = (instances: LocalChtInstance[]) => pipe(
+const printUrls = Effect.fn((instances: LocalChtInstance[]) => pipe(
   instances,
   Array.map(getLocalIpUrlBasicAuth),
   Array.map(Option.map(Console.log)),
   Array.map(Option.getOrElse(() => Effect.void)),
   Effect.all,
-);
+));
 
 const print = (names: string[]) => Match
   .value(Array.isEmptyArray(names))
   .pipe(
     Match.when(true, () => printInstanceTable),
-    Match.orElse(() => (instances: LocalChtInstance[]) => pipe(
+    Match.orElse(() => Effect.fn((instances: LocalChtInstance[]): Effect.Effect<void> => pipe(
       instances,
       Array.filter(filterInstances(names)),
       printUrls,
-    )),
+    ))),
   );
 
 const names = Args

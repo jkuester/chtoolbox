@@ -92,7 +92,7 @@ describe('Local IP Service', () => {
       if (Either.isRight(either)) {
         expect.fail('Expected error');
       }
-      expect(either.left).to.deep.equal(
+      expect(either.left).to.deep.include(
         new Error(`Local-ip instance already exists for port [${TO_PORT.toString()}].`)
       );
       expect(mockDockerLib.doesContainerExist.calledOnceWithExactly(`chtx_local_ip_${TO_PORT.toString()}`)).to.be.true;
@@ -114,7 +114,7 @@ describe('Local IP Service', () => {
       if (Either.isRight(either)) {
         expect.fail('Expected error');
       }
-      expect(either.left).to.deep.equal(new Error(`Port [${fromPort.toString()}] is not available.`));
+      expect(either.left).to.deep.include(new Error(`Port [${fromPort.toString()}] is not available.`));
       expect(mockDockerLib.doesContainerExist.calledOnceWithExactly(`chtx_local_ip_${TO_PORT.toString()}`)).to.be.true;
       expect(mockDockerLib.pullImage.calledOnceWithExactly('medicmobile/nginx-local-ip')).to.be.true;
       expect(mockNetworkLib.getFreePort.calledOnceWithExactly({ port: fromPort })).to.be.true;
@@ -161,7 +161,7 @@ describe('Local IP Service', () => {
       if (Either.isRight(either)) {
         expect.fail('Expected error');
       }
-      expect(either.left).to.deep.equal(expectedError);
+      expect(either.left).to.deep.include(expectedError);
       expect(mockDockerLib.rmContainer.calledOnceWithExactly(`chtx_local_ip_${TO_PORT.toString()}`)).to.be.true;
     }));
   });

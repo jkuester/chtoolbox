@@ -14,7 +14,7 @@ export class CouchActiveTask extends Schema.Class<CouchActiveTask>('CouchActiveT
   started_on: Schema.Number,
   type: Schema.String,
 }) {
-  static readonly decodeResponse = HttpClientResponse.schemaBodyJson(Schema.Array(CouchActiveTask));
+  static readonly decodeResponse = Schema.Array(CouchActiveTask).pipe(HttpClientResponse.schemaBodyJson);
 }
 
 export const getDesignName = (task: CouchActiveTask): Option.Option<string> => Option
@@ -45,7 +45,10 @@ export const getProgressPct = (task: CouchActiveTask): string => Option
 
 const removePid = Record.remove('pid');
 const addByPid = (task: { pid: string }) => Record.set(task.pid, removePid(task));
-const buildDictByPid = (dict: Record<string, Record<string, string>>, task: { pid: string }) => pipe(
+const buildDictByPid = (
+  dict: Record<string, Record<string, string>>,
+  task: { pid: string }
+) => pipe(
   dict,
   addByPid(task),
 );
@@ -65,18 +68,16 @@ const orderByStartedOn = Order.make(
   (a: CouchActiveTask, b: CouchActiveTask) => Number.Order(a.started_on, b.started_on)
 );
 
-const activeTasks = ChtClientService.pipe(
+export const activeTasksEffect = Effect.suspend(() => ChtClientService.pipe(
   Effect.flatMap(couch => couch.request(HttpClientRequest.get(ENDPOINT))),
   Effect.flatMap(CouchActiveTask.decodeResponse),
   Effect.scoped,
   Effect.map(Array.sort(orderByStartedOn)),
-);
-
-export const getActiveTasks = (): Effect.Effect<CouchActiveTask[], Error, ChtClientService> => activeTasks;
+));
 
 export type CouchActiveTaskStream = Stream.Stream<CouchActiveTask[], Error, ChtClientService>;
 
 export const streamActiveTasks = (interval = 1000): CouchActiveTaskStream => Stream.repeat(
-  activeTasks,
+  activeTasksEffect,
   Schedule.spaced(interval)
 );

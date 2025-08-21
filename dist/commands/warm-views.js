@@ -17,5 +17,5 @@ const follow = Options
     .boolean('follow')
     .pipe(Options.withAlias('f'), Options.withDescription('After triggering warming, wait for all indexing jobs to complete.'));
 export const warmViews = Command
-    .make('warm-views', { follow }, ({ follow }) => pipe(initializeUrl, Effect.tap(Console.log('Warming views...')), Effect.andThen(WarmViewsService.warmAll()), Effect.andThen(() => followIndexing.pipe(Option.liftPredicate(() => follow), Option.getOrElse(() => Console.log('View warming started. Watch the active tasks for progress: chtx active-tasks -f'))))))
+    .make('warm-views', { follow }, Effect.fn(({ follow }) => pipe(initializeUrl, Effect.tap(Console.log('Warming views...')), Effect.andThen(WarmViewsService.warmAll()), Effect.andThen(() => followIndexing.pipe(Option.liftPredicate(() => follow), Option.getOrElse(() => Console.log('View warming started. Watch the active tasks for progress: chtx active-tasks -f')))))))
     .pipe(Command.withDescription(`Warm all view indexes.`));

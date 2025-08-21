@@ -1,12 +1,11 @@
-import { Schema } from 'effect';
-import { HttpClientRequest } from '@effect/platform';
+import { Function, pipe, Schema, Tuple } from 'effect';
 import * as Effect from 'effect/Effect';
 import { ChtClientService } from "../../services/cht-client.js";
+import { buildPostRequest } from '../http-client.js';
 const getDesignPath = (designName) => designName ? `/${designName}` : '';
-const getCompactRequest = (dbName, designName) => Schema
-    .Struct({})
-    .pipe(HttpClientRequest.schemaBodyJson, build => build(HttpClientRequest.post(`/${dbName}/_compact${getDesignPath(designName)}`), {}), Effect.mapError(x => x));
-const compact = (dbName, designName) => getCompactRequest(dbName, designName)
-    .pipe(Effect.flatMap(request => ChtClientService.request(request)), Effect.andThen(Effect.void), Effect.scoped);
-export const compactDb = (dbName) => compact(dbName);
-export const compactDesign = (dbName, designName) => compact(dbName, designName);
+const buildRequest = (dbName, designName) => pipe(getDesignPath(designName), designPath => Tuple.make(`/${dbName}/_compact${designPath}`), Tuple.appendElement(Schema.Struct({})), Function.tupled(buildPostRequest));
+const getCompactRequest = Effect.fn((dbName, designName) => pipe({}, // Empty body
+buildRequest(dbName, designName)));
+const compact = Effect.fn((dbName, designName) => pipe(Effect.logDebug(`Compacting ${dbName}/${designName ?? ''}`), Effect.andThen(getCompactRequest(dbName, designName)), Effect.flatMap(request => ChtClientService.request(request)), Effect.scoped));
+export const compactDb = Effect.fn((dbName) => compact(dbName));
+export const compactDesign = Effect.fn((dbName, designName) => compact(dbName, designName));

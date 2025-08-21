@@ -3,11 +3,11 @@ import { Array, Effect, pipe, Option } from 'effect';
 import { LocalInstanceService } from '../../services/local-instance.ts';
 import { printInstanceTable } from './ls.ts';
 
-const startChtInstances = (names: string[], directory: Option.Option<string>) => pipe(
+const startChtInstances = Effect.fn((names: string[], directory: Option.Option<string>) => pipe(
   names,
   Array.map(name => LocalInstanceService.start(name, directory.pipe(Option.map(dir => `${dir}/${name}`)))),
   Effect.allWith({ concurrency: 'unbounded' }),
-);
+));
 
 const directory = Options
   .directory('directory', { exists: 'yes' })
@@ -29,8 +29,8 @@ const names = Args
   );
 
 export const start = Command
-  .make('start', { names, directory }, ({ names, directory }) => startChtInstances(names, directory)
-    .pipe(Effect.flatMap(printInstanceTable)))
+  .make('start', { names, directory }, Effect.fn(({ names, directory }) => startChtInstances(names, directory)
+    .pipe(Effect.flatMap(printInstanceTable))))
   .pipe(Command.withDescription(
     'LOCAL ONLY: Start a local CHT instance. The instance must already have been created. ' +
     'Requires Docker and Docker Compose.'

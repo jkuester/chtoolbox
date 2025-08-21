@@ -51,7 +51,7 @@ const mockHttpRequest = { get: sandbox.stub() };
 const mockFileSystem = {
   readFileString: sandbox.stub(),
 };
-const mockNetworkLib = { getFreePorts: sandbox.stub() };
+const getFreePorts = sandbox.stub();
 const mockSchedule = { spaced: sandbox.stub() };
 const httpClientExecute = sandbox.stub();
 
@@ -60,7 +60,7 @@ const { LocalInstanceService } = await esmock<typeof LocalInstanceSvc>('../../sr
   '../../src/libs/file.ts': mockFileLib,
   '@effect/platform/HttpClient': mockHttpClient,
   '@effect/platform': { HttpClientRequest: mockHttpRequest },
-  '../../src/libs/local-network.ts': mockNetworkLib,
+  '../../src/libs/local-network.ts': { freePortsEffect: Effect.suspend(getFreePorts) },
   'effect': { Schedule: mockSchedule },
 });
 const run = LocalInstanceService.Default.pipe(
@@ -116,7 +116,7 @@ describe('Local Instance Service', () => {
       mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(false));
       const httpsPort = 1234;
       const httpPort = 5678;
-      mockNetworkLib.getFreePorts.returns(Effect.succeed([httpsPort, httpPort]));
+      getFreePorts.returns(Effect.succeed([httpsPort, httpPort]));
       const tmpDir = '/tmp/asdfasdfas';
       mockFileLib.createTmpDir.returns(Effect.succeed(tmpDir));
       const coreComposeName = 'cht-core.yml';
@@ -130,7 +130,7 @@ describe('Local Instance Service', () => {
       yield* LocalInstanceService.create(INSTANCE_NAME, version, Option.none());
 
       expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
-      expect(mockNetworkLib.getFreePorts.calledOnceWithExactly()).to.be.true;
+      expect(getFreePorts.calledOnceWithExactly()).to.be.true;
       expect(mockFileLib.createTmpDir.calledOnceWithExactly()).to.be.true;
       expect(mockFileLib.getRemoteFile.args).to.deep.equal([[coreComposeURL], [couchComposeURL]]);
       expect(mockFileLib.createDir.notCalled).to.be.true;
@@ -197,7 +197,7 @@ describe('Local Instance Service', () => {
       mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(false));
       const httpsPort = 1234;
       const httpPort = 5678;
-      mockNetworkLib.getFreePorts.returns(Effect.succeed([httpsPort, httpPort]));
+      getFreePorts.returns(Effect.succeed([httpsPort, httpPort]));
       const tmpDir = '/tmp/asdfasdfas';
       mockFileLib.createTmpDir.returns(Effect.succeed(tmpDir));
       mockFileLib.isDirectoryEmpty.returns(Effect.succeed(true));
@@ -213,7 +213,7 @@ describe('Local Instance Service', () => {
       yield* LocalInstanceService.create(INSTANCE_NAME, version, Option.some(dataDir));
 
       expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
-      expect(mockNetworkLib.getFreePorts.calledOnceWithExactly()).to.be.true;
+      expect(getFreePorts.calledOnceWithExactly()).to.be.true;
       expect(mockFileLib.createTmpDir.calledOnceWithExactly()).to.be.true;
       expect(mockFileLib.getRemoteFile.args).to.deep.equal([[coreComposeURL], [couchComposeURL]]);
       const expectedDataDirs = pipe(
@@ -289,7 +289,7 @@ describe('Local Instance Service', () => {
       mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(false));
       const httpsPort = 1234;
       const httpPort = 5678;
-      mockNetworkLib.getFreePorts.returns(Effect.succeed([httpsPort, httpPort]));
+      getFreePorts.returns(Effect.succeed([httpsPort, httpPort]));
       const tmpDir = '/tmp/asdfasdfas';
       mockFileLib.createTmpDir.returns(Effect.succeed(tmpDir));
       mockFileLib.isDirectoryEmpty.returns(Effect.succeed(false));
@@ -302,9 +302,9 @@ describe('Local Instance Service', () => {
         expect.fail('Expected error');
       }
 
-      expect(either.left).to.deep.equal(new Error(`Local directory ${dataDir} is not empty.`));
+      expect(either.left).to.deep.include(new Error(`Local directory ${dataDir} is not empty.`));
       expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
-      expect(mockNetworkLib.getFreePorts.calledOnceWithExactly()).to.be.true;
+      expect(getFreePorts.calledOnceWithExactly()).to.be.true;
       expect(mockFileLib.createTmpDir.calledOnceWithExactly()).to.be.true;
       expect(mockFileLib.isDirectoryEmpty.calledOnceWithExactly(dataDir)).to.be.true;
       expect(mockFileLib.createDir.notCalled).to.be.true;
@@ -320,32 +320,32 @@ describe('Local Instance Service', () => {
     it('returns error if chtx volume already exists with the same name', run(function* () {
       const version = '3.7.0';
       mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(true));
-      mockNetworkLib.getFreePorts.returns(Effect.succeed([1234, 5678]));
+      getFreePorts.returns(Effect.succeed([1234, 5678]));
       mockFileLib.createTmpDir.returns(Effect.succeed('/tmp/asdfasdfas'));
 
       const either = yield* LocalInstanceService
         .create(INSTANCE_NAME, version, Option.none())
         .pipe(Effect.either);
 
-      if (Either.isLeft(either)) {
-        expect(either.left).to.deep.equal(new Error(`Instance ${INSTANCE_NAME} already exists`));
-        expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(
-          `chtx.instance=${INSTANCE_NAME}`
-        )).to.be.true;
-        expect(mockNetworkLib.getFreePorts.calledOnceWithExactly()).to.be.true;
-        expect(mockFileLib.createTmpDir.calledOnceWithExactly()).to.be.true;
-        expect(mockFileLib.getRemoteFile.notCalled).to.be.true;
-        expect(mockFileLib.writeFile.notCalled).to.be.true;
-        expect(writeFileInner.notCalled).to.be.true;
-        expect(mockFileLib.writeJsonFile.notCalled).to.be.true;
-        expect(mockDockerLib.pullComposeImages.notCalled).to.be.true;
-        expect(pullComposeImagesInner.notCalled).to.be.true;
-        expect(mockDockerLib.createComposeContainers.notCalled).to.be.true;
-        expect(createComposeContainersInner.notCalled).to.be.true;
-        expect(copyFileToComposeContainerInner.notCalled).to.be.true;
-      } else {
+      if (Either.isRight(either)) {
         expect.fail('Expected error to be returned');
       }
+
+      expect(either.left).to.deep.include(new Error(`Instance ${INSTANCE_NAME} already exists`));
+      expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(
+        `chtx.instance=${INSTANCE_NAME}`
+      )).to.be.true;
+      expect(getFreePorts.notCalled).to.be.true;
+      expect(mockFileLib.createTmpDir.calledOnceWithExactly()).to.be.true;
+      expect(mockFileLib.getRemoteFile.notCalled).to.be.true;
+      expect(mockFileLib.writeFile.notCalled).to.be.true;
+      expect(writeFileInner.notCalled).to.be.true;
+      expect(mockFileLib.writeJsonFile.notCalled).to.be.true;
+      expect(mockDockerLib.pullComposeImages.notCalled).to.be.true;
+      expect(pullComposeImagesInner.notCalled).to.be.true;
+      expect(mockDockerLib.createComposeContainers.notCalled).to.be.true;
+      expect(createComposeContainersInner.notCalled).to.be.true;
+      expect(copyFileToComposeContainerInner.notCalled).to.be.true;
     }));
   });
 
@@ -529,30 +529,30 @@ describe('Local Instance Service', () => {
         .start(INSTANCE_NAME, Option.none())
         .pipe(Effect.either);
 
-      if (Either.isLeft(either)) {
-        expect(either.left).to.deep.equal(new Error(`Instance ${INSTANCE_NAME} does not exist`));
-        expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(
-          `chtx.instance=${INSTANCE_NAME}`
-        )).to.be.true;
-        expect(mockDockerLib.getContainersForComposeProject.args).to.deep.equal([
-          [INSTANCE_NAME, ...CONTAINER_STATUSES_RUNNING],
-          [INSTANCE_NAME, ...CONTAINER_STATUSES_STOPPED],
-        ]);
-        expect(mockFileLib.writeFile.notCalled).to.be.true;
-        expect(writeFileInner.notCalled).to.be.true;
-        expect(mockDockerLib.createComposeContainers.notCalled).to.be.true;
-        expect(createComposeContainersInner.notCalled).to.be.true;
-        expect(mockDockerLib.copyFileFromComposeContainer.notCalled).to.be.true;
-        expect(copyFileFromComposeContainerInner.notCalled).to.be.true;
-        expect(mockDockerLib.rmComposeContainer.notCalled).to.be.true;
-        expect(rmComposeContainerInner.notCalled).to.be.true;
-        expect(mockDockerLib.restartCompose.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
-        expect(mockHttpClient.filterStatusOk.notCalled).to.be.true;
-        expect(mockHttpRequest.get.notCalled).to.be.true;
-        expect(httpClientExecute.notCalled).to.be.true;
-      } else {
+      if (Either.isRight(either)) {
         expect.fail('Expected error');
       }
+
+      expect(either.left).to.deep.include(new Error(`Instance ${INSTANCE_NAME} does not exist`));
+      expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(
+        `chtx.instance=${INSTANCE_NAME}`
+      )).to.be.true;
+      expect(mockDockerLib.getContainersForComposeProject.args).to.deep.equal([
+        [INSTANCE_NAME, ...CONTAINER_STATUSES_RUNNING],
+        [INSTANCE_NAME, ...CONTAINER_STATUSES_STOPPED],
+      ]);
+      expect(mockFileLib.writeFile.notCalled).to.be.true;
+      expect(writeFileInner.notCalled).to.be.true;
+      expect(mockDockerLib.createComposeContainers.notCalled).to.be.true;
+      expect(createComposeContainersInner.notCalled).to.be.true;
+      expect(mockDockerLib.copyFileFromComposeContainer.notCalled).to.be.true;
+      expect(copyFileFromComposeContainerInner.notCalled).to.be.true;
+      expect(mockDockerLib.rmComposeContainer.notCalled).to.be.true;
+      expect(rmComposeContainerInner.notCalled).to.be.true;
+      expect(mockDockerLib.restartCompose.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
+      expect(mockHttpClient.filterStatusOk.notCalled).to.be.true;
+      expect(mockHttpRequest.get.notCalled).to.be.true;
+      expect(httpClientExecute.notCalled).to.be.true;
     }));
 
     it('handles problems removing the temp upgrade service container', run(function* () {
@@ -669,7 +669,7 @@ describe('Local Instance Service', () => {
         expect.fail('Expected error');
       }
 
-      expect(either.left).to.deep.equal(new Error(`Instance ${INSTANCE_NAME} already exists`));
+      expect(either.left).to.deep.include(new Error(`Instance ${INSTANCE_NAME} already exists`));
       expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
       expect(mockDockerLib.getContainersForComposeProject.args).to.deep.equal([
         [INSTANCE_NAME, ...CONTAINER_STATUSES_RUNNING],
@@ -707,15 +707,15 @@ describe('Local Instance Service', () => {
         .stop(INSTANCE_NAME)
         .pipe(Effect.either);
 
-      if (Either.isLeft(either)) {
-        expect(either.left).to.deep.equal(new Error(`Instance ${INSTANCE_NAME} does not exist`));
-        expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(
-          `chtx.instance=${INSTANCE_NAME}`
-        )).to.be.true;
-        expect(mockDockerLib.stopCompose.args).to.deep.equal([[INSTANCE_NAME], [`${INSTANCE_NAME}-up`]]);
-      } else {
+      if (Either.isRight(either)) {
         expect.fail('Expected error');
       }
+
+      expect(either.left).to.deep.include(new Error(`Instance ${INSTANCE_NAME} does not exist`));
+      expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(
+        `chtx.instance=${INSTANCE_NAME}`
+      )).to.be.true;
+      expect(mockDockerLib.stopCompose.args).to.deep.equal([[INSTANCE_NAME], [`${INSTANCE_NAME}-up`]]);
     }));
   });
 
@@ -816,29 +816,28 @@ describe('Local Instance Service', () => {
         .setSSLCerts(INSTANCE_NAME, sslType)
         .pipe(Effect.either);
 
-      if (Either.isLeft(either)) {
-        expect(either.left).to.deep.equal(new Error(`Could not get port for instance ${INSTANCE_NAME}`));
-        expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(
-          `chtx.instance=${INSTANCE_NAME}`
-        )).to.be.true;
-        expect(mockDockerLib.getContainersForComposeProject.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
-        expect(mockDockerLib.startCompose.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
-        expect(mockDockerLib.getEnvarFromComposeContainer.calledOnceWithExactly(
-          'cht-upgrade-service', 'NGINX_HTTPS_PORT', `${INSTANCE_NAME}-up`
-        )).to.be.true;
-        expect(mockHttpClient.filterStatusOk.notCalled).to.be.true;
-        expect(mockHttpRequest.get.notCalled).to.be.true;
-        expect(httpClientExecute.notCalled).to.be.true;
-        expect(mockFileLib.createTmpDir.calledOnceWithExactly()).to.be.true;
-        expect(mockFileLib.getRemoteFile.notCalled).to.be.true;
-        expect(mockFileLib.writeFile.notCalled).to.be.true;
-        expect(writeFileInner.notCalled).to.be.true;
-        expect(mockDockerLib.copyFileToComposeContainer.notCalled).to.be.true;
-        expect(copyFileToComposeContainerInner.notCalled).to.be.true;
-        expect(mockDockerLib.restartComposeService.calledOnceWithExactly(INSTANCE_NAME, 'nginx')).to.be.true;
-      } else {
+      if (Either.isRight(either)) {
         expect.fail('Expected error');
       }
+      expect(either.left).to.deep.include(new Error(`Could not get port for instance ${INSTANCE_NAME}`));
+      expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(
+        `chtx.instance=${INSTANCE_NAME}`
+      )).to.be.true;
+      expect(mockDockerLib.getContainersForComposeProject.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
+      expect(mockDockerLib.startCompose.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
+      expect(mockDockerLib.getEnvarFromComposeContainer.calledOnceWithExactly(
+        'cht-upgrade-service', 'NGINX_HTTPS_PORT', `${INSTANCE_NAME}-up`
+      )).to.be.true;
+      expect(mockHttpClient.filterStatusOk.notCalled).to.be.true;
+      expect(mockHttpRequest.get.notCalled).to.be.true;
+      expect(httpClientExecute.notCalled).to.be.true;
+      expect(mockFileLib.createTmpDir.calledOnceWithExactly()).to.be.true;
+      expect(mockFileLib.getRemoteFile.notCalled).to.be.true;
+      expect(mockFileLib.writeFile.notCalled).to.be.true;
+      expect(writeFileInner.notCalled).to.be.true;
+      expect(mockDockerLib.copyFileToComposeContainer.notCalled).to.be.true;
+      expect(copyFileToComposeContainerInner.notCalled).to.be.true;
+      expect(mockDockerLib.restartComposeService.calledOnceWithExactly(INSTANCE_NAME, 'nginx')).to.be.true;
     }));
   });
 
