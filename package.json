@@ -9,7 +9,7 @@
   },
   "main": "src/index.ts",
   "bin": {
-    "chtx": "src/index.ts"
+    "chtx": "bin/index.js"
   },
   "files": [
     "/src",
