@@ -2,7 +2,7 @@ import * as Effect from 'effect/Effect';
 import { ChtClientService } from '../../services/cht-client.ts';
 import { ResponseError } from '@effect/platform/HttpClientError';
 import { pipe, Schema } from 'effect';
-import { buildPostRequest } from '../http-client.js';
+import { buildPostRequest } from '../http-client.ts';
 
 const ENDPOINT_UPGRADE = '/api/v1/upgrade';
 const ENDPOINT_STAGE = `${ENDPOINT_UPGRADE}/stage`;

@@ -8,10 +8,11 @@
     "url": "https://github.com/jkuester/chtoolbox.git"
   },
   "bin": {
-    "chtx": "dist/index.js"
+    "chtx": "bin/index.js"
   },
   "files": [
-    "/dist"
+    "/src",
+    "/bin"
   ],
   "engines": {
     "node": ">=20"

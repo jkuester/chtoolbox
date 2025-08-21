@@ -18,15 +18,16 @@ use(sinonChai);
  */
 export const sandbox = sinon.createSandbox();
 
-export const genWithLayer = <T>(layer: Layer.Layer<T, unknown>) => (
-  generator: () => Generator<YieldWrap<Effect.Effect<unknown, unknown, T | Scope>>>
-) => (): Promise<unknown> => Effect.runPromise(Effect
-  .gen(generator)
-  .pipe(
-    Effect.provide(layer),
-    Effect.provide(TestContext.TestContext),
-    Effect.scoped,
-  ));
+export const genWithLayer =
+  <T>(layer: Layer.Layer<T, unknown>) =>
+    (generator: () => Generator<YieldWrap<Effect.Effect<unknown, unknown, T | Scope>>>) =>
+      (): Promise<unknown> => Effect.runPromise(Effect
+        .gen(generator)
+        .pipe(
+          Effect.provide(layer),
+          Effect.provide(TestContext.TestContext),
+          Effect.scoped,
+        ));
 
 export const mochaHooks = {
   afterEach(): void {

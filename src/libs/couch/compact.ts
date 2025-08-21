@@ -1,7 +1,7 @@
 import { Function, pipe, Schema, Tuple } from 'effect';
 import * as Effect from 'effect/Effect';
 import { ChtClientService } from '../../services/cht-client.ts';
-import { buildPostRequest } from '../http-client.js';
+import { buildPostRequest } from '../http-client.ts';
 
 const getDesignPath = (designName?: string) => designName ? `/${designName}` : '';
 

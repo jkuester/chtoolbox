@@ -25,8 +25,8 @@ import { instance } from './commands/instance/index.ts';
 import { LocalInstanceService } from './services/local-instance.ts';
 import { localIp } from './commands/local-ip/index.ts';
 import { LocalIpService } from './services/local-ip.ts';
-import { SentinelBacklogService } from './services/sentinel-backlog.js';
-import { sentinelBacklog } from './commands/sentinel-backlog/index.js';
+import { SentinelBacklogService } from './services/sentinel-backlog.ts';
+import { sentinelBacklog } from './commands/sentinel-backlog/index.ts';
 
 const url = Options
   .text('url')

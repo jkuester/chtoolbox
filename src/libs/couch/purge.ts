@@ -2,7 +2,7 @@ import * as Effect from 'effect/Effect';
 import { Array, pipe, Schema } from 'effect';
 import { ChtClientService } from '../../services/cht-client.ts';
 import type { NonEmptyArray } from 'effect/Array';
-import { buildPostRequest } from '../http-client.js';
+import { buildPostRequest } from '../http-client.ts';
 
 type RemoveDocument = PouchDB.Core.RemoveDocument;
 

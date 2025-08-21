@@ -1,8 +1,8 @@
 import { Command } from '@effect/cli';
 import { Console, Effect, Number, Option, pipe, String, Tuple } from 'effect';
 import { initializeUrl } from '../../index.ts';
-import { SentinelBacklogService } from '../../services/sentinel-backlog.js';
-import { color } from '../../libs/console.js';
+import { SentinelBacklogService } from '../../services/sentinel-backlog.ts';
+import { color } from '../../libs/console.ts';
 
 const getBacklog = (sequenceData: [string, string]) => pipe(
   sequenceData,

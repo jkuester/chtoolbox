@@ -1,8 +1,8 @@
 import { Args, Command, Options, Prompt } from '@effect/cli';
 import { Boolean, Console, Effect, Option, pipe } from 'effect';
 import { color } from '../../libs/console.ts';
-import { initializeUrl } from '../../index.js';
-import { SentinelBacklogService } from '../../services/sentinel-backlog.js';
+import { initializeUrl } from '../../index.ts';
+import { SentinelBacklogService } from '../../services/sentinel-backlog.ts';
 
 const validateParams = Effect.fn((value: Option.Option<string>, latest: boolean) => pipe(
   value,

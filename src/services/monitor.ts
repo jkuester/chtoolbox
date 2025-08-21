@@ -11,7 +11,7 @@ import { PlatformError } from '@effect/platform/Error';
 import { ChtClientService } from './cht-client.ts';
 import { getNouveauInfo, NouveauInfo } from '../libs/couch/nouveau-info.ts';
 import { chtMonitoringDataEffect } from '../libs/cht/monitoring.ts';
-import { mapErrorToGeneric } from '../libs/core.js';
+import { mapErrorToGeneric } from '../libs/core.ts';
 
 interface DatabaseInfo extends CouchDbInfo {
   designs: CouchDesignInfo[]
