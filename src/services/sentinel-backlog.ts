@@ -4,7 +4,7 @@ import { getDoc, PouchDBService, saveDoc } from './pouchdb.ts';
 import { Array, Option, pipe, Record, Schema } from 'effect';
 import { ChtClientService } from './cht-client.ts';
 import { getDbsInfoByName } from '../libs/couch/dbs-info.ts';
-import { mapErrorToGeneric } from '../libs/core.js';
+import { mapErrorToGeneric } from '../libs/core.ts';
 
 class LocalTransitionsSeq extends Schema.Class<LocalTransitionsSeq>('LocalTransitionsSeq')({
   value: Schema.String,

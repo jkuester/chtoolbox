@@ -1,6 +1,6 @@
 import { Command } from '@effect/cli';
 import { ls } from './ls.ts';
-import { setSequence } from './set-sequence.js';
+import { setSequence } from './set-sequence.ts';
 
 export const sentinelBacklog = Command
   .make('sentinel-backlog', {})

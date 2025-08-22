@@ -8,19 +8,17 @@
     "url": "https://github.com/jkuester/chtoolbox.git"
   },
   "bin": {
-    "chtx": "dist/index.js"
+    "chtx": "bin/index.js"
   },
   "files": [
-    "/dist"
+    "/src"
   ],
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "build-app": "rm -rf dist && tsgo -p tsconfig.build.json && chmod +x dist/index.js",
-    "lint": "eslint --color --cache . && knip --production",
-    "local": "tsx src/index.ts",
-    "test": "tsgo -p tsconfig.test.json && c8 mocha \"test/**/*\""
+    "lint": "tsgo -p tsconfig.json && eslint --color --cache . && knip --production",
+    "test": "c8 mocha \"test/**/*\""
   },
   "license": "AGPL-3.0-only",
   "devDependencies": {
@@ -54,7 +52,6 @@
     "mocha": "11.6.0",
     "sinon": "^21.0.0",
     "sinon-chai": "^4.0.0",
-    "tsx": "^4.20.4",
     "typescript-eslint": "^8.39.0"
   },
   "dependencies": {
@@ -68,6 +65,7 @@
     "pouchdb-mapreduce": "^9.0.0",
     "pouchdb-session-authentication": "^1.4.0",
     "test-data-generator": "git+https://github.com/medic/test-data-generator.git#chtoolbox",
+    "tsx": "^4.20.4",
     "uuid": "^11.1.0"
   },
   "overrides": {

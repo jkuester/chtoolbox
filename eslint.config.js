@@ -10,7 +10,7 @@ const compat = new FlatCompat({
 });
 
 export default tseslint.config(
-  { ignores: ['**/eslint.config.js', '**/.mocharc.cjs', '**/dist/', '**/node_modules/', '**/.c8_output/'] },
+  { ignores: ['**/eslint.config.js', '**/.mocharc.cjs', '**/dist/', '**/node_modules/', '**/.c8_output/', 'bin/index.js'] },
   {
     plugins: {
       '@typescript-eslint': tseslint.plugin,
@@ -49,7 +49,7 @@ export default tseslint.config(
       'func-style': ['error', 'expression'],
       'function-call-argument-newline': ['error', 'consistent'],
       'function-paren-newline': ['error', 'consistent'],
-      'implicit-arrow-linebreak': ['error', 'beside'],
+      'implicit-arrow-linebreak': 'off',
       'key-spacing': ['error', { 'beforeColon': false, 'afterColon': true }],
       'keyword-spacing': ['error', { 'before': true, 'after': true }],
       'linebreak-style': ['error', 'unix'],

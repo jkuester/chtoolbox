@@ -4,7 +4,7 @@ import { type AllDocsResponseStream, PouchDBService, streamAllDocPages, streamQu
 import { Array, Option, pipe, Predicate, Schema, Stream, String } from 'effect';
 import { purgeFrom } from '../libs/couch/purge.ts';
 import { ChtClientService } from './cht-client.ts';
-import { mapStreamErrorToGeneric } from '../libs/core.js';
+import { mapStreamErrorToGeneric } from '../libs/core.ts';
 type AllDocsResponse = PouchDB.Core.AllDocsResponse<object>;
 type AllDocsWithKeysResponse = PouchDB.Core.AllDocsWithKeysResponse<object>;
 

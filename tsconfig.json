@@ -2,9 +2,11 @@
   "extends": ["@tsconfig/strictest/tsconfig", "@tsconfig/node20/tsconfig"],
   "compilerOptions": {
     "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
     "exactOptionalPropertyTypes": true,
     "isolatedModules": true,
     "moduleDetection": "force",
+    "noEmit": true,
     "noImplicitOverride": true,
     "outDir": "dist",
     "resolveJsonModule": true,
