@@ -51,7 +51,7 @@
     "knip": "^5.62.0",
     "mocha": "11.6.0",
     "sinon": "^21.0.0",
-    "sinon-chai": "^4.0.0",
+    "sinon-chai": "^4.0.1",
     "typescript-eslint": "^8.39.0"
   },
   "dependencies": {
