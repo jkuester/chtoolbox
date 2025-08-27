@@ -3,6 +3,7 @@
 import { spawnSync } from 'node:child_process';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+const tsxPath = fileURLToPath(import.meta.resolve('tsx'));
 
 /**
  * This file is a shim for running the TS directly as a bin script.
@@ -14,7 +15,7 @@ const result = spawnSync(
   'node',
   [
     '--import',
-    'tsx',
+    tsxPath,
     entry,
     ...process.argv.slice(2)
   ],
