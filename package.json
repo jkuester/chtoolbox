@@ -52,7 +52,7 @@
     "mocha": "11.6.0",
     "sinon": "^21.0.0",
     "sinon-chai": "^4.0.1",
-    "typescript-eslint": "^8.39.0"
+    "typescript-eslint": "^8.41.0"
   },
   "dependencies": {
     "@effect/cli": "^0.69.0",
