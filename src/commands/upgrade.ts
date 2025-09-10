@@ -101,6 +101,15 @@ const complete = Options
     Options.withDescription('Complete a staged upgrade.'),
   );
 
+const diff = Options
+  .text('diff')
+  .pipe(
+    Options.withDescription(
+      'Base version to compare against the targeted upgrade version. This is similar to the --preview option.'
+    ),
+    Options.optional
+  );
+
 const version = Args
   .text({ name: 'version' })
   .pipe(
@@ -108,7 +117,7 @@ const version = Args
   );
 
 export const upgrade = Command
-  .make('upgrade', { version, follow, stage, complete, preStage }, Effect.fn((opts) => initializeUrl.pipe(
+  .make('upgrade', { version, follow, stage, complete, preStage, diff }, Effect.fn((opts) => initializeUrl.pipe(
     Effect.andThen(getUpgradeAction(opts)),
     Effect.flatMap(getStreamAction(opts)),
   )))
