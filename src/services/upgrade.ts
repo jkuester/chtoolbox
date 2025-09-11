@@ -22,9 +22,12 @@ import { ChtClientService } from './cht-client.ts';
 import { mapErrorToGeneric, pouchDB } from '../libs/core.ts';
 import { CouchDesign } from '../libs/couch/design.ts';
 import { WarmViewsService } from './warm-views.ts';
+import { type CompareCommitsData, compareRefs } from '../libs/github.ts';
+import { type CouchActiveTaskStream } from '../libs/couch/active-tasks.ts';
+import type { NonEmptyArray } from 'effect/Array';
+
 type Attachments = PouchDB.Core.Attachments;
 type FullAttachment = PouchDB.Core.FullAttachment;
-import { type CouchActiveTaskStream } from '../libs/couch/active-tasks.ts';
 
 const UPGRADE_LOG_NAME = 'upgrade_log';
 const COMPLETED_STATES = ['finalized', 'aborted', 'errored', 'interrupted'] as const;
@@ -196,6 +199,53 @@ const preStageDdocs = Effect.fn((docsByDb: [DesignDocAttachment, typeof CHT_DDOC
   Effect.map(Stream.concatAll),
 ));
 
+const getChtCoreDiff = compareRefs('medic', 'cht-core');
+
+const lastFilenameAfterDdocs = (files: { filename: string }[]) => pipe(
+  files,
+  Array.last,
+  Option.map(({ filename }) => filename),
+  Option.filter(Predicate.not(String.startsWith('ddocs/'))),
+  Option.map(String.localeCompare('ddocs/')),
+  Option.filter(order => order === 1),
+  Option.isSome
+);
+
+const assertDdocDataInBounds = Effect.fn((data: CompareCommitsData) => pipe(
+  Match.value(data),
+  Match.whenOr(
+    { files: Predicate.isNullable },
+    { files: ({ length }) => length < 300 },
+    { files: lastFilenameAfterDdocs },
+    () => Effect.succeed(data)
+  ),
+  Match.orElse(() => Effect.fail('Cannot calculate release diff as too many files have changed.')),
+));
+
+const DDOC_PATTERN = /^ddocs\/([^/]+)-db\/([^/]+)\/.*(?:map|reduce)\.js$/;
+
+const getUpdatedDdocsByDb = ({ files }: CompareCommitsData) => pipe(
+  files ?? [],
+  Array.map(({ filename }) => filename),
+  Array.map(String.match(DDOC_PATTERN)),
+  Array.map(Option.map(([, db, ddoc]) => [db, ddoc])),
+  Array.map(Option.filter((data): data is [string, string] => Array.every(data, Predicate.isNotNullable))),
+  Array.getSomes,
+  Array.groupBy(([db]) => db),
+  Record.map(Array.map(([, ddoc]) => ddoc)),
+  Record.map(Array.dedupe)
+);
+
+interface ChtCoreReleaseDiff {
+  updatedDdocs: Record<string, NonEmptyArray<string>>;
+  htmlUrl: string
+}
+
+const getReleaseDiff = (diffData: CompareCommitsData): ChtCoreReleaseDiff => ({
+  updatedDdocs: getUpdatedDdocsByDb(diffData),
+  htmlUrl: diffData.html_url,
+});
+
 const serviceContext = Effect
   .all([
     ChtClientService,
@@ -247,7 +297,35 @@ export class UpgradeService extends Effect.Service<UpgradeService>()('chtoolbox/
       Effect.map(Stream.mapError(x => x as Error)),
       Effect.provide(context),
     )),
+    getReleaseDiff: Effect.fn((
+      baseTag: string,
+      headTag: string
+    ): Effect.Effect<ChtCoreReleaseDiff, Error> => pipe(
+      getChtCoreDiff(baseTag, headTag),
+      Effect.flatMap(assertDdocDataInBounds),
+      Effect.map(getReleaseDiff),
+      mapErrorToGeneric,
+      Effect.provide(context),
+    )),
   }))),
   accessors: true,
 }) {
 }
+
+
+// await Effect.runPromise(pipe(
+//   UpgradeService.getReleaseDiff('4.11.0', '4.21.0'),
+//   Effect.tap(Console.log),
+//   Effect.andThen(Effect.log('Purged all docs')),
+//   Effect.provide(UpgradeService.Default),
+//   Effect.provide(WarmViewsService.Default),
+//   Effect.provide(ChtClientService.Default.pipe(
+//     Layer.provide(NodeHttpClient.layerWithoutAgent.pipe(
+//       Layer.provide(NodeHttpClient.makeAgentLayer({ rejectUnauthorized: false }))
+//     ))
+//   )),
+//   Effect.provide(PouchDBService.Default),
+//   Effect.provide(EnvironmentService.Default),
+//   Effect.provide(NodeContext.layer),
+//   Logger.withMinimumLogLevel(LogLevel.Debug),
+// ));
