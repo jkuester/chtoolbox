@@ -66,7 +66,8 @@
     "pouchdb-session-authentication": "^1.4.0",
     "test-data-generator": "git+https://github.com/medic/test-data-generator.git#chtoolbox",
     "tsx": "^4.20.4",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "@octokit/rest": "^21.0.0"
   },
   "overrides": {
     "whatwg-url": "^14.1.0"
