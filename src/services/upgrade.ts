@@ -236,7 +236,7 @@ const getUpdatedDdocsByDb = ({ files }: CompareCommitsData) => pipe(
   Record.map(Array.dedupe)
 );
 
-interface ChtCoreReleaseDiff {
+export interface ChtCoreReleaseDiff {
   updatedDdocs: Record<string, NonEmptyArray<string>>;
   htmlUrl: string
 }
@@ -311,21 +311,3 @@ export class UpgradeService extends Effect.Service<UpgradeService>()('chtoolbox/
   accessors: true,
 }) {
 }
-
-
-// await Effect.runPromise(pipe(
-//   UpgradeService.getReleaseDiff('4.11.0', '4.21.0'),
-//   Effect.tap(Console.log),
-//   Effect.andThen(Effect.log('Purged all docs')),
-//   Effect.provide(UpgradeService.Default),
-//   Effect.provide(WarmViewsService.Default),
-//   Effect.provide(ChtClientService.Default.pipe(
-//     Layer.provide(NodeHttpClient.layerWithoutAgent.pipe(
-//       Layer.provide(NodeHttpClient.makeAgentLayer({ rejectUnauthorized: false }))
-//     ))
-//   )),
-//   Effect.provide(PouchDBService.Default),
-//   Effect.provide(EnvironmentService.Default),
-//   Effect.provide(NodeContext.layer),
-//   Logger.withMinimumLogLevel(LogLevel.Debug),
-// ));
