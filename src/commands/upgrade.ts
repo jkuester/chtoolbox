@@ -1,4 +1,5 @@
 import { Args, Command, Options } from '@effect/cli';
+import { chtMonitoringDataEffect } from '../libs/cht/monitoring.ts';
 import { Array, Console, DateTime, Effect, Match, Option, pipe, Record, Schedule, Stream } from 'effect';
 import { initializeUrl } from '../index.ts';
 import { type ChtCoreReleaseDiff, UpgradeLog, UpgradeService } from '../services/upgrade.ts';
@@ -106,10 +107,19 @@ const diff = Options
   .text('diff')
   .pipe(
     Options.withDescription(
-      'Base version to compare against the targeted upgrade version. This is similar to the --preview option.'
+      'Show diff between the given CHT version and the target version. No changes will be made. This option is for '
+      + 'comparing arbitrary CHT versions. Use the --preview option to compare the current version of your CHT '
+      + 'instance with the target version.'
     ),
     Options.optional
   );
+
+const preview = Options
+  .boolean('preview')
+  .pipe(Options.withDescription(
+    'Show diff between the current CHT version and the targeted upgrade version. No changes will be made. Use the '
+    + '--diff option to compare arbitrary CHT versions without a CHT instance in context.'
+  ));
 
 const version = Args
   .text({ name: 'version' })
@@ -138,6 +148,17 @@ const displayReleaseDiff = (headTag: string) => Effect.fn((baseTag: string) => p
   Effect.asVoid,
 ));
 
+const currentChtVersionEffect = Effect.suspend(() => pipe(
+  chtMonitoringDataEffect,
+  Effect.map(({ version: { app } }) => app),
+));
+
+const getVersionToDiff = (opts: UpgradeOptions) => pipe(
+  Match.value(opts),
+  Match.when({ preview: true }, () => pipe(currentChtVersionEffect, Effect.map(Option.some))),
+  Match.orElse(() => Effect.succeed(opts.diff))
+);
+
 const validateOptions = (opts: UpgradeOptions) => pipe(
   Match.value(opts),
   Match.whenOr(
@@ -145,7 +166,15 @@ const validateOptions = (opts: UpgradeOptions) => pipe(
     { diff: Option.isSome, stage: true },
     { diff: Option.isSome, complete: true },
     { diff: Option.isSome, preStage: true },
+    { diff: Option.isSome, preview: true },
     () => Effect.fail('The --diff option cannot be used with any other options.'),
+  ),
+  Match.whenOr(
+    { preview: true, follow: true },
+    { preview: true, stage: true },
+    { preview: true, complete: true },
+    { preview: true, preStage: true },
+    () => Effect.fail('The --preview option cannot be used with any other options.'),
   ),
   Match.orElse(() => Effect.succeed(opts))
 );
@@ -157,24 +186,25 @@ interface UpgradeOptions {
   complete: boolean;
   preStage: boolean;
   diff: Option.Option<string>;
+  preview: boolean;
 }
 
 export const upgrade = Command
-  .make('upgrade', { version, follow, stage, complete, preStage, diff }, Effect.fn((opts) => initializeUrl.pipe(
-    Effect.andThen(validateOptions(opts)),
-    Effect.flatMap(({ diff }) => pipe(
-      diff,
-      Option.match({
+  .make(
+    'upgrade',
+    { version, follow, stage, complete, preStage, diff, preview },
+    Effect.fn((opts: UpgradeOptions) => initializeUrl.pipe(
+      Effect.andThen(validateOptions(opts)),
+      Effect.andThen(getVersionToDiff),
+      Effect.flatMap(Option.match({
+        onSome: displayReleaseDiff(opts.version),
         onNone: () => pipe(
           getUpgradeAction(opts),
           Effect.flatMap(getStreamAction({
             preStage: opts.preStage,
             follow: opts.follow,
           })),
-        ),
-        onSome: displayReleaseDiff(opts.version),
-      })
-    )),
-    x => x,
-  )))
-  .pipe(Command.withDescription(`Run compaction on all databases and views.`));
+        )
+      })),
+    ))
+  ).pipe(Command.withDescription(`Run compaction on all databases and views.`));
