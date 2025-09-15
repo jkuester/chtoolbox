@@ -46,7 +46,7 @@
     "eslint": "^9.35.0",
     "eslint-plugin-n": "^17.21.3",
     "eslint-plugin-promise": "^7.2.1",
-    "esmock": "^2.7.2",
+    "esmock": "^2.7.3",
     "globals": "^16.4.0",
     "knip": "^5.63.0",
     "mocha": "11.6.0",
