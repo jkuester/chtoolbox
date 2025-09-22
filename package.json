@@ -65,7 +65,7 @@
     "pouchdb-mapreduce": "^9.0.0",
     "pouchdb-session-authentication": "^1.4.0",
     "test-data-generator": "git+https://github.com/medic/test-data-generator.git#chtoolbox",
-    "tsx": "^4.20.4",
+    "tsx": "^4.20.5",
     "uuid": "^13.0.0"
   },
   "overrides": {
