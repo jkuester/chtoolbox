@@ -770,40 +770,5 @@ describe('Upgrade Service', () => {
       expect(result).to.deep.equal({ updatedDdocs: { }, htmlUrl: diffData.html_url });
       expect(compareRefs).to.have.been.calledOnceWithExactly(baseTag, headTag);
     }));
-
-    it('fails when 300 ddoc files changed and last file still a ddoc', run(function* () {
-      const files = Array.makeBy(300, (i) => ({ filename: `ddocs/medic-db/medic/views/view${i.toString()}/map.js` }));
-      const diffData = { html_url: 'https://example.com/too-many', files };
-      compareRefs.returns(Effect.succeed(diffData));
-
-      const either = yield* UpgradeService
-        .getReleaseDiff(baseTag, headTag)
-        .pipe(Effect.either);
-
-      if (Either.isRight(either)) {
-        expect.fail('Expected failure for too many files');
-      }
-
-      expect(either.left).to.equal('Cannot calculate release diff as too many files have changed.');
-      expect(compareRefs).to.have.been.calledOnceWithExactly(baseTag, headTag);
-    }));
-
-    it('succeeds when 300 files but last file after ddocs/', run(function* () {
-      const initialFiles = Array.makeBy(
-        299,
-        (i) => ({ filename: `ddocs/medic-db/medic/views/view${i.toString()}/map.js` })
-      );
-      const files = [...initialFiles, { filename: 'zzzz.js' }];
-      const diffData = { html_url: 'https://example.com/edge', files };
-      compareRefs.returns(Effect.succeed(diffData));
-
-      const result = yield* UpgradeService.getReleaseDiff(baseTag, headTag);
-
-      expect(result).to.deep.equal({
-        updatedDdocs: { medic: ['medic'] },
-        htmlUrl: diffData.html_url,
-      });
-      expect(compareRefs).to.have.been.calledOnceWithExactly(baseTag, headTag);
-    }));
   });
 });

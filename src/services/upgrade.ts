@@ -200,28 +200,6 @@ const preStageDdocs = Effect.fn((docsByDb: [DesignDocAttachment, typeof CHT_DDOC
 ));
 
 const getChtCoreDiff = compareRefs('medic', 'cht-core');
-
-const lastFilenameAfterDdocs = (files: { filename: string }[]) => pipe(
-  files,
-  Array.last,
-  Option.map(({ filename }) => filename),
-  Option.filter(Predicate.not(String.startsWith('ddocs/'))),
-  Option.map(String.localeCompare('ddocs/')),
-  Option.filter(order => order === 1),
-  Option.isSome
-);
-
-const assertDdocDataInBounds = Effect.fn((data: CompareCommitsData) => pipe(
-  Match.value(data),
-  Match.whenOr(
-    { files: Predicate.isNullable },
-    { files: ({ length }) => length < 300 },
-    { files: lastFilenameAfterDdocs },
-    () => Effect.succeed(data)
-  ),
-  Match.orElse(() => Effect.fail('Cannot calculate release diff as too many files have changed.')),
-));
-
 const DDOC_PATTERN = /^ddocs\/([^/]+)-db\/([^/]+)\/.*(?:map|reduce)\.js$/;
 
 const getUpdatedDdocsByDb = ({ files }: CompareCommitsData) => pipe(
@@ -302,7 +280,6 @@ export class UpgradeService extends Effect.Service<UpgradeService>()('chtoolbox/
       headTag: string
     ): Effect.Effect<ChtCoreReleaseDiff, Error> => pipe(
       getChtCoreDiff(baseTag, headTag),
-      Effect.flatMap(assertDdocDataInBounds),
       Effect.map(getReleaseDiff),
       mapErrorToGeneric,
       Effect.provide(context),
