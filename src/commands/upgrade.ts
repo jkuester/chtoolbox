@@ -109,7 +109,8 @@ const diff = Options
     Options.withDescription(
       'Show diff between the given CHT version and the target version. No changes will be made. This option is for '
       + 'comparing arbitrary CHT versions. Use the --preview option to compare the current version of your CHT '
-      + 'instance with the target version.'
+      + 'instance with the target version. The GITHUB_TOKEN environment variable must be set when performing this '
+      + 'operation. The token must at least have read-only access to public repositories.'
     ),
     Options.optional
   );
@@ -118,7 +119,9 @@ const preview = Options
   .boolean('preview')
   .pipe(Options.withDescription(
     'Show diff between the current CHT version and the targeted upgrade version. No changes will be made. Use the '
-    + '--diff option to compare arbitrary CHT versions without a CHT instance in context.'
+    + '--diff option to compare arbitrary CHT versions without a CHT instance in context. The GITHUB_TOKEN environment '
+    + 'variable must be set when performing this operation. The token must at least have read-only access to public '
+    + 'repositories.'
   ));
 
 const version = Args
@@ -141,8 +144,11 @@ const printDdocChanges = ({ updatedDdocs }: ChtCoreReleaseDiff) => pipe(
 );
 
 const displayReleaseDiff = (headTag: string) => Effect.fn((baseTag: string) => pipe(
-  UpgradeService.getReleaseDiff(baseTag, headTag),
-  Effect.tap(() => Console.log(`\nComparing ${color('blue')(baseTag)} -> ${color('green')(headTag)}`)),
+  Console.log(`\nComparing ${color('blue')(baseTag)} -> ${color('green')(headTag)}`),
+  Effect.andThen(UpgradeService.getReleaseDiff(baseTag, headTag)),
+  Effect.tap(({ fileChangeCount, commitCount }) => Console.log(
+    `\n${color('red')(fileChangeCount.toString())} files changed in ${color('red')(commitCount.toString())} commits`
+  )),
   Effect.tap(printDdocChanges),
   Effect.tap(({ htmlUrl }) => Console.log(`\nFull diff: ${htmlUrl}\n`)),
   Effect.asVoid,

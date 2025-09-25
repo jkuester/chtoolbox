@@ -736,6 +736,7 @@ describe('Upgrade Service', () => {
     it('returns updated ddocs grouped by db and htmlUrl', run(function* () {
       const diffData = {
         html_url: 'https://example.com/diff',
+        commits: [{ sha: '1' }, { sha: '2' }],
         files: [
           { filename: 'ddocs/medic-db/medic/views/foo/map.js' },
           { filename: 'ddocs/medic-db/medic-client/views/bar/map.js' },
@@ -754,6 +755,8 @@ describe('Upgrade Service', () => {
           users: ['users']
         },
         htmlUrl: diffData.html_url,
+        fileChangeCount: 5,
+        commitCount: 2
       });
       expect(compareRefs).to.have.been.calledOnceWithExactly(baseTag, headTag);
     }));
@@ -761,13 +764,19 @@ describe('Upgrade Service', () => {
     it('returns empty updatedDdocs when files is undefined', run(function* () {
       const diffData = {
         html_url: 'https://example.com/diff',
+        commits: [],
         files: undefined,
       };
       compareRefs.returns(Effect.succeed(diffData));
 
       const result = yield* UpgradeService.getReleaseDiff(baseTag, headTag);
 
-      expect(result).to.deep.equal({ updatedDdocs: { }, htmlUrl: diffData.html_url });
+      expect(result).to.deep.equal({
+        updatedDdocs: { },
+        htmlUrl: diffData.html_url,
+        fileChangeCount: 0,
+        commitCount: 0
+      });
       expect(compareRefs).to.have.been.calledOnceWithExactly(baseTag, headTag);
     }));
   });

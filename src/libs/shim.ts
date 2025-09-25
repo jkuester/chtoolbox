@@ -2,7 +2,7 @@ import PouchDB from 'pouchdb-core';
 import { Octokit } from '@octokit/rest';
 import { paginateRest } from '@octokit/plugin-paginate-rest';
 import { pipe } from 'effect';
-import type { OctokitOptions } from '@octokit/core/types';
+import type { OctokitOptions } from '@octokit/core';
 
 export const pouchDB = (
   name?: string,

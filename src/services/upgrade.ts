@@ -218,11 +218,15 @@ const getUpdatedDdocsByDb = ({ files }: CompareCommitsData) => pipe(
 export interface ChtCoreReleaseDiff {
   updatedDdocs: Record<string, NonEmptyArray<string>>;
   htmlUrl: string
+  fileChangeCount: number,
+  commitCount: number
 }
 
 const getReleaseDiff = (diffData: CompareCommitsData): ChtCoreReleaseDiff => ({
   updatedDdocs: getUpdatedDdocsByDb(diffData),
   htmlUrl: diffData.html_url,
+  fileChangeCount: (diffData.files ?? []).length,
+  commitCount: diffData.commits.length
 });
 
 const serviceContext = Effect
