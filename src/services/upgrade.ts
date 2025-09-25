@@ -217,7 +217,7 @@ const getUpdatedDdocsByDb = ({ files }: CompareCommitsData) => pipe(
 
 export interface ChtCoreReleaseDiff {
   updatedDdocs: Record<string, NonEmptyArray<string>>;
-  htmlUrl: string
+  htmlUrl: string;
   fileChangeCount: number,
   commitCount: number
 }
