@@ -1,15 +1,7 @@
 import { describe, it } from 'mocha';
 import { Chunk, Effect, Either, Stream, TestContext } from 'effect';
 import { expect } from 'chai';
-import {
-  mapErrorToGeneric,
-  mapStreamErrorToGeneric,
-  mergeArrayStreams,
-  pouchDB,
-  untilEmptyCount
-} from '../../src/libs/core.ts';
-import PouchDB from 'pouchdb-core';
-import PouchDBAdapterHttp from 'pouchdb-adapter-http';
+import { mapErrorToGeneric, mapStreamErrorToGeneric, mergeArrayStreams, untilEmptyCount } from '../../src/libs/core.ts';
 import { SocketGenericError } from '@effect/platform/Socket';
 
 describe('Core libs', () => {
@@ -63,13 +55,6 @@ describe('Core libs', () => {
     expect(yield* isArrayEmpty([])).to.be.false;
     expect(yield* isArrayEmpty([])).to.be.true;
   })));
-
-  it('pouchDB', () => {
-    PouchDB.plugin(PouchDBAdapterHttp);
-    const db = pouchDB('http://test.db');
-
-    expect(db).to.be.an.instanceOf(PouchDB);
-  });
 
   it('mergeArrayStreams', run(Effect.gen(function* () {
     const mergedStream = mergeArrayStreams([

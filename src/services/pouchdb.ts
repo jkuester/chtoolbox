@@ -2,7 +2,6 @@ import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { Chunk, Match, Option, pipe, Redacted, Stream, StreamEmit, String } from 'effect';
 import PouchDB from 'pouchdb-core';
-import { pouchDB } from '../libs/core.ts';
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
 import PouchDBMapReduce from 'pouchdb-mapreduce';
 // @ts-expect-error no types for this package
@@ -11,6 +10,7 @@ import { EnvironmentService } from './environment.ts';
 import https from 'https';
 import { v4 as uuid } from 'uuid';
 import { UnknownException } from 'effect/Cause';
+import { pouchDB } from '../libs/shim.js';
 
 const HTTPS_AGENT_ALLOW_INVALID_SSL = new https.Agent({
   rejectUnauthorized: false,

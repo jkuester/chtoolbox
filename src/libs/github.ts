@@ -1,17 +1,16 @@
-import { Octokit, type RestEndpointMethodTypes } from '@octokit/rest';
+import { type RestEndpointMethodTypes } from '@octokit/rest';
 import { Array, Effect, Function, Match, Option, pipe, Predicate, Redacted, Tuple } from 'effect';
-import { paginateRest } from '@octokit/plugin-paginate-rest';
 import { GITHUB_TOKEN } from './config.js';
 import { type ConfigError } from 'effect/ConfigError';
+import { octokit } from './shim.js';
 
 export type CompareCommitsData = RestEndpointMethodTypes['repos']['compareCommitsWithBasehead']['response']['data'];
-
-const PagedOctokit = Octokit.plugin(paginateRest);
 
 const octokitEffect = pipe(
   GITHUB_TOKEN,
   Effect.map(Redacted.value),
-  Effect.map(auth => new PagedOctokit({ auth })),
+  Effect.map(auth => ({ auth })),
+  Effect.map(octokit)
 );
 
 const reduceCommits = (data: CompareCommitsData[]) => pipe(
@@ -56,9 +55,6 @@ const ensureAllChangedFilesIncluded = (
     { files: ({ length }) => length < 300 },
     data => pipe(
       Effect.succeed(data as CompareCommitsData),
-      Effect.tap(({ commits, files }) => Effect.logDebug(
-        `Files: ${(files ?? []).length.toString()} Commits: ${commits.length.toString()}`
-      )),
     )
   ),
   Match.orElse((data) => pipe(

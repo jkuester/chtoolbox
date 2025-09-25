@@ -19,12 +19,13 @@ import {
 } from 'effect';
 import { completeChtUpgrade, stageChtUpgrade, upgradeCht } from '../libs/cht/upgrade.ts';
 import { ChtClientService } from './cht-client.ts';
-import { mapErrorToGeneric, pouchDB } from '../libs/core.ts';
+import { mapErrorToGeneric } from '../libs/core.ts';
 import { CouchDesign } from '../libs/couch/design.ts';
 import { WarmViewsService } from './warm-views.ts';
 import { type CompareCommitsData, compareRefs } from '../libs/github.ts';
 import { type CouchActiveTaskStream } from '../libs/couch/active-tasks.ts';
 import type { NonEmptyArray } from 'effect/Array';
+import { pouchDB } from '../libs/shim.js';
 
 type Attachments = PouchDB.Core.Attachments;
 type FullAttachment = PouchDB.Core.FullAttachment;

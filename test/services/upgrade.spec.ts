@@ -46,7 +46,7 @@ const mockGitHubLib = {
 };
 
 const { UpgradeService } = await esmock<typeof UpgradeSvc>('../../src/services/upgrade.ts', {
-  '../../src/libs/core.ts': mockCore,
+  '../../src/libs/shim.ts': mockCore,
   '../../src/services/pouchdb.ts': mockPouchSvc,
   '../../src/libs/cht/upgrade.ts': mockUpgradeLib,
   '../../src/libs/github.ts': mockGitHubLib
