@@ -1,5 +1,5 @@
 import { describe, it } from 'mocha';
-import { Array, Chunk, Effect, Either, Layer, Stream, pipe, Encoding, Option } from 'effect';
+import { Array, Chunk, Effect, Either, Encoding, Layer, Option, pipe, Stream } from 'effect';
 import sinon from 'sinon';
 import { PouchDBService } from '../../src/services/pouchdb.ts';
 import { expect } from 'chai';
@@ -40,11 +40,16 @@ const mockUpgradeLib = {
   completeChtUpgrade: sandbox.stub(),
 };
 const mockCore = { pouchDB: sandbox.stub() };
+const compareRefs = sandbox.stub();
+const mockGitHubLib = {
+  compareRefs: sandbox.stub().returns(compareRefs),
+};
 
 const { UpgradeService } = await esmock<typeof UpgradeSvc>('../../src/services/upgrade.ts', {
-  '../../src/libs/core.ts': mockCore,
+  '../../src/libs/shim.ts': mockCore,
   '../../src/services/pouchdb.ts': mockPouchSvc,
   '../../src/libs/cht/upgrade.ts': mockUpgradeLib,
+  '../../src/libs/github.ts': mockGitHubLib
 });
 const run = UpgradeService.Default.pipe(
   Layer.provideMerge(Layer.succeed(ChtClientService, { } as unknown as ChtClientService)),
@@ -722,5 +727,57 @@ describe('Upgrade Service', () => {
         expect(saveDoc.notCalled).to.be.true;
       }));
     });
+  });
+
+  describe('getReleaseDiff', () => {
+    const baseTag = '1.0.0';
+    const headTag = '2.0.0';
+
+    it('returns updated ddocs grouped by db and htmlUrl', run(function* () {
+      const diffData = {
+        html_url: 'https://example.com/diff',
+        commits: [{ sha: '1' }, { sha: '2' }],
+        files: [
+          { filename: 'ddocs/medic-db/medic/views/foo/map.js' },
+          { filename: 'ddocs/medic-db/medic-client/views/bar/map.js' },
+          { filename: 'ddocs/medic-db/medic/views/foo/reduce.js' }, // duplicate ddoc to test dedupe
+          { filename: 'ddocs/users-db/users/views/baz/map.js' },
+          { filename: 'README.md' }, // non matching file
+        ],
+      };
+      compareRefs.returns(Effect.succeed(diffData));
+
+      const result = yield* UpgradeService.getReleaseDiff(baseTag, headTag);
+
+      expect(result).to.deep.equal({
+        updatedDdocs: {
+          medic: ['medic', 'medic-client'],
+          users: ['users']
+        },
+        htmlUrl: diffData.html_url,
+        fileChangeCount: 5,
+        commitCount: 2
+      });
+      expect(compareRefs).to.have.been.calledOnceWithExactly(baseTag, headTag);
+    }));
+
+    it('returns empty updatedDdocs when files is undefined', run(function* () {
+      const diffData = {
+        html_url: 'https://example.com/diff',
+        commits: [],
+        files: undefined,
+      };
+      compareRefs.returns(Effect.succeed(diffData));
+
+      const result = yield* UpgradeService.getReleaseDiff(baseTag, headTag);
+
+      expect(result).to.deep.equal({
+        updatedDdocs: { },
+        htmlUrl: diffData.html_url,
+        fileChangeCount: 0,
+        commitCount: 0
+      });
+      expect(compareRefs).to.have.been.calledOnceWithExactly(baseTag, headTag);
+    }));
   });
 });

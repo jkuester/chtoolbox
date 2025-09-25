@@ -19,12 +19,16 @@ import {
 } from 'effect';
 import { completeChtUpgrade, stageChtUpgrade, upgradeCht } from '../libs/cht/upgrade.ts';
 import { ChtClientService } from './cht-client.ts';
-import { mapErrorToGeneric, pouchDB } from '../libs/core.ts';
+import { mapErrorToGeneric } from '../libs/core.ts';
 import { CouchDesign } from '../libs/couch/design.ts';
 import { WarmViewsService } from './warm-views.ts';
+import { type CompareCommitsData, compareRefs } from '../libs/github.ts';
+import { type CouchActiveTaskStream } from '../libs/couch/active-tasks.ts';
+import type { NonEmptyArray } from 'effect/Array';
+import { pouchDB } from '../libs/shim.js';
+
 type Attachments = PouchDB.Core.Attachments;
 type FullAttachment = PouchDB.Core.FullAttachment;
-import { type CouchActiveTaskStream } from '../libs/couch/active-tasks.ts';
 
 const UPGRADE_LOG_NAME = 'upgrade_log';
 const COMPLETED_STATES = ['finalized', 'aborted', 'errored', 'interrupted'] as const;
@@ -196,6 +200,35 @@ const preStageDdocs = Effect.fn((docsByDb: [DesignDocAttachment, typeof CHT_DDOC
   Effect.map(Stream.concatAll),
 ));
 
+const getChtCoreDiff = compareRefs('medic', 'cht-core');
+const DDOC_PATTERN = /^ddocs\/([^/]+)-db\/([^/]+)\/.*(?:map|reduce)\.js$/;
+
+const getUpdatedDdocsByDb = ({ files }: CompareCommitsData) => pipe(
+  files ?? [],
+  Array.map(({ filename }) => filename),
+  Array.map(String.match(DDOC_PATTERN)),
+  Array.map(Option.map(([, db, ddoc]) => [db, ddoc])),
+  Array.map(Option.filter((data): data is [string, string] => Array.every(data, Predicate.isNotNullable))),
+  Array.getSomes,
+  Array.groupBy(([db]) => db),
+  Record.map(Array.map(([, ddoc]) => ddoc)),
+  Record.map(Array.dedupe)
+);
+
+export interface ChtCoreReleaseDiff {
+  updatedDdocs: Record<string, NonEmptyArray<string>>;
+  htmlUrl: string;
+  fileChangeCount: number,
+  commitCount: number
+}
+
+const getReleaseDiff = (diffData: CompareCommitsData): ChtCoreReleaseDiff => ({
+  updatedDdocs: getUpdatedDdocsByDb(diffData),
+  htmlUrl: diffData.html_url,
+  fileChangeCount: (diffData.files ?? []).length,
+  commitCount: diffData.commits.length
+});
+
 const serviceContext = Effect
   .all([
     ChtClientService,
@@ -245,6 +278,15 @@ export class UpgradeService extends Effect.Service<UpgradeService>()('chtoolbox/
       Effect.flatMap(preStageDdocs),
       Effect.map(Stream.provideContext(context)),
       Effect.map(Stream.mapError(x => x as Error)),
+      Effect.provide(context),
+    )),
+    getReleaseDiff: Effect.fn((
+      baseTag: string,
+      headTag: string
+    ): Effect.Effect<ChtCoreReleaseDiff, Error> => pipe(
+      getChtCoreDiff(baseTag, headTag),
+      Effect.map(getReleaseDiff),
+      mapErrorToGeneric,
       Effect.provide(context),
     )),
   }))),

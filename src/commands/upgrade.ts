@@ -1,11 +1,13 @@
 import { Args, Command, Options } from '@effect/cli';
-import { Array, Console, DateTime, Effect, Match, pipe, Schedule, Stream } from 'effect';
+import { chtMonitoringDataEffect } from '../libs/cht/monitoring.ts';
+import { Array, Console, DateTime, Effect, Match, Option, pipe, Record, Schedule, Stream } from 'effect';
 import { initializeUrl } from '../index.ts';
-import { UpgradeLog, UpgradeService } from '../services/upgrade.ts';
+import { type ChtCoreReleaseDiff, UpgradeLog, UpgradeService } from '../services/upgrade.ts';
 
-import { clearConsoleEffect, clearThen } from '../libs/console.ts';
+import { clearConsoleEffect, clearThen, color } from '../libs/console.ts';
 import { type CouchActiveTaskStream, getDisplayDictByPid } from '../libs/couch/active-tasks.ts';
 import { getTaskDisplayData } from './db/compact.ts';
+import type { NonEmptyArray } from 'effect/Array';
 
 const getUpgradeLogDisplay = ({ state_history }: UpgradeLog) => pipe(
   state_history,
@@ -101,15 +103,114 @@ const complete = Options
     Options.withDescription('Complete a staged upgrade.'),
   );
 
+const diff = Options
+  .text('diff')
+  .pipe(
+    Options.withDescription(
+      'Show diff between the given CHT version and the target version. No changes will be made. This option is for '
+      + 'comparing arbitrary CHT versions. Use the --preview option to compare the current version of your CHT '
+      + 'instance with the target version. The GITHUB_TOKEN environment variable must be set when performing this '
+      + 'operation. The token must at least have read-only access to public repositories.'
+    ),
+    Options.optional
+  );
+
+const preview = Options
+  .boolean('preview')
+  .pipe(Options.withDescription(
+    'Show diff between the current CHT version and the targeted upgrade version. No changes will be made. Use the '
+    + '--diff option to compare arbitrary CHT versions without a CHT instance in context. The GITHUB_TOKEN environment '
+    + 'variable must be set when performing this operation. The token must at least have read-only access to public '
+    + 'repositories.'
+  ));
+
 const version = Args
   .text({ name: 'version' })
   .pipe(
     Args.withDescription('The CHT version to upgrade to'),
   );
 
+const printChangedDdocs = (updatedDdocs: Record<string, NonEmptyArray<string>>) => pipe(
+  Console.log(`\nDesign documents that will be re-indexed:`),
+  Effect.andThen(Console.table(updatedDdocs))
+);
+
+const printNoChangedDdocsEffect = Console.log('\nNo design documents will be re-indexed.');
+
+const printDdocChanges = ({ updatedDdocs }: ChtCoreReleaseDiff) => pipe(
+  Match.value(updatedDdocs),
+  Match.when(Record.isEmptyRecord, () => printNoChangedDdocsEffect),
+  Match.orElse(() => printChangedDdocs(updatedDdocs)),
+);
+
+const displayReleaseDiff = (headTag: string) => Effect.fn((baseTag: string) => pipe(
+  Console.log(`\nComparing ${color('blue')(baseTag)} -> ${color('green')(headTag)}`),
+  Effect.andThen(UpgradeService.getReleaseDiff(baseTag, headTag)),
+  Effect.tap(({ fileChangeCount, commitCount }) => Console.log(
+    `\n${color('red')(fileChangeCount.toString())} files changed in ${color('red')(commitCount.toString())} commits`
+  )),
+  Effect.tap(printDdocChanges),
+  Effect.tap(({ htmlUrl }) => Console.log(`\nFull diff: ${htmlUrl}\n`)),
+  Effect.asVoid,
+));
+
+const currentChtVersionEffect = Effect.suspend(() => pipe(
+  chtMonitoringDataEffect,
+  Effect.map(({ version: { app } }) => app),
+));
+
+const getVersionToDiff = (opts: UpgradeOptions) => pipe(
+  Match.value(opts),
+  Match.when({ preview: true }, () => pipe(currentChtVersionEffect, Effect.map(Option.some))),
+  Match.orElse(() => Effect.succeed(opts.diff))
+);
+
+const validateOptions = (opts: UpgradeOptions) => pipe(
+  Match.value(opts),
+  Match.whenOr(
+    { diff: Option.isSome, follow: true },
+    { diff: Option.isSome, stage: true },
+    { diff: Option.isSome, complete: true },
+    { diff: Option.isSome, preStage: true },
+    { diff: Option.isSome, preview: true },
+    () => Effect.fail('The --diff option cannot be used with any other options.'),
+  ),
+  Match.whenOr(
+    { preview: true, follow: true },
+    { preview: true, stage: true },
+    { preview: true, complete: true },
+    { preview: true, preStage: true },
+    () => Effect.fail('The --preview option cannot be used with any other options.'),
+  ),
+  Match.orElse(() => Effect.succeed(opts))
+);
+
+interface UpgradeOptions {
+  version: string;
+  follow: boolean;
+  stage: boolean;
+  complete: boolean;
+  preStage: boolean;
+  diff: Option.Option<string>;
+  preview: boolean;
+}
+
 export const upgrade = Command
-  .make('upgrade', { version, follow, stage, complete, preStage }, Effect.fn((opts) => initializeUrl.pipe(
-    Effect.andThen(getUpgradeAction(opts)),
-    Effect.flatMap(getStreamAction(opts)),
-  )))
-  .pipe(Command.withDescription(`Run compaction on all databases and views.`));
+  .make(
+    'upgrade',
+    { version, follow, stage, complete, preStage, diff, preview },
+    Effect.fn((opts: UpgradeOptions) => initializeUrl.pipe(
+      Effect.andThen(validateOptions(opts)),
+      Effect.andThen(getVersionToDiff),
+      Effect.flatMap(Option.match({
+        onSome: displayReleaseDiff(opts.version),
+        onNone: () => pipe(
+          getUpgradeAction(opts),
+          Effect.flatMap(getStreamAction({
+            preStage: opts.preStage,
+            follow: opts.follow,
+          })),
+        )
+      })),
+    ))
+  ).pipe(Command.withDescription(`Perform upgrade operations on the CHT instance.`));

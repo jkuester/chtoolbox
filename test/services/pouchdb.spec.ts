@@ -22,7 +22,7 @@ const {
   streamChanges,
   streamQueryPages
 } = await esmock<typeof PouchDbSvc>('../../src/services/pouchdb.ts', {
-  '../../src/libs/core.ts': mockCore,
+  '../../src/libs/shim.ts': mockCore,
   'effect': { Stream: { ...Stream, ...mockStream } },
 });
 const run = PouchDBService.Default.pipe(

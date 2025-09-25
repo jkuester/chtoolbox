@@ -1,5 +1,4 @@
 import { Array, Effect, Function, Number, Option, Ref, Stream } from 'effect';
-import PouchDB from 'pouchdb-core';
 
 export const mapErrorToGeneric = <A, E, R>(
   effect: Effect.Effect<A, E, R>
@@ -27,14 +26,6 @@ export const untilEmptyCount = (target: number): (data: unknown[]) => Effect.Eff
       Effect.map(count => count === target),
     )),
   );
-
-/**
- * Shim to make PouchDB easier to mock.
- */
-export const pouchDB = (
-  name?: string,
-  options?: PouchDB.Configuration.DatabaseConfiguration
-): PouchDB.Database<object> => new PouchDB(name, options);
 
 const zipArrayStreams = <T, Q>(
   self: Stream.Stream<T[], Error, Q>,
