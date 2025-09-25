@@ -213,4 +213,4 @@ export const upgrade = Command
         )
       })),
     ))
-  ).pipe(Command.withDescription(`Run compaction on all databases and views.`));
+  ).pipe(Command.withDescription(`Perform upgrade operations on the CHT instance.`));
