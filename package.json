@@ -61,7 +61,7 @@
     "@effect/platform-node": "^0.95.0",
     "@octokit/plugin-paginate-rest": "^13.1.1",
     "@octokit/rest": "^21.0.0",
-    "effect": "^3.17.9",
+    "effect": "^3.17.14",
     "get-port": "^7.1.0",
     "pouchdb-adapter-http": "^9.0.0",
     "pouchdb-core": "^9.0.0",
