@@ -62,6 +62,7 @@
     "@octokit/plugin-paginate-rest": "^13.1.1",
     "@octokit/rest": "^21.0.0",
     "effect": "^3.17.9",
+    "env-paths": "^3.0.0",
     "get-port": "^7.1.0",
     "pouchdb-adapter-http": "^9.0.0",
     "pouchdb-core": "^9.0.0",

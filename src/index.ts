@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Command, Options } from '@effect/cli';
 import { NodeContext, NodeHttpClient, NodeRuntime } from '@effect/platform-node';
-import { Effect, Layer, Option, Redacted, String } from 'effect';
+import { Effect, Layer, Option, pipe, Redacted, String } from 'effect';
 import { ChtClientService } from './services/cht-client.ts';
 import { monitor } from './commands/monitor.ts';
 import packageJson from '../package.json' with { type: 'json' };
@@ -27,6 +27,7 @@ import { localIp } from './commands/local-ip/index.ts';
 import { LocalIpService } from './services/local-ip.ts';
 import { SentinelBacklogService } from './services/sentinel-backlog.ts';
 import { sentinelBacklog } from './commands/sentinel-backlog/index.ts';
+import { configProviderEffect } from './libs/config.js';
 
 const url = Options
   .text('url')
@@ -68,22 +69,26 @@ const httpClientNoSslVerify = Layer.provide(NodeHttpClient.layerWithoutAgent.pip
   Layer.provide(NodeHttpClient.makeAgentLayer({ rejectUnauthorized: false }))
 ));
 
-cli(process.argv)
-  .pipe(
-    Effect.provide(CompactService.Default),
-    Effect.provide(MonitorService.Default),
-    Effect.provide(LocalDiskUsageService.Default),
-    Effect.provide(LocalInstanceService.Default.pipe(httpClientNoSslVerify)),
-    Effect.provide(LocalIpService.Default),
-    Effect.provide(PurgeService.Default),
-    Effect.provide(UpgradeService.Default),
-    Effect.provide(WarmViewsService.Default),
-    Effect.provide(ReplicateService.Default),
-    Effect.provide(SentinelBacklogService.Default),
-    Effect.provide(TestDataGeneratorService.Default),
-    Effect.provide(PouchDBService.Default),
-    Effect.provide(ChtClientService.Default.pipe(httpClientNoSslVerify)),
-    Effect.provide(EnvironmentService.Default),
-    Effect.provide(NodeContext.layer),
-    NodeRuntime.runMain
-  );
+pipe(
+  configProviderEffect,
+  Effect.flatMap(configProvider => pipe(
+    cli(process.argv),
+    Effect.withConfigProvider(configProvider)
+  )),
+  Effect.provide(CompactService.Default),
+  Effect.provide(MonitorService.Default),
+  Effect.provide(LocalDiskUsageService.Default),
+  Effect.provide(LocalInstanceService.Default.pipe(httpClientNoSslVerify)),
+  Effect.provide(LocalIpService.Default),
+  Effect.provide(PurgeService.Default),
+  Effect.provide(UpgradeService.Default),
+  Effect.provide(WarmViewsService.Default),
+  Effect.provide(ReplicateService.Default),
+  Effect.provide(SentinelBacklogService.Default),
+  Effect.provide(TestDataGeneratorService.Default),
+  Effect.provide(PouchDBService.Default),
+  Effect.provide(ChtClientService.Default.pipe(httpClientNoSslVerify)),
+  Effect.provide(EnvironmentService.Default),
+  Effect.provide(NodeContext.layer),
+  NodeRuntime.runMain
+);

@@ -1,8 +1,8 @@
 import { FileSystem, HttpClient, HttpClientRequest } from '@effect/platform';
 import { describe, it } from 'mocha';
-import { Effect, Layer } from 'effect';
+import { Effect, Either, Layer, pipe } from 'effect';
 import { expect } from 'chai';
-import sinon from 'sinon';
+import sinon, { type SinonStub } from 'sinon';
 import { genWithLayer, sandbox } from '../utils/base.ts';
 import * as FileLibs from '../../src/libs/file.ts';
 import esmock from 'esmock';
@@ -127,25 +127,81 @@ describe('file libs', () => {
     expect(httpClientExecute.notCalled).to.be.true;
   }));
 
-  it('readJsonFile', run(function* () {
+  describe('readJsonFile', () => {
     const path = 'filepath';
     const fileName = 'filename.json';
     const content = { hello: 'world' };
-    const jsonContent = '{ "hello": "world" }';
-    const jsonParse = sinon
-      .stub(JSON, 'parse')
-      .returns(content);
-    fsReadFileString.returns(Effect.succeed(jsonContent));
+    const defaultContent = { world: 'hello' };
 
-    yield* readJsonFile(fileName, path);
+    let jsonParse: SinonStub;
 
-    expect(jsonParse.calledOnceWithExactly(jsonContent)).to.be.true;
-    expect(fsMakeDirectory.notCalled).to.be.true;
-    expect(fsMakeTempDirectoryScoped.notCalled).to.be.true;
-    expect(fsWriteFileString.notCalled).to.be.true;
-    expect(fsReadFileString.calledOnceWithExactly(`${path}/${fileName}`)).to.be.true;
-    expect(httpClientExecute.notCalled).to.be.true;
-  }));
+    beforeEach(() => {
+      jsonParse = sinon.stub(JSON, 'parse');
+    });
+
+    afterEach(() => {
+      expect(fsMakeDirectory.notCalled).to.be.true;
+      expect(fsMakeTempDirectoryScoped.notCalled).to.be.true;
+      expect(fsWriteFileString.notCalled).to.be.true;
+      expect(httpClientExecute.notCalled).to.be.true;
+    });
+
+    it('returns the JSON data from a file at the given path', run(function* () {
+      const jsonContent = '{ "hello": "world" }';
+      fsExists.returns(Effect.succeed(true));
+      jsonParse.returns(content);
+      fsReadFileString.returns(Effect.succeed(jsonContent));
+
+      const result = yield* readJsonFile(fileName, path);
+
+      expect(result).to.deep.equal(content);
+      expect(jsonParse).to.have.been.calledOnceWithExactly(jsonContent);
+      expect(fsReadFileString).to.have.been.calledOnceWithExactly(`${path}/${fileName}`);
+      expect(fsExists).to.have.been.calledOnceWithExactly(`${path}/${fileName}`);
+    }));
+
+    it('returns the JSON data from a file instead of the provided default data', run(function* () {
+      const jsonContent = '{ "hello": "world" }';
+      fsExists.returns(Effect.succeed(true));
+      jsonParse.returns(content);
+      fsReadFileString.returns(Effect.succeed(jsonContent));
+
+      yield* readJsonFile(fileName, path, defaultContent);
+
+      expect(jsonParse).to.have.been.calledOnceWithExactly(jsonContent);
+      expect(fsReadFileString).to.have.been.calledOnceWithExactly(`${path}/${fileName}`);
+      expect(fsExists).to.have.been.calledOnceWithExactly(`${path}/${fileName}`);
+    }));
+
+    it('returns the default data when the JSON file does not exist', run(function* () {
+      fsExists.returns(Effect.succeed(false));
+
+      yield* readJsonFile(fileName, path, defaultContent);
+
+      expect(jsonParse).to.not.have.called;
+      expect(fsReadFileString).to.not.have.called;
+      expect(fsExists).to.have.been.calledOnceWithExactly(`${path}/${fileName}`);
+    }));
+
+    it('fails when the JSON file does not exist and no default is given', run(function* () {
+      fsExists.returns(Effect.succeed(false));
+
+      const either = yield* pipe(
+        readJsonFile(fileName, path),
+        Effect.catchAllDefect(Effect.fail),
+        Effect.either
+      );
+
+      if (Either.isRight(either)) {
+        expect.fail('Expected error');
+      }
+
+      expect(either.left).to.deep.equal(`Could not read file: ${path}/${fileName}`);
+      expect(jsonParse).to.not.have.called;
+      expect(fsReadFileString).to.not.have.called;
+      expect(fsExists).to.have.been.calledOnceWithExactly(`${path}/${fileName}`);
+    }));
+  });
 
   it('writeEnvFile', run(function* () {
     const path = 'filepath';
