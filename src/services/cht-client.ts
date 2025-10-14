@@ -3,20 +3,29 @@ import { Scope } from 'effect/Scope';
 import * as Effect from 'effect/Effect';
 import { HttpClient, HttpClientRequest } from '@effect/platform';
 import * as Context from 'effect/Context';
-import { pipe, Redacted } from 'effect';
+import { Function, pipe, Redacted, Tuple } from 'effect';
 import { filterStatusOk, mapRequest } from '@effect/platform/HttpClient';
-import { CHT_URL_AUTHENTICATED } from '../libs/config.js';
+import { CHT_PASSWORD, CHT_URL, CHT_USERNAME } from '../libs/config.js';
 
-const getClientForUrl = Effect.fn((url: URL) => pipe(
+const basicAuthHeaderEffect = pipe(
+  Tuple.make(CHT_USERNAME, CHT_PASSWORD),
+  Effect.allWith({ concurrency: 'unbounded' }),
+  Effect.map(([user, pass]) => `${user}:${Redacted.value(pass)}`),
+  Effect.map(creds => Buffer
+    .from(creds)
+    .toString('base64')),
+  Effect.map(encoded => `Basic ${encoded}`),
+);
+
+const getClientForUrl = Effect.fn((url: URL, authHeader: string) => pipe(
   HttpClient.HttpClient,
   Effect.map(mapRequest(HttpClientRequest.prependUrl(url.toString()))),
+  Effect.map(mapRequest(HttpClientRequest.setHeader('Authorization', authHeader)))
 ));
 
 const clientWithUrl = pipe(
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  CHT_URL_AUTHENTICATED,
-  Effect.map(Redacted.value),
-  Effect.flatMap(getClientForUrl),
+  Effect.all([CHT_URL, basicAuthHeaderEffect], { concurrency: 'unbounded' }),
+  Effect.flatMap(Function.tupled(getClientForUrl)),
   Effect.map(filterStatusOk),
 );
 

@@ -4,7 +4,13 @@ import { expect } from 'chai';
 import sinon, { type SinonStub } from 'sinon';
 import * as ChtClientSvc from '../../src/services/cht-client.ts';
 import { HttpClient, HttpClientRequest } from '@effect/platform';
-import { DEFAULT_CHT_URL_AUTH, genWithDefaultConfig, sandbox } from '../utils/base.ts';
+import {
+  DEFAULT_CHT_PASSWORD,
+  DEFAULT_CHT_URL,
+  DEFAULT_CHT_USERNAME,
+  genWithDefaultConfig,
+  sandbox
+} from '../utils/base.ts';
 import esmock from 'esmock';
 
 const REQUEST = HttpClientRequest.get('/test');
@@ -12,7 +18,10 @@ const FAKE_HTTP_RESPONSE = { fake: 'response' } as const;
 const fakeHttpClient = { execute: sandbox.stub() };
 const filterStatusOk = sandbox.stub();
 const mapRequest = sandbox.stub();
-const mockHttpRequest = { prependUrl: sandbox.stub() };
+const mockHttpRequest = {
+  prependUrl: sandbox.stub(),
+  setHeader: sandbox.stub(),
+};
 
 const { ChtClientService } = await esmock<typeof ChtClientSvc>('../../src/services/cht-client.ts', {
   '@effect/platform': { HttpClientRequest: mockHttpRequest },
@@ -30,15 +39,21 @@ describe('CHT Client Service', () => {
 
   beforeEach(() => {
     mockHttpRequest.prependUrl.returnsArg(0);
+    mockHttpRequest.setHeader.returnsArg(0);
     innerMapRequest = sinon.stub().returns(fakeHttpClient);
     mapRequest.returns(innerMapRequest);
     filterStatusOk.returns(fakeHttpClient);
   });
 
   afterEach(() => {
-    expect(mockHttpRequest.prependUrl).to.have.been.calledOnceWithExactly(DEFAULT_CHT_URL_AUTH);
-    expect(mapRequest).to.have.been.calledOnceWithExactly(DEFAULT_CHT_URL_AUTH);
-    expect(innerMapRequest).to.have.been.calledOnceWithExactly(fakeHttpClient);
+    expect(mockHttpRequest.prependUrl).to.have.been.calledOnceWithExactly(DEFAULT_CHT_URL);
+    const encodedAuth = Buffer
+      .from(`${DEFAULT_CHT_USERNAME}:${DEFAULT_CHT_PASSWORD}`)
+      .toString('base64');
+    const authHeader = `Basic ${encodedAuth}`;
+    expect(mockHttpRequest.setHeader).to.have.been.calledOnceWithExactly('Authorization', authHeader);
+    expect(mapRequest.args).to.deep.equal([[DEFAULT_CHT_URL], ['Authorization']]);
+    expect(innerMapRequest.args).to.deep.equal([[fakeHttpClient], [fakeHttpClient]]);
     expect(filterStatusOk.calledOnceWithExactly(fakeHttpClient)).to.be.true;
     expect(fakeHttpClient.execute.calledOnceWithExactly(REQUEST)).to.be.true;
   });
