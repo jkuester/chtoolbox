@@ -58,7 +58,7 @@ export const CHT_USERNAME = pipe(
   ))
 );
 
-const CHT_PASSWORD = pipe(
+export const CHT_PASSWORD = pipe(
   Config.redacted('CHT_PASSWORD'),
   Config.withDescription('Admin password for the target CHT instance.'),
   Config.orElse(() => pipe(
@@ -68,7 +68,7 @@ const CHT_PASSWORD = pipe(
   ))
 );
 
-const CHT_URL = pipe(
+export const CHT_URL = pipe(
   Config.url('CHT_URL'),
   Config.withDescription('URL for the target CHT instance.'),
   Config.validate({

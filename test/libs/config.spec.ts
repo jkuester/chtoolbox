@@ -3,6 +3,7 @@ import { Config, Effect, Either, Layer, Option, pipe, Redacted } from 'effect';
 import { expect } from 'chai';
 import * as ConfigLibs from '../../src/libs/config.ts';
 import {
+  DEFAULT_CHT_PASSWORD,
   DEFAULT_CHT_URL_AUTH,
   DEFAULT_CHT_USERNAME,
   genWithConfig,
@@ -19,8 +20,8 @@ const {
   getChtxConfigProvider,
   GITHUB_TOKEN,
   CHT_USERNAME,
-  // CHT_PASSWORD,
-  // CHT_URL,
+  CHT_PASSWORD,
+  CHT_URL,
   // eslint-disable-next-line @typescript-eslint/no-deprecated
   CHT_URL_AUTHENTICATED,
 } = await esmock<typeof ConfigLibs>('../../src/libs/config.ts', {
@@ -133,47 +134,47 @@ describe('Config libs', () => {
     }));
   });
 
-  // describe('CHT_PASSWORD', () => {
-  //   it('returns CHT_PASSWORD from env', run(
-  //     [['CHT_PASSWORD', 'secret']]
-  //   )(function* () {
-  //     const password = yield* CHT_PASSWORD;
-  //     expect(Redacted.value(password)).to.equal('secret');
-  //   }));
-  //
-  //   it('falls back to COUCH_URL password', run(
-  //     [['COUCH_URL', DEFAULT_CHT_URL_AUTH]]
-  //   )(function* () {
-  //     const password = yield* CHT_PASSWORD;
-  //     expect(Redacted.value(password)).to.equal(DEFAULT_CHT_PASSWORD);
-  //   }));
-  //
-  //   it('fails if neither CHT_PASSWORD nor COUCH_URL is set', run([])(function* () {
-  //     const result = yield* Effect.either(CHT_PASSWORD);
-  //     expect(Either.isLeft(result)).to.be.true;
-  //   }));
-  // });
-  //
-  // describe('CHT_URL', () => {
-  //   it('returns CHT_URL from env', run(
-  //     [['CHT_URL', 'http://localhost:5984']]
-  //   )(function* () {
-  //     const url = yield* CHT_URL;
-  //     expect(url.toString()).to.equal('http://localhost:5984/');
-  //   }));
-  //
-  //   it('falls back to COUCH_URL without credentials', run(
-  //     [['COUCH_URL', 'http://user:pass@localhost:5984/medic']]
-  //   )(function* () {
-  //     const url = yield* CHT_URL;
-  //     expect(url.toString()).to.equal('http://localhost:5984/');
-  //   }));
-  //
-  //   it('fails if neither CHT_URL nor COUCH_URL is set', run([])(function* () {
-  //     const result = yield* Effect.either(CHT_URL);
-  //     expect(Either.isLeft(result)).to.be.true;
-  //   }));
-  // });
+  describe('CHT_PASSWORD', () => {
+    it('returns CHT_PASSWORD from env', run(
+      [['CHT_PASSWORD', 'secret']]
+    )(function* () {
+      const password = yield* CHT_PASSWORD;
+      expect(Redacted.value(password)).to.equal('secret');
+    }));
+
+    it('falls back to COUCH_URL password', run(
+      [['COUCH_URL', DEFAULT_CHT_URL_AUTH]]
+    )(function* () {
+      const password = yield* CHT_PASSWORD;
+      expect(Redacted.value(password)).to.equal(DEFAULT_CHT_PASSWORD);
+    }));
+
+    it('fails if neither CHT_PASSWORD nor COUCH_URL is set', run([])(function* () {
+      const result = yield* Effect.either(CHT_PASSWORD);
+      expect(Either.isLeft(result)).to.be.true;
+    }));
+  });
+
+  describe('CHT_URL', () => {
+    it('returns CHT_URL from env', run(
+      [['CHT_URL', 'http://localhost:5984']]
+    )(function* () {
+      const url = yield* CHT_URL;
+      expect(url.toString()).to.equal('http://localhost:5984/');
+    }));
+
+    it('falls back to COUCH_URL without credentials', run(
+      [['COUCH_URL', 'http://user:pass@localhost:5984/medic']]
+    )(function* () {
+      const url = yield* CHT_URL;
+      expect(url.toString()).to.equal('http://localhost:5984/');
+    }));
+
+    it('fails if neither CHT_URL nor COUCH_URL is set', run([])(function* () {
+      const result = yield* Effect.either(CHT_URL);
+      expect(Either.isLeft(result)).to.be.true;
+    }));
+  });
 
   describe('CHT_URL_AUTHENTICATED', () => {
     it('returns authenticated URL from CHT_URL, CHT_USERNAME, CHT_PASSWORD', run(

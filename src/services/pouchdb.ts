@@ -9,7 +9,7 @@ import https from 'https';
 import { v4 as uuid } from 'uuid';
 import { UnknownException } from 'effect/Cause';
 import { pouchDB } from '../libs/shim.js';
-import { CHT_URL_AUTHENTICATED } from '../libs/config.js';
+import { CHT_PASSWORD, CHT_URL, CHT_USERNAME } from '../libs/config.js';
 import { withPathname } from '../libs/url.js';
 import { mapErrorToGeneric } from '../libs/core.js';
 
@@ -206,14 +206,28 @@ const getAgent = (url: string) => Match
   );
 
 const getPouchDB = Effect.fn((dbName: string) => pipe(
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  CHT_URL_AUTHENTICATED,
-  Effect.map(Redacted.value),
-  Effect.map(withPathname(dbName)),
-  Effect.map(url => pouchDB(
-    url.toString(),
-    // @ts-expect-error Setting the `agent` option is not in the PouchDB types for some reason
-    { fetch: (url, opts) => PouchDB.fetch(url, { ...opts, agent: getAgent(url) }) }
+  Effect.all([
+    pipe(
+      CHT_URL,
+      Effect.map(withPathname(dbName)),
+      Effect.map(url => url.toString())
+    ),
+    CHT_USERNAME,
+    pipe(
+      CHT_PASSWORD,
+      Effect.map(Redacted.value)
+    ),
+  ], { concurrency: 'unbounded' }),
+  Effect.map(([url, username, password]) => pouchDB(
+    url,
+    {
+      auth: {
+        username,
+        password
+      },
+      // @ts-expect-error Setting the `agent` option is not in the PouchDB types for some reason
+      fetch: (url, opts) => PouchDB.fetch(url, { ...opts, agent: getAgent(url) })
+    }
   ))
 ));
 
