@@ -1,6 +1,5 @@
 import { Args, Command, Options, Prompt } from '@effect/cli';
 import { Array, Console, Effect, Match, Option, pipe, Predicate, Sink, Stream } from 'effect';
-import { initializeUrl } from '../../index.ts';
 import { PurgeService } from '../../services/purge.ts';
 
 import { clearThen } from '../../libs/console.ts';
@@ -125,8 +124,8 @@ export const purge = Command
   .make(
     'purge',
     { contacts, database, yes, all, reports, before, since },
-    Effect.fn((opts: PurgeOptions) => initializeUrl.pipe(
-      Effect.andThen(assertOpts(opts)),
+    Effect.fn((opts: PurgeOptions) => pipe(
+      assertOpts(opts),
       Effect.andThen(isPurgeConfirmed(opts)),
       Effect.map(confirmed => Option.liftPredicate(purgeDocs(opts), () => confirmed)),
       Effect.flatMap(Option.getOrElse(() => Console.log('Operation cancelled'))),

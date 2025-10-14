@@ -1,6 +1,5 @@
 import { Args, Command } from '@effect/cli';
 import { Array, Effect, Option, pipe, Record } from 'effect';
-import { initializeUrl } from '../../index.ts';
 import { getDesignDocNames } from '../../libs/couch/design-docs.ts';
 import { getDbNames } from '../../libs/couch/dbs-info.ts';
 
@@ -34,8 +33,8 @@ const database = Args
   );
 
 export const ls = Command
-  .make('ls', { database }, Effect.fn(({ database }) => initializeUrl.pipe(
-    Effect.andThen(Effect.succeed(database)),
+  .make('ls', { database }, Effect.fn(({ database }) => pipe(
+    Effect.succeed(database),
     Effect.map(Option.map(printDesignDocNames)),
     Effect.flatMap(Option.getOrElse(() => printAllDesignDocNames)),
   )))

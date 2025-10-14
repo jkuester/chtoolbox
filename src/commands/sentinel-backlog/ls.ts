@@ -1,6 +1,5 @@
 import { Command } from '@effect/cli';
 import { Console, Effect, Number, Option, pipe, String, Tuple } from 'effect';
-import { initializeUrl } from '../../index.ts';
 import { SentinelBacklogService } from '../../services/sentinel-backlog.ts';
 import { color } from '../../libs/console.ts';
 
@@ -25,11 +24,11 @@ Medic update seq: ${updateSeq}
 );
 
 export const ls = Command
-  .make('ls', {}, () => initializeUrl.pipe(
-    Effect.andThen(Effect.all([
+  .make('ls', {}, () => pipe(
+    Effect.all([
       SentinelBacklogService.getTransitionsSeq(),
       SentinelBacklogService.getMedicUpdateSeq()
-    ], { concurrency: 'unbounded' })),
+    ], { concurrency: 'unbounded' }),
     Effect.flatMap(logInfo),
   ))
   .pipe(Command.withDescription(`List current Sentinel backlog details.`));

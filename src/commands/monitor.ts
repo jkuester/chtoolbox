@@ -1,6 +1,5 @@
 import { Command, Options } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe, Schedule } from 'effect';
-import { initializeUrl } from '../index.ts';
 import { MonitorService } from '../services/monitor.ts';
 
 const printCsvRow = Effect.fn((row: readonly (string | number | boolean)[]) => pipe(
@@ -35,8 +34,7 @@ const trackDirSize = Options
 
 export const monitor = Command
   .make('monitor', { interval, trackDirSize }, Effect.fn(({ interval, trackDirSize }) => pipe(
-    initializeUrl,
-    Effect.andThen(MonitorService.getCsvHeader(trackDirSize)),
+    MonitorService.getCsvHeader(trackDirSize),
     Effect.tap(printCsvRow),
     Effect.andThen(Effect.repeat(monitorData(trackDirSize), Schedule.spaced(interval * 1000))),
   )))

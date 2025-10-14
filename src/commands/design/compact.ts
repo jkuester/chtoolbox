@@ -1,6 +1,5 @@
 import { Args, Command, Options } from '@effect/cli';
-import { Array, Console, Effect, Option } from 'effect';
-import { initializeUrl } from '../../index.ts';
+import { Array, Console, Effect, Option, pipe } from 'effect';
 import { CompactService } from '../../services/compact.ts';
 import { mergeArrayStreams } from '../../libs/core.ts';
 import { streamActiveTasks } from '../db/compact.ts';
@@ -26,8 +25,8 @@ const follow = Options
   );
 
 export const compact = Command
-  .make('compact', { follow, database, designs }, Effect.fn(({ follow, database, designs }) => initializeUrl.pipe(
-    Effect.andThen(CompactService.compactDesign(database)),
+  .make('compact', { follow, database, designs }, Effect.fn(({ follow, database, designs }) => pipe(
+    CompactService.compactDesign(database),
     Effect.map(compactDesign => Array.map(designs, compactDesign)),
     Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })),
     Effect.map(Option.liftPredicate(() => follow)),

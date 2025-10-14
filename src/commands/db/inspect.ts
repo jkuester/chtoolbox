@@ -1,6 +1,5 @@
 import { Args, Command } from '@effect/cli';
-import { Effect } from 'effect';
-import { initializeUrl } from '../../index.ts';
+import { Effect, pipe } from 'effect';
 import { getDbsInfoByName } from '../../libs/couch/dbs-info.ts';
 
 import { logJson } from '../../libs/console.ts';
@@ -13,8 +12,8 @@ const databases = Args
   );
 
 export const inspect = Command
-  .make('inspect', { databases }, Effect.fn(({ databases }) => initializeUrl.pipe(
-    Effect.andThen(getDbsInfoByName(databases)),
+  .make('inspect', { databases }, Effect.fn(({ databases }) => pipe(
+    getDbsInfoByName(databases),
     Effect.tap(logJson),
   )))
   .pipe(Command.withDescription(`Display detailed information on one or more Couch databases`));

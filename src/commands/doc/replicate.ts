@@ -1,6 +1,5 @@
 import { Args, Command, Options } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe, Predicate, Schema, Stream } from 'effect';
-import { initializeUrl } from '../../index.ts';
 import { ReplicateService, ReplicationDoc } from '../../services/replicate.ts';
 import { CouchActiveTask, streamActiveTasks } from '../../libs/couch/active-tasks.ts';
 import { ParseError } from 'effect/Cron';
@@ -51,17 +50,18 @@ const getFinalDocCount = Effect.fn((repDocId: string) => PouchDBService
 
 const watchReplication = Effect.fn((
   completionStream: Stream.Stream<ReplicationDoc, Error | ParseError>
-) => getReplicationDocId(completionStream).pipe(
-  Effect.flatMap(repDocId => Stream
-    .runDrain(completionStream)
-    .pipe(
-      Effect.race(streamReplicationTasks(repDocId)),
-      Effect.andThen(getFinalDocCount(repDocId)),
-      Effect.tap(finalDocCount => clearThen(Console.log(
-        `Replication complete. Final doc count: ${finalDocCount.toString()}`
-      ))),
-    )),
-));
+) => getReplicationDocId(completionStream)
+  .pipe(
+    Effect.flatMap(repDocId => Stream
+      .runDrain(completionStream)
+      .pipe(
+        Effect.race(streamReplicationTasks(repDocId)),
+        Effect.andThen(getFinalDocCount(repDocId)),
+        Effect.tap(finalDocCount => clearThen(Console.log(
+          `Replication complete. Final doc count: ${finalDocCount.toString()}`
+        ))),
+      )),
+  ));
 
 const follow = Options
   .boolean('follow')
@@ -90,11 +90,11 @@ export const replicate = Command
   .make(
     'replicate',
     { follow, contacts, source, target, all },
-    Effect.fn(({ follow, contacts, source, target, all }) => initializeUrl.pipe(
-      Effect.andThen(ReplicateService.replicate(source, target, {
+    Effect.fn(({ follow, contacts, source, target, all }) => pipe(
+      ReplicateService.replicate(source, target, {
         includeDdocs: all,
         contactTypes: contacts
-      })),
+      }),
       Effect.map(completionStream => Option.liftPredicate(completionStream, () => follow)),
       Effect.map(Option.map(watchReplication)),
       Effect.flatMap(Option.getOrElse(() => clearThen(Console.log(

@@ -1,6 +1,5 @@
 import { Args, Command } from '@effect/cli';
 import { Array, Effect, pipe } from 'effect';
-import { initializeUrl } from '../../index.ts';
 import { getDesignInfo } from '../../libs/couch/design-info.ts';
 import { getViewNames } from '../../libs/couch/design.ts';
 
@@ -32,12 +31,12 @@ const designs = Args
   );
 
 export const inspect = Command
-  .make('inspect', { database, designs }, Effect.fn(({ database, designs }) => initializeUrl.pipe(
-    Effect.andThen(pipe(
+  .make('inspect', { database, designs }, Effect.fn(({ database, designs }) => pipe(
+    pipe(
       designs,
       Array.map(getViewData(database)),
       Effect.allWith({ concurrency: 'unbounded' }),
-    )),
+    ),
     Effect.tap(logJson),
   )))
   .pipe(Command.withDescription(`Display detailed information on one or more designs for a Couch database`));

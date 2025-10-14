@@ -1,8 +1,9 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
 import { PouchDBService, saveDoc, streamChanges } from './pouchdb.ts';
-import { type Environment, EnvironmentService } from './environment.ts';
 import { Array, Match, Option, pipe, Redacted, Schema, Stream } from 'effect';
+import { CHT_URL_AUTHENTICATED, CHT_USERNAME } from '../libs/config.js';
+import { withPathname } from '../libs/url.js';
 
 const SKIP_DDOC_SELECTOR = {
   _id: { '$regex': '^(?!_design/)' },
@@ -15,10 +16,12 @@ const getContactTypeSelector = (contactTypes: string[]) => Match
     Match.orElse(() => ({
       $or: [
         { type: { $in: contactTypes } },
-        { $and: [
-          { type: 'contact', },
-          { contact_type: { $in: contactTypes } }
-        ] }
+        {
+          $and: [
+            { type: 'contact', },
+            { contact_type: { $in: contactTypes } }
+          ]
+        }
       ]
     })),
   );
@@ -40,11 +43,14 @@ const getSelector = Effect.fn((opts: ReplicationOptions) => Match
     Match.orElse(() => Effect.succeed(SKIP_DDOC_SELECTOR))
   ));
 
-const getCouchDbUrl = (env: Environment, name: string) => pipe(
+const getCouchDbUrl = (url: Redacted.Redacted<URL>, name: string) => pipe(
   name,
   Schema.decodeOption(Schema.URL),
-  Option.map(url => url.toString()),
-  Option.getOrElse(() => `${Redacted.value(env.url)}${name}`)
+  Option.getOrElse(() => pipe(
+    Redacted.value(url),
+    withPathname(name)
+  )),
+  url => url.toString()
 );
 
 const createReplicationDoc = Effect.fn((
@@ -53,19 +59,21 @@ const createReplicationDoc = Effect.fn((
   opts: ReplicationOptions
 ) => Effect
   .all([
-    EnvironmentService.get(),
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
+    CHT_URL_AUTHENTICATED,
+    CHT_USERNAME,
     getSelector(opts),
   ])
-  .pipe(Effect.map(([env, selector]) => ({
+  .pipe(Effect.map(([url, username, selector]) => ({
     user_ctx: {
-      name: env.user,
+      name: username,
       roles: ['_admin', '_reader', '_writer'],
     },
-    source: { url: getCouchDbUrl(env, source) },
-    target: { url: getCouchDbUrl(env, target) },
+    source: { url: getCouchDbUrl(url, source) },
+    target: { url: getCouchDbUrl(url, target) },
     create_target: false,
     continuous: false,
-    owner: env.user,
+    owner: username,
     selector,
   }))));
 
@@ -86,17 +94,10 @@ const streamReplicationDocChanges = Effect.fn((repDocId: string) => pipe(
   Effect.map(Stream.takeUntil(({ _replication_state }) => _replication_state === 'completed')),
 ));
 
-const serviceContext = Effect
-  .all([
-    EnvironmentService,
-    PouchDBService,
-  ])
-  .pipe(Effect.map(([
-    env,
-    pouch,
-  ]) => Context
-    .make(PouchDBService, pouch)
-    .pipe(Context.add(EnvironmentService, env))));
+const serviceContext = pipe(
+  PouchDBService,
+  Effect.map((pouch) => Context.make(PouchDBService, pouch))
+);
 
 interface ReplicationOptions {
   readonly includeDdocs?: boolean;
@@ -108,7 +109,7 @@ export class ReplicateService extends Effect.Service<ReplicateService>()('chtool
     replicate: Effect.fn((
       source: string,
       target: string,
-      opts: ReplicationOptions = { }
+      opts: ReplicationOptions = {}
     ): Effect.Effect<Stream.Stream<ReplicationDoc, Error>, Error> => createReplicationDoc(source, target, opts)
       .pipe(
         Effect.flatMap(saveDoc('_replicator')),

@@ -1,6 +1,6 @@
 import { FileSystem, HttpClient, HttpClientRequest } from '@effect/platform';
 import { filterStatusOk } from '@effect/platform/HttpClient';
-import { Array, Boolean, Effect, pipe, Record } from 'effect';
+import { Array, Boolean, Effect, Option, pipe, Record } from 'effect';
 import { PlatformError } from '@effect/platform/Error';
 
 export const createDir = Effect.fn((dirPath: string) => FileSystem.FileSystem.pipe(
@@ -33,12 +33,27 @@ export const writeJsonFile = Effect.fn((
   Effect.flatMap(fs => fs.writeFileString(path, JSON.stringify(data, null, 2))),
 ));
 
-export const readJsonFile = Effect.fn((
+const exists = Effect.fn((path: string) => FileSystem.FileSystem.pipe(Effect.flatMap(fs => fs.exists(path))));
+
+const readJsonFileOrFail = Effect.fn((
   fileName: string,
   directory: string
 ) => FileSystem.FileSystem.pipe(
   Effect.flatMap(fs => fs.readFileString(`${directory}/${fileName}`)),
   Effect.map(JSON.parse),
+));
+
+export const readJsonFile = Effect.fn((
+  fileName: string,
+  directory: string,
+  defaultValue?: Record<string, unknown>
+): Effect.Effect<unknown, PlatformError, FileSystem.FileSystem> => pipe(
+  readJsonFileOrFail(fileName, directory),
+  Effect.whenEffect(exists(`${directory}/${fileName}`)),
+  Effect.map(Option.getOrElse(() => pipe(
+    Option.fromNullable(defaultValue),
+    Option.getOrThrowWith(() => `Could not read file: ${directory}/${fileName}`)
+  ))),
 ));
 
 export const writeEnvFile = Effect.fn((
@@ -52,15 +67,18 @@ export const writeEnvFile = Effect.fn((
   writeFile(path),
 ));
 
-export const isDirectoryEmpty = Effect.fn((dirPath: string) => FileSystem.FileSystem.pipe(
-  Effect.flatMap(fs => pipe(
-    fs.exists(dirPath),
-    Effect.map(Boolean.not),
-    Effect.filterOrElse(
-      dirNotExists => dirNotExists,
-      () => fs
-        .readDirectory(dirPath)
-        .pipe(Effect.map(entries => entries.length === 0))
+const readDirectory = Effect.fn((dirPath: string) => FileSystem.FileSystem.pipe(
+  Effect.flatMap(fs => fs.readDirectory(dirPath))
+));
+
+export const isDirectoryEmpty = Effect.fn((dirPath: string) => pipe(
+  exists(dirPath),
+  Effect.map(Boolean.not),
+  Effect.filterOrElse(
+    dirNotExists => dirNotExists,
+    () => pipe(
+      readDirectory(dirPath),
+      Effect.map(Array.isEmptyArray)
     )
-  ))
+  )
 ));

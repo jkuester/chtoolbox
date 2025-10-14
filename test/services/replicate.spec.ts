@@ -1,11 +1,10 @@
 import { describe, it } from 'mocha';
-import { Chunk, Effect, Either, Layer, Redacted, Stream } from 'effect';
+import { Chunk, Effect, Either, Layer, Stream } from 'effect';
 import sinon, { type SinonStub } from 'sinon';
 import { PouchDBService } from '../../src/services/pouchdb.ts';
-import { EnvironmentService } from '../../src/services/environment.ts';
 import { expect } from 'chai';
 import * as ReplicateSvc from '../../src/services/replicate.ts';
-import { genWithLayer, sandbox } from '../utils/base.ts';
+import { DEFAULT_CHT_URL_AUTH, DEFAULT_CHT_USERNAME, genWithDefaultConfig, sandbox } from '../utils/base.ts';
 import esmock from 'esmock';
 
 const FAKE_RESPONSE = { id: 'world' } as const;
@@ -14,17 +13,12 @@ const mockPouchSvc = {
   streamChanges: sandbox.stub(),
 };
 
-const environmentGet = sandbox.stub();
-
 const { ReplicateService } = await esmock<typeof ReplicateSvc>('../../src/services/replicate.ts', {
   '../../src/services/pouchdb.ts': mockPouchSvc,
 });
 const run = ReplicateService.Default.pipe(
   Layer.provide(Layer.succeed(PouchDBService, { } as unknown as PouchDBService)),
-  Layer.provide(Layer.succeed(EnvironmentService, {
-    get: environmentGet,
-  } as unknown as EnvironmentService)),
-  genWithLayer,
+  genWithDefaultConfig,
 );
 
 describe('Replicate Service', () => {
@@ -35,10 +29,6 @@ describe('Replicate Service', () => {
   });
 
   it('creates a doc in the _replication database', run(function* () {
-    const owner = 'medic';
-    const url = `http://${owner}:password@localhost:5984/`;
-    const env = Redacted.make(url).pipe(url => ({ url, user: owner }));
-    environmentGet.returns(Effect.succeed(env));
     const source = 'source';
     const target = 'target';
     saveDoc.returns(Effect.succeed(FAKE_RESPONSE));
@@ -47,18 +37,17 @@ describe('Replicate Service', () => {
 
     yield* ReplicateService.replicate(source, target);
 
-    expect(environmentGet.calledOnceWithExactly()).to.be.true;
     expect(mockPouchSvc.saveDoc.calledOnceWithExactly('_replicator')).to.be.true;
     expect(saveDoc.calledOnceWithExactly({
       user_ctx: {
-        name: owner,
+        name: DEFAULT_CHT_USERNAME,
         roles: ['_admin', '_reader', '_writer'],
       },
-      source: { url: `${url}${source}` },
-      target: { url: `${url}${target}` },
+      source: { url: `${DEFAULT_CHT_URL_AUTH}${source}` },
+      target: { url: `${DEFAULT_CHT_URL_AUTH}${target}` },
       create_target: false,
       continuous: false,
-      owner,
+      owner: DEFAULT_CHT_USERNAME,
       selector: {
         _id: { '$regex': '^(?!_design/)' },
       },
@@ -71,10 +60,6 @@ describe('Replicate Service', () => {
   }));
 
   it('accepts remote url for target', run(function* () {
-    const owner = 'medic';
-    const url = `http://${owner}:password@localhost:5984/`;
-    const env = Redacted.make(url).pipe(url => ({ url, user: owner }));
-    environmentGet.returns(Effect.succeed(env));
     const source = 'source';
     const target = 'http://remoteUser:password@remote.couch.instance.com/target';
     saveDoc.returns(Effect.succeed(FAKE_RESPONSE));
@@ -83,17 +68,16 @@ describe('Replicate Service', () => {
 
     yield* ReplicateService.replicate(source, target);
 
-    expect(environmentGet.calledOnceWithExactly()).to.be.true;
     expect(saveDoc.calledOnceWithExactly({
       user_ctx: {
-        name: owner,
+        name: DEFAULT_CHT_USERNAME,
         roles: ['_admin', '_reader', '_writer'],
       },
-      source: { url: `${url}${source}` },
+      source: { url: `${DEFAULT_CHT_URL_AUTH}${source}` },
       target: { url: target },
       create_target: false,
       continuous: false,
-      owner,
+      owner: DEFAULT_CHT_USERNAME,
       selector: {
         _id: { '$regex': '^(?!_design/)' },
       },
@@ -106,10 +90,6 @@ describe('Replicate Service', () => {
   }));
 
   it('accepts remote url for source', run(function* () {
-    const owner = 'medic';
-    const url = `http://${owner}:password@localhost:5984/`;
-    const env = Redacted.make(url).pipe(url => ({ url, user: owner }));
-    environmentGet.returns(Effect.succeed(env));
     const source = 'http://remoteUser:password@remote.couch.instance.com/source';
     const target = 'target';
     saveDoc.returns(Effect.succeed(FAKE_RESPONSE));
@@ -118,18 +98,17 @@ describe('Replicate Service', () => {
 
     yield* ReplicateService.replicate(source, target);
 
-    expect(environmentGet.calledOnceWithExactly()).to.be.true;
     expect(mockPouchSvc.saveDoc.calledOnceWithExactly('_replicator')).to.be.true;
     expect(saveDoc.calledOnceWithExactly({
       user_ctx: {
-        name: owner,
+        name: DEFAULT_CHT_USERNAME,
         roles: ['_admin', '_reader', '_writer'],
       },
       source: { url: source },
-      target: { url: `${url}${target}` },
+      target: { url: `${DEFAULT_CHT_URL_AUTH}${target}` },
       create_target: false,
       continuous: false,
-      owner,
+      owner: DEFAULT_CHT_USERNAME,
       selector: {
         _id: { '$regex': '^(?!_design/)' },
       },
@@ -142,10 +121,6 @@ describe('Replicate Service', () => {
   }));
 
   it('includes ddocs in replication when param is set', run(function* () {
-    const owner = 'medic';
-    const url = `http://${owner}:password@localhost:5984/`;
-    const env = Redacted.make(url).pipe(url => ({ url, user: owner }));
-    environmentGet.returns(Effect.succeed(env));
     const source = 'source';
     const target = 'target';
     saveDoc.returns(Effect.succeed(FAKE_RESPONSE));
@@ -154,18 +129,17 @@ describe('Replicate Service', () => {
 
     yield* ReplicateService.replicate(source, target, { includeDdocs: true });
 
-    expect(environmentGet.calledOnceWithExactly()).to.be.true;
     expect(mockPouchSvc.saveDoc.calledOnceWithExactly('_replicator')).to.be.true;
     expect(saveDoc.calledOnceWithExactly({
       user_ctx: {
-        name: owner,
+        name: DEFAULT_CHT_USERNAME,
         roles: ['_admin', '_reader', '_writer'],
       },
-      source: { url: `${url}${source}` },
-      target: { url: `${url}${target}` },
+      source: { url: `${DEFAULT_CHT_URL_AUTH}${source}` },
+      target: { url: `${DEFAULT_CHT_URL_AUTH}${target}` },
       create_target: false,
       continuous: false,
-      owner,
+      owner: DEFAULT_CHT_USERNAME,
       selector: { },
     })).to.be.true;
     expect(mockPouchSvc.streamChanges.calledOnceWithExactly('_replicator')).to.be.true;
@@ -176,10 +150,6 @@ describe('Replicate Service', () => {
   }));
 
   it('replicates only contact types when param is set', run(function* () {
-    const owner = 'medic';
-    const url = `http://${owner}:password@localhost:5984/`;
-    const env = Redacted.make(url).pipe(url => ({ url, user: owner }));
-    environmentGet.returns(Effect.succeed(env));
     const source = 'source';
     const target = 'target';
     saveDoc.returns(Effect.succeed(FAKE_RESPONSE));
@@ -189,18 +159,17 @@ describe('Replicate Service', () => {
 
     yield* ReplicateService.replicate(source, target, { contactTypes });
 
-    expect(environmentGet.calledOnceWithExactly()).to.be.true;
     expect(mockPouchSvc.saveDoc.calledOnceWithExactly('_replicator')).to.be.true;
     expect(saveDoc.calledOnceWithExactly({
       user_ctx: {
-        name: owner,
+        name: DEFAULT_CHT_USERNAME,
         roles: ['_admin', '_reader', '_writer'],
       },
-      source: { url: `${url}${source}` },
-      target: { url: `${url}${target}` },
+      source: { url: `${DEFAULT_CHT_URL_AUTH}${source}` },
+      target: { url: `${DEFAULT_CHT_URL_AUTH}${target}` },
       create_target: false,
       continuous: false,
-      owner,
+      owner: DEFAULT_CHT_USERNAME,
       selector: {
         $or: [
           { type: { $in: contactTypes } },
@@ -219,10 +188,6 @@ describe('Replicate Service', () => {
   }));
 
   it('fails when replicating ddocs and filtering by contact type', run(function* () {
-    const owner = 'medic';
-    const url = `http://${owner}:password@localhost:5984/`;
-    const env = Redacted.make(url).pipe(url => ({ url, user: owner }));
-    environmentGet.returns(Effect.succeed(env));
     const source = 'source';
     const target = 'target';
 
@@ -236,30 +201,25 @@ describe('Replicate Service', () => {
     }
 
     expect(either.left.message).to.equal('Cannot replicate ddocs while also filtering by contact type.');
-    expect(environmentGet.calledOnceWithExactly()).to.be.true;
     expect(saveDoc.notCalled).to.be.true;
     expect(mockPouchSvc.saveDoc.calledOnceWithExactly('_replicator')).to.be.true;
     expect(mockPouchSvc.streamChanges.notCalled).to.be.true;
   }));
 
   it('streams updates to the replication doc until the replication state is completed', run(function* () {
-    const owner = 'medic';
-    const url = `http://${owner}:password@localhost:5984/`;
-    const env = Redacted.make(url).pipe(url => ({ url, user: owner }));
-    environmentGet.returns(Effect.succeed(env));
     const source = 'source';
     const target = 'target';
     saveDoc.returns(Effect.succeed(FAKE_RESPONSE));
     const repDocInitial = {
       user_ctx: {
-        name: owner,
+        name: DEFAULT_CHT_USERNAME,
         roles: ['_admin', '_reader', '_writer'],
       },
-      source: { url: `${url}${source}` },
-      target: { url: `${url}${target}` },
+      source: { url: `${DEFAULT_CHT_URL_AUTH}${source}` },
+      target: { url: `${DEFAULT_CHT_URL_AUTH}${target}` },
       create_target: false,
       continuous: false,
-      owner,
+      owner: DEFAULT_CHT_USERNAME,
       selector: {
         _id: { '$regex': '^(?!_design/)' },
       },
@@ -290,7 +250,6 @@ describe('Replicate Service', () => {
     const results = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
     expect(results).to.deep.equal(repDocChanges);
-    expect(environmentGet.calledOnceWithExactly()).to.be.true;
     expect(saveDoc.calledOnceWithExactly(repDocInitial)).to.be.true;
     expect(mockPouchSvc.saveDoc.calledOnceWithExactly('_replicator')).to.be.true;
     expect(mockPouchSvc.streamChanges.calledOnceWithExactly('_replicator')).to.be.true;

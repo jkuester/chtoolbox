@@ -1,6 +1,5 @@
 import { Command, Options } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe, Schedule } from 'effect';
-import { initializeUrl } from '../index.ts';
 import { WarmViewsService } from '../services/warm-views.ts';
 
 const designsCurrentlyUpdating = WarmViewsService
@@ -38,8 +37,7 @@ const follow = Options
 
 export const warmViews = Command
   .make('warm-views', { follow }, Effect.fn(({ follow }) => pipe(
-    initializeUrl,
-    Effect.tap(Console.log('Warming views...')),
+    Console.log('Warming views...'),
     Effect.andThen(WarmViewsService.warmAll()),
     Effect.andThen(() => followIndexing.pipe(
       Option.liftPredicate(() => follow),

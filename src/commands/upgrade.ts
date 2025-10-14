@@ -1,7 +1,6 @@
 import { Args, Command, Options } from '@effect/cli';
 import { chtMonitoringDataEffect } from '../libs/cht/monitoring.ts';
 import { Array, Console, DateTime, Effect, Match, Option, pipe, Record, Schedule, Stream } from 'effect';
-import { initializeUrl } from '../index.ts';
 import { type ChtCoreReleaseDiff, UpgradeLog, UpgradeService } from '../services/upgrade.ts';
 
 import { clearConsoleEffect, clearThen, color } from '../libs/console.ts';
@@ -109,7 +108,7 @@ const diff = Options
     Options.withDescription(
       'Show diff between the given CHT version and the target version. No changes will be made. This option is for '
       + 'comparing arbitrary CHT versions. Use the --preview option to compare the current version of your CHT '
-      + 'instance with the target version. The GITHUB_TOKEN environment variable must be set when performing this '
+      + 'instance with the target version. The GITHUB_TOKEN config option must be set when performing this '
       + 'operation. The token must at least have read-only access to public repositories.'
     ),
     Options.optional
@@ -119,8 +118,8 @@ const preview = Options
   .boolean('preview')
   .pipe(Options.withDescription(
     'Show diff between the current CHT version and the targeted upgrade version. No changes will be made. Use the '
-    + '--diff option to compare arbitrary CHT versions without a CHT instance in context. The GITHUB_TOKEN environment '
-    + 'variable must be set when performing this operation. The token must at least have read-only access to public '
+    + '--diff option to compare arbitrary CHT versions without a CHT instance in context. The GITHUB_TOKEN config '
+    + 'option must be set when performing this operation. The token must at least have read-only access to public '
     + 'repositories.'
   ));
 
@@ -199,8 +198,8 @@ export const upgrade = Command
   .make(
     'upgrade',
     { version, follow, stage, complete, preStage, diff, preview },
-    Effect.fn((opts: UpgradeOptions) => initializeUrl.pipe(
-      Effect.andThen(validateOptions(opts)),
+    Effect.fn((opts: UpgradeOptions) => pipe(
+      validateOptions(opts),
       Effect.andThen(getVersionToDiff),
       Effect.flatMap(Option.match({
         onSome: displayReleaseDiff(opts.version),
@@ -213,4 +212,5 @@ export const upgrade = Command
         )
       })),
     ))
-  ).pipe(Command.withDescription(`Perform upgrade operations on the CHT instance.`));
+  )
+  .pipe(Command.withDescription(`Perform upgrade operations on the CHT instance.`));

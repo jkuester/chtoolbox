@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 import { Command, Options } from '@effect/cli';
 import { NodeContext, NodeHttpClient, NodeRuntime } from '@effect/platform-node';
-import { Effect, Layer, Option, Redacted, String } from 'effect';
+import { Array, Effect, Layer, pipe } from 'effect';
 import { ChtClientService } from './services/cht-client.ts';
 import { monitor } from './commands/monitor.ts';
 import packageJson from '../package.json' with { type: 'json' };
-import { EnvironmentService, } from './services/environment.ts';
 import { MonitorService } from './services/monitor.ts';
 import { LocalDiskUsageService } from './services/local-disk-usage.ts';
 import { WarmViewsService } from './services/warm-views.ts';
@@ -27,6 +26,38 @@ import { localIp } from './commands/local-ip/index.ts';
 import { LocalIpService } from './services/local-ip.ts';
 import { SentinelBacklogService } from './services/sentinel-backlog.ts';
 import { sentinelBacklog } from './commands/sentinel-backlog/index.ts';
+import { getChtxConfigProvider } from './libs/config.js';
+
+const withChtxConfigProvider = Effect.fn(<A, E, R>(
+  effect: Effect.Effect<A, E, R>
+) => pipe(
+    chtx,
+    Effect.flatMap(getChtxConfigProvider),
+    Effect.flatMap(configProvider => pipe(
+      effect,
+      Effect.withConfigProvider(configProvider)
+    )),
+  ));
+
+const subCommandWithConfig = <N extends string, R, E, A>(cmd: Command.Command<N, R, E, A>) => pipe(
+  cmd,
+  Command.transformHandler(withChtxConfigProvider)
+);
+
+// Could not find a way to map the subcommands through subCommandWithConfig without running into issues with TS trying
+// to infer a union type that gets really janky with the service tags.
+const SUBCOMMANDS = Array.make(
+  subCommandWithConfig(design),
+  subCommandWithConfig(doc),
+  subCommandWithConfig(localIp),
+  subCommandWithConfig(monitor),
+  subCommandWithConfig(warmViews),
+  subCommandWithConfig(activeTasks),
+  subCommandWithConfig(db),
+  subCommandWithConfig(upgrade),
+  subCommandWithConfig(instance),
+  subCommandWithConfig(sentinelBacklog)
+);
 
 const url = Options
   .text('url')
@@ -40,24 +71,9 @@ const url = Options
 
 const chtx = Command.make('chtx', { url });
 
-const setEnv = Effect.fn((url: Redacted.Redacted) => Effect.flatMap(EnvironmentService, envSvc => envSvc.setUrl(url)));
-const getEnv = Effect.flatMap(EnvironmentService, envSvc => envSvc.get());
-
-export const initializeUrl = chtx.pipe(
-  Effect.map(({ url }) => url),
-  Effect.map(Option.map(Redacted.make)),
-  Effect.map(Option.map(setEnv)),
-  Effect.flatMap(Option.getOrElse(() => getEnv)),
-  Effect.map(({ url }) => Redacted.value(url)),
-  Effect.map(Option.liftPredicate(String.isNonEmpty)),
-  Effect.map(Option.getOrThrowWith(() => new Error(
-    'A value must be set for the COUCH_URL envar or the --url option.'
-  ))),
+const command = chtx.pipe(
+  Command.withSubcommands(SUBCOMMANDS),
 );
-
-const command = chtx.pipe(Command.withSubcommands([
-  design, doc, localIp, monitor, warmViews, activeTasks, db, upgrade, instance, sentinelBacklog
-]));
 
 const cli = Command.run(command, {
   name: 'CHT Toolbox',
@@ -68,22 +84,21 @@ const httpClientNoSslVerify = Layer.provide(NodeHttpClient.layerWithoutAgent.pip
   Layer.provide(NodeHttpClient.makeAgentLayer({ rejectUnauthorized: false }))
 ));
 
-cli(process.argv)
-  .pipe(
-    Effect.provide(CompactService.Default),
-    Effect.provide(MonitorService.Default),
-    Effect.provide(LocalDiskUsageService.Default),
-    Effect.provide(LocalInstanceService.Default.pipe(httpClientNoSslVerify)),
-    Effect.provide(LocalIpService.Default),
-    Effect.provide(PurgeService.Default),
-    Effect.provide(UpgradeService.Default),
-    Effect.provide(WarmViewsService.Default),
-    Effect.provide(ReplicateService.Default),
-    Effect.provide(SentinelBacklogService.Default),
-    Effect.provide(TestDataGeneratorService.Default),
-    Effect.provide(PouchDBService.Default),
-    Effect.provide(ChtClientService.Default.pipe(httpClientNoSslVerify)),
-    Effect.provide(EnvironmentService.Default),
-    Effect.provide(NodeContext.layer),
-    NodeRuntime.runMain
-  );
+pipe(
+  cli(process.argv),
+  Effect.provide(CompactService.Default),
+  Effect.provide(MonitorService.Default),
+  Effect.provide(LocalDiskUsageService.Default),
+  Effect.provide(LocalInstanceService.Default.pipe(httpClientNoSslVerify)),
+  Effect.provide(LocalIpService.Default),
+  Effect.provide(PurgeService.Default),
+  Effect.provide(UpgradeService.Default),
+  Effect.provide(WarmViewsService.Default),
+  Effect.provide(ReplicateService.Default),
+  Effect.provide(SentinelBacklogService.Default),
+  Effect.provide(TestDataGeneratorService.Default),
+  Effect.provide(PouchDBService.Default),
+  Effect.provide(ChtClientService.Default.pipe(httpClientNoSslVerify)),
+  Effect.provide(NodeContext.layer),
+  NodeRuntime.runMain
+);
