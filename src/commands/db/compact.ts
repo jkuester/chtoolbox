@@ -1,10 +1,10 @@
 import { Args, Command, Options } from '@effect/cli';
 import { Array, Console, Effect, Option, pipe, Stream, String } from 'effect';
-import { initializeUrl } from '../../index.ts';
 import { CompactService } from '../../services/compact.ts';
 import { mergeArrayStreams } from '../../libs/core.ts';
 import {
-  CouchActiveTask, type CouchActiveTaskStream,
+  CouchActiveTask,
+  type CouchActiveTaskStream,
   getDbName,
   getDesignName,
   getDisplayDictByPid,
@@ -74,8 +74,8 @@ const follow = Options
   );
 
 export const compact = Command
-  .make('compact', { follow, databases, all }, Effect.fn(({ follow, databases, all }) => initializeUrl.pipe(
-    Effect.andThen(() => doCompaction(databases, all)),
+  .make('compact', { follow, databases, all }, Effect.fn(({ follow, databases, all }) => pipe(
+    doCompaction(databases, all),
     Effect.map(Option.liftPredicate(() => follow)),
     Effect.map(Option.map(mergeArrayStreams)),
     Effect.map(Option.map(streamActiveTasks)),

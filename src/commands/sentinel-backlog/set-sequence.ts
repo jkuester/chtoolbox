@@ -1,7 +1,6 @@
 import { Args, Command, Options, Prompt } from '@effect/cli';
 import { Boolean, Console, Effect, Option, pipe } from 'effect';
 import { color } from '../../libs/console.ts';
-import { initializeUrl } from '../../index.ts';
 import { SentinelBacklogService } from '../../services/sentinel-backlog.ts';
 
 const validateParams = Effect.fn((value: Option.Option<string>, latest: boolean) => pipe(
@@ -64,8 +63,8 @@ const yes = Options
   );
 
 export const setSequence = Command
-  .make('set-sequence', { value, latest, yes }, ({ value, latest, yes }) => initializeUrl.pipe(
-    Effect.andThen(validateParams(value, latest)),
+  .make('set-sequence', { value, latest, yes }, ({ value, latest, yes }) => pipe(
+    validateParams(value, latest),
     Effect.andThen(Effect.all([
       SentinelBacklogService.getTransitionsSeq(),
       getNewSequenceValue(value)

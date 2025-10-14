@@ -1,6 +1,5 @@
 import { Args, Command } from '@effect/cli';
 import { Array, Effect, pipe } from 'effect';
-import { initializeUrl } from '../../index.ts';
 import { PouchDBService } from '../../services/pouchdb.ts';
 
 import { logJson } from '../../libs/console.ts';
@@ -19,8 +18,8 @@ const databases = Args
   );
 
 export const create = Command
-  .make('create', { databases }, Effect.fn(({ databases }) => initializeUrl.pipe(
-    Effect.andThen(createDbs(databases)),
+  .make('create', { databases }, Effect.fn(({ databases }) => pipe(
+    createDbs(databases),
     Effect.map(Array.map(db => Effect.promise(() => db.info()))),
     Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })),
     Effect.tap(logJson),

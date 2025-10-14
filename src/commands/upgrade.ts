@@ -1,7 +1,6 @@
 import { Args, Command, Options } from '@effect/cli';
 import { chtMonitoringDataEffect } from '../libs/cht/monitoring.ts';
 import { Array, Console, DateTime, Effect, Match, Option, pipe, Record, Schedule, Stream } from 'effect';
-import { initializeUrl } from '../index.ts';
 import { type ChtCoreReleaseDiff, UpgradeLog, UpgradeService } from '../services/upgrade.ts';
 
 import { clearConsoleEffect, clearThen, color } from '../libs/console.ts';
@@ -199,8 +198,8 @@ export const upgrade = Command
   .make(
     'upgrade',
     { version, follow, stage, complete, preStage, diff, preview },
-    Effect.fn((opts: UpgradeOptions) => initializeUrl.pipe(
-      Effect.andThen(validateOptions(opts)),
+    Effect.fn((opts: UpgradeOptions) => pipe(
+      validateOptions(opts),
       Effect.andThen(getVersionToDiff),
       Effect.flatMap(Option.match({
         onSome: displayReleaseDiff(opts.version),
@@ -213,4 +212,5 @@ export const upgrade = Command
         )
       })),
     ))
-  ).pipe(Command.withDescription(`Perform upgrade operations on the CHT instance.`));
+  )
+  .pipe(Command.withDescription(`Perform upgrade operations on the CHT instance.`));

@@ -1,6 +1,5 @@
 import { Command, Options } from '@effect/cli';
 import { Array, Console, DateTime, Effect, Number, Option, pipe, Stream, String } from 'effect';
-import { initializeUrl } from '../index.ts';
 import {
   activeTasksEffect,
   CouchActiveTask,
@@ -56,8 +55,8 @@ const follow = Options
   );
 
 export const activeTasks = Command
-  .make('active-tasks', { follow }, Effect.fn(({ follow }) => initializeUrl.pipe(
-    Effect.andThen(followActiveTasks),
+  .make('active-tasks', { follow }, Effect.fn(({ follow }) => pipe(
+    followActiveTasks,
     Option.liftPredicate(() => follow),
     Option.getOrElse(() => printCurrentTasks),
   )))

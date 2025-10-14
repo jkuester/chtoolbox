@@ -1,36 +1,33 @@
-import { Effect, Option, Redacted } from 'effect';
+import { Effect, Option, pipe, Redacted } from 'effect';
 import { Command } from '@effect/platform';
-import { EnvironmentService } from './environment.ts';
 import { CommandExecutor, ExitCode } from '@effect/platform/CommandExecutor';
 import * as Context from 'effect/Context';
 import { fileURLToPath } from 'node:url';
+import { CHT_URL_AUTHENTICATED } from '../libs/config.js';
 
 const tdgPath = fileURLToPath(import.meta.resolve('test-data-generator'));
 
-const tdgCommand = Effect.fn((designScriptPath: string) => EnvironmentService
-  .get()
-  .pipe(Effect.flatMap(env => Command
+const tdgCommand = Effect.fn((designScriptPath: string) => pipe(
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
+  CHT_URL_AUTHENTICATED,
+  Effect.flatMap(url => Command
     .make('node', tdgPath, designScriptPath)
     .pipe(
-      Command.env({ COUCH_URL: Redacted.value(env.url) }),
+      Command.env({
+        COUCH_URL: Redacted
+          .value(url)
+          .toString()
+      }),
       Command.stdout('inherit'),
       Command.stderr('inherit'),
       Command.exitCode,
-    ))));
+    ))
+));
 
-const serviceContext = Effect
-  .all([
-    EnvironmentService,
-    CommandExecutor,
-  ])
-  .pipe(Effect.map(([
-    environmentSvc,
-    commandExecutor,
-  ]) => Context
-    .make(CommandExecutor, commandExecutor)
-    .pipe(
-      Context.add(EnvironmentService, environmentSvc),
-    )));
+const serviceContext = pipe(
+  CommandExecutor,
+  Effect.map((commandExecutor) => Context.make(CommandExecutor, commandExecutor))
+);
 
 export class TestDataGeneratorService extends Effect.Service<TestDataGeneratorService>()(
   'chtoolbox/TestDataGeneratorService',

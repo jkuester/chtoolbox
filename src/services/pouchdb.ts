@@ -1,16 +1,17 @@
 import * as Effect from 'effect/Effect';
-import * as Context from 'effect/Context';
 import { Chunk, Match, Option, pipe, Redacted, Stream, StreamEmit, String } from 'effect';
 import PouchDB from 'pouchdb-core';
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
 import PouchDBMapReduce from 'pouchdb-mapreduce';
 // @ts-expect-error no types for this package
 import PouchDBSessionAuthentication from 'pouchdb-session-authentication';
-import { EnvironmentService } from './environment.ts';
 import https from 'https';
 import { v4 as uuid } from 'uuid';
 import { UnknownException } from 'effect/Cause';
 import { pouchDB } from '../libs/shim.js';
+import { CHT_URL_AUTHENTICATED } from '../libs/config.js';
+import { withPathname } from '../libs/url.js';
+import { mapErrorToGeneric } from '../libs/core.js';
 
 const HTTPS_AGENT_ALLOW_INVALID_SSL = new https.Agent({
   rejectUnauthorized: false,
@@ -51,7 +52,7 @@ const getAllDocsPage = (
 export type AllDocsResponseStream = Stream.Stream<PouchDB.Core.AllDocsResponse<object>, Error>;
 export const streamAllDocPages = (
   dbName: string
-): (o?: AllDocsOptions) => Effect.Effect<AllDocsResponseStream, never, PouchDBService> => Effect.fn((
+): (o?: AllDocsOptions) => Effect.Effect<AllDocsResponseStream, Error, PouchDBService> => Effect.fn((
   options: AllDocsOptions = {}
 ) => PouchDBService
   .get(dbName)
@@ -107,14 +108,14 @@ export const saveDoc = (
 
 export const getDoc = (
   dbName: string
-): (id: string) => Effect.Effect<Option.Option<Doc>, UnknownException, PouchDBService> => Effect.fn((
+): (id: string) => Effect.Effect<Option.Option<Doc>, UnknownException | Error, PouchDBService> => Effect.fn((
   id
 ) => PouchDBService
   .get(dbName)
   .pipe(
     Effect.flatMap(db => Effect.tryPromise(() => db.get(id))),
     Effect.catchIf(
-      ({ error }) => (error as PouchDB.Core.Error).status === 404,
+      (err) => err instanceof UnknownException && (err.error as PouchDB.Core.Error).status === 404,
       () => Effect.succeed(null)
     ),
     Effect.map(Option.fromNullable),
@@ -140,7 +141,7 @@ export const streamQueryPages = (
   viewIndex: string
 ): (
   o?: PouchDB.Query.Options<object, object>
-) => Effect.Effect<Stream.Stream<PouchDB.Query.Response<object>>, never, PouchDBService> => Effect.fn((
+) => Effect.Effect<Stream.Stream<PouchDB.Query.Response<object>>, Error, PouchDBService> => Effect.fn((
   options = {}
 ) => PouchDBService
   .get(dbName)
@@ -173,7 +174,7 @@ export const streamChanges = (
   dbName: string
 ): (o?: PouchDB.Core.ChangesOptions) => Effect.Effect<
   Stream.Stream<PouchDB.Core.ChangesResponseChange<object>, Error>,
-  never,
+  Error,
   PouchDBService
 > => Effect.fn((
   options
@@ -197,10 +198,6 @@ export const streamChanges = (
     )),
   ))));
 
-const couchUrl = EnvironmentService
-  .get()
-  .pipe(Effect.map(({ url }) => url));
-
 const getAgent = (url: string) => Match
   .value(url)
   .pipe(
@@ -208,24 +205,28 @@ const getAgent = (url: string) => Match
     Match.orElse(() => undefined),
   );
 
-const getPouchDB = Effect.fn((dbName: string) => couchUrl.pipe(Effect.map(url => pouchDB(
-  `${Redacted.value(url)}${dbName}`,
-  // @ts-expect-error Setting the `agent` option is not in the PouchDB types for some reason
-  { fetch: (url, opts) => PouchDB.fetch(url, { ...opts, agent: getAgent(url) }) }
-))));
-
-const serviceContext = EnvironmentService.pipe(Effect.map(env => Context.make(EnvironmentService, env)));
+const getPouchDB = Effect.fn((dbName: string) => pipe(
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
+  CHT_URL_AUTHENTICATED,
+  Effect.map(Redacted.value),
+  Effect.map(withPathname(dbName)),
+  Effect.map(url => pouchDB(
+    url.toString(),
+    // @ts-expect-error Setting the `agent` option is not in the PouchDB types for some reason
+    { fetch: (url, opts) => PouchDB.fetch(url, { ...opts, agent: getAgent(url) }) }
+  ))
+));
 
 export class PouchDBService extends Effect.Service<PouchDBService>()('chtoolbox/PouchDBService', {
-  effect: Effect
-    .all([
-      serviceContext,
-      Effect.cachedFunction(getPouchDB),
-    ])
-    .pipe(Effect.map(([context, memoizedGetPouchDb]) => ({
-      get: Effect.fn((dbName: string) => memoizedGetPouchDb(dbName)
-        .pipe(Effect.provide(context))),
-    }))),
+  effect: pipe(
+    Effect.cachedFunction(getPouchDB),
+    Effect.map(memoizedGetPouchDb => ({
+      get: Effect.fn((dbName: string): Effect.Effect<PouchDB.Database<object>, Error> => pipe(
+        memoizedGetPouchDb(dbName),
+        mapErrorToGeneric
+      )),
+    }))
+  ),
   accessors: true,
 }) {
 }
