@@ -12,6 +12,7 @@ import {
   sandbox
 } from '../utils/base.ts';
 import esmock from 'esmock';
+import { RequestError } from '@effect/platform/HttpClientError';
 
 const REQUEST = HttpClientRequest.get('/test');
 const FAKE_HTTP_RESPONSE = { fake: 'response' } as const;
@@ -79,5 +80,21 @@ describe('CHT Client Service', () => {
     }
 
     expect(either.left).to.deep.include(expectedError);
+  }));
+
+  it('redacts authorization header from RequestError', run(function* () {
+    const request = { headers: { authorization: 'super-secret' } } as unknown as HttpClientRequest.HttpClientRequest;
+    const expectedError = new RequestError({ request, reason: 'Transport' });
+    fakeHttpClient.execute.returns(Effect.fail(expectedError));
+
+    const either = yield* ChtClientService
+      .request(REQUEST)
+      .pipe(Effect.either);
+
+    if (Either.isRight(either)) {
+      expect.fail('Expected error');
+    }
+
+    expect((either.left as RequestError).request.headers).to.deep.equal({ authorization: 'REDACTED' });
   }));
 });
