@@ -3,8 +3,6 @@ import { Chunk, Match, Option, pipe, Redacted, Stream, StreamEmit, String } from
 import PouchDB from 'pouchdb-core';
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
 import PouchDBMapReduce from 'pouchdb-mapreduce';
-// @ts-expect-error no types for this package
-import PouchDBSessionAuthentication from 'pouchdb-session-authentication';
 import https from 'https';
 import { v4 as uuid } from 'uuid';
 import { UnknownException } from 'effect/Cause';
@@ -17,7 +15,6 @@ const HTTPS_AGENT_ALLOW_INVALID_SSL = new https.Agent({
   rejectUnauthorized: false,
 });
 PouchDB.plugin(PouchDBAdapterHttp);
-PouchDB.plugin(PouchDBSessionAuthentication);
 PouchDB.plugin(PouchDBMapReduce);
 
 const isPouchResponse = (
