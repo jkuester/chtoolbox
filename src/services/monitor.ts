@@ -5,9 +5,8 @@ import { CouchDesignInfo, getDesignInfo } from '../libs/couch/design-info.ts';
 import { CouchNodeSystem, couchNodeSystemEffect } from '../libs/couch/node-system.ts';
 import { Array, Clock, Number, Option, pipe } from 'effect';
 import { LocalDiskUsageService } from './local-disk-usage.ts';
-import { ResponseError } from '@effect/platform/HttpClientError';
+import { type RequestError, ResponseError } from '@effect/platform/HttpClientError';
 import type { NonEmptyArray } from 'effect/Array';
-import { PlatformError } from '@effect/platform/Error';
 import { ChtClientService } from './cht-client.ts';
 import { getNouveauInfo, NouveauInfo } from '../libs/couch/nouveau-info.ts';
 import { chtMonitoringDataEffect } from '../libs/cht/monitoring.ts';
@@ -247,7 +246,7 @@ export class MonitorService extends Effect.Service<MonitorService>()('chtoolbox/
   effect: serviceContext.pipe(Effect.map(context => ({
     get: Effect.fn((
       directory: Option.Option<string>
-    ): Effect.Effect<MonitoringData, Error | PlatformError> => getMonitoringData(directory)
+    ): Effect.Effect<MonitoringData, Error | RequestError> => getMonitoringData(directory)
       .pipe(
         mapErrorToGeneric,
         Effect.provide(context)
@@ -255,7 +254,7 @@ export class MonitorService extends Effect.Service<MonitorService>()('chtoolbox/
     getCsvHeader,
     getAsCsv: Effect.fn((
       directory: Option.Option<string>
-    ): Effect.Effect<string[], Error | PlatformError> => getAsCsv(directory)
+    ): Effect.Effect<string[], Error | RequestError> => getAsCsv(directory)
       .pipe(
         mapErrorToGeneric,
         Effect.provide(context)

@@ -44,15 +44,14 @@ const sanitizeRequestError = (err: RequestError) => ({
       authorization: 'REDACTED',
     },
   },
-} as unknown as Error);
+} as unknown as RequestError);
 
 export class ChtClientService extends Effect.Service<ChtClientService>()('chtoolbox/ChtClientService', {
   effect: serviceContext.pipe(Effect.map(context => ({
     request: Effect.fn((
       request: HttpClientRequest.HttpClientRequest
-    ): Effect.Effect<HttpClientResponse, Error, Scope> => clientWithUrl.pipe(
+    ): Effect.Effect<HttpClientResponse, Error | RequestError, Scope> => clientWithUrl.pipe(
       Effect.flatMap(client => client.execute(request)),
-      x => x,
       Effect.mapError(err => pipe(
         Match.value(err),
         Match.when(Match.instanceOf(RequestError), sanitizeRequestError),
