@@ -4,7 +4,13 @@ import sinon, { type SinonStub } from 'sinon';
 import PouchDB from 'pouchdb-core';
 import * as PouchDbSvc from '../../src/services/pouchdb.ts';
 import { expect } from 'chai';
-import { DEFAULT_CHT_URL_AUTH, genWithDefaultConfig, sandbox } from '../utils/base.ts';
+import {
+  DEFAULT_CHT_PASSWORD,
+  DEFAULT_CHT_URL,
+  DEFAULT_CHT_USERNAME,
+  genWithDefaultConfig,
+  sandbox
+} from '../utils/base.ts';
 import esmock from 'esmock';
 
 const FAKE_POUCHDB = { hello: 'world' } as const;
@@ -46,7 +52,7 @@ describe('PouchDB Service', () => {
     });
 
     afterEach(() => {
-      expect(mockCore.pouchDB).to.have.been.calledOnceWith(`${DEFAULT_CHT_URL_AUTH}${dbName}`);
+      expect(mockCore.pouchDB).to.have.been.calledOnceWith(`${DEFAULT_CHT_URL}${dbName}`);
     });
 
     it('builds stream from changes feed event emitter', run(function* () {
@@ -127,8 +133,11 @@ describe('PouchDB Service', () => {
       const testDb = yield* PouchDBService.get(dbName);
 
       expect(testDb).to.equal(FAKE_POUCHDB);
-      expect(mockCore.pouchDB).to.have.been.calledOnceWith(`${DEFAULT_CHT_URL_AUTH}${dbName}`);
+      expect(mockCore.pouchDB).to.have.been.calledOnceWith(`${DEFAULT_CHT_URL}${dbName}`);
       expect(mockCore.pouchDB.firstCall.args[1]).to.haveOwnProperty('fetch');
+      expect(mockCore.pouchDB.firstCall.args[1]).to.deep.include({
+        auth: { username: DEFAULT_CHT_USERNAME, password: DEFAULT_CHT_PASSWORD }
+      });
 
       // Verify the fetch is overridden with the agent option
       const fetch = (mockCore.pouchDB.firstCall.args[1] as { fetch: (url: string, opts: unknown) => unknown }).fetch;
@@ -150,16 +159,19 @@ describe('PouchDB Service', () => {
       const testDb = yield* PouchDBService.get(dbName);
 
       expect(testDb).to.equal(FAKE_POUCHDB);
-      expect(mockCore.pouchDB).to.have.been.calledOnceWith(`${DEFAULT_CHT_URL_AUTH}${dbName}`);
+      expect(mockCore.pouchDB).to.have.been.calledOnceWith(`${DEFAULT_CHT_URL}${dbName}`);
       expect(mockCore.pouchDB.firstCall.args[1]).to.haveOwnProperty('fetch');
+      expect(mockCore.pouchDB.firstCall.args[1]).to.deep.include({
+        auth: { username: DEFAULT_CHT_USERNAME, password: DEFAULT_CHT_PASSWORD }
+      });
 
       // Verify the fetch is overridden with the agent option
       const fetch = (mockCore.pouchDB.firstCall.args[1] as { fetch: (url: string, opts: unknown) => unknown }).fetch;
       const fakeOptions = { hello: 'world' };
-      const req = fetch(DEFAULT_CHT_URL_AUTH, fakeOptions);
+      const req = fetch(DEFAULT_CHT_URL, fakeOptions);
       expect(req).to.equal(fakeRequest);
       expect(pouchFetch).to.have.been.calledOnce;
-      expect(pouchFetch).to.have.been.calledWithMatch(DEFAULT_CHT_URL_AUTH, fakeOptions);
+      expect(pouchFetch).to.have.been.calledWithMatch(DEFAULT_CHT_URL, fakeOptions);
       expect(pouchFetch.firstCall.args[1]).to.haveOwnProperty('agent').that.is.undefined;
     }));
 
@@ -177,10 +189,16 @@ describe('PouchDB Service', () => {
       expect(medicDb).to.equal(fakeMedicDb);
 
       expect(mockCore.pouchDB).to.have.been.calledTwice;
-      expect(mockCore.pouchDB.firstCall.args[0]).to.equal(`${DEFAULT_CHT_URL_AUTH}${testDbName}`);
+      expect(mockCore.pouchDB.firstCall.args[0]).to.equal(`${DEFAULT_CHT_URL}${testDbName}`);
       expect(mockCore.pouchDB.firstCall.args[1]).to.haveOwnProperty('fetch');
-      expect(mockCore.pouchDB.secondCall.args[0]).to.equal(`${DEFAULT_CHT_URL_AUTH}${medicDbName}`);
+      expect(mockCore.pouchDB.firstCall.args[1]).to.deep.include({
+        auth: { username: DEFAULT_CHT_USERNAME, password: DEFAULT_CHT_PASSWORD }
+      });
+      expect(mockCore.pouchDB.secondCall.args[0]).to.equal(`${DEFAULT_CHT_URL}${medicDbName}`);
       expect(mockCore.pouchDB.secondCall.args[1]).to.haveOwnProperty('fetch');
+      expect(mockCore.pouchDB.secondCall.args[1]).to.deep.include({
+        auth: { username: DEFAULT_CHT_USERNAME, password: DEFAULT_CHT_PASSWORD }
+      });
     }));
 
     it('returns the same PouchDB instance when called multiple times with the same name', run(function* () {
@@ -194,8 +212,11 @@ describe('PouchDB Service', () => {
 
       expect(testDb).to.equal(FAKE_POUCHDB);
       expect(testDb1).to.equal(FAKE_POUCHDB);
-      expect(mockCore.pouchDB).to.have.been.calledOnceWith(`${DEFAULT_CHT_URL_AUTH}${dbName}`);
+      expect(mockCore.pouchDB).to.have.been.calledOnceWith(`${DEFAULT_CHT_URL}${dbName}`);
       expect(mockCore.pouchDB.firstCall.args[1]).to.haveOwnProperty('fetch');
+      expect(mockCore.pouchDB.firstCall.args[1]).to.deep.include({
+        auth: { username: DEFAULT_CHT_USERNAME, password: DEFAULT_CHT_PASSWORD }
+      });
     }));
   });
 
@@ -210,7 +231,7 @@ describe('PouchDB Service', () => {
     });
 
     afterEach(() => {
-      expect(mockCore.pouchDB).to.have.been.calledOnceWith(`${DEFAULT_CHT_URL_AUTH}${dbName}`);
+      expect(mockCore.pouchDB).to.have.been.calledOnceWith(`${DEFAULT_CHT_URL}${dbName}`);
     });
 
     it('streams pages of docs with the default options', run(function* () {
@@ -374,7 +395,7 @@ describe('PouchDB Service', () => {
     });
 
     afterEach(() => {
-      expect(mockCore.pouchDB).to.have.been.calledOnceWith(`${DEFAULT_CHT_URL_AUTH}${dbName}`);
+      expect(mockCore.pouchDB).to.have.been.calledOnceWith(`${DEFAULT_CHT_URL}${dbName}`);
     });
 
     it('saves the given doc', run(function* () {
@@ -427,7 +448,7 @@ describe('PouchDB Service', () => {
     });
 
     afterEach(() => {
-      expect(mockCore.pouchDB).to.have.been.calledOnceWith(`${DEFAULT_CHT_URL_AUTH}${dbName}`);
+      expect(mockCore.pouchDB).to.have.been.calledOnceWith(`${DEFAULT_CHT_URL}${dbName}`);
     });
 
     it('retrieves the doc with the given id', run(function* () {
@@ -462,7 +483,7 @@ describe('PouchDB Service', () => {
     });
 
     afterEach(() => {
-      expect(mockCore.pouchDB).to.have.been.calledOnceWith(`${DEFAULT_CHT_URL_AUTH}${dbName}`);
+      expect(mockCore.pouchDB).to.have.been.calledOnceWith(`${DEFAULT_CHT_URL}${dbName}`);
     });
 
     it('streams pages of docs with the default options', run(function* () {

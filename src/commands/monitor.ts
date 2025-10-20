@@ -12,6 +12,7 @@ const printCsvRow = Effect.fn((row: readonly (string | number | boolean)[]) => p
 const monitorData = Effect.fn((trackDirSize: Option.Option<string>) => pipe(
   MonitorService.getAsCsv(trackDirSize),
   Effect.tap(printCsvRow),
+  Effect.catchTag('RequestError', e => Console.error(`ERROR: Failed connecting to ${e.request.url}. Retrying...`)),
   Effect.catchAll(Console.error),
 ));
 
