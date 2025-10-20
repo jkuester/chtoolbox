@@ -37,11 +37,11 @@
     "@types/pouchdb-mapreduce": "^6.1.10",
     "@types/sinon": "^17.0.4",
     "@types/sinon-chai": "^4.0.0",
-    "@typescript-eslint/eslint-plugin": "^8.40.0",
-    "@typescript-eslint/parser": "^8.39.1",
-    "@typescript/native-preview": "^7.0.0-dev.20251012.1",
+    "@typescript-eslint/eslint-plugin": "^8.46.1",
+    "@typescript-eslint/parser": "^8.46.1",
+    "@typescript/native-preview": "^7.0.0-dev.20251019.1",
     "c8": "^10.1.3",
-    "chai": "^6.0.1",
+    "chai": "^6.2.0",
     "chai-exclude": "^3.0.1",
     "deep-equal-in-any-order": "^2.1.0",
     "eslint": "^9.35.0",
@@ -49,11 +49,11 @@
     "eslint-plugin-promise": "^7.2.1",
     "esmock": "^2.7.3",
     "globals": "^16.4.0",
-    "knip": "^5.63.0",
+    "knip": "^5.66.1",
     "mocha": "11.6.0",
     "sinon": "^21.0.0",
     "sinon-chai": "^4.0.1",
-    "typescript-eslint": "^8.46.0"
+    "typescript-eslint": "^8.46.1"
   },
   "dependencies": {
     "@effect/cli": "^0.69.0",
@@ -68,7 +68,7 @@
     "pouchdb-core": "^9.0.0",
     "pouchdb-mapreduce": "^9.0.0",
     "test-data-generator": "git+https://github.com/medic/test-data-generator.git#chtoolbox",
-    "tsx": "^4.20.5",
+    "tsx": "^4.20.6",
     "uuid": "^13.0.0"
   },
   "overrides": {
