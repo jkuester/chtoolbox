@@ -57,7 +57,7 @@
   },
   "dependencies": {
     "@effect/cli": "^0.69.0",
-    "@effect/platform": "^0.90.10",
+    "@effect/platform": "^0.92.1",
     "@effect/platform-node": "^0.95.0",
     "@octokit/plugin-paginate-rest": "^13.2.1",
     "@octokit/rest": "^22.0.0",
