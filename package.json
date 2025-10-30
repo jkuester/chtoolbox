@@ -31,7 +31,12 @@
     "branches": "main",
     "tagFormat": "${version}"
   },
+  "commitlint": {
+    "extends": ["@commitlint/config-conventional"]
+  },
   "devDependencies": {
+    "@commitlint/cli": "^20.1.0",
+    "@commitlint/config-conventional": "^20.0.0",
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.38.0",
     "@medic/eslint-config": "^1.2.0",
