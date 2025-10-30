@@ -60,7 +60,7 @@
     "esmock": "^2.7.3",
     "globals": "^16.4.0",
     "knip": "^5.66.4",
-    "mocha": "11.6.0",
+    "mocha": "11.7.4",
     "semantic-release": "^25.0.1",
     "sinon": "^21.0.0",
     "sinon-chai": "^4.0.1",
