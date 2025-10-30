@@ -10,3 +10,9 @@ updates:
     ignore:
       - dependency-name: "@types/node"
         versions: [">=21"] # Sync with minimum supported Node.js version
+    groups:
+      typescript-eslint:
+        patterns:
+          - "@typescript-eslint/eslint-plugin"
+          - "@typescript-eslint/parser"
+          - "typescript-eslint"

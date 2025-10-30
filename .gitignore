@@ -3,3 +3,4 @@
 node_modules
 .c8_output
 dist
+.aider*
