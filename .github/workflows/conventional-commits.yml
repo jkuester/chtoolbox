@@ -1,0 +1,26 @@
+name: Conventional commits
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - reopened
+
+jobs:
+  lint_pr_title:
+    name: Lint PR title
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: npx commitlint <<< "$TITLE"
