@@ -7,6 +7,7 @@ import {
   DateTime,
   Either,
   Encoding,
+  Function,
   Match,
   Option,
   pipe,
@@ -15,14 +16,15 @@ import {
   Schedule,
   Schema,
   Stream,
-  String
+  String,
+  Tuple
 } from 'effect';
 import { completeChtUpgrade, stageChtUpgrade, upgradeCht } from '../libs/cht/upgrade.ts';
 import { ChtClientService } from './cht-client.ts';
 import { mapErrorToGeneric } from '../libs/core.ts';
 import { CouchDesign } from '../libs/couch/design.ts';
 import { WarmViewsService } from './warm-views.ts';
-import { type CompareCommitsData, compareRefs } from '../libs/github.ts';
+import { type CompareCommitsData, compareRefs, getReleaseNames } from '../libs/github.ts';
 import { type CouchActiveTaskStream } from '../libs/couch/active-tasks.ts';
 import type { NonEmptyArray } from 'effect/Array';
 import { pouchDB } from '../libs/shim.js';
@@ -201,6 +203,7 @@ const preStageDdocs = Effect.fn((docsByDb: [DesignDocAttachment, typeof CHT_DDOC
 ));
 
 const getChtCoreDiff = compareRefs('medic', 'cht-core');
+const getChtCoreReleaseNames = getReleaseNames('medic', 'cht-core');
 const DDOC_PATTERN = /^ddocs\/([^/]+)-db\/([^/]+)\/.*(?:map|reduce)\.js$/;
 
 const getUpdatedDdocsByDb = ({ files }: CompareCommitsData) => pipe(
@@ -215,18 +218,34 @@ const getUpdatedDdocsByDb = ({ files }: CompareCommitsData) => pipe(
   Record.map(Array.dedupe)
 );
 
+const getReleaseNotesLink = (tag: string) => pipe(
+  tag,
+  String.replaceAll('.', '_'),
+  version => `https://docs.communityhealthtoolkit.org/releases/${version}`
+);
+
+const getReleaseNotesLinksByTag = (releaseNames: string[]) => pipe(
+  releaseNames,
+  Array.reduce({}, (acc, tag) => Record.set(acc, tag, getReleaseNotesLink(tag))),
+);
+
 export interface ChtCoreReleaseDiff {
   updatedDdocs: Record<string, NonEmptyArray<string>>;
   htmlUrl: string;
   fileChangeCount: number,
-  commitCount: number
+  commitCount: number,
+  releaseDocLinksByTag: Record<string, string>;
 }
 
-const getReleaseDiff = (diffData: CompareCommitsData): ChtCoreReleaseDiff => ({
+const getReleaseDiff = (
+  diffData: CompareCommitsData,
+  releaseNames: string[]
+): ChtCoreReleaseDiff => ({
   updatedDdocs: getUpdatedDdocsByDb(diffData),
   htmlUrl: diffData.html_url,
   fileChangeCount: (diffData.files ?? []).length,
-  commitCount: diffData.commits.length
+  commitCount: diffData.commits.length,
+  releaseDocLinksByTag: getReleaseNotesLinksByTag(releaseNames)
 });
 
 const serviceContext = Effect
@@ -284,8 +303,12 @@ export class UpgradeService extends Effect.Service<UpgradeService>()('chtoolbox/
       baseTag: string,
       headTag: string
     ): Effect.Effect<ChtCoreReleaseDiff, Error> => pipe(
-      getChtCoreDiff(baseTag, headTag),
-      Effect.map(getReleaseDiff),
+      Tuple.make(
+        getChtCoreDiff(baseTag, headTag),
+        getChtCoreReleaseNames(baseTag, headTag),
+      ),
+      Effect.allWith({ concurrency: 'unbounded' }),
+      Effect.map(Function.tupled(getReleaseDiff)),
       mapErrorToGeneric,
       Effect.provide(context),
     )),

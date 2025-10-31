@@ -3,8 +3,10 @@ import { Array, Effect, Function, Match, Option, pipe, Predicate, Redacted, Tupl
 import { GITHUB_TOKEN } from './config.js';
 import { type ConfigError } from 'effect/ConfigError';
 import { octokit } from './shim.js';
+import semver from 'semver';
 
 export type CompareCommitsData = RestEndpointMethodTypes['repos']['compareCommitsWithBasehead']['response']['data'];
+type RepoTagData = RestEndpointMethodTypes['repos']['listTags']['response']['data'];
 
 const octokitEffect = pipe(
   GITHUB_TOKEN,
@@ -108,4 +110,107 @@ export const compareRefs = (
   Effect.andThen(compareCommitsWithBasehead(owner, repo, baseRef, headRef)),
   Effect.map(reduceCompareCommitsData),
   Effect.flatMap(ensureAllChangedFilesIncluded(owner, repo)),
+));
+
+const getAllTags = Effect.fn((
+  owner: string,
+  repo: string
+) => pipe(
+  octokitEffect,
+  Effect.map(octokit => octokit.paginate(
+    octokit.rest.repos.listTags,
+    {
+      owner,
+      repo,
+      per_page: 100,
+    },
+    ({ data }) => data
+  )),
+  Effect.flatMap(request => Effect.tryPromise({
+    try: () => request,
+    catch: (e) => e as Error
+  })),
+));
+
+const findTagForSha = (
+  tags: RepoTagData,
+  sha: string
+) : Option.Option<string> => pipe(
+  tags,
+  Array.findFirst(({ commit: { sha: tagSha } }) => tagSha === sha),
+  Option.map(({ name }) => name)
+);
+
+const findTagOrElse = (tags: RepoTagData) => (acc: Option.Option<string>, sha: string) => pipe(
+  acc,
+  Option.orElse(() => findTagForSha(tags, sha)),
+);
+
+const getLatestTagName = (tags: RepoTagData): Option.Option<string> => pipe(
+  tags,
+  Array.head,
+  Option.map(({ name }) => name)
+);
+
+const getNearestTagName = (
+  owner: string,
+  repo: string,
+  tags: RepoTagData
+):(ref: string) => Effect.Effect<string, Error| ConfigError> => Effect.fn((ref) => pipe(
+  octokitEffect,
+  Effect.map(octokit => octokit.paginate(
+    octokit.rest.repos.listCommits,
+    {
+      owner,
+      repo,
+      sha: ref,
+      per_page: 100,
+    },
+    (response, done) => pipe(
+      response.data,
+      Array.map(({ sha }) => sha),
+      Array.reduce(Option.none<string>(), findTagOrElse(tags)),
+      Option.map(Array.make),
+      Option.tap(result => {
+        done();
+        return Option.some(result);
+      }),
+      Option.getOrElse(Array.empty),
+    )
+  )),
+  Effect.flatMap(request => Effect.tryPromise({
+    try: () => request,
+    catch: (e) => e as Error
+  })),
+  Effect.map(Array.head),
+  Effect.map(Option.getOrThrow),
+  Effect.unless(() => ref === 'master'),
+  Effect.map(Option.orElse(() => getLatestTagName(tags))),
+  Effect.map(Option.getOrThrow)
+));
+
+const hasReleaseVersion = (
+  { name }: RepoTagData[number]
+) => !name.startsWith('v') && semver.valid(name) !== null && semver.prerelease(name) === null;
+
+export const getReleaseNames = (
+  owner: string,
+  repo: string
+): (b: string, h: string) => Effect.Effect<string[], Error | ConfigError> => Effect.fn((
+  baseRef: string,
+  headRef: string,
+) => pipe(
+  getAllTags(owner, repo),
+  Effect.map(Array.filter(hasReleaseVersion)),
+  Effect.flatMap(tagData => pipe(
+    Tuple.make(baseRef, headRef),
+    Tuple.map(getNearestTagName(owner, repo, tagData)),
+    Effect.allWith({ concurrency: 'unbounded' }),
+    Effect.map(([baseTag, headTag]) => pipe(
+      tagData,
+      Array.map(({ name }) => name),
+      Array.dropWhile(tag => semver.gt(tag, headTag)),
+      Array.takeWhile(tag => semver.gt(tag, baseTag)),
+    )),
+  )),
 ));
