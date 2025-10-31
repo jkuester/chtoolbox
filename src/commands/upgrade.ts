@@ -153,7 +153,7 @@ const printReleaseNotes = ({ releaseDocLinksByTag }: ChtCoreReleaseDiff) => pipe
 const displayReleaseDiff = (headTag: string) => Effect.fn((baseTag: string) => pipe(
   Console.log(`\nComparing ${color('blue')(baseTag)} -> ${color('green')(headTag)}`),
   Effect.andThen(UpgradeService.getReleaseDiff(baseTag, headTag)),
-  Effect.tap(({ fileChangeCount, commitCount}) => Console.log(
+  Effect.tap(({ fileChangeCount, commitCount }) => Console.log(
     `\n${color('red')(fileChangeCount.toString())} files changed in ${color('red')(commitCount.toString())} commits`
   )),
   Effect.tap(printDdocChanges),
