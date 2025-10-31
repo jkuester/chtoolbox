@@ -178,7 +178,7 @@ describe('GitHub libs', () => {
       );
     }));
 
-    it(`'returns latest release name when 'master' is given for head'`, run(function* () {
+    it(`returns latest release name when 'master' is given for head`, run(function* () {
       const tags = [
         { name: '2.0.0', commit: { sha: 'sha4' } },
         { name: '1.2.0', commit: { sha: 'sha3' } },
