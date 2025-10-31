@@ -41,8 +41,10 @@ const mockUpgradeLib = {
 };
 const mockCore = { pouchDB: sandbox.stub() };
 const compareRefs = sandbox.stub();
+const getReleaseNames = sandbox.stub();
 const mockGitHubLib = {
   compareRefs: sandbox.stub().returns(compareRefs),
+  getReleaseNames: sandbox.stub().returns(getReleaseNames),
 };
 
 const { UpgradeService } = await esmock<typeof UpgradeSvc>('../../src/services/upgrade.ts', {
@@ -746,6 +748,7 @@ describe('Upgrade Service', () => {
         ],
       };
       compareRefs.returns(Effect.succeed(diffData));
+      getReleaseNames.returns(Effect.succeed(['1.0.0', '2.0.0']));
 
       const result = yield* UpgradeService.getReleaseDiff(baseTag, headTag);
 
@@ -756,9 +759,14 @@ describe('Upgrade Service', () => {
         },
         htmlUrl: diffData.html_url,
         fileChangeCount: 5,
-        commitCount: 2
+        commitCount: 2,
+        releaseDocLinksByTag: {
+          '1.0.0': 'https://docs.communityhealthtoolkit.org/releases/1_0_0',
+          '2.0.0': 'https://docs.communityhealthtoolkit.org/releases/2_0_0',
+        }
       });
       expect(compareRefs).to.have.been.calledOnceWithExactly(baseTag, headTag);
+      expect(getReleaseNames).to.have.been.calledOnceWithExactly(baseTag, headTag);
     }));
 
     it('returns empty updatedDdocs when files is undefined', run(function* () {
@@ -768,6 +776,7 @@ describe('Upgrade Service', () => {
         files: undefined,
       };
       compareRefs.returns(Effect.succeed(diffData));
+      getReleaseNames.returns(Effect.succeed([]));
 
       const result = yield* UpgradeService.getReleaseDiff(baseTag, headTag);
 
@@ -775,7 +784,8 @@ describe('Upgrade Service', () => {
         updatedDdocs: { },
         htmlUrl: diffData.html_url,
         fileChangeCount: 0,
-        commitCount: 0
+        commitCount: 0,
+        releaseDocLinksByTag: { }
       });
       expect(compareRefs).to.have.been.calledOnceWithExactly(baseTag, headTag);
     }));

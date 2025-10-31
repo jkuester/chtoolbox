@@ -142,13 +142,22 @@ const printDdocChanges = ({ updatedDdocs }: ChtCoreReleaseDiff) => pipe(
   Match.orElse(() => printChangedDdocs(updatedDdocs)),
 );
 
+const printReleaseNotes = ({ releaseDocLinksByTag }: ChtCoreReleaseDiff) => pipe(
+  Console.log('\nRelease notes:'),
+  Effect.andThen(Record.toEntries(releaseDocLinksByTag)),
+  Effect.map(Array.map(([tag, link]) => `- ${color('green')(tag)}: ${link}`)),
+  Effect.map(Array.map(line => Console.log(line))),
+  Effect.flatMap(Effect.all)
+);
+
 const displayReleaseDiff = (headTag: string) => Effect.fn((baseTag: string) => pipe(
   Console.log(`\nComparing ${color('blue')(baseTag)} -> ${color('green')(headTag)}`),
   Effect.andThen(UpgradeService.getReleaseDiff(baseTag, headTag)),
-  Effect.tap(({ fileChangeCount, commitCount }) => Console.log(
+  Effect.tap(({ fileChangeCount, commitCount}) => Console.log(
     `\n${color('red')(fileChangeCount.toString())} files changed in ${color('red')(commitCount.toString())} commits`
   )),
   Effect.tap(printDdocChanges),
+  Effect.tap(printReleaseNotes),
   Effect.tap(({ htmlUrl }) => Console.log(`\nFull diff: ${htmlUrl}\n`)),
   Effect.asVoid,
 ));
