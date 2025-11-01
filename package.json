@@ -11,7 +11,7 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jkuester/chtoolbox.git"
+    "url": "git+https://github.com/jkuester/chtoolbox.git"
   },
   "bin": {
     "chtx": "bin/index.js"
@@ -87,7 +87,7 @@
     "pouchdb-core": "^9.0.0",
     "pouchdb-mapreduce": "^9.0.0",
     "semver": "^7.7.3",
-    "test-data-generator": "medic/test-data-generator.git#chtoolbox",
+    "test-data-generator": "github:medic/test-data-generator#chtoolbox",
     "tsx": "^4.20.6",
     "uuid": "^13.0.0"
   },
