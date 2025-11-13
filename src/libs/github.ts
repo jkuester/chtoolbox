@@ -4,6 +4,7 @@ import { GITHUB_TOKEN } from './config.js';
 import { type ConfigError } from 'effect/ConfigError';
 import { octokit } from './shim.js';
 import semver from 'semver';
+import type { UnknownException } from 'effect/Cause';
 
 export type CompareCommitsData = RestEndpointMethodTypes['repos']['compareCommitsWithBasehead']['response']['data'];
 type RepoTagData = RestEndpointMethodTypes['repos']['listTags']['response']['data'];
@@ -85,10 +86,7 @@ const compareCommitsWithBasehead = Effect.fn((
     },
     ({ data }) => [data as CompareCommitsData]
   )),
-  Effect.flatMap(request => Effect.tryPromise({
-    try: () => request,
-    catch: (e) => e as Error
-  })),
+  Effect.flatMap(request => Effect.tryPromise(() => request)),
 ));
 
 /**
@@ -126,10 +124,7 @@ const getAllTags = Effect.fn((
     },
     ({ data }) => data
   )),
-  Effect.flatMap(request => Effect.tryPromise({
-    try: () => request,
-    catch: (e) => e as Error
-  })),
+  Effect.flatMap(request => Effect.tryPromise(() => request)),
 ));
 
 const findTagForSha = (
@@ -156,7 +151,7 @@ const getNearestTagName = (
   owner: string,
   repo: string,
   tags: RepoTagData
-):(ref: string) => Effect.Effect<string, Error| ConfigError> => Effect.fn((ref) => pipe(
+):(ref: string) => Effect.Effect<string, UnknownException | ConfigError> => Effect.fn((ref) => pipe(
   octokitEffect,
   Effect.map(octokit => octokit.paginate(
     octokit.rest.repos.listCommits,
@@ -178,10 +173,7 @@ const getNearestTagName = (
       Option.getOrElse(Array.empty),
     )
   )),
-  Effect.flatMap(request => Effect.tryPromise({
-    try: () => request,
-    catch: (e) => e as Error
-  })),
+  Effect.flatMap(request => Effect.tryPromise(() => request)),
   Effect.map(Array.head),
   Effect.map(Option.getOrThrow),
   Effect.unless(() => ref === 'master'),

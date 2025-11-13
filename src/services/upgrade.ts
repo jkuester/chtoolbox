@@ -21,7 +21,7 @@ import {
 } from 'effect';
 import { completeChtUpgrade, stageChtUpgrade, upgradeCht } from '../libs/cht/upgrade.ts';
 import { ChtClientService } from './cht-client.ts';
-import { mapErrorToGeneric } from '../libs/core.ts';
+import { mapErrorToGeneric, mapStreamErrorToGeneric } from '../libs/core.ts';
 import { CouchDesign } from '../libs/couch/design.ts';
 import { WarmViewsService } from './warm-views.ts';
 import { type CompareCommitsData, compareRefs, getReleaseNames } from '../libs/github.ts';
@@ -296,7 +296,7 @@ export class UpgradeService extends Effect.Service<UpgradeService>()('chtoolbox/
       Effect.map(Array.zip(CHT_DDOC_ATTACHMENT_NAMES)),
       Effect.flatMap(preStageDdocs),
       Effect.map(Stream.provideContext(context)),
-      Effect.map(Stream.mapError(x => x as Error)),
+      Effect.map(mapStreamErrorToGeneric),
       Effect.provide(context),
     )),
     getReleaseDiff: Effect.fn((

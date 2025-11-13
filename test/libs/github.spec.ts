@@ -95,10 +95,11 @@ describe('GitHub libs', () => {
 
       const result = yield* compareRefs(owner, repo)(base, head);
 
-      expect(result).to.deep.equal({
+      const data = {
         commits: [...compareData0.commits, ...compareData1.commits.slice(1)],
         files: [...compareData0.files, ...compareData1.files]
-      });
+      };
+      expect(result).to.deep.equal(data);
       expect(octokit).calledOnceWithExactly({ auth: GITHUB_TOKEN });
       expect(paginate).calledOnceWith(compareCommitsWithBasehead, {
         owner,
@@ -106,6 +107,13 @@ describe('GitHub libs', () => {
         basehead: `${base}...${head}`,
         per_page: 100,
       });
+
+      // Verify the paginate map function behavior
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const [,, mapFn] = paginate.getCall(0).args;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
+      const mappedResult = mapFn({ data });
+      expect(mappedResult).to.deep.equal([data]);
     }));
 
     it('fetches comparison data in subsets when there are >= 300 files changed', run(function* () {
@@ -200,6 +208,13 @@ describe('GitHub libs', () => {
         listCommits,
         { owner, repo, sha: base, per_page: 100 }
       );
+
+      // Verify paginate maps data when getting tages
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const [,, mapDataFn] = paginate.getCall(0).args;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
+      const mappedResult = mapDataFn({ data: tags });
+      expect(mappedResult).to.deep.equal(tags);
 
       // Test behavior of the map function used to extract commits up to base
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
