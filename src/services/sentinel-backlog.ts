@@ -61,7 +61,7 @@ export class SentinelBacklogService extends Effect.Service<SentinelBacklogServic
       ),
       setTransitionsSeq: (value: string): Effect.Effect<void, Error> => pipe(
         setLocalTransitionsSeq(value),
-        Effect.mapError(x => x as unknown as Error),
+        mapErrorToGeneric,
         Effect.asVoid,
         Effect.provide(context),
       ),

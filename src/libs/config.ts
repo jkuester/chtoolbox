@@ -14,7 +14,13 @@ const fileConfigProviderEffect = Effect.suspend(() => pipe(
 
 const getConfigProviderFromOpts = ({ url }: { url: Option.Option <string> }) => pipe(
   url,
-  Option.map(COUCH_URL => ({ COUCH_URL })),
+  Option.map(url => new URL(url)),
+  Option.map(url => ({
+    COUCH_URL: url.toString(),
+    CHT_URL: pipe(url, withoutCreds).toString(),
+    CHT_USERNAME: url.username || undefined,
+    CHT_PASSWORD: url.password || undefined,
+  })),
   Option.getOrElse(() => ({})),
   ConfigProvider.fromJson
 );
@@ -37,14 +43,6 @@ export const GITHUB_TOKEN = Config
 const COUCH_URL = pipe(
   Config.url('COUCH_URL'),
   Config.withDescription('Connection information for the CHT/CouchDB instance.'),
-  Config.validate({
-    message: 'Username not included',
-    validation: ({ username }) => String.isNonEmpty(username)
-  }),
-  Config.validate({
-    message: 'Password not included',
-    validation: ({ password }) => String.isNonEmpty(password)
-  }),
   Config.map(Redacted.make)
 );
 
@@ -55,7 +53,11 @@ export const CHT_USERNAME = pipe(
     COUCH_URL,
     Config.map(Redacted.value),
     Config.map(({ username }) => username)
-  ))
+  )),
+  Config.validate({
+    message: 'CHT_USERNAME not provided',
+    validation: (username) => String.isNonEmpty(username)
+  }),
 );
 
 export const CHT_PASSWORD = pipe(
@@ -65,26 +67,26 @@ export const CHT_PASSWORD = pipe(
     COUCH_URL,
     Config.map(Redacted.value),
     Config.map(({ password }) => Redacted.make(password))
-  ))
+  )),
+  Config.validate({
+    message: 'CHT_PASSWORD not provided',
+    validation: (password) => pipe(Redacted.value(password), String.isNonEmpty)
+  }),
 );
 
 export const CHT_URL = pipe(
   Config.url('CHT_URL'),
   Config.withDescription('URL for the target CHT instance.'),
-  Config.validate({
-    message: 'Username should not be included',
-    validation: ({ username }) => String.isEmpty(username)
-  }),
-  Config.validate({
-    message: 'Password should not be included',
-    validation: ({ password }) => String.isEmpty(password)
-  }),
   Config.orElse(() => pipe(
     COUCH_URL,
     Config.map(Redacted.value),
     Config.map(url => new URL('/', url)),
     Config.map(withoutCreds)
-  ))
+  )),
+  Config.validate({
+    message: 'Username/password should not be included in the CHT_URL',
+    validation: ({ username, password }) => String.isEmpty(username) || String.isEmpty(password)
+  }),
 );
 
 /**

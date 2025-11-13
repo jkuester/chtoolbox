@@ -63,8 +63,10 @@ const url = Options
   .text('url')
   .pipe(
     Options.withDescription(
-      'The URL of the CouchDB server. Defaults to the COUCH_URL environment variable. Note that since this tool is ' +
-      'intended for testing/development usage, invalid SSL certificates (e.g. self-signed) are allowed by default.'
+      'The URL of the CHT/CouchDB server. Defaults to the COUCH_URL environment variable. You can include the admin ' +
+      'user credentials in this URL value or specify the CHT_USERNAME and CHT_PASSWORD config values separately. ' +
+      'Note that since this tool is intended for testing/development usage, invalid SSL certificates (e.g. ' +
+      'self-signed) are allowed by default.'
     ),
     Options.optional
   );

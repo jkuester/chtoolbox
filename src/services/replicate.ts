@@ -9,22 +9,17 @@ const SKIP_DDOC_SELECTOR = {
   _id: { '$regex': '^(?!_design/)' },
 };
 
-const getContactTypeSelector = (contactTypes: string[]) => Match
-  .value(contactTypes)
-  .pipe(
-    Match.when(Array.isEmptyArray, () => ({})),
-    Match.orElse(() => ({
-      $or: [
-        { type: { $in: contactTypes } },
-        {
-          $and: [
-            { type: 'contact', },
-            { contact_type: { $in: contactTypes } }
-          ]
-        }
+const getContactTypeSelector = (contactTypes: [string, ...string[]]) => ({
+  $or: [
+    { type: { $in: contactTypes } },
+    {
+      $and: [
+        { type: 'contact', },
+        { contact_type: { $in: contactTypes } }
       ]
-    })),
-  );
+    }
+  ]
+});
 
 const hasContactTypes = (
   opts: ReplicationOptions

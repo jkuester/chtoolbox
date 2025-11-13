@@ -6,6 +6,7 @@ import {
   DEFAULT_CHT_PASSWORD,
   DEFAULT_CHT_URL_AUTH,
   DEFAULT_CHT_USERNAME,
+  DEFAULT_CHT_URL,
   genWithConfig,
   sandbox
 } from '../utils/base.ts';
@@ -81,7 +82,11 @@ describe('Config libs', () => {
     });
 
     it('returns a config provider that loads from the provided options', () => {
-      readJsonFile.returns(Effect.succeed({ COUCH_URL: 'invalid'}));
+      readJsonFile.returns(Effect.succeed({
+        COUCH_URL: 'invalid',
+        CHT_USERNAME: 'invalid',
+        CHT_PASSWORD: 'invalid'
+      }));
       // eslint-disable-next-line dot-notation
       process.env['COUCH_URL'] = 'invalid';
 
@@ -90,12 +95,51 @@ describe('Config libs', () => {
         Effect.provide(Layer.succeed(FileSystem.FileSystem, {} as unknown as FileSystem.FileSystem))
       ));
 
-      const result = Effect.runSync(pipe(
+      const COUCH_URL = Effect.runSync(pipe(
         Config.string('COUCH_URL'),
         Effect.withConfigProvider(configProvider)
       ));
+      const CHT_USERNAME = Effect.runSync(pipe(
+        Config.string('CHT_USERNAME'),
+        Effect.withConfigProvider(configProvider)
+      ));
+      const CHT_PASSWORD = Effect.runSync(pipe(
+        Config.string('CHT_PASSWORD'),
+        Effect.withConfigProvider(configProvider)
+      ));
 
-      expect(result).to.equal(ENVAR_VALUE);
+      expect(COUCH_URL).to.equal(ENVAR_VALUE);
+      expect(CHT_USERNAME).to.equal(DEFAULT_CHT_USERNAME);
+      expect(CHT_PASSWORD).to.equal(DEFAULT_CHT_PASSWORD);
+    });
+
+    it('loads CHT_URL from the provided options even without credentials', () => {
+      readJsonFile.returns(Effect.succeed({
+        CHT_USERNAME: DEFAULT_CHT_USERNAME,
+        CHT_PASSWORD: DEFAULT_CHT_PASSWORD
+      }));
+
+      const configProvider = Effect.runSync(pipe(
+        getChtxConfigProvider({ url: Option.some(DEFAULT_CHT_URL) }),
+        Effect.provide(Layer.succeed(FileSystem.FileSystem, {} as unknown as FileSystem.FileSystem))
+      ));
+
+      const CHT_URL = Effect.runSync(pipe(
+        Config.string('CHT_URL'),
+        Effect.withConfigProvider(configProvider)
+      ));
+      const CHT_USERNAME = Effect.runSync(pipe(
+        Config.string('CHT_USERNAME'),
+        Effect.withConfigProvider(configProvider)
+      ));
+      const CHT_PASSWORD = Effect.runSync(pipe(
+        Config.string('CHT_PASSWORD'),
+        Effect.withConfigProvider(configProvider)
+      ));
+
+      expect(CHT_URL).to.equal(DEFAULT_CHT_URL);
+      expect(CHT_USERNAME).to.equal(DEFAULT_CHT_USERNAME);
+      expect(CHT_PASSWORD).to.equal(DEFAULT_CHT_PASSWORD);
     });
   });
 
@@ -132,6 +176,18 @@ describe('Config libs', () => {
       const result = yield* Effect.either(CHT_USERNAME);
       expect(Either.isLeft(result)).to.be.true;
     }));
+
+    it('fails if an empty value is set', run(
+      [['CHT_USERNAME', '']]
+    )(function* () {
+      const result = yield* Effect.either(CHT_USERNAME);
+
+      if (Either.isRight(result)) {
+        expect.fail('Expected error');
+      }
+
+      expect(result.left.message).to.equal('CHT_USERNAME not provided');
+    }));
   });
 
   describe('CHT_PASSWORD', () => {
@@ -153,6 +209,18 @@ describe('Config libs', () => {
       const result = yield* Effect.either(CHT_PASSWORD);
       expect(Either.isLeft(result)).to.be.true;
     }));
+
+    it('fails if an empty value is set', run(
+      [['CHT_PASSWORD', '']]
+    )(function* () {
+      const result = yield* Effect.either(CHT_PASSWORD);
+
+      if (Either.isRight(result)) {
+        expect.fail('Expected error');
+      }
+
+      expect(result.left.message).to.equal('CHT_PASSWORD not provided');
+    }));
   });
 
   describe('CHT_URL', () => {
@@ -173,6 +241,18 @@ describe('Config libs', () => {
     it('fails if neither CHT_URL nor COUCH_URL is set', run([])(function* () {
       const result = yield* Effect.either(CHT_URL);
       expect(Either.isLeft(result)).to.be.true;
+    }));
+
+    it('fails if a username/password are provided', run(
+      [['CHT_URL', 'http://user:pass@localhost:5984/medic']]
+    )(function* () {
+      const result = yield* Effect.either(CHT_URL);
+
+      if (Either.isRight(result)) {
+        expect.fail('Expected error');
+      }
+
+      expect(result.left.message).to.equal('Username/password should not be included in the CHT_URL');
     }));
   });
 
