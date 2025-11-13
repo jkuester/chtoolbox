@@ -10,7 +10,15 @@ const compat = new FlatCompat({
 });
 
 export default tseslint.config(
-  { ignores: ['**/eslint.config.js', '**/.mocharc.cjs', '**/dist/', '**/node_modules/', '**/.c8_output/', 'bin/index.js'] },
+  { ignores: [
+    '**/eslint.config.js',
+    '**/.mocharc.cjs',
+    '**/dist/',
+    '**/node_modules/',
+    '.nyc_output',
+    'bin/index.js',
+    'test/utils/nyc-esm-hook-loader.js'
+  ] },
   {
     plugins: {
       '@typescript-eslint': tseslint.plugin,

@@ -1,6 +1,6 @@
 .eslintcache
 .idea
 node_modules
-.c8_output
+.nyc_output
 dist
 .aider*
