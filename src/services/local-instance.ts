@@ -189,35 +189,36 @@ class ChtInstanceConfig extends ChtUpgradeSvcConfig.extend<ChtInstanceConfig>('C
 
   static readonly generate = Effect.fn((
     instanceName: string,
-    localProjectPath: Option.Option<string>
-  ) => freePortsEffect
-    .pipe(
-      Effect.map(([NGINX_HTTPS_PORT, NGINX_HTTP_PORT]) => ({
-        ...ChtUpgradeSvcConfig.generate(instanceName),
-        CHT_NETWORK: instanceName,
-        COUCHDB_DATA: pipe(
-          localProjectPath,
-          Option.map(path => `${path}/${SUB_DIR_COUCHDB}`),
-          Option.getOrElse(() => '')
-        ),
-        COUCHDB_PASSWORD,
-        COUCHDB_SECRET: crypto
-          .randomBytes(16)
-          .toString('hex'),
-        COUCHDB_USER,
-        COUCHDB_UUID: uuid(),
-        NGINX_HTTP_PORT,
-        NGINX_HTTPS_PORT,
-
-        COMPOSE_PROJECT_NAME: upgradeSvcProjectName(instanceName),
-      })),
-      Effect.flatMap(Schema.decodeUnknown(ChtInstanceConfig)),
-    ));
+    couchDbDataPath: string
+  ) => pipe(
+    freePortsEffect,
+    Effect.map(([NGINX_HTTPS_PORT, NGINX_HTTP_PORT]) => ({
+      ...ChtUpgradeSvcConfig.generate(instanceName),
+      CHT_NETWORK: instanceName,
+      COUCHDB_DATA: couchDbDataPath,
+      COUCHDB_PASSWORD,
+      COUCHDB_SECRET: crypto
+        .randomBytes(16)
+        .toString('hex'),
+      COUCHDB_USER,
+      COUCHDB_UUID: uuid(),
+      NGINX_HTTP_PORT,
+      NGINX_HTTPS_PORT,
+      COMPOSE_PROJECT_NAME: upgradeSvcProjectName(instanceName),
+    })),
+    Effect.flatMap(Schema.decodeUnknown(ChtInstanceConfig)),
+  ));
 
   static readonly asRecord = (
     config: ChtInstanceConfig
   ): Record<string, string> => config as unknown as Record<string, string>;
 }
+
+const getCouchDbDataPath = (localProjectPath: Option.Option<string>) => pipe(
+  localProjectPath,
+  Option.map(path => `${path}/${SUB_DIR_COUCHDB}`),
+  Option.getOrElse(() => '')
+);
 
 const upgradeSvcProjectName = (instanceName: string) => `${instanceName}-up`;
 
@@ -541,7 +542,7 @@ export class LocalInstanceService extends Effect.Service<LocalInstanceService>()
     ): Effect.Effect<void, Error> => pipe(
       assertChtxVolumeDoesNotExist(instanceName),
       Effect.andThen(Effect.all([
-        ChtInstanceConfig.generate(instanceName, localProjectPath),
+        ChtInstanceConfig.generate(instanceName, getCouchDbDataPath(localProjectPath)),
         createProjectDir(localProjectPath)
       ], { concurrency: 'unbounded' })),
       Effect.flatMap(([env, projectPath]) => pipe(
