@@ -155,9 +155,27 @@ const SSL_URL_DICT: Record<SSLType, [[string, string], [string, string]]> = {
   ],
 };
 
-class ChtInstanceConfig extends Schema.Class<ChtInstanceConfig>('ChtInstanceConfig')({
+/**
+ * Base configuration required for creating a CHT Upgrade Service container. See {@link ChtInstanceConfig} for the full
+ * configuration required for deploy an actual CHT with the Upgrade Service.
+ */
+class ChtUpgradeSvcConfig extends Schema.Class<ChtUpgradeSvcConfig>('ChtUpgradeSvcConfig')({
   CHT_COMPOSE_PATH: Schema.Literal(CHTX_COMPOSE_FILES_VOLUME_NAME),
   CHT_COMPOSE_PROJECT_NAME: Schema.NonEmptyTrimmedString,
+  DOCKER_CONFIG_PATH: Schema.Literal(CHTX_COMPOSE_FILES_VOLUME_NAME),
+}) {
+  static readonly generate = (instanceName: string) => ({
+    CHT_COMPOSE_PATH: CHTX_COMPOSE_FILES_VOLUME_NAME,
+    CHT_COMPOSE_PROJECT_NAME: instanceName,
+    // This is a hack. The envar is required by the upgrade service compose, but is not used.
+    DOCKER_CONFIG_PATH: CHTX_COMPOSE_FILES_VOLUME_NAME,
+  });
+}
+
+/**
+ * Full configuration required for deploying a CHT instance with the Upgrade Service.
+ */
+class ChtInstanceConfig extends ChtUpgradeSvcConfig.extend<ChtInstanceConfig>('ChtInstanceConfig')({
   CHT_NETWORK: Schema.NonEmptyTrimmedString,
   COMPOSE_PROJECT_NAME: Schema.NonEmptyTrimmedString,
   COUCHDB_DATA: Schema.String,
@@ -165,17 +183,9 @@ class ChtInstanceConfig extends Schema.Class<ChtInstanceConfig>('ChtInstanceConf
   COUCHDB_SECRET: Schema.NonEmptyTrimmedString,
   COUCHDB_USER: Schema.NonEmptyTrimmedString,
   COUCHDB_UUID: Schema.NonEmptyTrimmedString,
-  DOCKER_CONFIG_PATH: Schema.Literal(CHTX_COMPOSE_FILES_VOLUME_NAME),
   NGINX_HTTP_PORT: Schema.Number,
   NGINX_HTTPS_PORT: Schema.Number,
 }) {
-  static readonly base = (instanceName: string) => ({// TODO
-    CHT_COMPOSE_PATH: CHTX_COMPOSE_FILES_VOLUME_NAME,
-    CHT_COMPOSE_PROJECT_NAME: instanceName,
-    CHT_NETWORK: instanceName,
-    // This is a hack. The envar is required by the upgrade service compose, but is not used.
-    DOCKER_CONFIG_PATH: CHTX_COMPOSE_FILES_VOLUME_NAME,
-  });
 
   static readonly generate = Effect.fn((
     instanceName: string,
@@ -183,7 +193,8 @@ class ChtInstanceConfig extends Schema.Class<ChtInstanceConfig>('ChtInstanceConf
   ) => freePortsEffect
     .pipe(
       Effect.map(([NGINX_HTTPS_PORT, NGINX_HTTP_PORT]) => ({
-        ...ChtInstanceConfig.base(instanceName),
+        ...ChtUpgradeSvcConfig.generate(instanceName),
+        CHT_NETWORK: instanceName,
         COUCHDB_DATA: pipe(
           localProjectPath,
           Option.map(path => `${path}/${SUB_DIR_COUCHDB}`),
@@ -272,7 +283,7 @@ const writeChtCompose = (dirPath: string, version: string) => Effect.fn((fileNam
   getRemoteFile,
   Effect.flatMap(writeFile(`${dirPath}/${SUB_DIR_DOCKER_COMPOSE}/${fileName}`)),
 ));
-const writeEmtpyNouveauDockerfile = Effect.fn((dirPath: string) => pipe(
+const writeEmptyNouveauDockerfile = Effect.fn((dirPath: string) => pipe(
   DOCKERFILE_NOUVEAU_EMPTY,
   writeFile(`${dirPath}/${SUB_DIR_DOCKER_COMPOSE}/Dockerfile.nouveau.empty`),
 ));
@@ -337,7 +348,6 @@ const pullAllChtImages = Effect.fn((
 
 const createUpgradeSvcContainer = Effect.fn((instanceName: string, projectPath: string) => pipe(
   upgradeSvcProjectName(instanceName),
-  x => x,
   createComposeContainers(
     {},
     `${projectPath}/${SUB_DIR_UPGRADE_SERVICE}/${UPGRADE_SVC_COMPOSE_FILE_NAME}`,
@@ -386,7 +396,10 @@ const copyEnvFileFromDanglingVolume = Effect.fn((
 ) => Effect
   .acquireUseRelease(
     pipe(
-      writeEnvFile(`${tempDir}/${SUB_DIR_UPGRADE_SERVICE}/${ENV_FILE_NAME}`, ChtInstanceConfig.base(instanceName)),
+      writeEnvFile(
+        `${tempDir}/${SUB_DIR_UPGRADE_SERVICE}/${ENV_FILE_NAME}`,
+        ChtUpgradeSvcConfig.generate(instanceName)
+      ),
       Effect.andThen(createUpgradeSvcContainer(instanceName, tempDir))
     ),
     () => copyEnvFileFromUpgradeSvcContainer(instanceName, tempDir),
@@ -534,7 +547,7 @@ export class LocalInstanceService extends Effect.Service<LocalInstanceService>()
       Effect.flatMap(([env, projectPath]) => pipe(
         Effect.all([
           writeComposeFiles(projectPath, version, localProjectPath),
-          writeEmtpyNouveauDockerfile(projectPath),
+          writeEmptyNouveauDockerfile(projectPath),
           writeEnvFile(`${projectPath}/${SUB_DIR_UPGRADE_SERVICE}/${ENV_FILE_NAME}`, ChtInstanceConfig.asRecord(env)),
         ], { concurrency: 'unbounded' }),
         Effect.andThen(pullAllChtImages(env, projectPath)),
@@ -571,51 +584,50 @@ export class LocalInstanceService extends Effect.Service<LocalInstanceService>()
     )),
     stop: Effect.fn((
       instanceName: string
-    ): Effect.Effect<void, Error> => assertChtxVolumeExists(instanceName)
-      .pipe(
-        Effect.andThen(Effect.all([
-          stopCompose(instanceName),
-          stopCompose(upgradeSvcProjectName(instanceName))
-        ], { concurrency: 'unbounded' })),
-        Effect.mapError(x => x as Error),
-        Effect.provide(context),
-      )),
+    ): Effect.Effect<void, Error> => pipe(
+      assertChtxVolumeExists(instanceName),
+      Effect.andThen(Effect.all([
+        stopCompose(instanceName),
+        stopCompose(upgradeSvcProjectName(instanceName))
+      ], { concurrency: 'unbounded' })),
+      mapErrorToGeneric,
+      Effect.provide(context),
+    )),
     rm: Effect.fn((
       instanceName: string
-    ): Effect.Effect<void, Error> => Effect
-      .all([
+    ): Effect.Effect<void, Error> => pipe(
+      Effect.all([
         destroyCompose(instanceName),
         destroyCompose(upgradeSvcProjectName(instanceName)),
-      ])
-      .pipe(
-        Effect.mapError(x => x as Error),
-        Effect.provide(context),
-      )),
+      ]),
+      mapErrorToGeneric,
+      Effect.provide(context),
+    )),
     setSSLCerts: Effect.fn((
       instanceName: string,
       sslType: SSLType
-    ): Effect.Effect<void, Error> => ensureUpgradeServiceExists(instanceName, Option.none())
-      .pipe(
-        Effect.andThen(startCompose(upgradeSvcProjectName(instanceName))),
-        Effect.andThen(getPortForInstance(instanceName)),
-        Effect.tap(waitForInstance),
-        Effect.andThen(createTmpDir()),
-        Effect.tap(writeSSLFiles(sslType)),
-        Effect.flatMap(copySSLFilesToNginxContainer(instanceName)),
-        Effect.andThen(restartComposeService(instanceName, NGINX_SVC_NAME)),
-        Effect.mapError(x => x as Error),
-        Effect.provide(context),
-        Effect.scoped,
-      )),
-    ls: Effect.fn((): Effect.Effect<LocalChtInstance[], Error> => getVolumeNamesWithLabel(CHTX_LABEL_NAME)
-      .pipe(
-        Effect.map(Array.map(getVolumeLabelValue(CHTX_LABEL_NAME))),
-        Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })),
-        Effect.map(Array.map(getLocalChtInstanceInfo)),
-        Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })),
-        Effect.mapError(x => x as unknown as Error),
-        Effect.provide(context),
-      )),
+    ): Effect.Effect<void, Error> => pipe(
+      ensureUpgradeServiceExists(instanceName, Option.none()),
+      Effect.andThen(startCompose(upgradeSvcProjectName(instanceName))),
+      Effect.andThen(getPortForInstance(instanceName)),
+      Effect.tap(waitForInstance),
+      Effect.andThen(createTmpDir()),
+      Effect.tap(writeSSLFiles(sslType)),
+      Effect.flatMap(copySSLFilesToNginxContainer(instanceName)),
+      Effect.andThen(restartComposeService(instanceName, NGINX_SVC_NAME)),
+      mapErrorToGeneric,
+      Effect.provide(context),
+      Effect.scoped,
+    )),
+    ls: Effect.fn((): Effect.Effect<LocalChtInstance[], Error> => pipe(
+      getVolumeNamesWithLabel(CHTX_LABEL_NAME),
+      Effect.map(Array.map(getVolumeLabelValue(CHTX_LABEL_NAME))),
+      Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })),
+      Effect.map(Array.map(getLocalChtInstanceInfo)),
+      Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })),
+      mapErrorToGeneric,
+      Effect.provide(context),
+    )),
   }))),
   accessors: true,
 }) {

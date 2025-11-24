@@ -483,7 +483,6 @@ describe('Local Instance Service', () => {
       const env = {
         CHT_COMPOSE_PATH: 'chtx-compose-files',
         CHT_COMPOSE_PROJECT_NAME: INSTANCE_NAME,
-        CHT_NETWORK: INSTANCE_NAME,
         DOCKER_CONFIG_PATH: 'chtx-compose-files',
       };
       expect(mockFileLib.writeEnvFile).to.have.been.calledOnceWithExactly(`${tmpDir}/upgrade-service/.env`, env);
@@ -581,7 +580,6 @@ describe('Local Instance Service', () => {
       const env = {
         CHT_COMPOSE_PATH: 'chtx-compose-files',
         CHT_COMPOSE_PROJECT_NAME: INSTANCE_NAME,
-        CHT_NETWORK: INSTANCE_NAME,
         DOCKER_CONFIG_PATH: 'chtx-compose-files',
       };
       expect(mockFileLib.writeEnvFile).to.have.been.calledOnceWithExactly(`${tmpDir}/upgrade-service/.env`, env);
