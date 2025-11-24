@@ -43,7 +43,7 @@ const CHT_COMPOSE_FILE_NAMES = [
 ];
 const SSL_CERT_FILE_NAME = 'cert.pem';
 const SSL_KEY_FILE_NAME = 'key.pem';
-const DOCKERFILE_NOUVEAU_EMTPY_NAME = 'Dockerfile.nouveau.empty';
+const DOCKERFILE_NOUVEAU_EMPTY_NAME = 'Dockerfile.nouveau.empty';
 
 const COUCHDB_USER = 'medic';
 const COUCHDB_PASSWORD = 'password';
@@ -96,7 +96,7 @@ services:
     # Only used when running a pre-5.0 CHT version without nouveau
     build:
       context: .
-      dockerfile: ${DOCKERFILE_NOUVEAU_EMTPY_NAME}
+      dockerfile: ${DOCKERFILE_NOUVEAU_EMPTY_NAME}
     volumes:
       - chtx-nouveau-data:/data/nouveau:rw
 
