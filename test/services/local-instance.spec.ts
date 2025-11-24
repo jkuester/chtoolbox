@@ -1,4 +1,4 @@
-import { describe, it } from 'mocha';
+import { afterEach, describe, it } from 'mocha';
 import { Array, Effect, Either, Layer, Option, pipe, Redacted, Schedule } from 'effect';
 import sinon, { type SinonStub } from 'sinon';
 import { expect } from 'chai';
@@ -15,6 +15,7 @@ const PORT = '1234';
 const CONTAINER_STATUSES_RUNNING = ['running'];
 const CONTAINER_STATUSES_STOPPED = ['exited', 'created', 'paused', 'restarting', 'removing', 'dead'];
 
+const CHT_UPGRADE_SERVICE_COMPOSE_URL = 'https://raw.githubusercontent.com/medic/cht-upgrade-service/main/docker-compose.yml';
 const chtComposeUrl = (
   version: string,
   fileName: string
@@ -42,8 +43,6 @@ const mockFileLib = {
   isDirectoryEmpty: sandbox.stub(),
   writeFile: sandbox.stub(),
   writeEnvFile: sandbox.stub(),
-  writeJsonFile: sandbox.stub(),
-  readJsonFile: sandbox.stub(),
   getRemoteFile: sandbox.stub(),
 };
 const mockHttpClient = { filterStatusOk: sandbox.stub() };
@@ -80,6 +79,7 @@ describe('Local Instance Service', () => {
   let writeFileInner: SinonStub;
   let createComposeContainersInner: SinonStub;
   let copyFileToComposeContainerInner: SinonStub;
+  let rmComposeContainerInner: SinonStub;
 
   beforeEach(() => {
     writeFileInner = sinon
@@ -96,14 +96,18 @@ describe('Local Instance Service', () => {
       .stub()
       .returns(Effect.void);
     mockDockerLib.copyFileToComposeContainer.returns(copyFileToComposeContainerInner);
+    rmComposeContainerInner = sinon
+      .stub()
+      .returns(Effect.void);
+    mockDockerLib.rmComposeContainer.returns(rmComposeContainerInner);
   });
 
   describe('create', () => {
+    const version = '3.7.0';
     let pullComposeImagesInner: SinonStub;
 
     beforeEach(() => {
       mockFileLib.createDir.returns(Effect.void);
-      mockFileLib.writeJsonFile.returns(Effect.void);
       mockFileLib.writeEnvFile.returns(Effect.void);
       pullComposeImagesInner = sinon
         .stub()
@@ -111,187 +115,145 @@ describe('Local Instance Service', () => {
       mockDockerLib.pullComposeImages.returns(pullComposeImagesInner);
     });
 
-    it('creates a new instance with the given name and version', run(function* () {
-      const version = '3.7.0';
-      mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(false));
+    describe('successfully creates a new instance', () => {
       const httpsPort = 1234;
       const httpPort = 5678;
-      getFreePorts.returns(Effect.succeed([httpsPort, httpPort]));
-      const tmpDir = '/tmp/asdfasdfas';
-      mockFileLib.createTmpDir.returns(Effect.succeed(tmpDir));
-      const coreComposeName = 'cht-core.yml';
-      const couchComposeName = 'cht-couchdb.yml';
-      const coreComposeURL = chtComposeUrl(version, coreComposeName);
-      const couchComposeURL = chtComposeUrl(version, couchComposeName);
-      mockFileLib.getRemoteFile.withArgs(coreComposeURL).returns(Effect.succeed('core-compose-file'));
-      mockFileLib.getRemoteFile.withArgs(couchComposeURL).returns(Effect.succeed('couch-compose-file'));
-      mockFileSystem.readFileString.returns(Effect.succeed('nouveau:'));
-
-      yield* LocalInstanceService.create(INSTANCE_NAME, version, Option.none());
-
-      expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
-      expect(getFreePorts.calledOnceWithExactly()).to.be.true;
-      expect(mockFileLib.createTmpDir.calledOnceWithExactly()).to.be.true;
-      expect(mockFileLib.getRemoteFile.args).to.deep.equal([[coreComposeURL], [couchComposeURL]]);
-      expect(mockFileLib.createDir.notCalled).to.be.true;
-      expect(mockFileLib.writeFile.args).to.deep.equal([
-        [`${tmpDir}/compose.yaml`],
-        [`${tmpDir}/chtx-override.yaml`],
-        [`${tmpDir}/${coreComposeName}`],
-        [`${tmpDir}/${couchComposeName}`],
-      ]);
-      expect(writeFileInner.callCount).to.equal(4);
-      expect(writeFileInner.firstCall.args[0]).to.include('image: public.ecr.aws/s5s3h4s7/cht-upgrade-service:latest');
-      expect(writeFileInner.secondCall.args).to.deep.equal(['core-compose-file']);
-      expect(writeFileInner.thirdCall.args).to.deep.equal(['couch-compose-file']);
-      expect(writeFileInner.lastCall.args[0]).to.include('cht-couchdb-data:/opt/couchdb/data');
-      expect(writeFileInner.lastCall.args[0]).to.include('cht-nouveau-data:/data/nouveau');
-      expect(writeFileInner.lastCall.args[0]).to.not.include(`device: /data/credentials`);
-      const expectedEnv = {
-        CHT_COMPOSE_PROJECT_NAME: INSTANCE_NAME,
-        CHT_NETWORK: INSTANCE_NAME,
-        COMPOSE_PROJECT_NAME: `${INSTANCE_NAME}-up`,
-        COUCHDB_PASSWORD: 'password',
-        COUCHDB_USER: 'medic',
-        NGINX_HTTP_PORT: httpPort,
-        NGINX_HTTPS_PORT: httpsPort,
-      };
-      expect(mockFileLib.writeEnvFile.notCalled).to.be.true;
-      expect(mockFileLib.writeJsonFile.calledOnce).to.be.true;
-      expect(mockFileLib.writeJsonFile).to.have.been.calledWith(`${tmpDir}/env.json`);
-      const actualEnv = mockFileLib.writeJsonFile.firstCall.args[1] as Record<string, string>;
-      expect(actualEnv).to.deep.include(expectedEnv);
-      expect(actualEnv).to.have.property('COUCHDB_SECRET').that.is.a('string').that.has.length(32);
-      expect(mockDockerLib.pullComposeImages.calledOnceWithExactly(INSTANCE_NAME, actualEnv)).to.be.true;
-      expect(pullComposeImagesInner.calledOnceWithExactly([
-        `${tmpDir}/${coreComposeName}`,
-        `${tmpDir}/${couchComposeName}`,
-        `${tmpDir}/chtx-override.yaml`,
-        `${tmpDir}/compose.yaml`,
-      ])).to.be.true;
-      expect(mockDockerLib.createComposeContainers.calledOnceWithExactly(
-        actualEnv, `${tmpDir}/compose.yaml`
-      )).to.be.true;
-      expect(createComposeContainersInner.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
-      expect(mockDockerLib.copyFileToComposeContainer.calledOnceWithExactly(
-        `${INSTANCE_NAME}-up`, 'cht-upgrade-service'
-      )).to.be.true;
-      expect(copyFileToComposeContainerInner.callCount).to.equal(4);
-      expect(copyFileToComposeContainerInner.firstCall.args[0]).to.deep.equal(
-        [`${tmpDir}/${coreComposeName}`, `/docker-compose/${coreComposeName}`]
-      );
-      expect(copyFileToComposeContainerInner.secondCall.args[0]).to.deep.equal(
-        [`${tmpDir}/${couchComposeName}`, `/docker-compose/${couchComposeName}`]
-      );
-      expect(copyFileToComposeContainerInner.thirdCall.args[0]).to.deep.equal(
-        [`${tmpDir}/chtx-override.yaml`, `/docker-compose/chtx-override.yaml`]
-      );
-      expect(copyFileToComposeContainerInner.lastCall.args[0]).to.deep.equal(
-        [`${tmpDir}/env.json`, `/docker-compose/env.json`]
-      );
-      expect(mockFileSystem.readFileString.calledOnceWithExactly(`${tmpDir}/${couchComposeName}`)).to.be.true;
-    }));
-
-    it('creates a new instance with the data mapped to the given local directory', run(function* () {
-      const version = '3.7.0';
-      mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(false));
-      const httpsPort = 1234;
-      const httpPort = 5678;
-      getFreePorts.returns(Effect.succeed([httpsPort, httpPort]));
-      const tmpDir = '/tmp/asdfasdfas';
-      mockFileLib.createTmpDir.returns(Effect.succeed(tmpDir));
-      mockFileLib.isDirectoryEmpty.returns(Effect.succeed(true));
-      const coreComposeName = 'cht-core.yml';
-      const couchComposeName = 'cht-couchdb.yml';
-      const coreComposeURL = chtComposeUrl(version, coreComposeName);
-      const couchComposeURL = chtComposeUrl(version, couchComposeName);
-      mockFileLib.getRemoteFile.withArgs(coreComposeURL).returns(Effect.succeed('core-compose-file'));
-      mockFileLib.getRemoteFile.withArgs(couchComposeURL).returns(Effect.succeed('couch-compose-file'));
-      mockFileSystem.readFileString.returns(Effect.succeed('instance without nouveau'));
       const dataDir = '/data/directory';
+      const coreComposeName = 'cht-core.yml';
+      const couchComposeName = 'cht-couchdb.yml';
+      const coreComposeURL = chtComposeUrl(version, coreComposeName);
+      const couchComposeURL = chtComposeUrl(version, couchComposeName);
 
-      yield* LocalInstanceService.create(INSTANCE_NAME, version, Option.some(dataDir));
+      beforeEach(() => {
+        mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(false));
+        getFreePorts.returns(Effect.succeed([httpsPort, httpPort]));
+        mockFileLib.isDirectoryEmpty.returns(Effect.succeed(true));
+        mockFileLib.getRemoteFile.withArgs(coreComposeURL).returns(Effect.succeed('core-compose-file'));
+        mockFileLib.getRemoteFile.withArgs(couchComposeURL).returns(Effect.succeed('couch-compose-file'));
+        mockFileLib.getRemoteFile
+          .withArgs(CHT_UPGRADE_SERVICE_COMPOSE_URL)
+          .returns(Effect.succeed('upgrade-service-compose-file'));
+      });
 
-      expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
-      expect(getFreePorts.calledOnceWithExactly()).to.be.true;
-      expect(mockFileLib.createTmpDir.calledOnceWithExactly()).to.be.true;
-      expect(mockFileLib.getRemoteFile.args).to.deep.equal([[coreComposeURL], [couchComposeURL]]);
-      const expectedDataDirs = pipe(
-        Array.make('credentials', 'couchdb', 'nouveau', 'docker-compose'),
-        Array.map(dir => `${dataDir}/${dir}`),
-      );
-      expect(mockFileLib.isDirectoryEmpty.calledOnceWithExactly(dataDir)).to.be.true;
-      expect(mockFileLib.createDir.args).to.deep.equal(Array.map(expectedDataDirs, Array.make));
-      expect(mockFileLib.writeFile.args).to.deep.equal([
-        [`${dataDir}/compose.yaml`],
-        [`${tmpDir}/chtx-override.yaml`],
-        [`${tmpDir}/${coreComposeName}`],
-        [`${tmpDir}/${couchComposeName}`],
-      ]);
-      expect(writeFileInner.callCount).to.equal(4);
-      expect(writeFileInner.firstCall.args[0]).to.include('image: public.ecr.aws/s5s3h4s7/cht-upgrade-service:latest');
-      expect(writeFileInner.firstCall.args[0]).to.include(`device: ${Array.unsafeGet(expectedDataDirs, 3)}`);
-      expect(writeFileInner.secondCall.args).to.deep.equal(['core-compose-file']);
-      expect(writeFileInner.thirdCall.args).to.deep.equal(['couch-compose-file']);
-      expect(writeFileInner.lastCall.args[0]).to.include('cht-couchdb-data:/opt/couchdb/data');
-      expect(writeFileInner.lastCall.args[0]).to.not.include('cht-nouveau-data:/data/nouveau');
-      pipe(
-        expectedDataDirs.slice(0, 3),
-        Array.forEach(dir => expect(writeFileInner.lastCall.args[0]).to.include(`device: ${dir}`))
-      );
-      const expectedEnv = {
-        CHT_COMPOSE_PROJECT_NAME: INSTANCE_NAME,
-        CHT_NETWORK: INSTANCE_NAME,
-        COMPOSE_PROJECT_NAME: `${INSTANCE_NAME}-up`,
-        COUCHDB_PASSWORD: 'password',
-        COUCHDB_USER: 'medic',
-        NGINX_HTTP_PORT: httpPort,
-        NGINX_HTTPS_PORT: httpsPort,
-      };
-      expect(mockFileLib.writeEnvFile).to.have.been.calledOnce;
-      expect(mockFileLib.writeEnvFile).to.have.been.calledWithMatch(`${dataDir}/.env`, expectedEnv);
-      expect(mockFileLib.writeJsonFile).to.have.been.calledOnceWith(`${tmpDir}/env.json`);
-      const actualEnv = mockFileLib.writeJsonFile.firstCall.args[1] as Record<string, string>;
-      expect(actualEnv).to.deep.include(expectedEnv);
-      expect(actualEnv).to.have.property('COUCHDB_SECRET').that.is.a('string').that.has.length(32);
-      expect(mockDockerLib.pullComposeImages.calledOnceWithExactly(INSTANCE_NAME, actualEnv)).to.be.true;
-      expect(pullComposeImagesInner.calledOnceWithExactly([
-        `${tmpDir}/${coreComposeName}`,
-        `${tmpDir}/${couchComposeName}`,
-        `${tmpDir}/chtx-override.yaml`,
-        `${dataDir}/compose.yaml`,
-      ])).to.be.true;
-      expect(mockDockerLib.createComposeContainers.calledOnceWithExactly(
-        actualEnv, `${dataDir}/compose.yaml`
-      )).to.be.true;
-      expect(createComposeContainersInner.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
-      expect(mockDockerLib.copyFileToComposeContainer.calledOnceWithExactly(
-        `${INSTANCE_NAME}-up`, 'cht-upgrade-service'
-      )).to.be.true;
-      expect(copyFileToComposeContainerInner.callCount).to.equal(4);
-      expect(copyFileToComposeContainerInner.firstCall.args[0]).to.deep.equal(
-        [`${tmpDir}/${coreComposeName}`, `/docker-compose/${coreComposeName}`]
-      );
-      expect(copyFileToComposeContainerInner.secondCall.args[0]).to.deep.equal(
-        [`${tmpDir}/${couchComposeName}`, `/docker-compose/${couchComposeName}`]
-      );
-      expect(copyFileToComposeContainerInner.thirdCall.args[0]).to.deep.equal(
-        [`${tmpDir}/chtx-override.yaml`, `/docker-compose/chtx-override.yaml`]
-      );
-      expect(copyFileToComposeContainerInner.lastCall.args[0]).to.deep.equal(
-        [`${tmpDir}/env.json`, `/docker-compose/env.json`]
-      );
-      expect(mockFileSystem.readFileString.calledOnceWithExactly(`${tmpDir}/${couchComposeName}`)).to.be.true;
-    }));
+      afterEach(() => {
+        expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`))
+          .to.be.true;
+        expect(getFreePorts.calledOnceWithExactly()).to.be.true;
+        expect(mockFileLib.getRemoteFile.args).to.deep.equal([
+          [CHT_UPGRADE_SERVICE_COMPOSE_URL],
+          [coreComposeURL],
+          [couchComposeURL],
+        ]);
+        const expectedDataDirs = pipe(
+          Array.make('credentials', 'couchdb', 'couchdb/nouveau', 'compose', 'ssl', 'upgrade-service'),
+          Array.map(dir => `${dataDir}/${dir}`),
+        );
+        expect(mockFileLib.isDirectoryEmpty.calledOnceWithExactly(dataDir)).to.be.true;
+        expect(mockFileLib.createDir.args).to.deep.equal(Array.map(expectedDataDirs, Array.make));
+        expect(mockFileLib.writeFile.args).to.deep.equal([
+          [`${dataDir}/upgrade-service/docker-compose.yml`],
+          [`${dataDir}/upgrade-service/compose.override.yml`],
+          [`${dataDir}/compose/chtx-override.yml`],
+          [`${dataDir}/compose/${coreComposeName}`],
+          [`${dataDir}/compose/${couchComposeName}`],
+          [`${dataDir}/compose/Dockerfile.nouveau.empty`],
+        ]);
+        expect(writeFileInner.callCount).to.equal(6);
+        expect(writeFileInner.firstCall.args[0]).to.include('Override for upgrade service compose config');
+        expect(writeFileInner.secondCall.args[0]).to.include('Override for CHT compose config');
+        expect(writeFileInner.thirdCall.args[0]).to.include(
+          'Placeholder image for nouveau container when running pre-5.0 CHT'
+        );
+        expect(writeFileInner.getCall(3).args).to.deep.equal(['core-compose-file']);
+        expect(writeFileInner.getCall(4).args).to.deep.equal(['couch-compose-file']);
+        expect(writeFileInner.getCall(5).args).to.deep.equal(['upgrade-service-compose-file']);
+        const expectedEnv = {
+          CHT_COMPOSE_PATH: 'chtx-compose-files',
+          CHT_COMPOSE_PROJECT_NAME: INSTANCE_NAME,
+          CHT_NETWORK: INSTANCE_NAME,
+          COMPOSE_PROJECT_NAME: `${INSTANCE_NAME}-up`,
+          // COUCHDB_DATA: '',
+          COUCHDB_PASSWORD: 'password',
+          COUCHDB_USER: 'medic',
+          DOCKER_CONFIG_PATH: 'chtx-compose-files',
+          NGINX_HTTP_PORT: httpPort,
+          NGINX_HTTPS_PORT: httpsPort,
+        };
+        expect(mockFileLib.writeEnvFile.calledOnce).to.be.true;
+        expect(mockFileLib.writeEnvFile).to.have.been.calledWith(`${dataDir}/upgrade-service/.env`);
+        const actualEnv = mockFileLib.writeEnvFile.firstCall.args[1] as Record<string, string>;
+        expect(actualEnv).to.deep.include(expectedEnv);
+        expect(actualEnv).to.have.property('COUCHDB_SECRET').that.is.a('string').that.has.length(32);
+        expect(actualEnv).to.have.property('COUCHDB_UUID').that.is.a('string').that.is.not.empty;
+        expect(mockDockerLib.pullComposeImages.calledOnceWithExactly('tmp', actualEnv)).to.be.true;
+        expect(pullComposeImagesInner.calledOnceWithExactly([
+          `${dataDir}/compose/${coreComposeName}`,
+          `${dataDir}/compose/${couchComposeName}`,
+          `${dataDir}/compose/chtx-override.yml`,
+          `${dataDir}/upgrade-service/docker-compose.yml`,
+          `${dataDir}/upgrade-service/compose.override.yml`,
+        ])).to.be.true;
+        expect(mockDockerLib.createComposeContainers.calledOnceWithExactly(
+          {},
+          `${dataDir}/upgrade-service/docker-compose.yml`,
+          `${dataDir}/upgrade-service/compose.override.yml`,
+        )).to.be.true;
+        expect(createComposeContainersInner.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
+      });
+
+      it('with all the data stored in named docker volumes', run(function* () {
+        mockFileLib.createTmpDir.returns(Effect.succeed(dataDir));
+
+        yield* LocalInstanceService.create(INSTANCE_NAME, version, Option.none());
+
+        expect(mockFileLib.createTmpDir.calledOnceWithExactly()).to.be.true;
+        expect(writeFileInner.secondCall.args[0]).to.not.include('device:');
+        expect(mockFileLib.writeEnvFile.firstCall.args[1])
+          .to.have.property('COUCHDB_DATA')
+          .that.equals('');
+        expect(mockDockerLib.copyFileToComposeContainer.calledOnceWithExactly(
+          `${INSTANCE_NAME}-up`, 'cht-upgrade-service'
+        )).to.be.true;
+        expect(copyFileToComposeContainerInner.callCount).to.equal(4);
+        expect(copyFileToComposeContainerInner.firstCall.args[0]).to.deep.equal(
+          [`${dataDir}/compose/${coreComposeName}`, `/docker-compose/${coreComposeName}`]
+        );
+        expect(copyFileToComposeContainerInner.secondCall.args[0]).to.deep.equal(
+          [`${dataDir}/compose/${couchComposeName}`, `/docker-compose/${couchComposeName}`]
+        );
+        expect(copyFileToComposeContainerInner.thirdCall.args[0]).to.deep.equal(
+          [`${dataDir}/compose/chtx-override.yml`, `/docker-compose/chtx-override.yml`]
+        );
+        expect(copyFileToComposeContainerInner.lastCall.args[0]).to.deep.equal(
+          [`${dataDir}/upgrade-service/.env`, `/docker-compose/.env`]
+        );
+        expect(mockDockerLib.rmComposeContainer.calledOnceWithExactly('cht-upgrade-service')).to.be.true;
+        expect(rmComposeContainerInner.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
+      }));
+
+      it('with the data mapped to the given local directory', run(function* () {
+        yield* LocalInstanceService.create(INSTANCE_NAME, version, Option.some(dataDir));
+
+        expect(mockFileLib.createTmpDir).to.not.have.been.called;
+        pipe(
+          [`${dataDir}/credentials`, `${dataDir}/ssl`, '${COUCHDB_DATA}', '${COUCHDB_DATA}/nouveau'],
+          Array.forEach(dir => expect(writeFileInner.secondCall.args[0]).to.include(`device: ${dir}`))
+        );
+        expect(mockFileLib.writeEnvFile.firstCall.args[1])
+          .to.have.property('COUCHDB_DATA')
+          .that.equals(`${dataDir}/couchdb`);
+        expect(mockDockerLib.copyFileToComposeContainer).to.not.be.called;
+        expect(copyFileToComposeContainerInner).to.not.be.called;
+        expect(mockDockerLib.rmComposeContainer).to.not.be.called;
+        expect(rmComposeContainerInner).to.not.be.called;
+      }));
+    });
 
     it('returns error if given local directory is not empty', run(function* () {
-      const version = '3.7.0';
       mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(false));
       const httpsPort = 1234;
       const httpPort = 5678;
       getFreePorts.returns(Effect.succeed([httpsPort, httpPort]));
-      const tmpDir = '/tmp/asdfasdfas';
-      mockFileLib.createTmpDir.returns(Effect.succeed(tmpDir));
       mockFileLib.isDirectoryEmpty.returns(Effect.succeed(false));
       const dataDir = '/data/directory';
 
@@ -305,12 +267,11 @@ describe('Local Instance Service', () => {
       expect(either.left).to.deep.include(new Error(`Local directory ${dataDir} is not empty.`));
       expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(`chtx.instance=${INSTANCE_NAME}`)).to.be.true;
       expect(getFreePorts.calledOnceWithExactly()).to.be.true;
-      expect(mockFileLib.createTmpDir.calledOnceWithExactly()).to.be.true;
+      expect(mockFileLib.createTmpDir).to.not.be.called;
       expect(mockFileLib.isDirectoryEmpty.calledOnceWithExactly(dataDir)).to.be.true;
       expect(mockFileLib.createDir.notCalled).to.be.true;
       expect(mockFileLib.writeFile.notCalled).to.be.true;
       expect(mockFileLib.writeEnvFile.notCalled).to.be.true;
-      expect(mockFileLib.writeJsonFile.notCalled).to.be.true;
       expect(mockDockerLib.pullComposeImages.notCalled).to.be.true;
       expect(mockDockerLib.createComposeContainers.notCalled).to.be.true;
       expect(mockDockerLib.copyFileToComposeContainer.notCalled).to.be.true;
@@ -318,7 +279,6 @@ describe('Local Instance Service', () => {
     }));
 
     it('returns error if chtx volume already exists with the same name', run(function* () {
-      const version = '3.7.0';
       mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(true));
       getFreePorts.returns(Effect.succeed([1234, 5678]));
       mockFileLib.createTmpDir.returns(Effect.succeed('/tmp/asdfasdfas'));
@@ -340,7 +300,6 @@ describe('Local Instance Service', () => {
       expect(mockFileLib.getRemoteFile.notCalled).to.be.true;
       expect(mockFileLib.writeFile.notCalled).to.be.true;
       expect(writeFileInner.notCalled).to.be.true;
-      expect(mockFileLib.writeJsonFile.notCalled).to.be.true;
       expect(mockDockerLib.pullComposeImages.notCalled).to.be.true;
       expect(pullComposeImagesInner.notCalled).to.be.true;
       expect(mockDockerLib.createComposeContainers.notCalled).to.be.true;
@@ -362,7 +321,6 @@ describe('Local Instance Service', () => {
     };
 
     let copyFileFromComposeContainerInner: SinonStub;
-    let rmComposeContainerInner: SinonStub;
 
     beforeEach(() => {
       mockDockerLib
@@ -382,10 +340,6 @@ describe('Local Instance Service', () => {
         .stub()
         .returns(Effect.void);
       mockDockerLib.copyFileFromComposeContainer.returns(copyFileFromComposeContainerInner);
-      rmComposeContainerInner = sinon
-        .stub()
-        .returns(Effect.void);
-      mockDockerLib.rmComposeContainer.returns(rmComposeContainerInner);
 
       mockDockerLib.getContainersForComposeProject
         .withArgs(INSTANCE_NAME, ...CONTAINER_STATUSES_RUNNING)
@@ -478,17 +432,12 @@ describe('Local Instance Service', () => {
         .returns(Effect.succeed([]));
       const tmpDir = '/tmp/asdfasdfas';
       mockFileLib.createTmpDir.returns(Effect.succeed(tmpDir));
-      const env = {
-        CHT_COMPOSE_PROJECT_NAME: INSTANCE_NAME,
-        CHT_NETWORK: INSTANCE_NAME,
-        COMPOSE_PROJECT_NAME: `${INSTANCE_NAME}-up`,
-        COUCHDB_PASSWORD: 'password',
-        COUCHDB_SECRET: 'secret',
-        COUCHDB_USER: 'medic',
-        NGINX_HTTP_PORT: 1111,
-        NGINX_HTTPS_PORT: Number(PORT),
-      };
-      mockFileLib.readJsonFile.returns(Effect.succeed(env));
+      mockFileLib.isDirectoryEmpty.returns(Effect.succeed(true));
+      mockFileLib.createDir.returns(Effect.void);
+      mockFileLib.getRemoteFile
+        .withArgs(CHT_UPGRADE_SERVICE_COMPOSE_URL)
+        .returns(Effect.succeed('upgrade-service-compose-file'));
+      mockFileLib.writeEnvFile.returns(Effect.void);
       httpClientExecute.returns(Effect.void);
 
       const result = yield* LocalInstanceService.start(INSTANCE_NAME, Option.none());
@@ -502,16 +451,20 @@ describe('Local Instance Service', () => {
         [INSTANCE_NAME, ...CONTAINER_STATUSES_RUNNING],
         [INSTANCE_NAME, ...CONTAINER_STATUSES_STOPPED]
       ]);
-      expect(mockFileLib.writeFile.calledOnceWithExactly(`${tmpDir}/compose.yaml`)).to.be.true;
-      expect(writeFileInner).to.have.been.calledOnce;
-      expect(writeFileInner.firstCall.args[0]).to.include('image: public.ecr.aws/s5s3h4s7/cht-upgrade-service:latest');
+      expect(mockFileLib.writeFile.args).to.deep.equal([
+        [`${tmpDir}/upgrade-service/docker-compose.yml`],
+        [`${tmpDir}/upgrade-service/compose.override.yml`],
+      ]);
+      expect(writeFileInner).to.have.been.calledTwice;
+      expect(writeFileInner.firstCall.args[0]).to.include('Override for upgrade service compose config');
+      expect(writeFileInner.secondCall.args).to.deep.equal(['upgrade-service-compose-file']);
       expect(mockDockerLib.createComposeContainers.args).to.deep.equal([
-        [{}, `${tmpDir}/compose.yaml`],
-        [env, `${tmpDir}/compose.yaml`]
+        [{}, `${tmpDir}/upgrade-service/docker-compose.yml`, `${tmpDir}/upgrade-service/compose.override.yml`,],
+        [{}, `${tmpDir}/upgrade-service/docker-compose.yml`, `${tmpDir}/upgrade-service/compose.override.yml`,],
       ]);
       expect(createComposeContainersInner.args).to.deep.equal([[`${INSTANCE_NAME}-up`], [`${INSTANCE_NAME}-up`]]);
       expect(mockDockerLib.copyFileFromComposeContainer.calledOnceWithExactly(
-        'cht-upgrade-service', '/docker-compose/env.json', `${tmpDir}/env.json`
+        'cht-upgrade-service', '/docker-compose/.env', `${tmpDir}/upgrade-service/.env`
       )).to.be.true;
       expect(copyFileFromComposeContainerInner.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
       expect(mockDockerLib.rmComposeContainer.calledOnceWithExactly('cht-upgrade-service')).to.be.true;
@@ -520,6 +473,20 @@ describe('Local Instance Service', () => {
       expect(mockHttpClient.filterStatusOk.calledOnce).to.be.true;
       expect(mockHttpRequest.get.calledOnceWithExactly(`https://localhost:${PORT}/api/info`)).to.be.true;
       expect(httpClientExecute.calledOnceWithExactly(HTTP_CLIENT_REQUEST)).to.be.true;
+      const expectedDataDirs = pipe(
+        Array.make('credentials', 'couchdb', 'couchdb/nouveau', 'compose', 'ssl', 'upgrade-service'),
+        Array.map(dir => `${tmpDir}/${dir}`),
+      );
+      expect(mockFileLib.isDirectoryEmpty.calledOnceWithExactly(tmpDir)).to.be.true;
+      expect(mockFileLib.createDir.args).to.deep.equal(Array.map(expectedDataDirs, Array.make));
+      expect(mockFileLib.getRemoteFile).to.have.been.calledOnceWithExactly(CHT_UPGRADE_SERVICE_COMPOSE_URL);
+      const env = {
+        CHT_COMPOSE_PATH: 'chtx-compose-files',
+        CHT_COMPOSE_PROJECT_NAME: INSTANCE_NAME,
+        CHT_NETWORK: INSTANCE_NAME,
+        DOCKER_CONFIG_PATH: 'chtx-compose-files',
+      };
+      expect(mockFileLib.writeEnvFile).to.have.been.calledOnceWithExactly(`${tmpDir}/upgrade-service/.env`, env);
     }));
 
     it('returns error when no volume exists for project name', run(function* () {
@@ -556,23 +523,18 @@ describe('Local Instance Service', () => {
     }));
 
     it('handles problems removing the temp upgrade service container', run(function* () {
+      mockFileLib.isDirectoryEmpty.returns(Effect.succeed(true));
+      mockFileLib.createDir.returns(Effect.void);
+      mockFileLib.getRemoteFile
+        .withArgs(CHT_UPGRADE_SERVICE_COMPOSE_URL)
+        .returns(Effect.succeed('upgrade-service-compose-file'));
+      mockFileLib.writeEnvFile.returns(Effect.void);
       mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(true));
       mockDockerLib.getContainersForComposeProject
         .withArgs(`${INSTANCE_NAME}-up`)
         .returns(Effect.succeed([]));
       const tmpDir = '/tmp/asdfasdfas';
       mockFileLib.createTmpDir.returns(Effect.succeed(tmpDir));
-      const env = {
-        CHT_COMPOSE_PROJECT_NAME: INSTANCE_NAME,
-        CHT_NETWORK: INSTANCE_NAME,
-        COMPOSE_PROJECT_NAME: `${INSTANCE_NAME}-up`,
-        COUCHDB_PASSWORD: 'password',
-        COUCHDB_SECRET: 'secret',
-        COUCHDB_USER: 'medic',
-        NGINX_HTTP_PORT: 1111,
-        NGINX_HTTPS_PORT: Number(PORT),
-      };
-      mockFileLib.readJsonFile.returns(Effect.succeed(env));
       httpClientExecute.returns(Effect.void);
       rmComposeContainerInner.returns(Effect.fail('Failed to remove container'));
 
@@ -587,16 +549,20 @@ describe('Local Instance Service', () => {
         [INSTANCE_NAME, ...CONTAINER_STATUSES_RUNNING],
         [INSTANCE_NAME, ...CONTAINER_STATUSES_STOPPED]
       ]);
-      expect(mockFileLib.writeFile.calledOnceWithExactly(`${tmpDir}/compose.yaml`)).to.be.true;
-      expect(writeFileInner).to.have.been.calledOnce;
-      expect(writeFileInner.firstCall.args[0]).to.include('image: public.ecr.aws/s5s3h4s7/cht-upgrade-service:latest');
+      expect(mockFileLib.writeFile.args).to.deep.equal([
+        [`${tmpDir}/upgrade-service/docker-compose.yml`],
+        [`${tmpDir}/upgrade-service/compose.override.yml`],
+      ]);
+      expect(writeFileInner).to.have.been.calledTwice;
+      expect(writeFileInner.firstCall.args[0]).to.include('Override for upgrade service compose config');
+      expect(writeFileInner.secondCall.args).to.deep.equal(['upgrade-service-compose-file']);
       expect(mockDockerLib.createComposeContainers.args).to.deep.equal([
-        [{}, `${tmpDir}/compose.yaml`],
-        [env, `${tmpDir}/compose.yaml`]
+        [{}, `${tmpDir}/upgrade-service/docker-compose.yml`, `${tmpDir}/upgrade-service/compose.override.yml`,],
+        [{}, `${tmpDir}/upgrade-service/docker-compose.yml`, `${tmpDir}/upgrade-service/compose.override.yml`,],
       ]);
       expect(createComposeContainersInner.args).to.deep.equal([[`${INSTANCE_NAME}-up`], [`${INSTANCE_NAME}-up`]]);
       expect(mockDockerLib.copyFileFromComposeContainer.calledOnceWithExactly(
-        'cht-upgrade-service', '/docker-compose/env.json', `${tmpDir}/env.json`
+        'cht-upgrade-service', '/docker-compose/.env', `${tmpDir}/upgrade-service/.env`
       )).to.be.true;
       expect(copyFileFromComposeContainerInner.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
       expect(mockDockerLib.rmComposeContainer.calledOnceWithExactly('cht-upgrade-service')).to.be.true;
@@ -605,21 +571,24 @@ describe('Local Instance Service', () => {
       expect(mockHttpClient.filterStatusOk.calledOnce).to.be.true;
       expect(mockHttpRequest.get.calledOnceWithExactly(`https://localhost:${PORT}/api/info`)).to.be.true;
       expect(httpClientExecute.calledOnceWithExactly(HTTP_CLIENT_REQUEST)).to.be.true;
+      const expectedDataDirs = pipe(
+        Array.make('credentials', 'couchdb', 'couchdb/nouveau', 'compose', 'ssl', 'upgrade-service'),
+        Array.map(dir => `${tmpDir}/${dir}`),
+      );
+      expect(mockFileLib.isDirectoryEmpty.calledOnceWithExactly(tmpDir)).to.be.true;
+      expect(mockFileLib.createDir.args).to.deep.equal(Array.map(expectedDataDirs, Array.make));
+      expect(mockFileLib.getRemoteFile).to.have.been.calledOnceWithExactly(CHT_UPGRADE_SERVICE_COMPOSE_URL);
+      const env = {
+        CHT_COMPOSE_PATH: 'chtx-compose-files',
+        CHT_COMPOSE_PROJECT_NAME: INSTANCE_NAME,
+        CHT_NETWORK: INSTANCE_NAME,
+        DOCKER_CONFIG_PATH: 'chtx-compose-files',
+      };
+      expect(mockFileLib.writeEnvFile).to.have.been.calledOnceWithExactly(`${tmpDir}/upgrade-service/.env`, env);
     }));
 
     it('creates and starts CHT instance from local directory', run(function* () {
       mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(false));
-      const env = {
-        CHT_COMPOSE_PROJECT_NAME: INSTANCE_NAME,
-        CHT_NETWORK: INSTANCE_NAME,
-        COMPOSE_PROJECT_NAME: `${INSTANCE_NAME}-up`,
-        COUCHDB_PASSWORD: 'password',
-        COUCHDB_SECRET: 'secret',
-        COUCHDB_USER: 'medic',
-        NGINX_HTTP_PORT: 1111,
-        NGINX_HTTPS_PORT: Number(PORT),
-      };
-      mockFileLib.readJsonFile.returns(Effect.succeed(env));
       httpClientExecute.returns(Effect.void);
       const dirPath = '/data/directory';
 
@@ -635,8 +604,12 @@ describe('Local Instance Service', () => {
       ]);
       expect(mockFileLib.writeFile.notCalled).to.be.true;
       expect(writeFileInner.notCalled).to.be.true;
-      expect(mockDockerLib.createComposeContainers.args).to.deep.equal([[env, `${dirPath}/compose.yaml`]]);
-      expect(createComposeContainersInner.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
+      expect(mockDockerLib.createComposeContainers).to.have.been.calledOnceWithExactly(
+        {},
+        `${dirPath}/upgrade-service/docker-compose.yml`,
+        `${dirPath}/upgrade-service/compose.override.yml`,
+      );
+      expect(createComposeContainersInner).to.have.been.calledOnceWithExactly(`${INSTANCE_NAME}-up`);
       expect(mockDockerLib.copyFileFromComposeContainer.notCalled).to.be.true;
       expect(mockDockerLib.rmComposeContainer.notCalled).to.be.true;
       expect(mockDockerLib.restartCompose.calledOnceWithExactly(`${INSTANCE_NAME}-up`)).to.be.true;
@@ -647,17 +620,6 @@ describe('Local Instance Service', () => {
 
     it('returns error when starting CHT instance from local directory when docker volume exists', run(function* () {
       mockDockerLib.doesVolumeExistWithLabel.returns(Effect.succeed(true));
-      const env = {
-        CHT_COMPOSE_PROJECT_NAME: INSTANCE_NAME,
-        CHT_NETWORK: INSTANCE_NAME,
-        COMPOSE_PROJECT_NAME: `${INSTANCE_NAME}-up`,
-        COUCHDB_PASSWORD: 'password',
-        COUCHDB_SECRET: 'secret',
-        COUCHDB_USER: 'medic',
-        NGINX_HTTP_PORT: 1111,
-        NGINX_HTTPS_PORT: Number(PORT),
-      };
-      mockFileLib.readJsonFile.returns(Effect.succeed(env));
       httpClientExecute.returns(Effect.void);
       const dirPath = '/data/directory';
 

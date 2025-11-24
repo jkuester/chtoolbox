@@ -74,6 +74,7 @@ const getLocalVolumeDriver = (device: Option.Option<string>) => pipe(
 );
 
 const getUpgradeServiceComposeOverride = (chtxVolumeDriver: Option.Option<string>) => `
+# Override for upgrade service compose config
 volumes:
   ${CHTX_COMPOSE_FILES_VOLUME_NAME}:
     labels:
@@ -82,7 +83,7 @@ ${pipe(chtxVolumeDriver, Option.getOrElse(() => ''))}
 `;
 
 // The contents of this file have to pass `docker compose config` validation
-const getChtxComposeOverride = (localVolumePath: Option.Option<string>) => `
+const getChtxComposeOverride = (localVolumePath: Option.Option<string>) => `# Override for CHT compose config
 services:
   couchdb:
     # Not used - only here to appease config validation
@@ -168,7 +169,7 @@ class ChtInstanceConfig extends Schema.Class<ChtInstanceConfig>('ChtInstanceConf
   NGINX_HTTP_PORT: Schema.Number,
   NGINX_HTTPS_PORT: Schema.Number,
 }) {
-  static readonly base = (instanceName: string) => ({
+  static readonly base = (instanceName: string) => ({// TODO
     CHT_COMPOSE_PATH: CHTX_COMPOSE_FILES_VOLUME_NAME,
     CHT_COMPOSE_PROJECT_NAME: instanceName,
     CHT_NETWORK: instanceName,
@@ -209,14 +210,14 @@ class ChtInstanceConfig extends Schema.Class<ChtInstanceConfig>('ChtInstanceConf
 
 const upgradeSvcProjectName = (instanceName: string) => `${instanceName}-up`;
 
-const assertLocalVolumeEmpty = Effect.fn((localVolumePath: string) => isDirectoryEmpty(localVolumePath)
-  .pipe(
-    Effect.filterOrFail(
-      isEmpty => isEmpty,
-      () => new Error(`Local directory ${localVolumePath} is not empty.`)
-    ),
-    Effect.map(() => localVolumePath),
-  ));
+const assertLocalVolumeEmpty = Effect.fn((localVolumePath: string) => pipe(
+  isDirectoryEmpty(localVolumePath),
+  Effect.filterOrFail(
+    isEmpty => isEmpty,
+    () => new Error(`Local directory ${localVolumePath} is not empty.`)
+  ),
+  Effect.map(() => localVolumePath),
+));
 
 const createVolumeDirsAtPath = Effect.fn((projectPath: string) => pipe(
   Array.make(
@@ -251,13 +252,13 @@ const writeUpgradeServiceCompose = Effect.fn((projectPath: string) => pipe(
   Effect.flatMap(writeFile(`${projectPath}/${SUB_DIR_UPGRADE_SERVICE}/${UPGRADE_SVC_COMPOSE_FILE_NAME}`)),
 ));
 
-const writeUpgradeServiceChtxOverride = (projectPath: string, localVolumePath: Option.Option<string>) => pipe(
+const writeUpgradeServiceChtxOverride = Effect.fn((projectPath: string, localVolumePath: Option.Option<string>) => pipe(
   localVolumePath,
   Option.map(() => `${projectPath}/${SUB_DIR_DOCKER_COMPOSE}`),
   getLocalVolumeDriver,
   getUpgradeServiceComposeOverride,
   writeFile(`${projectPath}/${SUB_DIR_UPGRADE_SERVICE}/${UPGRADE_SVC_COMPOSE_OVERRIDE_FILE_NAME}`),
-);
+));
 
 const writeComposeChtxOverride = Effect.fn((
   projectPath: string,
@@ -273,7 +274,7 @@ const writeChtCompose = (dirPath: string, version: string) => Effect.fn((fileNam
 ));
 const writeEmtpyNouveauDockerfile = Effect.fn((dirPath: string) => pipe(
   DOCKERFILE_NOUVEAU_EMPTY,
-  writeFile(`${dirPath}/${SUB_DIR_DOCKER_COMPOSE}/Dockerfile.nouveau.empty`)
+  writeFile(`${dirPath}/${SUB_DIR_DOCKER_COMPOSE}/Dockerfile.nouveau.empty`),
 ));
 
 const writeComposeFiles = Effect.fn((
@@ -336,6 +337,7 @@ const pullAllChtImages = Effect.fn((
 
 const createUpgradeSvcContainer = Effect.fn((instanceName: string, projectPath: string) => pipe(
   upgradeSvcProjectName(instanceName),
+  x => x,
   createComposeContainers(
     {},
     `${projectPath}/${SUB_DIR_UPGRADE_SERVICE}/${UPGRADE_SVC_COMPOSE_FILE_NAME}`,
@@ -463,7 +465,7 @@ const createUpgradeServiceFromLocalVolume = Effect.fn((
   localVolumePath: string
 ) => pipe(
   assertChtxVolumeDoesNotExist(projectName),
-  Effect.andThen(createUpgradeSvcContainer(projectName, localVolumePath)),
+  Effect.andThen(() => createUpgradeSvcContainer(projectName, localVolumePath)),
 ));
 const createUpgradeServiceFromDanglingVolume = (projectName: string) => Effect.fn(() => pipe(
   createProjectDir(Option.none()),
@@ -488,7 +490,7 @@ const ensureUpgradeServiceExists = Effect.fn((
     Effect.filterEffectOrElse({
       predicate: () => doesUpgradeServiceExist(projectName),
       orElse: createUpgradeServiceFromDanglingVolume(projectName),
-    })
+    }),
   )),
 ));
 
@@ -523,28 +525,28 @@ export class LocalInstanceService extends Effect.Service<LocalInstanceService>()
       instanceName: string,
       version: string,
       localProjectPath: Option.Option<string>
-    ): Effect.Effect<void, Error> => assertChtxVolumeDoesNotExist(instanceName)
-      .pipe(
-        Effect.andThen(Effect.all([
-          ChtInstanceConfig.generate(instanceName, localProjectPath),
-          createProjectDir(localProjectPath)
-        ], { concurrency: 'unbounded' })),
-        Effect.flatMap(([env, projectPath]) => pipe(
-          Effect.all([
-            writeComposeFiles(projectPath, version, localProjectPath),
-            writeEmtpyNouveauDockerfile(projectPath),
-            writeEnvFile(`${projectPath}/${SUB_DIR_UPGRADE_SERVICE}/${ENV_FILE_NAME}`, ChtInstanceConfig.asRecord(env)),
-          ], { concurrency: 'unbounded' }),
-          Effect.andThen(pullAllChtImages(env, projectPath)),
-          Effect.andThen(pipe(
-            copyFilesToDanglingVolume(projectPath, instanceName),
-            Effect.when(() => Option.isNone(localProjectPath))
-          )),
+    ): Effect.Effect<void, Error> => pipe(
+      assertChtxVolumeDoesNotExist(instanceName),
+      Effect.andThen(Effect.all([
+        ChtInstanceConfig.generate(instanceName, localProjectPath),
+        createProjectDir(localProjectPath)
+      ], { concurrency: 'unbounded' })),
+      Effect.flatMap(([env, projectPath]) => pipe(
+        Effect.all([
+          writeComposeFiles(projectPath, version, localProjectPath),
+          writeEmtpyNouveauDockerfile(projectPath),
+          writeEnvFile(`${projectPath}/${SUB_DIR_UPGRADE_SERVICE}/${ENV_FILE_NAME}`, ChtInstanceConfig.asRecord(env)),
+        ], { concurrency: 'unbounded' }),
+        Effect.andThen(pullAllChtImages(env, projectPath)),
+        Effect.andThen(pipe(
+          copyFilesToDanglingVolume(projectPath, instanceName),
+          Effect.when(() => Option.isNone(localProjectPath))
         )),
-        mapErrorToGeneric,
-        Effect.scoped,
-        Effect.provide(context),
       )),
+      mapErrorToGeneric,
+      Effect.scoped,
+      Effect.provide(context),
+    )),
     start: Effect.fn((
       instanceName: string,
       localVolumePath: Option.Option<string>
@@ -564,7 +566,7 @@ export class LocalInstanceService extends Effect.Service<LocalInstanceService>()
             status,
           }))
         )),
-      Effect.mapError(x => x as Error),
+      mapErrorToGeneric,
       Effect.provide(context),
     )),
     stop: Effect.fn((

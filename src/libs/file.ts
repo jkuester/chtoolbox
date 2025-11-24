@@ -26,13 +26,6 @@ export const writeFile = (
   Effect.flatMap(fs => fs.writeFileString(path, content)),
 ));
 
-export const writeJsonFile = Effect.fn((
-  path: string,
-  data: object
-) => FileSystem.FileSystem.pipe(
-  Effect.flatMap(fs => fs.writeFileString(path, JSON.stringify(data, null, 2))),
-));
-
 const exists = Effect.fn((path: string) => FileSystem.FileSystem.pipe(Effect.flatMap(fs => fs.exists(path))));
 
 const readJsonFileOrFail = Effect.fn((
