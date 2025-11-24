@@ -25,7 +25,7 @@ import { freePortsEffect } from '../libs/local-network.ts';
 import { filterStatusOk } from '@effect/platform/HttpClient';
 import { PlatformError } from '@effect/platform/Error';
 import { v4 as uuid } from 'uuid';
-import { mapErrorToGeneric } from '../libs/core.js';
+import { mapErrorToGeneric } from '../libs/core.ts';
 
 const CHTX_LABEL_NAME = 'chtx.instance';
 const UPGRADE_SVC_NAME = 'cht-upgrade-service';
