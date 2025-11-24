@@ -39,7 +39,6 @@ const {
   isDirectoryEmpty,
   readJsonFile,
   writeFile,
-  writeJsonFile,
   writeEnvFile
 } = await esmock<typeof FileLibs>('../../src/libs/file.ts', {
   '@effect/platform': { HttpClientRequest: mockHttpRequest },
@@ -104,25 +103,6 @@ describe('file libs', () => {
     expect(fsMakeDirectory.notCalled).to.be.true;
     expect(fsMakeTempDirectoryScoped.notCalled).to.be.true;
     expect(fsWriteFileString.calledOnceWithExactly(path, content)).to.be.true;
-    expect(fsReadFileString.notCalled).to.be.true;
-    expect(httpClientExecute.notCalled).to.be.true;
-  }));
-
-  it('writeJsonFile', run(function* () {
-    const path = 'filepath';
-    const content = { hello: 'world' };
-    const jsonContent = '{ "hello": "world" }';
-    const jsonStringify = sinon
-      .stub(JSON, 'stringify')
-      .returns(jsonContent);
-    fsWriteFileString.returns(Effect.void);
-
-    yield* writeJsonFile(path, content);
-
-    expect(jsonStringify.calledOnceWithExactly(content, null, 2)).to.be.true;
-    expect(fsMakeDirectory.notCalled).to.be.true;
-    expect(fsMakeTempDirectoryScoped.notCalled).to.be.true;
-    expect(fsWriteFileString.calledOnceWithExactly(path, jsonContent)).to.be.true;
     expect(fsReadFileString.notCalled).to.be.true;
     expect(httpClientExecute.notCalled).to.be.true;
   }));

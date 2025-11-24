@@ -5,23 +5,33 @@ import { LocalInstanceService } from '../../services/local-instance.ts';
 import { clearThen } from '../../libs/console.ts';
 import { printInstanceTable } from './ls.ts';
 
+const getRealPath = (directory: Option.Option<string>) => pipe(
+  directory,
+  Option.map(dir => pipe(
+    FileSystem.FileSystem,
+    Effect.flatMap(fs => fs.realPath(dir))
+  )),
+  Effect.transposeOption,
+);
+
+const getInstanceDirPath = (instanceName: string, directory: Option.Option<string>) => pipe(
+  directory,
+  Option.map(dir => `${dir}/${instanceName}`),
+);
+
 const createChtInstances = Effect.fn((
   names: string[],
   version: string,
   directory: Option.Option<string>
-) =>  directory.pipe(
-  Option.map(dir => FileSystem.FileSystem.pipe(Effect.flatMap(fs => fs.realPath(dir)))),
-  Effect.transposeOption,
-  Effect.flatMap(dirPath => pipe(
-    names,
-    Array.map(name => LocalInstanceService.create(name, version, dirPath.pipe(Option.map(path => `${path}/${name}`)))),
-    Effect.allWith({ concurrency: 0 }), // Avoid port conflicts
-  )),
+) => pipe(
+  names,
+  Array.map(name => LocalInstanceService.create(name, version, getInstanceDirPath(name, directory))),
+  Effect.allWith({ concurrency: 0 }), // Avoid port conflicts
 ));
 
-const startChtInstances = Effect.fn((names: string[]) => pipe(
+const startChtInstances = Effect.fn((names: string[], directory: Option.Option<string>) => pipe(
   names,
-  Array.map(name => LocalInstanceService.start(name, Option.none())),
+  Array.map(name => LocalInstanceService.start(name, getInstanceDirPath(name, directory))),
   Effect.allWith({ concurrency: 'unbounded' }),
 ));
 
@@ -60,15 +70,15 @@ const directory = Options
   );
 
 export const create = Command
-  .make('create', { names, version, directory }, Effect.fn(({ names, version, directory }) => Console
-    .log('Pulling Docker images (this may take awhile depending on network speeds)...')
-    .pipe(
-      Effect.andThen(createChtInstances(names, version, directory)),
-      Effect.andThen(clearThen(Console.log('Starting instance(s)...'))),
-      Effect.andThen(startChtInstances(names)),
-      Effect.tap(setLocalIpSSLCerts(names)),
-      Effect.flatMap(printInstanceTable),
-    )))
+  .make('create', { names, version, directory }, Effect.fn(({ names, version, directory }) => pipe(
+    getRealPath(directory),
+    Effect.tap(Console.log('Pulling Docker images (this may take awhile depending on network speeds)...')),
+    Effect.tap(dirPath => createChtInstances(names, version, dirPath)),
+    Effect.tap(clearThen(Console.log('Starting instance(s)...'))),
+    Effect.flatMap(dirPath => startChtInstances(names, dirPath)),
+    Effect.tap(setLocalIpSSLCerts(names)),
+    Effect.flatMap(printInstanceTable),
+  )))
   .pipe(Command.withDescription(
     `LOCAL ONLY: Create (and start) a new local CHT instance. Requires Docker and Docker Compose.`
   ));
