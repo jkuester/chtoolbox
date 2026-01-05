@@ -75,6 +75,9 @@ const getLocalVolumeDriver = (device: Option.Option<string>) => pipe(
 
 const getUpgradeServiceComposeOverride = (chtxVolumeDriver: Option.Option<string>) => `
 # Override for upgrade service compose config
+services:
+  cht-upgrade-service:
+    restart: unless-stopped
 volumes:
   ${CHTX_COMPOSE_FILES_VOLUME_NAME}:
     labels:
@@ -89,16 +92,33 @@ services:
     # Not used - only here to appease config validation
     build: { context: . }
     volumes:
-      - cht-credentials:/opt/couchdb/etc/local.d/:rw
-      - chtx-couchdb-data:/opt/couchdb/data:rw
-
+      - cht-credentials:/opt/couchdb/etc/local.d/
+      - chtx-couchdb-data:/opt/couchdb/data
+    restart: unless-stopped
   nouveau:
     # Only used when running a pre-5.0 CHT version without nouveau
     build:
       context: .
       dockerfile: ${DOCKERFILE_NOUVEAU_EMPTY_NAME}
     volumes:
-      - chtx-nouveau-data:/data/nouveau:rw
+      - chtx-nouveau-data:/data/nouveau
+    restart: unless-stopped
+  haproxy:
+    # Not used - only here to appease config validation
+    build: { context: . }
+    restart: unless-stopped
+  api:
+    # Not used - only here to appease config validation
+    build: { context: . }
+    restart: unless-stopped
+  sentinel:
+    # Not used - only here to appease config validation
+    build: { context: . }
+    restart: unless-stopped
+  nginx:
+    # Not used - only here to appease config validation
+    build: { context: . }
+    restart: unless-stopped
 
 volumes:
   cht-credentials:${pipe(
