@@ -14,11 +14,15 @@ export class CouchDesign extends Schema.Class<CouchDesign>('CouchDesign')({
   static readonly decodeResponse = HttpClientResponse.schemaBodyJson(CouchDesign);
 }
 
-export const getViewNames = Effect.fn((dbName: string, designName: string) => pipe(
+export const getCouchDesign = Effect.fn((dbName: string, designName: string) => pipe(
   HttpClientRequest.get(`/${dbName}/_design/${designName}`),
   ChtClientService.request,
   Effect.flatMap(CouchDesign.decodeResponse),
   Effect.scoped,
+));
+
+export const getViewNames = Effect.fn((dbName: string, designName: string) => pipe(
+  getCouchDesign(dbName, designName),
   Effect.map(({ views }) => Option.fromNullable(views)),
   Effect.map(Option.map(Object.keys)),
   Effect.map(Option.getOrElse(() => [])),
