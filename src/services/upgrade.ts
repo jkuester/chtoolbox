@@ -25,7 +25,12 @@ import { WarmViewsService } from './warm-views.ts';
 import { type CompareCommitsData, compareRefs, getReleaseNames } from '../libs/github.ts';
 import { type CouchActiveTaskStream } from '../libs/couch/active-tasks.ts';
 import type { NonEmptyArray } from 'effect/Array';
-import { CHT_DDOC_ATTACHMENT_NAMES, type DesignDocAttachment, getDesignDocAttachments } from '../libs/medic-staging.ts';
+import {
+  CHT_DATABASE_BY_ATTACHMENT_NAME,
+  CHT_DDOC_ATTACHMENT_NAMES,
+  type DesignDocAttachment,
+  getDesignDocAttachments
+} from '../libs/medic-staging.ts';
 
 const UPGRADE_LOG_NAME = 'upgrade_log';
 const COMPLETED_STATES = ['finalized', 'aborted', 'errored', 'interrupted'] as const;
@@ -40,23 +45,8 @@ const UPGRADE_LOG_STATES = [
   'aborting',
   ...STAGING_COMPLETE_STATES,
 ] as const;
-const CHT_DATABASES = [
-  'medic',
-  'medic-sentinel',
-  'medic-logs',
-  'medic-users-meta',
-  '_users'
-] as const;
 const DDOC_PREFIX = '_design/';
 const STAGED_DDOC_PREFIX = ':staged:';
-const CHT_DATABASE_BY_ATTACHMENT_NAME: Record<
-  typeof CHT_DDOC_ATTACHMENT_NAMES[number],
-  typeof CHT_DATABASES[number]
-> = pipe(
-  CHT_DDOC_ATTACHMENT_NAMES,
-  Array.zip(CHT_DATABASES),
-  Record.fromEntries,
-);
 
 export class UpgradeLog extends Schema.Class<UpgradeLog>('UpgradeLog')({
   _id: Schema.String,

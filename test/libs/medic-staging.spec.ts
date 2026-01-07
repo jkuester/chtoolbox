@@ -10,7 +10,12 @@ const STAGING_BUILDS_COUCH_URL = 'https://staging.dev.medicmobile.org/_couch/bui
 
 const mockShim = { pouchDB: sandbox.stub() };
 
-const { CHT_DDOC_ATTACHMENT_NAMES, DesignDocAttachment, getDesignDocAttachments } = await esmock<
+const {
+  CHT_DDOC_ATTACHMENT_NAMES,
+  CHT_DATABASE_BY_ATTACHMENT_NAME,
+  DesignDocAttachment,
+  getDesignDocAttachments
+} = await esmock<
   typeof MedicStagingLib
 >('../../src/libs/medic-staging.ts', {
   '../../src/libs/shim.ts': mockShim,
@@ -29,6 +34,16 @@ describe('medic-staging libs', () => {
       'ddocs/users-meta.json',
       'ddocs/users.json'
     ]);
+  });
+
+  it('CHT_DATABASE_BY_ATTACHMENT_NAME', () => {
+    expect(CHT_DATABASE_BY_ATTACHMENT_NAME).to.deep.equal({
+      'ddocs/medic.json': 'medic',
+      'ddocs/sentinel.json': 'medic-sentinel',
+      'ddocs/logs.json': 'medic-logs',
+      'ddocs/users-meta.json': 'medic-users-meta',
+      'ddocs/users.json': '_users'
+    });
   });
 
   it('DesignDocAttachment - decodes base64 encoded JSON attachment', run(Effect.gen(function* () {

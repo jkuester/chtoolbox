@@ -7,6 +7,13 @@ type Attachments = PouchDB.Core.Attachments;
 type FullAttachment = PouchDB.Core.FullAttachment;
 
 const STAGING_BUILDS_COUCH_URL = 'https://staging.dev.medicmobile.org/_couch/builds_4';
+const CHT_DATABASES = [
+  'medic',
+  'medic-sentinel',
+  'medic-logs',
+  'medic-users-meta',
+  '_users'
+] as const;
 export const CHT_DDOC_ATTACHMENT_NAMES = [
   'ddocs/medic.json',
   'ddocs/sentinel.json',
@@ -14,6 +21,14 @@ export const CHT_DDOC_ATTACHMENT_NAMES = [
   'ddocs/users-meta.json',
   'ddocs/users.json'
 ] as const;
+export const CHT_DATABASE_BY_ATTACHMENT_NAME: Record<
+  typeof CHT_DDOC_ATTACHMENT_NAMES[number],
+  typeof CHT_DATABASES[number]
+> = pipe(
+  CHT_DDOC_ATTACHMENT_NAMES,
+  Array.zip(CHT_DATABASES),
+  Record.fromEntries,
+);
 
 export class DesignDocAttachment extends Schema.Class<DesignDocAttachment>('DesignDocAttachment')({
   docs: Schema.Array(CouchDesign),
