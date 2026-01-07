@@ -1,7 +1,8 @@
 import * as Effect from 'effect/Effect';
 import { pouchDB } from './shim.ts';
-import { Array, Either, Encoding, pipe, Predicate, Schema, ParseResult } from 'effect';
-import { CouchDesign } from './couch/design.ts';
+import { Array, Either, Encoding, Option, ParseResult, pipe, Predicate, Record, Schema, Tuple } from 'effect';
+import { CouchDesign, getCouchDesign } from './couch/design.ts';
+import { getAllDocs } from '../services/pouchdb.ts';
 
 type Attachments = PouchDB.Core.Attachments;
 type FullAttachment = PouchDB.Core.FullAttachment;
@@ -64,4 +65,115 @@ export const getDesignDocAttachments = Effect.fn((version: string) => pipe(
   getStagingDocAttachments(version),
   Effect.flatMap(decodeStagingDocAttachments),
   Effect.map(Array.zip(CHT_DDOC_ATTACHMENT_NAMES))
+));
+
+type ChtDdocsByDb = Record<typeof CHT_DATABASES[number], readonly CouchDesign[]>;
+
+export interface ChtDdocDiff {
+  created: readonly CouchDesign[],
+  deleted: readonly CouchDesign[],
+  updated: readonly CouchDesign[]
+}
+
+export type ChtDdocsDiffByDb = Record<typeof CHT_DATABASES[number], ChtDdocDiff>;
+
+const createDdocsRecord = (
+  record: ChtDdocsByDb,
+  [ddocs, dbName]: [readonly CouchDesign[], typeof CHT_DATABASES[number]]
+) => ({ ...record, [dbName]: ddocs });
+
+const getStagingDesignDocsByDb = Effect.fn((version: string) => pipe(
+  getDesignDocAttachments(version),
+  Effect.map(Array.map(Tuple.mapFirst(({ docs }) => docs))),
+  Effect.map(Array.map(Tuple.mapSecond(attachName => CHT_DATABASE_BY_ATTACHMENT_NAME[attachName]))),
+  Effect.map(Array.reduce({} as ChtDdocsByDb, createDdocsRecord))
+));
+
+const currentChtBaseVersionEffect = Effect.suspend(() => pipe(
+  getCouchDesign('medic', 'medic'),
+  Effect.map(({ build_info }) => build_info?.base_version),
+  Effect.filterOrFail(Predicate.isNotUndefined)
+));
+
+const getCurrentCouchDesigns = ([dbName, keys]: [typeof CHT_DATABASES[number], string[]]) => pipe(
+  { keys },
+  getAllDocs(dbName),
+  Effect.map(Array.map(doc => Schema.decodeUnknownSync(CouchDesign)(doc))),
+  Effect.map(ddocs => Tuple.make(ddocs, dbName))
+);
+
+const currentDesignDocsByDbEffect = pipe(
+  currentChtBaseVersionEffect,
+  Effect.flatMap(getStagingDesignDocsByDb),
+  Effect.map(Record.toEntries),
+  Effect.map(Array.map(Tuple.mapSecond(Array.map(({ _id }) => _id)))),
+  Effect.map(Array.map(getCurrentCouchDesigns)),
+  Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })),
+  Effect.map(Array.reduce({} as ChtDdocsByDb, createDdocsRecord)),
+);
+
+const getDdocWithId = (ddocs: readonly CouchDesign[]) => (ddoc: CouchDesign) => pipe(
+  ddocs,
+  Array.findFirst(({ _id }) => ddoc._id === _id),
+);
+const hasDdocWithId = (ddocs: readonly CouchDesign[]) => (ddoc: CouchDesign) => pipe(
+  ddoc,
+  getDdocWithId(ddocs),
+  Option.isSome
+);
+const getCreatedDdocs = (current: readonly CouchDesign[], target: readonly CouchDesign[]) => pipe(
+  target,
+  Array.filter(Predicate.not(hasDdocWithId(current))),
+);
+const getDeletedDdocs = (current: readonly CouchDesign[], target: readonly CouchDesign[]) => pipe(
+  current,
+  Array.filter(Predicate.not(hasDdocWithId(target))),
+);
+const serializeDdocForCompare = ({ views, nouveau }: CouchDesign) => pipe(
+  Tuple.make(views, nouveau),
+  Array.map(prop => JSON.stringify(prop)),
+  Array.join('')
+);
+const isDdocUpdated = (ddocs: [CouchDesign, CouchDesign]) => pipe(
+  ddocs,
+  Array.map(serializeDdocForCompare),
+  ([current, target]) => current !== target
+);
+const getUpdatedDdocs = (current: readonly CouchDesign[], target: readonly CouchDesign[]) => pipe(
+  current,
+  Array.map(getDdocWithId(target)),
+  Array.zip(current),
+  Array.map(Tuple.swap),
+  Array.filterMap(([currentDdoc, targetDdocOpt]) => pipe(
+    targetDdocOpt,
+    Option.map(targetDdoc => Tuple.make(currentDdoc, targetDdoc))
+  )),
+  Array.filter(isDdocUpdated),
+  Array.unzip,
+  Tuple.getSecond
+);
+
+const getDdocDiff = (current: readonly CouchDesign[], target: readonly CouchDesign[]): ChtDdocDiff => ({
+  created: getCreatedDdocs(current, target),
+  deleted: getDeletedDdocs(current, target),
+  updated: getUpdatedDdocs(current, target)
+});
+
+const getDdocDiffsByDb = (
+  [current, target]: [ChtDdocsByDb, ChtDdocsByDb]
+): ChtDdocsDiffByDb => pipe(
+  CHT_DATABASES,
+  Array.map(db => getDdocDiff(current[db], target[db])),
+  Array.zip(CHT_DATABASES),
+  Array.map(Tuple.swap),
+  Record.fromEntries,
+  diff => diff as ChtDdocsDiffByDb
+);
+
+export const getDesignDocsDiff = Effect.fn((version: string) => pipe(
+  Effect.all([
+    currentDesignDocsByDbEffect,
+    getStagingDesignDocsByDb(version)
+  ], { concurrency: 'unbounded' }),
+  Effect.map(getDdocDiffsByDb)
 ));
