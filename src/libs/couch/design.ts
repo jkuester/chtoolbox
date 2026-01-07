@@ -10,6 +10,10 @@ export class CouchDesign extends Schema.Class<CouchDesign>('CouchDesign')({
     user: Schema.UndefinedOr(Schema.String),
     upgrade_log_id: Schema.UndefinedOr(Schema.String),
   })),
+  nouveau: Schema.UndefinedOr(Schema.Object),
+  build_info: Schema.UndefinedOr(Schema.Struct({
+    base_version: Schema.UndefinedOr(Schema.String),
+  })),
 }) {
   static readonly decodeResponse = HttpClientResponse.schemaBodyJson(CouchDesign);
 }

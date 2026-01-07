@@ -27,6 +27,12 @@ describe('Couch Design libs', () => {
         'contacts_by_last_visited': {},
         'contacts_by_parent': {},
       },
+      nouveau: {
+        'contacts_by_freetext': {},
+      },
+      build_info: {
+        base_version: 'hello world'
+      }
     };
     mockChtClient.request.returns(Effect.succeed({
       json: Effect.succeed(designData),
