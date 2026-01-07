@@ -385,7 +385,7 @@ const rmTempUpgradeServiceContainer = Effect.fn((
 ));
 
 const copyFilesToUpgradeSvcContainer = Effect.fn((instanceName: string, projectPath: string) => pipe(
-  [...CHT_COMPOSE_FILE_NAMES, CHTX_COMPOSE_OVERRIDE_FILE_NAME],
+  [...CHT_COMPOSE_FILE_NAMES, CHTX_COMPOSE_OVERRIDE_FILE_NAME, DOCKERFILE_NOUVEAU_EMPTY_NAME],
   Array.map((fileName) => Tuple.make(
     `${projectPath}/${SUB_DIR_DOCKER_COMPOSE}/${fileName}`,
     `/docker-compose/${fileName}`
