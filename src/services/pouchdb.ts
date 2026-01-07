@@ -1,9 +1,9 @@
 import * as Effect from 'effect/Effect';
-import { Chunk, Match, Option, pipe, Redacted, Stream, StreamEmit, String } from 'effect';
+import { Chunk, Match, Option, pipe, Redacted, Stream, StreamEmit, String, Array, Predicate } from 'effect';
 import PouchDB from 'pouchdb-core';
 import PouchDBAdapterHttp from 'pouchdb-adapter-http';
 import PouchDBMapReduce from 'pouchdb-mapreduce';
-import https from 'https';
+import https from 'node:https';
 import { v4 as uuid } from 'uuid';
 import { UnknownException } from 'effect/Cause';
 import { pouchDB } from '../libs/shim.js';
@@ -60,16 +60,16 @@ export const streamAllDocPages = (
 
 type Doc = PouchDB.Core.AllDocsMeta & PouchDB.Core.IdMeta & PouchDB.Core.RevisionIdMeta;
 
-// export const getAllDocs = (dbName: string) => (
-//   options: AllDocsOptions = {}
-// ): Effect.Effect<Doc[], never, PouchDBService> => PouchDBService
-//   .get(dbName)
-//   .pipe(
-//     Effect.flatMap(db => allDocs(db, { ...options, include_docs: true })),
-//     Effect.map(({ rows }) => rows),
-//     Effect.map(Array.map(({ doc }) => doc)),
-//     Effect.map(Array.filter(Predicate.isNotNullable)),
-//   );
+export const getAllDocs = (dbName: string) => (
+  options: AllDocsOptions = {}
+): Effect.Effect<Doc[], Error, PouchDBService> => PouchDBService
+  .get(dbName)
+  .pipe(
+    Effect.flatMap(db => allDocs(db, { ...options, include_docs: true })),
+    Effect.map(({ rows }) => rows),
+    Effect.map(Array.map(({ doc }) => doc)),
+    Effect.map(Array.filter(Predicate.isNotNullable)),
+  );
 
 // const bulkDocs = (dbName: string) => (
 //   docs: PouchDB.Core.PutDocument<object>[]
