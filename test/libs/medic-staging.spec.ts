@@ -54,6 +54,7 @@ const {
   CHT_DATABASE_BY_ATTACHMENT_NAME,
   DesignDocAttachment,
   getDesignDocAttachments,
+  currentChtBaseVersionEffect,
   getDesignDocsDiffWithCurrent,
   getDesignDocsDiff
 } = await esmock<
@@ -172,6 +173,15 @@ describe('medic-staging libs', () => {
       expect(dbGet.calledOnceWithExactly(`medic:medic:${currentVersion}`, { attachments: true })).to.be.true;
     }));
   });
+
+  it('currentChtBaseVersionEffect', run(function* () {
+    mockDesignLib.getCouchDesign.returns(Effect.succeed({ build_info: { base_version: currentVersion } }));
+
+    const result = yield* currentChtBaseVersionEffect;
+
+    expect(result).to.equal(currentVersion);
+    expect(mockDesignLib.getCouchDesign.calledOnceWithExactly('medic', 'medic')).to.be.true;
+  }));
 
   describe('getDesignDocsDiffWithCurrent', () => {
     afterEach(() => {

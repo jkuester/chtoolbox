@@ -1,5 +1,4 @@
 import { Args, Command, Options } from '@effect/cli';
-import { chtMonitoringDataEffect } from '../libs/cht/monitoring.ts';
 import { Array, Console, DateTime, Effect, Match, Option, pipe, Record, Schedule, Stream } from 'effect';
 import { type ChtCoreReleaseDiff, UpgradeLog, UpgradeService } from '../services/upgrade.ts';
 
@@ -7,6 +6,7 @@ import { clearConsoleEffect, clearThen, color } from '../libs/console.ts';
 import { type CouchActiveTaskStream, getDisplayDictByPid } from '../libs/couch/active-tasks.ts';
 import { getTaskDisplayData } from './db/compact.ts';
 import type { NonEmptyArray } from 'effect/Array';
+import { currentChtBaseVersionEffect } from '../libs/medic-staging.ts';
 
 const getUpgradeLogDisplay = ({ state_history }: UpgradeLog) => pipe(
   state_history,
@@ -162,14 +162,9 @@ const displayReleaseDiff = (headTag: string) => Effect.fn((baseTag: string) => p
   Effect.asVoid,
 ));
 
-const currentChtVersionEffect = Effect.suspend(() => pipe(
-  chtMonitoringDataEffect,
-  Effect.map(({ version: { app } }) => app),
-));
-
 const getVersionToDiff = (opts: UpgradeOptions) => pipe(
   Match.value(opts),
-  Match.when({ preview: true }, () => pipe(currentChtVersionEffect, Effect.map(Option.some))),
+  Match.when({ preview: true }, () => pipe(currentChtBaseVersionEffect, Effect.map(Option.some))),
   Match.orElse(() => Effect.succeed(opts.diff))
 );
 

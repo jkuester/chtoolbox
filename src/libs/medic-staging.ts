@@ -90,7 +90,7 @@ const getStagingDesignDocsByDb = Effect.fn((version: string) => pipe(
   Effect.map(Array.reduce({} as ChtDdocsByDb, createDdocsRecord))
 ));
 
-const currentChtBaseVersionEffect = Effect.suspend(() => pipe(
+export const currentChtBaseVersionEffect = Effect.suspend(() => pipe(
   getCouchDesign('medic', 'medic'),
   Effect.map(({ build_info }) => build_info?.base_version),
   Effect.filterOrFail(Predicate.isNotUndefined)
