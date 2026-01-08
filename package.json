@@ -24,11 +24,11 @@
     "url": "git+https://github.com/jkuester/chtoolbox.git"
   },
   "bin": {
-    "chtx": "bin/cli.js"
+    "chtx": "bin/index.js"
   },
   "files": [
     "dist",
-    "bin/cli.js"
+    "bin/index.js"
   ],
   "engines": {
     "node": ">=20"
@@ -117,8 +117,7 @@
     ],
     "exclude": [
       "src/commands/**/*",
-      "src/index.ts",
-      "src/lib.ts"
+      "src/index.ts"
     ],
     "reporter": [
       "html",
