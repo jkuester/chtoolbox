@@ -9,9 +9,6 @@
     "toolbox"
   ],
   "type": "module",
-  "main": "dist/lib.cjs",
-  "module": "dist/lib.mjs",
-  "types": "dist/lib.d.mts",
   "exports": {
     ".": {
       "types": "./dist/lib.d.mts",
