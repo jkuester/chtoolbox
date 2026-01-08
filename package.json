@@ -34,8 +34,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "tsdown",
-    "prepublishOnly": "npm run build",
+    "breakbuild": "tsdown",
+    "breakprepublishOnly": "npm run build",
     "lint": "tsgo -p tsconfig.json && eslint --color --cache . && knip --production",
     "test": "nyc mocha \"test/**/*\""
   },
