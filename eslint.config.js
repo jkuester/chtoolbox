@@ -17,6 +17,8 @@ export default tseslint.config(
     '**/node_modules/',
     '.nyc_output',
     'bin/index.js',
+    'bin/cli.js',
+    'tsdown.config.ts',
     'test/utils/nyc-esm-hook-loader.js'
   ] },
   {

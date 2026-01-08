@@ -9,20 +9,33 @@
     "toolbox"
   ],
   "type": "module",
+  "main": "dist/lib.cjs",
+  "module": "dist/lib.mjs",
+  "types": "dist/lib.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/lib.d.mts",
+      "import": "./dist/lib.mjs",
+      "require": "./dist/lib.cjs"
+    }
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jkuester/chtoolbox.git"
   },
   "bin": {
-    "chtx": "bin/index.js"
+    "chtx": "bin/cli.js"
   },
   "files": [
-    "/src"
+    "dist",
+    "bin/cli.js"
   ],
   "engines": {
     "node": ">=20"
   },
   "scripts": {
+    "build": "tsdown",
+    "prepublishOnly": "npm run build",
     "lint": "tsgo -p tsconfig.json && eslint --color --cache . && knip --production",
     "test": "nyc mocha \"test/**/*\""
   },
@@ -68,6 +81,8 @@
     "semantic-release": "^25.0.1",
     "sinon": "^21.0.0",
     "sinon-chai": "^4.0.1",
+    "tsdown": "^0.19.0-beta.5",
+    "tsx": "^4.20.6",
     "typescript-eslint": "^8.46.2"
   },
   "dependencies": {
@@ -84,7 +99,6 @@
     "pouchdb-mapreduce": "^9.0.0",
     "semver": "^7.7.3",
     "test-data-generator": "github:medic/test-data-generator#chtoolbox",
-    "tsx": "^4.20.6",
     "uuid": "^13.0.0"
   },
   "overrides": {
@@ -103,7 +117,8 @@
     ],
     "exclude": [
       "src/commands/**/*",
-      "src/index.ts"
+      "src/index.ts",
+      "src/lib.ts"
     ],
     "reporter": [
       "html",
