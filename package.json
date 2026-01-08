@@ -27,8 +27,7 @@
     "chtx": "bin/index.js"
   },
   "files": [
-    "dist",
-    "bin/index.js"
+    "/src"
   ],
   "engines": {
     "node": ">=20"
