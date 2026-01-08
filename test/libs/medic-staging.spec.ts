@@ -54,8 +54,8 @@ const {
   CHT_DATABASE_BY_ATTACHMENT_NAME,
   DesignDocAttachment,
   getDesignDocAttachments,
-  getDesignDocsDiff,
-  getStagingDdocsDiff
+  getDesignDocsDiffWithCurrent,
+  getDesignDocsDiff
 } = await esmock<
   typeof MedicStagingLib
 >('../../src/libs/medic-staging.ts', {
@@ -173,7 +173,7 @@ describe('medic-staging libs', () => {
     }));
   });
 
-  describe('getDesignDocsDiff', () => {
+  describe('getDesignDocsDiffWithCurrent', () => {
     afterEach(() => {
       expect(mockDesignLib.getCouchDesign).to.have.been.calledOnceWithExactly('medic', 'medic');
       expect(dbGet.args).to.deep.equal([
@@ -210,7 +210,7 @@ describe('medic-staging libs', () => {
         return Effect.succeed(docsByDb[dbName] ?? []);
       });
 
-      const result = yield* getDesignDocsDiff(targetVersion);
+      const result = yield* getDesignDocsDiffWithCurrent(targetVersion);
 
       expect(result).to.deep.equal({
         'medic': { created: [], deleted: [], updated: [] },
@@ -252,7 +252,7 @@ describe('medic-staging libs', () => {
         return Effect.succeed(docsByDb[dbName] ?? []);
       });
 
-      const result = yield* getDesignDocsDiff(targetVersion);
+      const result = yield* getDesignDocsDiffWithCurrent(targetVersion);
 
       expect(result.medic.created.length).to.equal(1);
       expect(result.medic.created[0]).to.deep.include(newDdoc);
@@ -297,7 +297,7 @@ describe('medic-staging libs', () => {
         return Effect.succeed(docsByDb[dbName] ?? []);
       });
 
-      const result = yield* getDesignDocsDiff(targetVersion);
+      const result = yield* getDesignDocsDiffWithCurrent(targetVersion);
 
       expect(result.medic.created).to.deep.equal([]);
       expect(result.medic.deleted.length).to.equal(1);
@@ -351,7 +351,7 @@ describe('medic-staging libs', () => {
           return Effect.succeed(docsByDb[dbName] ?? []);
         });
 
-        const result = yield* getDesignDocsDiff(targetVersion);
+        const result = yield* getDesignDocsDiffWithCurrent(targetVersion);
 
         expect(result.medic.created).to.deep.equal([]);
         expect(result.medic.deleted).to.deep.equal([]);
@@ -367,7 +367,7 @@ describe('medic-staging libs', () => {
     });
   });
 
-  describe('getStagingDdocsDiff', () => {
+  describe('getDesignDocsDiff', () => {
     afterEach(() => {
       expect(dbGet.args).to.deep.equal([
         [`medic:medic:${currentVersion}`, { attachments: true }],
@@ -385,7 +385,7 @@ describe('medic-staging libs', () => {
       } };
       dbGet.resolves(stagingAttachments);
 
-      const result = yield* getStagingDdocsDiff(currentVersion, targetVersion);
+      const result = yield* getDesignDocsDiff(currentVersion, targetVersion);
 
       expect(result).to.deep.equal({
         'medic': { created: [], deleted: [], updated: [] },
@@ -416,7 +416,7 @@ describe('medic-staging libs', () => {
         .withArgs(`medic:medic:${currentVersion}`, { attachments: true }).resolves(baseStagingAttachments)
         .withArgs(`medic:medic:${targetVersion}`, { attachments: true }).resolves(targetStagingAttachments);
 
-      const result = yield* getStagingDdocsDiff(currentVersion, targetVersion);
+      const result = yield* getDesignDocsDiff(currentVersion, targetVersion);
 
       expect(result.medic.created.length).to.equal(1);
       expect(result.medic.created[0]).to.deep.include(newDdoc);
@@ -450,7 +450,7 @@ describe('medic-staging libs', () => {
         .withArgs(`medic:medic:${currentVersion}`, { attachments: true }).resolves(baseStagingAttachments)
         .withArgs(`medic:medic:${targetVersion}`, { attachments: true }).resolves(targetStagingAttachments);
 
-      const result = yield* getStagingDdocsDiff(currentVersion, targetVersion);
+      const result = yield* getDesignDocsDiff(currentVersion, targetVersion);
 
       expect(result.medic.created).to.deep.equal([]);
       expect(result.medic.deleted.length).to.equal(1);
@@ -493,7 +493,7 @@ describe('medic-staging libs', () => {
           .withArgs(`medic:medic:${currentVersion}`, { attachments: true }).resolves(baseStagingAttachments)
           .withArgs(`medic:medic:${targetVersion}`, { attachments: true }).resolves(targetStagingAttachments);
 
-        const result = yield* getStagingDdocsDiff(currentVersion, targetVersion);
+        const result = yield* getDesignDocsDiff(currentVersion, targetVersion);
 
         expect(result.medic.created).to.deep.equal([]);
         expect(result.medic.deleted).to.deep.equal([]);

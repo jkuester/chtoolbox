@@ -30,7 +30,7 @@ import {
   type ChtDdocsDiffByDb,
   type DesignDocAttachment,
   getDesignDocAttachments,
-  getStagingDdocsDiff
+  getDesignDocsDiff
 } from '../libs/medic-staging.ts';
 
 const UPGRADE_LOG_NAME = 'upgrade_log';
@@ -251,7 +251,7 @@ export class UpgradeService extends Effect.Service<UpgradeService>()('chtoolbox/
       headTag: string
     ): Effect.Effect<ChtCoreReleaseDiff, Error> => pipe(
       Tuple.make(
-        getStagingDdocsDiff(baseTag, headTag),
+        getDesignDocsDiff(baseTag, headTag),
         getChtCoreDiff(baseTag, headTag),
         getChtCoreReleaseNames(baseTag, headTag),
       ),

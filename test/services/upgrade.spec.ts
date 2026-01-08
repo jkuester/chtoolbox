@@ -54,7 +54,7 @@ const mockMedicStagingLib = {
     'ddocs/users.json'
   ],
   getDesignDocAttachments: sandbox.stub(),
-  getStagingDdocsDiff: sandbox.stub(),
+  getDesignDocsDiff: sandbox.stub(),
 };
 
 const { UpgradeService } = await esmock<typeof UpgradeSvc>('../../src/services/upgrade.ts', {
@@ -753,7 +753,7 @@ describe('Upgrade Service', () => {
       };
       compareRefs.returns(Effect.succeed(diffData));
       getReleaseNames.returns(Effect.succeed(['1.0.0', '2.0.0']));
-      mockMedicStagingLib.getStagingDdocsDiff.returns(Effect.succeed({
+      mockMedicStagingLib.getDesignDocsDiff.returns(Effect.succeed({
         'medic': {
           created: [],
           deleted: [],
@@ -783,7 +783,7 @@ describe('Upgrade Service', () => {
           '2.0.0': 'https://docs.communityhealthtoolkit.org/releases/2_0_0',
         }
       });
-      expect(mockMedicStagingLib.getStagingDdocsDiff).to.have.been.calledOnceWithExactly(baseTag, headTag);
+      expect(mockMedicStagingLib.getDesignDocsDiff).to.have.been.calledOnceWithExactly(baseTag, headTag);
       expect(compareRefs).to.have.been.calledOnceWithExactly(baseTag, headTag);
       expect(getReleaseNames).to.have.been.calledOnceWithExactly(baseTag, headTag);
     }));
@@ -796,7 +796,7 @@ describe('Upgrade Service', () => {
       };
       compareRefs.returns(Effect.succeed(diffData));
       getReleaseNames.returns(Effect.succeed([]));
-      mockMedicStagingLib.getStagingDdocsDiff.returns(Effect.succeed({
+      mockMedicStagingLib.getDesignDocsDiff.returns(Effect.succeed({
         'medic': emptyDiff,
         'medic-sentinel': emptyDiff,
         'medic-logs': emptyDiff,
@@ -813,7 +813,7 @@ describe('Upgrade Service', () => {
         commitCount: 0,
         releaseDocLinksByTag: { }
       });
-      expect(mockMedicStagingLib.getStagingDdocsDiff).to.have.been.calledOnceWithExactly(baseTag, headTag);
+      expect(mockMedicStagingLib.getDesignDocsDiff).to.have.been.calledOnceWithExactly(baseTag, headTag);
       expect(compareRefs).to.have.been.calledOnceWithExactly(baseTag, headTag);
     }));
   });

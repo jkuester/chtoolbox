@@ -167,7 +167,7 @@ const getDdocDiffsByDb = (
   diff => diff as ChtDdocsDiffByDb
 );
 
-export const getDesignDocsDiff = Effect.fn((version: string) => pipe(
+export const getDesignDocsDiffWithCurrent = Effect.fn((version: string) => pipe(
   Effect.all([
     currentDesignDocsByDbEffect,
     getStagingDesignDocsByDb(version)
@@ -175,7 +175,7 @@ export const getDesignDocsDiff = Effect.fn((version: string) => pipe(
   Effect.map(getDdocDiffsByDb)
 ));
 
-export const getStagingDdocsDiff = Effect.fn((
+export const getDesignDocsDiff = Effect.fn((
   baseVersion: string,
   targetVersion: string
 ) => pipe(
