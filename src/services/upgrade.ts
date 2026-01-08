@@ -5,13 +5,10 @@ import {
   Array,
   Chunk,
   DateTime,
-  Either,
-  Encoding,
   Function,
   Match,
   Option,
   pipe,
-  Predicate,
   Record,
   Schedule,
   Schema,
@@ -27,10 +24,14 @@ import { WarmViewsService } from './warm-views.ts';
 import { type CompareCommitsData, compareRefs, getReleaseNames } from '../libs/github.ts';
 import { type CouchActiveTaskStream } from '../libs/couch/active-tasks.ts';
 import type { NonEmptyArray } from 'effect/Array';
-import { pouchDB } from '../libs/shim.js';
-
-type Attachments = PouchDB.Core.Attachments;
-type FullAttachment = PouchDB.Core.FullAttachment;
+import {
+  CHT_DATABASE_BY_ATTACHMENT_NAME,
+  CHT_DDOC_ATTACHMENT_NAMES,
+  type ChtDdocsDiffByDb,
+  type DesignDocAttachment,
+  getDesignDocAttachments,
+  getDesignDocsDiff
+} from '../libs/medic-staging.ts';
 
 const UPGRADE_LOG_NAME = 'upgrade_log';
 const COMPLETED_STATES = ['finalized', 'aborted', 'errored', 'interrupted'] as const;
@@ -45,31 +46,8 @@ const UPGRADE_LOG_STATES = [
   'aborting',
   ...STAGING_COMPLETE_STATES,
 ] as const;
-const CHT_DATABASES = [
-  'medic',
-  'medic-sentinel',
-  'medic-logs',
-  'medic-users-meta',
-  '_users'
-] as const;
 const DDOC_PREFIX = '_design/';
 const STAGED_DDOC_PREFIX = ':staged:';
-const CHT_DDOC_ATTACHMENT_NAMES = [
-  'ddocs/medic.json',
-  'ddocs/sentinel.json',
-  'ddocs/logs.json',
-  'ddocs/users-meta.json',
-  'ddocs/users.json'
-] as const;
-const STAGING_BUILDS_COUCH_URL = 'https://staging.dev.medicmobile.org/_couch/builds_4';
-const CHT_DATABASE_BY_ATTACHMENT_NAME: Record<
-  typeof CHT_DDOC_ATTACHMENT_NAMES[number],
-  typeof CHT_DATABASES[number]
-> = pipe(
-  CHT_DDOC_ATTACHMENT_NAMES,
-  Array.zip(CHT_DATABASES),
-  Record.fromEntries,
-);
 
 export class UpgradeLog extends Schema.Class<UpgradeLog>('UpgradeLog')({
   _id: Schema.String,
@@ -79,18 +57,6 @@ export class UpgradeLog extends Schema.Class<UpgradeLog>('UpgradeLog')({
     date: Schema.Number,
   })),
 }) {
-}
-
-class DesignDocAttachment extends Schema.Class<DesignDocAttachment>('DesignDocAttachment')({
-  docs: Schema.Array(CouchDesign),
-}) {
-  static readonly decode = (attachment: FullAttachment) => pipe(
-    attachment.data as string,
-    Encoding.decodeBase64String,
-    Either.getOrThrow,
-    JSON.parse,
-    Schema.decodeUnknown(DesignDocAttachment),
-  );
 }
 
 const latestUpgradeLog = PouchDBService
@@ -142,21 +108,6 @@ const assertReadyForComplete = latestUpgradeLog.pipe(
   Effect.flatMap(Match.orElse(() => Effect.fail(new Error('No upgrade ready for completion.')))),
 );
 
-const getStagingDocAttachments = Effect.fn((version: string) => Effect
-  .logDebug(`Getting staging doc attachments for ${version}`)
-  .pipe(
-    Effect.andThen(pouchDB(STAGING_BUILDS_COUCH_URL)),
-    Effect.flatMap(db => Effect.promise(() => db.get(`medic:medic:${version}`, { attachments: true }))),
-    Effect.map(({ _attachments }) => _attachments),
-    Effect.filterOrFail(Predicate.isNotNullable),
-  ));
-
-const decodeStagingDocAttachments = Effect.fn((attachments: Attachments) => pipe(
-  CHT_DDOC_ATTACHMENT_NAMES,
-  Array.map(name => attachments[name] as FullAttachment),
-  Array.map(DesignDocAttachment.decode),
-  Effect.allWith({ concurrency: 'unbounded' }),
-));
 
 const getExistingStagedDdocRev = Effect.fn((dbName: string, ddocId: string) => pipe(
   ddocId,
@@ -204,19 +155,19 @@ const preStageDdocs = Effect.fn((docsByDb: [DesignDocAttachment, typeof CHT_DDOC
 
 const getChtCoreDiff = compareRefs('medic', 'cht-core');
 const getChtCoreReleaseNames = getReleaseNames('medic', 'cht-core');
-const DDOC_PATTERN = /^ddocs\/([^/]+)-db\/([^/]+)\/.*(?:map|reduce)\.js$/;
 
-const getUpdatedDdocsByDb = ({ files }: CompareCommitsData) => pipe(
-  files ?? [],
-  Array.map(({ filename }) => filename),
-  Array.map(String.match(DDOC_PATTERN)),
-  Array.map(Option.map(([, db, ddoc]) => [db, ddoc])),
-  Array.map(Option.filter((data): data is [string, string] => Array.every(data, Predicate.isNotNullable))),
-  Array.getSomes,
-  Array.groupBy(([db]) => db),
-  Record.map(Array.map(([, ddoc]) => ddoc)),
-  Record.map(Array.dedupe)
-);
+const getUpdatedDdocNamesByDb = (diffByDb: ChtDdocsDiffByDb): Record<string, NonEmptyArray<string>> => pipe(
+  Record.toEntries(diffByDb),
+  Array.map(([db, { updated, created }]) => Tuple.make(
+    db,
+    pipe(
+      [...created, ...updated],
+      Array.map(({ _id }) => _id.replace('_design/', ''))
+    )
+  )),
+  Array.filter(([, ddocs]) => Array.isNonEmptyArray(ddocs)),
+  Record.fromEntries,
+) as Record<string, NonEmptyArray<string>>;
 
 const getReleaseNotesLink = (tag: string) => pipe(
   tag,
@@ -238,10 +189,11 @@ export interface ChtCoreReleaseDiff {
 }
 
 const getReleaseDiff = (
+  ddocDiff: ChtDdocsDiffByDb,
   diffData: CompareCommitsData,
   releaseNames: string[]
 ): ChtCoreReleaseDiff => ({
-  updatedDdocs: getUpdatedDdocsByDb(diffData),
+  updatedDdocs: getUpdatedDdocNamesByDb(ddocDiff),
   htmlUrl: diffData.html_url,
   fileChangeCount: (diffData.files ?? []).length,
   commitCount: diffData.commits.length,
@@ -291,9 +243,7 @@ export class UpgradeService extends Effect.Service<UpgradeService>()('chtoolbox/
       Effect.provide(context),
     )),
     preStage: Effect.fn((version: string): Effect.Effect<CouchActiveTaskStream, Error> => assertReadyForUpgrade.pipe(
-      Effect.andThen(getStagingDocAttachments(version)),
-      Effect.flatMap(decodeStagingDocAttachments),
-      Effect.map(Array.zip(CHT_DDOC_ATTACHMENT_NAMES)),
+      Effect.andThen(getDesignDocAttachments(version)),
       Effect.flatMap(preStageDdocs),
       Effect.map(Stream.provideContext(context)),
       Effect.map(mapStreamErrorToGeneric),
@@ -304,6 +254,7 @@ export class UpgradeService extends Effect.Service<UpgradeService>()('chtoolbox/
       headTag: string
     ): Effect.Effect<ChtCoreReleaseDiff, Error> => pipe(
       Tuple.make(
+        getDesignDocsDiff(baseTag, headTag),
         getChtCoreDiff(baseTag, headTag),
         getChtCoreReleaseNames(baseTag, headTag),
       ),

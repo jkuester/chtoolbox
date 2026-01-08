@@ -1,5 +1,5 @@
 import { describe, it } from 'mocha';
-import { Array, Chunk, Effect, Either, Encoding, Layer, Option, pipe, Stream } from 'effect';
+import { Array, Chunk, Effect, Either, Layer, Option, Stream } from 'effect';
 import sinon from 'sinon';
 import { PouchDBService } from '../../src/services/pouchdb.ts';
 import { expect } from 'chai';
@@ -39,19 +39,29 @@ const mockUpgradeLib = {
   stageChtUpgrade: sandbox.stub(),
   completeChtUpgrade: sandbox.stub(),
 };
-const mockCore = { pouchDB: sandbox.stub() };
 const compareRefs = sandbox.stub();
 const getReleaseNames = sandbox.stub();
 const mockGitHubLib = {
   compareRefs: sandbox.stub().returns(compareRefs),
   getReleaseNames: sandbox.stub().returns(getReleaseNames),
 };
+const mockMedicStagingLib = {
+  CHT_DDOC_ATTACHMENT_NAMES: [
+    'ddocs/medic.json',
+    'ddocs/sentinel.json',
+    'ddocs/logs.json',
+    'ddocs/users-meta.json',
+    'ddocs/users.json'
+  ],
+  getDesignDocAttachments: sandbox.stub(),
+  getDesignDocsDiff: sandbox.stub(),
+};
 
 const { UpgradeService } = await esmock<typeof UpgradeSvc>('../../src/services/upgrade.ts', {
-  '../../src/libs/shim.ts': mockCore,
   '../../src/services/pouchdb.ts': mockPouchSvc,
   '../../src/libs/cht/upgrade.ts': mockUpgradeLib,
-  '../../src/libs/github.ts': mockGitHubLib
+  '../../src/libs/github.ts': mockGitHubLib,
+  '../../src/libs/medic-staging.ts': mockMedicStagingLib,
 });
 const run = UpgradeService.Default.pipe(
   Layer.provideMerge(Layer.succeed(ChtClientService, { } as unknown as ChtClientService)),
@@ -478,9 +488,6 @@ describe('Upgrade Service', () => {
   });
 
   describe('preStage', () => {
-    const STAGING_BUILDS_COUCH_URL = 'https://staging.dev.medicmobile.org/_couch/builds_4';
-    const fakeDb = { get: () => null } as unknown as PouchDB.Database;
-
     const medicClientDdoc = {
       _id: '_design/medic-client',
       views: {
@@ -526,24 +533,23 @@ describe('Upgrade Service', () => {
 
     const deploy_info = { user: 'Pre-staged by chtoolbox' };
 
-    let stageingDbGet: sinon.SinonStub;
     let getDoc: sinon.SinonStub;
     let saveDoc: sinon.SinonStub;
 
+    const designDocAttachments = [
+      [medicDdocAttachment, 'ddocs/medic.json'],
+      [sentinelDdocAttachment, 'ddocs/sentinel.json'],
+      [logsDdocAttachment, 'ddocs/logs.json'],
+      [usersMetaDdocAttachment, 'ddocs/users-meta.json'],
+      [usersDdocAttachment, 'ddocs/users.json'],
+    ] as [{ docs: object[] }, string][];
+
     beforeEach(() => {
-      stageingDbGet = sinon.stub(fakeDb, 'get');
-      mockCore.pouchDB.returns(fakeDb);
       getDoc = sinon.stub();
       mockPouchSvc.getDoc.returns(getDoc);
       saveDoc = sinon.stub();
       mockPouchSvc.saveDoc.returns(saveDoc);
-      stageingDbGet.resolves({ _attachments: {
-        'ddocs/medic.json': { data: pipe(medicDdocAttachment, JSON.stringify, Encoding.encodeBase64) },
-        'ddocs/sentinel.json': { data: pipe(sentinelDdocAttachment, JSON.stringify, Encoding.encodeBase64) },
-        'ddocs/logs.json': { data: pipe(logsDdocAttachment, JSON.stringify, Encoding.encodeBase64) },
-        'ddocs/users-meta.json': { data: pipe(usersMetaDdocAttachment, JSON.stringify, Encoding.encodeBase64) },
-        'ddocs/users.json': { data: pipe(usersDdocAttachment, JSON.stringify, Encoding.encodeBase64) },
-      } });
+      mockMedicStagingLib.getDesignDocAttachments.returns(Effect.succeed(designDocAttachments));
       warmDesign.withArgs('medic', ':staged:medic').returns(Stream.succeed([medicActiveTask]));
       warmDesign.withArgs('medic', ':staged:medic-client').returns(Stream.succeed([medicClientActiveTask]));
       warmDesign.withArgs('medic-sentinel', ':staged:sentinel').returns(Stream.succeed([sentinelActiveTask]));
@@ -570,8 +576,7 @@ describe('Upgrade Service', () => {
       ]);
       expect(dbAllDocs).to.have.been.calledOnce;
       expect(dbAllDocs).to.have.been.calledWithMatch(EXPECTED_ALL_DOCS_OPTS);
-      expect(mockCore.pouchDB.calledOnceWithExactly(STAGING_BUILDS_COUCH_URL)).to.be.true;
-      expect(stageingDbGet.calledOnceWithExactly(`medic:medic:${version}`, { attachments: true })).to.be.true;
+      expect(mockMedicStagingLib.getDesignDocAttachments.calledOnceWithExactly(version)).to.be.true;
       expect(warmDesign.args).to.deep.equal([
         ['medic', ':staged:medic'],
         ['medic', ':staged:medic-client'],
@@ -632,8 +637,7 @@ describe('Upgrade Service', () => {
       ]);
       expect(dbAllDocs).to.have.been.calledOnce;
       expect(dbAllDocs).to.have.been.calledWithMatch(EXPECTED_ALL_DOCS_OPTS);
-      expect(mockCore.pouchDB.calledOnceWithExactly(STAGING_BUILDS_COUCH_URL)).to.be.true;
-      expect(stageingDbGet.calledOnceWithExactly(`medic:medic:${version}`, { attachments: true })).to.be.true;
+      expect(mockMedicStagingLib.getDesignDocAttachments.calledOnceWithExactly(version)).to.be.true;
       expect(warmDesign.args).to.deep.equal([
         ['medic', ':staged:medic'],
         ['medic', ':staged:medic-client'],
@@ -676,8 +680,7 @@ describe('Upgrade Service', () => {
 
         expect(dbAllDocs).to.have.been.calledOnce;
         expect(dbAllDocs).to.have.been.calledWithMatch(EXPECTED_ALL_DOCS_OPTS);
-        expect(mockCore.pouchDB.calledOnceWithExactly(STAGING_BUILDS_COUCH_URL)).to.be.true;
-        expect(stageingDbGet.calledOnceWithExactly(`medic:medic:${version}`, { attachments: true })).to.be.true;
+        expect(mockMedicStagingLib.getDesignDocAttachments.calledOnceWithExactly(version)).to.be.true;
         expect(warmDesign.args).to.deep.equal([
           ['medic', ':staged:medic'],
           ['medic', ':staged:medic-client'],
@@ -720,8 +723,7 @@ describe('Upgrade Service', () => {
         expect(either.left.message).to.equal('Upgrade already in progress.');
         expect(dbAllDocs).to.have.been.calledOnce;
         expect(dbAllDocs).to.have.been.calledWithMatch(EXPECTED_ALL_DOCS_OPTS);
-        expect(mockCore.pouchDB.calledOnceWithExactly(STAGING_BUILDS_COUCH_URL)).to.be.true;
-        expect(stageingDbGet.notCalled).to.be.true;
+        expect(mockMedicStagingLib.getDesignDocAttachments.calledOnceWithExactly(version)).to.be.true;
         expect(warmDesign.notCalled).to.be.true;
         expect(mockPouchSvc.getDoc.notCalled).to.be.true;
         expect(getDoc.notCalled).to.be.true;
@@ -734,6 +736,8 @@ describe('Upgrade Service', () => {
   describe('getReleaseDiff', () => {
     const baseTag = '1.0.0';
     const headTag = '2.0.0';
+
+    const emptyDiff = { created: [], deleted: [], updated: [] };
 
     it('returns updated ddocs grouped by db and htmlUrl', run(function* () {
       const diffData = {
@@ -749,13 +753,27 @@ describe('Upgrade Service', () => {
       };
       compareRefs.returns(Effect.succeed(diffData));
       getReleaseNames.returns(Effect.succeed(['1.0.0', '2.0.0']));
+      mockMedicStagingLib.getDesignDocsDiff.returns(Effect.succeed({
+        'medic': {
+          created: [],
+          deleted: [],
+          updated: [
+            { _id: '_design/medic', views: { foo: {} } },
+            { _id: '_design/medic-client', views: { bar: {} } }
+          ]
+        },
+        'medic-sentinel': emptyDiff,
+        'medic-logs': emptyDiff,
+        'medic-users-meta': emptyDiff,
+        '_users': { created: [], deleted: [], updated: [{ _id: '_design/users', views: { baz: {} } }] },
+      }));
 
       const result = yield* UpgradeService.getReleaseDiff(baseTag, headTag);
 
       expect(result).to.deep.equal({
         updatedDdocs: {
           medic: ['medic', 'medic-client'],
-          users: ['users']
+          '_users': ['users']
         },
         htmlUrl: diffData.html_url,
         fileChangeCount: 5,
@@ -765,11 +783,12 @@ describe('Upgrade Service', () => {
           '2.0.0': 'https://docs.communityhealthtoolkit.org/releases/2_0_0',
         }
       });
+      expect(mockMedicStagingLib.getDesignDocsDiff).to.have.been.calledOnceWithExactly(baseTag, headTag);
       expect(compareRefs).to.have.been.calledOnceWithExactly(baseTag, headTag);
       expect(getReleaseNames).to.have.been.calledOnceWithExactly(baseTag, headTag);
     }));
 
-    it('returns empty updatedDdocs when files is undefined', run(function* () {
+    it('returns empty updatedDdocs when no ddocs have changed', run(function* () {
       const diffData = {
         html_url: 'https://example.com/diff',
         commits: [],
@@ -777,6 +796,13 @@ describe('Upgrade Service', () => {
       };
       compareRefs.returns(Effect.succeed(diffData));
       getReleaseNames.returns(Effect.succeed([]));
+      mockMedicStagingLib.getDesignDocsDiff.returns(Effect.succeed({
+        'medic': emptyDiff,
+        'medic-sentinel': emptyDiff,
+        'medic-logs': emptyDiff,
+        'medic-users-meta': emptyDiff,
+        '_users': emptyDiff,
+      }));
 
       const result = yield* UpgradeService.getReleaseDiff(baseTag, headTag);
 
@@ -787,6 +813,7 @@ describe('Upgrade Service', () => {
         commitCount: 0,
         releaseDocLinksByTag: { }
       });
+      expect(mockMedicStagingLib.getDesignDocsDiff).to.have.been.calledOnceWithExactly(baseTag, headTag);
       expect(compareRefs).to.have.been.calledOnceWithExactly(baseTag, headTag);
     }));
   });

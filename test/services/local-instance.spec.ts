@@ -214,17 +214,20 @@ describe('Local Instance Service', () => {
         expect(mockDockerLib.copyFileToComposeContainer.calledOnceWithExactly(
           `${INSTANCE_NAME}-up`, 'cht-upgrade-service'
         )).to.be.true;
-        expect(copyFileToComposeContainerInner.callCount).to.equal(4);
-        expect(copyFileToComposeContainerInner.firstCall.args[0]).to.deep.equal(
+        expect(copyFileToComposeContainerInner.callCount).to.equal(5);
+        expect(copyFileToComposeContainerInner.getCall(0).args[0]).to.deep.equal(
           [`${dataDir}/compose/${coreComposeName}`, `/docker-compose/${coreComposeName}`]
         );
-        expect(copyFileToComposeContainerInner.secondCall.args[0]).to.deep.equal(
+        expect(copyFileToComposeContainerInner.getCall(1).args[0]).to.deep.equal(
           [`${dataDir}/compose/${couchComposeName}`, `/docker-compose/${couchComposeName}`]
         );
-        expect(copyFileToComposeContainerInner.thirdCall.args[0]).to.deep.equal(
+        expect(copyFileToComposeContainerInner.getCall(2).args[0]).to.deep.equal(
           [`${dataDir}/compose/chtx-override.yml`, `/docker-compose/chtx-override.yml`]
         );
-        expect(copyFileToComposeContainerInner.lastCall.args[0]).to.deep.equal(
+        expect(copyFileToComposeContainerInner.getCall(3).args[0]).to.deep.equal(
+          [`${dataDir}/compose/Dockerfile.nouveau.empty`, `/docker-compose/Dockerfile.nouveau.empty`]
+        );
+        expect(copyFileToComposeContainerInner.getCall(4).args[0]).to.deep.equal(
           [`${dataDir}/upgrade-service/.env`, `/docker-compose/.env`]
         );
         expect(mockDockerLib.rmComposeContainer.calledOnceWithExactly('cht-upgrade-service')).to.be.true;

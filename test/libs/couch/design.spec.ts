@@ -13,11 +13,38 @@ const mockHttpRequest = { get: sandbox.stub() };
 const run = Layer
   .succeed(ChtClientService, mockChtClient as unknown as ChtClientService)
   .pipe(genWithLayer);
-const { getViewNames } = await esmock<typeof DesignLibs>('../../../src/libs/couch/design.ts', {
+const { getViewNames, getCouchDesign } = await esmock<typeof DesignLibs>('../../../src/libs/couch/design.ts', {
   '@effect/platform': { HttpClientRequest: mockHttpRequest }
 });
 
 describe('Couch Design libs', () => {
+  it('getCouchDesign', run(function* () {
+    mockHttpRequest.get.returns(FAKE_CLIENT_REQUEST);
+    const designData = {
+      _id: 'medic-client',
+      views: {
+        'contacts_by_freetext': {},
+        'contacts_by_last_visited': {},
+        'contacts_by_parent': {},
+      },
+      nouveau: {
+        'contacts_by_freetext': {},
+      },
+      build_info: {
+        base_version: 'hello world'
+      }
+    };
+    mockChtClient.request.returns(Effect.succeed({
+      json: Effect.succeed(designData),
+    }));
+
+    const result = yield* getCouchDesign('medic', designData._id);
+
+    expect(result).to.deep.include(designData);
+    expect(mockHttpRequest.get.calledOnceWithExactly(`/medic/_design/${designData._id}`)).to.be.true;
+    expect(mockChtClient.request.calledOnceWithExactly(FAKE_CLIENT_REQUEST)).to.be.true;
+  }));
+
   it('gets view names for a database and design', run(function* () {
     mockHttpRequest.get.returns(FAKE_CLIENT_REQUEST);
     const designData = {
