@@ -54,6 +54,7 @@ const mockMedicStagingLib = {
     'ddocs/users.json'
   ],
   getDesignDocAttachments: sandbox.stub(),
+  getStagingDdocsDiff: sandbox.stub(),
 };
 
 const { UpgradeService } = await esmock<typeof UpgradeSvc>('../../src/services/upgrade.ts', {
@@ -736,6 +737,8 @@ describe('Upgrade Service', () => {
     const baseTag = '1.0.0';
     const headTag = '2.0.0';
 
+    const emptyDiff = { created: [], deleted: [], updated: [] };
+
     it('returns updated ddocs grouped by db and htmlUrl', run(function* () {
       const diffData = {
         html_url: 'https://example.com/diff',
@@ -750,13 +753,27 @@ describe('Upgrade Service', () => {
       };
       compareRefs.returns(Effect.succeed(diffData));
       getReleaseNames.returns(Effect.succeed(['1.0.0', '2.0.0']));
+      mockMedicStagingLib.getStagingDdocsDiff.returns(Effect.succeed({
+        'medic': {
+          created: [],
+          deleted: [],
+          updated: [
+            { _id: '_design/medic', views: { foo: {} } },
+            { _id: '_design/medic-client', views: { bar: {} } }
+          ]
+        },
+        'medic-sentinel': emptyDiff,
+        'medic-logs': emptyDiff,
+        'medic-users-meta': emptyDiff,
+        '_users': { created: [], deleted: [], updated: [{ _id: '_design/users', views: { baz: {} } }] },
+      }));
 
       const result = yield* UpgradeService.getReleaseDiff(baseTag, headTag);
 
       expect(result).to.deep.equal({
         updatedDdocs: {
           medic: ['medic', 'medic-client'],
-          users: ['users']
+          '_users': ['users']
         },
         htmlUrl: diffData.html_url,
         fileChangeCount: 5,
@@ -766,11 +783,12 @@ describe('Upgrade Service', () => {
           '2.0.0': 'https://docs.communityhealthtoolkit.org/releases/2_0_0',
         }
       });
+      expect(mockMedicStagingLib.getStagingDdocsDiff).to.have.been.calledOnceWithExactly(baseTag, headTag);
       expect(compareRefs).to.have.been.calledOnceWithExactly(baseTag, headTag);
       expect(getReleaseNames).to.have.been.calledOnceWithExactly(baseTag, headTag);
     }));
 
-    it('returns empty updatedDdocs when files is undefined', run(function* () {
+    it('returns empty updatedDdocs when no ddocs have changed', run(function* () {
       const diffData = {
         html_url: 'https://example.com/diff',
         commits: [],
@@ -778,6 +796,13 @@ describe('Upgrade Service', () => {
       };
       compareRefs.returns(Effect.succeed(diffData));
       getReleaseNames.returns(Effect.succeed([]));
+      mockMedicStagingLib.getStagingDdocsDiff.returns(Effect.succeed({
+        'medic': emptyDiff,
+        'medic-sentinel': emptyDiff,
+        'medic-logs': emptyDiff,
+        'medic-users-meta': emptyDiff,
+        '_users': emptyDiff,
+      }));
 
       const result = yield* UpgradeService.getReleaseDiff(baseTag, headTag);
 
@@ -788,6 +813,7 @@ describe('Upgrade Service', () => {
         commitCount: 0,
         releaseDocLinksByTag: { }
       });
+      expect(mockMedicStagingLib.getStagingDdocsDiff).to.have.been.calledOnceWithExactly(baseTag, headTag);
       expect(compareRefs).to.have.been.calledOnceWithExactly(baseTag, headTag);
     }));
   });

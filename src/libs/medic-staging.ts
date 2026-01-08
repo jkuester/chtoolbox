@@ -1,8 +1,9 @@
 import * as Effect from 'effect/Effect';
 import { pouchDB } from './shim.ts';
-import { Array, Either, Encoding, Option, ParseResult, pipe, Predicate, Record, Schema, Tuple } from 'effect';
+import { Array, Either, Encoding, Option, ParseResult, pipe, Predicate, Record, Schema, Tuple, Function } from 'effect';
 import { CouchDesign, getCouchDesign } from './couch/design.ts';
 import { getAllDocs } from '../services/pouchdb.ts';
+import { isDeepStrictEqual } from 'node:util';
 
 type Attachments = PouchDB.Core.Attachments;
 type FullAttachment = PouchDB.Core.FullAttachment;
@@ -129,15 +130,11 @@ const getDeletedDdocs = (current: readonly CouchDesign[], target: readonly Couch
   current,
   Array.filter(Predicate.not(hasDdocWithId(target))),
 );
-const serializeDdocForCompare = ({ views, nouveau }: CouchDesign) => pipe(
-  Tuple.make(views, nouveau),
-  Array.map(prop => JSON.stringify(prop)),
-  Array.join('')
-);
+
 const isDdocUpdated = (ddocs: [CouchDesign, CouchDesign]) => pipe(
   ddocs,
-  Array.map(serializeDdocForCompare),
-  ([current, target]) => current !== target
+  Tuple.map(({ views, nouveau }) => ({ views, nouveau })),
+  Predicate.not(Function.tupled(isDeepStrictEqual))
 );
 const getUpdatedDdocs = (current: readonly CouchDesign[], target: readonly CouchDesign[]) => pipe(
   current,
@@ -174,6 +171,17 @@ export const getDesignDocsDiff = Effect.fn((version: string) => pipe(
   Effect.all([
     currentDesignDocsByDbEffect,
     getStagingDesignDocsByDb(version)
+  ], { concurrency: 'unbounded' }),
+  Effect.map(getDdocDiffsByDb)
+));
+
+export const getStagingDdocsDiff = Effect.fn((
+  baseVersion: string,
+  targetVersion: string
+) => pipe(
+  Effect.all([
+    getStagingDesignDocsByDb(baseVersion),
+    getStagingDesignDocsByDb(targetVersion)
   ], { concurrency: 'unbounded' }),
   Effect.map(getDdocDiffsByDb)
 ));

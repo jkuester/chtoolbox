@@ -9,7 +9,6 @@ import {
   Match,
   Option,
   pipe,
-  Predicate,
   Record,
   Schedule,
   Schema,
@@ -28,8 +27,10 @@ import type { NonEmptyArray } from 'effect/Array';
 import {
   CHT_DATABASE_BY_ATTACHMENT_NAME,
   CHT_DDOC_ATTACHMENT_NAMES,
+  type ChtDdocsDiffByDb,
   type DesignDocAttachment,
-  getDesignDocAttachments
+  getDesignDocAttachments,
+  getStagingDdocsDiff
 } from '../libs/medic-staging.ts';
 
 const UPGRADE_LOG_NAME = 'upgrade_log';
@@ -154,19 +155,16 @@ const preStageDdocs = Effect.fn((docsByDb: [DesignDocAttachment, typeof CHT_DDOC
 
 const getChtCoreDiff = compareRefs('medic', 'cht-core');
 const getChtCoreReleaseNames = getReleaseNames('medic', 'cht-core');
-const DDOC_PATTERN = /^ddocs\/([^/]+)-db\/([^/]+)\/.*(?:map|reduce)\.js$/;
 
-const getUpdatedDdocsByDb = ({ files }: CompareCommitsData) => pipe(
-  files ?? [],
-  Array.map(({ filename }) => filename),
-  Array.map(String.match(DDOC_PATTERN)),
-  Array.map(Option.map(([, db, ddoc]) => [db, ddoc])),
-  Array.map(Option.filter((data): data is [string, string] => Array.every(data, Predicate.isNotNullable))),
-  Array.getSomes,
-  Array.groupBy(([db]) => db),
-  Record.map(Array.map(([, ddoc]) => ddoc)),
-  Record.map(Array.dedupe)
-);
+const getUpdatedDdocNamesByDb = (diffByDb: ChtDdocsDiffByDb): Record<string, NonEmptyArray<string>> => pipe(
+  Record.toEntries(diffByDb),
+  Array.map(([db, { updated }]) => Tuple.make(
+    db,
+    pipe(updated, Array.map(({ _id }) => _id.replace('_design/', '')))
+  )),
+  Array.filter(([, ddocs]) => Array.isNonEmptyArray(ddocs)),
+  Record.fromEntries,
+) as Record<string, NonEmptyArray<string>>;
 
 const getReleaseNotesLink = (tag: string) => pipe(
   tag,
@@ -188,10 +186,11 @@ export interface ChtCoreReleaseDiff {
 }
 
 const getReleaseDiff = (
+  ddocDiff: ChtDdocsDiffByDb,
   diffData: CompareCommitsData,
   releaseNames: string[]
 ): ChtCoreReleaseDiff => ({
-  updatedDdocs: getUpdatedDdocsByDb(diffData),
+  updatedDdocs: getUpdatedDdocNamesByDb(ddocDiff),
   htmlUrl: diffData.html_url,
   fileChangeCount: (diffData.files ?? []).length,
   commitCount: diffData.commits.length,
@@ -252,6 +251,7 @@ export class UpgradeService extends Effect.Service<UpgradeService>()('chtoolbox/
       headTag: string
     ): Effect.Effect<ChtCoreReleaseDiff, Error> => pipe(
       Tuple.make(
+        getStagingDdocsDiff(baseTag, headTag),
         getChtCoreDiff(baseTag, headTag),
         getChtCoreReleaseNames(baseTag, headTag),
       ),

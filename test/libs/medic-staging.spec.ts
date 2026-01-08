@@ -15,6 +15,33 @@ const mockShim = { pouchDB: sandbox.stub() };
 const mockDesignLib = { CouchDesign, getCouchDesign: sandbox.stub() };
 const mockPouchLib = { getAllDocs: sandbox.stub() };
 
+const currentVersion = '4.4.0';
+const targetVersion = '4.5.0';
+const medicDdoc = {
+  _id: '_design/medic',
+  views: { contacts_by_depth: {} }
+} as const;
+const medicClientDdoc = {
+  _id: '_design/medic-client',
+  views: { contacts_by_freetext: {} }
+} as const;
+const sentinelDdoc = {
+  _id: '_design/sentinel',
+  views: { tasks_by_state: {} }
+} as const;
+const logsDdoc = {
+  _id: '_design/logs',
+  views: { connected_users: {} }
+} as const;
+const usersMetaDdoc = {
+  _id: '_design/users-meta',
+  views: { device_by_user: {} }
+} as const;
+const usersDdoc = {
+  _id: '_design/users',
+  views: { users_by_field: {} }
+} as const;
+
 const createAttachment = (docs: Record<string, unknown>[]) => pipe(
   { docs },
   JSON.stringify,
@@ -27,7 +54,8 @@ const {
   CHT_DATABASE_BY_ATTACHMENT_NAME,
   DesignDocAttachment,
   getDesignDocAttachments,
-  getDesignDocsDiff
+  getDesignDocsDiff,
+  getStagingDdocsDiff
 } = await esmock<
   typeof MedicStagingLib
 >('../../src/libs/medic-staging.ts', {
@@ -86,8 +114,6 @@ describe('medic-staging libs', () => {
   }));
 
   describe('getDesignDocAttachments', () => {
-    const version = '4.5.0';
-
     const medicDdoc = { _id: '_design/medic', views: { 'contacts_by_depth': {} } };
     const medicClientDdoc = { _id: '_design/medic-client', views: { 'contacts_by_freetext': {} } };
     const medicDdocAttachment = [medicDdoc, medicClientDdoc];
@@ -115,7 +141,7 @@ describe('medic-staging libs', () => {
         }
       });
 
-      const result = yield* getDesignDocAttachments(version);
+      const result = yield* getDesignDocAttachments(currentVersion);
 
       expect(result.length).to.equal(5);
       expect(result.map(([, name]) => name)).to.deep.equal([
@@ -133,48 +159,21 @@ describe('medic-staging libs', () => {
         ['_design/users']
       ]);
       expect(mockShim.pouchDB.calledOnceWithExactly(STAGING_BUILDS_COUCH_URL)).to.be.true;
-      expect(dbGet.calledOnceWithExactly(`medic:medic:${version}`, { attachments: true })).to.be.true;
+      expect(dbGet.calledOnceWithExactly(`medic:medic:${currentVersion}`, { attachments: true })).to.be.true;
     }));
 
     it('fails when there are no attachments ', run(function* () {
       dbGet.resolves({ });
 
-      const either = yield* Effect.either(getDesignDocAttachments(version));
+      const either = yield* Effect.either(getDesignDocAttachments(currentVersion));
 
       expect(Either.isLeft(either)).to.be.true;
       expect(mockShim.pouchDB.calledOnceWithExactly(STAGING_BUILDS_COUCH_URL)).to.be.true;
-      expect(dbGet.calledOnceWithExactly(`medic:medic:${version}`, { attachments: true })).to.be.true;
+      expect(dbGet.calledOnceWithExactly(`medic:medic:${currentVersion}`, { attachments: true })).to.be.true;
     }));
   });
 
   describe('getDesignDocsDiff', () => {
-    const currentVersion = '4.4.0';
-    const targetVersion = '4.5.0';
-    const medicDdoc = {
-      _id: '_design/medic',
-      views: { contacts_by_depth: {} }
-    } as const;
-    const medicClientDdoc = {
-      _id: '_design/medic-client',
-      views: { contacts_by_freetext: {} }
-    } as const;
-    const sentinelDdoc = {
-      _id: '_design/sentinel',
-      views: { tasks_by_state: {} }
-    } as const;
-    const logsDdoc = {
-      _id: '_design/logs',
-      views: { connected_users: {} }
-    } as const;
-    const usersMetaDdoc = {
-      _id: '_design/users-meta',
-      views: { device_by_user: {} }
-    } as const;
-    const usersDdoc = {
-      _id: '_design/users',
-      views: { users_by_field: {} }
-    } as const;
-
     afterEach(() => {
       expect(mockDesignLib.getCouchDesign).to.have.been.calledOnceWithExactly('medic', 'medic');
       expect(dbGet.args).to.deep.equal([
@@ -353,6 +352,148 @@ describe('medic-staging libs', () => {
         });
 
         const result = yield* getDesignDocsDiff(targetVersion);
+
+        expect(result.medic.created).to.deep.equal([]);
+        expect(result.medic.deleted).to.deep.equal([]);
+        expect(result.medic.updated.length).to.equal(1);
+        expect(result.medic.updated[0]).to.deep.include(targetMedicDdoc);
+        expect(result).to.deep.include({
+          'medic-sentinel': { created: [], deleted: [], updated: [] },
+          'medic-logs': { created: [], deleted: [], updated: [] },
+          'medic-users-meta': { created: [], deleted: [], updated: [] },
+          '_users': { created: [], deleted: [], updated: [] },
+        });
+      }));
+    });
+  });
+
+  describe('getStagingDdocsDiff', () => {
+    afterEach(() => {
+      expect(dbGet.args).to.deep.equal([
+        [`medic:medic:${currentVersion}`, { attachments: true }],
+        [`medic:medic:${targetVersion}`, { attachments: true }]
+      ]);
+    });
+
+    it('returns empty diffs when base and target ddocs are identical', run(function* () {
+      const stagingAttachments = { _attachments: {
+        'ddocs/medic.json': createAttachment([medicDdoc, medicClientDdoc]),
+        'ddocs/sentinel.json': createAttachment([sentinelDdoc]),
+        'ddocs/logs.json': createAttachment([logsDdoc]),
+        'ddocs/users-meta.json': createAttachment([usersMetaDdoc]),
+        'ddocs/users.json': createAttachment([usersDdoc]),
+      } };
+      dbGet.resolves(stagingAttachments);
+
+      const result = yield* getStagingDdocsDiff(currentVersion, targetVersion);
+
+      expect(result).to.deep.equal({
+        'medic': { created: [], deleted: [], updated: [] },
+        'medic-sentinel': { created: [], deleted: [], updated: [] },
+        'medic-logs': { created: [], deleted: [], updated: [] },
+        'medic-users-meta': { created: [], deleted: [], updated: [] },
+        '_users': { created: [], deleted: [], updated: [] },
+      });
+    }));
+
+    it('detects created ddocs in target version', run(function* () {
+      const newDdoc = { _id: '_design/new-ddoc', views: { new_view: {} } };
+      const baseStagingAttachments = { _attachments: {
+        'ddocs/medic.json': createAttachment([medicDdoc]),
+        'ddocs/sentinel.json': createAttachment([sentinelDdoc]),
+        'ddocs/logs.json': createAttachment([logsDdoc]),
+        'ddocs/users-meta.json': createAttachment([usersMetaDdoc]),
+        'ddocs/users.json': createAttachment([usersDdoc]),
+      } };
+      const targetStagingAttachments = { _attachments: {
+        'ddocs/medic.json': createAttachment([medicDdoc, newDdoc]),
+        'ddocs/sentinel.json': createAttachment([sentinelDdoc]),
+        'ddocs/logs.json': createAttachment([logsDdoc]),
+        'ddocs/users-meta.json': createAttachment([usersMetaDdoc]),
+        'ddocs/users.json': createAttachment([usersDdoc]),
+      } };
+      dbGet
+        .withArgs(`medic:medic:${currentVersion}`, { attachments: true }).resolves(baseStagingAttachments)
+        .withArgs(`medic:medic:${targetVersion}`, { attachments: true }).resolves(targetStagingAttachments);
+
+      const result = yield* getStagingDdocsDiff(currentVersion, targetVersion);
+
+      expect(result.medic.created.length).to.equal(1);
+      expect(result.medic.created[0]).to.deep.include(newDdoc);
+      expect(result.medic.deleted).to.deep.equal([]);
+      expect(result.medic.updated).to.deep.equal([]);
+      expect(result).to.deep.include({
+        'medic-sentinel': { created: [], deleted: [], updated: [] },
+        'medic-logs': { created: [], deleted: [], updated: [] },
+        'medic-users-meta': { created: [], deleted: [], updated: [] },
+        '_users': { created: [], deleted: [], updated: [] },
+      });
+    }));
+
+    it('detects deleted ddocs in target version', run(function* () {
+      const deletedDdoc = { _id: '_design/deleted-ddoc', views: { old_view: {} } };
+      const baseStagingAttachments = { _attachments: {
+        'ddocs/medic.json': createAttachment([medicDdoc, deletedDdoc]),
+        'ddocs/sentinel.json': createAttachment([sentinelDdoc]),
+        'ddocs/logs.json': createAttachment([logsDdoc]),
+        'ddocs/users-meta.json': createAttachment([usersMetaDdoc]),
+        'ddocs/users.json': createAttachment([usersDdoc]),
+      } };
+      const targetStagingAttachments = { _attachments: {
+        'ddocs/medic.json': createAttachment([medicDdoc]),
+        'ddocs/sentinel.json': createAttachment([sentinelDdoc]),
+        'ddocs/logs.json': createAttachment([logsDdoc]),
+        'ddocs/users-meta.json': createAttachment([usersMetaDdoc]),
+        'ddocs/users.json': createAttachment([usersDdoc]),
+      } };
+      dbGet
+        .withArgs(`medic:medic:${currentVersion}`, { attachments: true }).resolves(baseStagingAttachments)
+        .withArgs(`medic:medic:${targetVersion}`, { attachments: true }).resolves(targetStagingAttachments);
+
+      const result = yield* getStagingDdocsDiff(currentVersion, targetVersion);
+
+      expect(result.medic.created).to.deep.equal([]);
+      expect(result.medic.deleted.length).to.equal(1);
+      expect(result.medic.deleted[0]).to.deep.include(deletedDdoc);
+      expect(result.medic.updated).to.deep.equal([]);
+      expect(result).to.deep.include({
+        'medic-sentinel': { created: [], deleted: [], updated: [] },
+        'medic-logs': { created: [], deleted: [], updated: [] },
+        'medic-users-meta': { created: [], deleted: [], updated: [] },
+        '_users': { created: [], deleted: [], updated: [] },
+      });
+    }));
+
+    [
+      {
+        baseMedicDdoc: { _id: '_design/medic', views: { contacts_by_depth: { map: 'old' } } },
+        targetMedicDdoc: { _id: '_design/medic', views: { contacts_by_depth: { map: 'new' } } }
+      },
+      {
+        baseMedicDdoc: { _id: '_design/medic', views: {}, nouveau: { search: 'old' } },
+        targetMedicDdoc: { _id: '_design/medic', views: {}, nouveau: { search: 'new' } },
+      }
+    ].forEach(({ baseMedicDdoc, targetMedicDdoc }) => {
+      it('detects updated ddocs when views change', run(function* () {
+        const baseStagingAttachments = { _attachments: {
+          'ddocs/medic.json': createAttachment([baseMedicDdoc]),
+          'ddocs/sentinel.json': createAttachment([sentinelDdoc]),
+          'ddocs/logs.json': createAttachment([logsDdoc]),
+          'ddocs/users-meta.json': createAttachment([usersMetaDdoc]),
+          'ddocs/users.json': createAttachment([usersDdoc]),
+        } };
+        const targetStagingAttachments = { _attachments: {
+          'ddocs/medic.json': createAttachment([targetMedicDdoc]),
+          'ddocs/sentinel.json': createAttachment([sentinelDdoc]),
+          'ddocs/logs.json': createAttachment([logsDdoc]),
+          'ddocs/users-meta.json': createAttachment([usersMetaDdoc]),
+          'ddocs/users.json': createAttachment([usersDdoc]),
+        } };
+        dbGet
+          .withArgs(`medic:medic:${currentVersion}`, { attachments: true }).resolves(baseStagingAttachments)
+          .withArgs(`medic:medic:${targetVersion}`, { attachments: true }).resolves(targetStagingAttachments);
+
+        const result = yield* getStagingDdocsDiff(currentVersion, targetVersion);
 
         expect(result.medic.created).to.deep.equal([]);
         expect(result.medic.deleted).to.deep.equal([]);
