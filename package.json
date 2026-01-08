@@ -33,7 +33,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "prepublishOnly": "tsdown",
+    "prepare": "tsdown",
     "lint": "tsgo -p tsconfig.json && eslint --color --cache . && knip --production",
     "test": "nyc mocha \"test/**/*\""
   },
