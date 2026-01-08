@@ -158,9 +158,12 @@ const getChtCoreReleaseNames = getReleaseNames('medic', 'cht-core');
 
 const getUpdatedDdocNamesByDb = (diffByDb: ChtDdocsDiffByDb): Record<string, NonEmptyArray<string>> => pipe(
   Record.toEntries(diffByDb),
-  Array.map(([db, { updated }]) => Tuple.make(
+  Array.map(([db, { updated, created }]) => Tuple.make(
     db,
-    pipe(updated, Array.map(({ _id }) => _id.replace('_design/', '')))
+    pipe(
+      [...created, ...updated],
+      Array.map(({ _id }) => _id.replace('_design/', ''))
+    )
   )),
   Array.filter(([, ddocs]) => Array.isNonEmptyArray(ddocs)),
   Record.fromEntries,
