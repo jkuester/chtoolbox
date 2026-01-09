@@ -1,7 +1,7 @@
 import * as Effect from 'effect/Effect';
 import { pouchDB } from './shim.ts';
 import { Array, Either, Encoding, Option, ParseResult, pipe, Predicate, Record, Schema, Tuple, Function } from 'effect';
-import { CouchDesign, getCouchDesign } from './couch/design.ts';
+import { CouchDesign, CouchDesignWithRev, getCouchDesign } from './couch/design.ts';
 import { getAllDocs } from '../services/pouchdb.ts';
 import { isDeepStrictEqual } from 'node:util';
 
@@ -99,7 +99,7 @@ export const currentChtBaseVersionEffect = Effect.suspend(() => pipe(
 const getCurrentCouchDesigns = ([dbName, keys]: [typeof CHT_DATABASES[number], string[]]) => pipe(
   { keys },
   getAllDocs(dbName),
-  Effect.map(Array.map(doc => Schema.decodeUnknownSync(CouchDesign)(doc))),
+  Effect.map(Array.map(doc => Schema.decodeUnknownSync(CouchDesignWithRev)(doc))),
   Effect.map(ddocs => Tuple.make(ddocs, dbName))
 );
 
@@ -146,8 +146,7 @@ const getUpdatedDdocs = (current: readonly CouchDesign[], target: readonly Couch
     Option.map(targetDdoc => Tuple.make(currentDdoc, targetDdoc))
   )),
   Array.filter(isDdocUpdated),
-  Array.unzip,
-  Tuple.getSecond
+  Array.map(([c, t]) => Schema.decodeUnknownSync(CouchDesignWithRev)({ ...t, _rev: c._rev })),
 );
 
 const getDdocDiff = (current: readonly CouchDesign[], target: readonly CouchDesign[]): ChtDdocDiff => ({

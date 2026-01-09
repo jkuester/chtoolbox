@@ -1,6 +1,6 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { Array, Stream } from 'effect';
+import { Array, pipe, Stream } from 'effect';
 import { getDbNames } from '../libs/couch/dbs-info.ts';
 import { getDesignDocNames } from '../libs/couch/design-docs.ts';
 import { getViewNames } from '../libs/couch/design.ts';
@@ -59,10 +59,13 @@ const warmDesignViews =  Effect.fn((dbName: string, designId: string) => Effect
     Effect.catchTag('TimeoutException', () => Effect.logDebug(`Timeout warming ${dbName}/${designId}`)),
   ));
 
-const isWarm = Effect.fn((dbName: string, designId: string) => Effect.all([
-  warmDesignViews(dbName, designId),
-  isDesignUpdating(dbName, designId)
-]).pipe(Effect.map(([, updating]) => !updating)));
+const isWarm = Effect.fn((dbName: string, designId: string) => pipe(
+  Effect.all([
+    warmDesignViews(dbName, designId),
+    isDesignUpdating(dbName, designId)
+  ]),
+  Effect.map(([, updating]) => !updating),
+));
 
 const serviceContext = ChtClientService.pipe(Effect.map(couch => Context.make(ChtClientService, couch)));
 
