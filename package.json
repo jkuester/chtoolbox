@@ -30,9 +30,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "prepare": "npm pkg set files='[\"dist\"]' --json",
     "breakpostpack": "npm pkg set files='[\"src\"]' --json",
-    "prepublishOnly": "tsdown",
+    "prepublishOnly": "npm pkg set files='[\"dist\"]' --json && tsdown",
     "lint": "tsgo -p tsconfig.json && eslint --color --cache . && knip --production",
     "test": "nyc mocha \"test/**/*\""
   },
