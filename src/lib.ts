@@ -1,6 +1,6 @@
 import { ConfigProvider, Effect, Layer, pipe } from 'effect';
 import { NodeHttpClient } from '@effect/platform-node';
-import { getDesignDocsDiffWithCurrent as getDesignDocsDiffWithCurrentEffect } from './libs/medic-staging.ts';
+import { getDesignDocsDiffWithCurrent } from './libs/medic-staging.ts';
 import { ChtClientService } from './services/cht-client.ts';
 import { PouchDBService } from './services/pouchdb.ts';
 
@@ -50,13 +50,18 @@ export interface DesignDocsDiffByDatabase {
  */
 export interface Chtoolbox {
   /**
-   * Get the diff between design documents in the current CHT instance
-   * and a target CHT version from the Medic staging server.
-   *
-   * @param version - Target CHT version to compare against (e.g., "4.5.0")
-   * @returns Promise resolving to the diff grouped by database
+   * Operations for the database design documents.
    */
-  getDesignDocsDiffWithCurrent: (version: string) => Promise<DesignDocsDiffByDatabase>;
+  design: {
+    /**
+     * Get the diff between design documents in the current CHT instance
+     * and a target CHT version from the Medic staging server.
+     *
+     * @param version - Target CHT version to compare against (e.g., "4.5.0")
+     * @returns Promise resolving to the diff grouped by database
+     */
+    getDiffWithCurrent: (version: string) => Promise<DesignDocsDiffByDatabase>;
+  }
 }
 
 /**
@@ -86,21 +91,19 @@ export const createChtoolbox = (config: ChtoolboxConfig): Chtoolbox => {
     CHT_PASSWORD: config.password,
   });
 
-  const httpClientNoSslVerify = NodeHttpClient.layerWithoutAgent.pipe(
-    Layer.provide(NodeHttpClient.makeAgentLayer({ rejectUnauthorized: false }))
-  );
-
   const layer = Layer.mergeAll(
-    ChtClientService.Default.pipe(Layer.provide(httpClientNoSslVerify)),
+    ChtClientService.Default.pipe(Layer.provide(NodeHttpClient.layer)),
     PouchDBService.Default,
   );
 
   return {
-    getDesignDocsDiffWithCurrent: (version: string): Promise<DesignDocsDiffByDatabase> => pipe(
-      getDesignDocsDiffWithCurrentEffect(version),
-      Effect.withConfigProvider(configProvider),
-      Effect.provide(layer),
-      Effect.runPromise,
-    ) as Promise<DesignDocsDiffByDatabase>,
+    design: {
+      getDiffWithCurrent: (version: string): Promise<DesignDocsDiffByDatabase> => pipe(
+        getDesignDocsDiffWithCurrent(version),
+        Effect.withConfigProvider(configProvider),
+        Effect.provide(layer),
+        Effect.runPromise,
+      ) as Promise<DesignDocsDiffByDatabase>,
+    }
   };
 };
