@@ -1,6 +1,6 @@
 import { ConfigProvider, Effect, Layer, pipe } from 'effect';
 import { NodeHttpClient } from '@effect/platform-node';
-import { getDesignDocsDiffWithCurrent } from './libs/medic-staging.ts';
+import { type ChtDdocsDiffByDb, getDesignDocsDiffWithCurrent } from './libs/medic-staging.ts';
 import { ChtClientService } from './services/cht-client.ts';
 import { PouchDBService } from './services/pouchdb.ts';
 
@@ -14,35 +14,6 @@ export interface ChtoolboxConfig {
   username: string;
   /** Admin password */
   password: string;
-}
-
-/**
- * Represents a CouchDB design document.
- */
-export interface DesignDoc {
-  _id: string;
-  views?: object;
-  nouveau?: object;
-}
-
-/**
- * Represents a design document diff for a single database.
- */
-export interface DesignDocDiff {
-  created: readonly DesignDoc[];
-  deleted: readonly DesignDoc[];
-  updated: readonly DesignDoc[];
-}
-
-/**
- * Diff of design documents grouped by CHT database.
- */
-export interface DesignDocsDiffByDatabase {
-  medic: DesignDocDiff;
-  'medic-sentinel': DesignDocDiff;
-  'medic-logs': DesignDocDiff;
-  'medic-users-meta': DesignDocDiff;
-  '_users': DesignDocDiff;
 }
 
 /**
@@ -60,7 +31,7 @@ export interface Chtoolbox {
      * @param version - Target CHT version to compare against (e.g., "4.5.0")
      * @returns Promise resolving to the diff grouped by database
      */
-    getDiffWithCurrent: (version: string) => Promise<DesignDocsDiffByDatabase>;
+    getDiffWithCurrent: (version: string) => Promise<ChtDdocsDiffByDb>;
   }
 }
 
@@ -80,7 +51,7 @@ export interface Chtoolbox {
  *   password: 'secret'
  * });
  *
- * const diff = await chtoolbox.getDesignDocsDiffWithCurrent('4.5.0');
+ * const diff = await chtoolbox.design.getDiffWithCurrent('4.5.0');
  * console.log(diff.medic.updated); // Design docs that changed in medic db
  * ```
  */
@@ -98,12 +69,12 @@ export const createChtoolbox = (config: ChtoolboxConfig): Chtoolbox => {
 
   return {
     design: {
-      getDiffWithCurrent: (version: string): Promise<DesignDocsDiffByDatabase> => pipe(
+      getDiffWithCurrent: (version: string) => pipe(
         getDesignDocsDiffWithCurrent(version),
         Effect.withConfigProvider(configProvider),
         Effect.provide(layer),
         Effect.runPromise,
-      ) as Promise<DesignDocsDiffByDatabase>,
+      ),
     }
   };
 };
