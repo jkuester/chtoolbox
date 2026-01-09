@@ -30,7 +30,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "prepack": "npm pkg set files='[\"dist\"]' --json",
+    "prepare": "npm pkg set files='[\"dist\"]' --json",
     "breakpostpack": "npm pkg set files='[\"src\"]' --json",
     "prepublishOnly": "tsdown",
     "lint": "tsgo -p tsconfig.json && eslint --color --cache . && knip --production",
