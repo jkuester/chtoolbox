@@ -23,10 +23,15 @@
   "bin": {
     "chtx": "bin/index.js"
   },
+  "files": [
+    "src"
+  ],
   "engines": {
     "node": ">=20"
   },
   "scripts": {
+    "prepack": "npm pkg set files='[\"dist\"]' --json",
+    "postpack": "npm pkg set files='[\"src\"]' --json",
     "prepublishOnly": "tsdown",
     "lint": "tsgo -p tsconfig.json && eslint --color --cache . && knip --production",
     "test": "nyc mocha \"test/**/*\""
