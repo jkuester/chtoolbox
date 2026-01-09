@@ -5,7 +5,11 @@ import * as Context from 'effect/Context';
 import { fileURLToPath } from 'node:url';
 import { CHT_URL_AUTHENTICATED } from '../libs/config.js';
 
-const tdgPath = fileURLToPath(import.meta.resolve('test-data-generator'));
+// import.meta.resolve does not exist when packaged into cjs.
+// So, this functionality is only available on esm.
+const tdgPath = typeof import.meta.resolve === 'function'
+  ? fileURLToPath(import.meta.resolve('test-data-generator'))
+  : '';
 
 const tdgCommand = Effect.fn((designScriptPath: string) => pipe(
   // eslint-disable-next-line @typescript-eslint/no-deprecated
