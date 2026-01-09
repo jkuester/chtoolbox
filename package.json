@@ -23,9 +23,6 @@
   "bin": {
     "chtx": "bin/index.js"
   },
-  "files": [
-    "/src"
-  ],
   "engines": {
     "node": ">=20"
   },
