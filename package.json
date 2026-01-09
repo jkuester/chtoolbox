@@ -112,7 +112,8 @@
     ],
     "exclude": [
       "src/commands/**/*",
-      "src/index.ts"
+      "src/index.ts",
+      "src/services/test-data-generator.ts"
     ],
     "reporter": [
       "html",
