@@ -19,18 +19,18 @@ import {
 import { completeChtUpgrade, stageChtUpgrade, upgradeCht } from '../libs/cht/upgrade.ts';
 import { ChtClientService } from './cht-client.ts';
 import { mapErrorToGeneric, mapStreamErrorToGeneric } from '../libs/core.ts';
-import { CouchDesign } from '../libs/couch/design.ts';
+import { CouchDesign, deleteCouchDesign } from '../libs/couch/design.ts';
 import { WarmViewsService } from './warm-views.ts';
 import { type CompareCommitsData, compareRefs, getReleaseNames } from '../libs/github.ts';
 import { type CouchActiveTaskStream } from '../libs/couch/active-tasks.ts';
 import type { NonEmptyArray } from 'effect/Array';
 import {
   CHT_DATABASE_BY_ATTACHMENT_NAME,
-  CHT_DDOC_ATTACHMENT_NAMES,
+  CHT_DDOC_ATTACHMENT_NAMES, type ChtDdocDiff,
   type ChtDdocsDiffByDb,
   type DesignDocAttachment,
   getDesignDocAttachments,
-  getDesignDocsDiff
+  getDesignDocsDiff, getDesignDocsDiffWithCurrent
 } from '../libs/medic-staging.ts';
 
 const UPGRADE_LOG_NAME = 'upgrade_log';
@@ -219,6 +219,45 @@ const serviceContext = Effect
 
 type UpgradeLogStreamEffect = Effect.Effect<Stream.Stream<UpgradeLog, Error>, Error>;
 
+const removeOutdatedDdocs = (dbName: string, diff: ChtDdocDiff) => pipe(
+  [...diff.updated, ...diff.deleted],
+  Array.map(deleteCouchDesign(dbName)),
+  Effect.allWith({ concurrency: 'unbounded' }),
+);
+
+const removeAllOutdatedDdocs = Effect.fn((diffByDb: ChtDdocsDiffByDb) => pipe(
+  Record.toEntries(diffByDb),
+  Array.map(Function.tupled(removeOutdatedDdocs)),
+  Effect.allWith({ concurrency: 'unbounded' }),
+));
+
+const installDdoc = (dbName: string) => (ddoc: CouchDesign) => pipe(
+  Effect.logDebug(`Warming ${dbName} ddoc: ${ddoc._id}`),
+  Effect.andThen(WarmViewsService.warmDesign(dbName, pipe(ddoc._id, String.replace(DDOC_PREFIX, '')))),
+  Effect.map(Stream.onStart(pipe(
+    Effect.logDebug(`Saving ${dbName} ddoc: ${ddoc._id}`),
+    Effect.andThen(ddoc),
+    Effect.flatMap(saveDoc(dbName))
+  ))),
+);
+
+const warmUpdatedDdocs = (diffByDb: ChtDdocsDiffByDb) => pipe(
+  Record.toEntries(diffByDb),
+  Array.map(Tuple.mapSecond(({ created, updated }) => [...created, ...updated])),
+  Array.filter(([, ddocs]) => Array.isNonEmptyArray(ddocs)),
+  Array.map(([dbName, ddocs]) => pipe(
+    ddocs,
+    Array.map(ddoc => ({...ddoc, _rev: undefined })),
+    Array.map(installDdoc(dbName)),
+    Effect.all,
+    Effect.map(Chunk.fromIterable),
+    Effect.map(Stream.concatAll),
+  )),
+  Effect.all,
+  Effect.map(Chunk.fromIterable),
+  Effect.map(Stream.concatAll),
+);
+
 export class UpgradeService extends Effect.Service<UpgradeService>()('chtoolbox/UpgradeService', {
   effect: serviceContext.pipe(Effect.map(context => ({
     upgrade: Effect.fn((version: string): UpgradeLogStreamEffect => assertReadyForUpgrade.pipe(
@@ -247,6 +286,17 @@ export class UpgradeService extends Effect.Service<UpgradeService>()('chtoolbox/
       Effect.flatMap(preStageDdocs),
       Effect.map(Stream.provideContext(context)),
       Effect.map(mapStreamErrorToGeneric),
+      Effect.provide(context),
+    )),
+    upgradeDdocs: Effect.fn((
+      version: string
+    ): Effect.Effect<CouchActiveTaskStream, Error> => assertReadyForUpgrade.pipe(
+      Effect.andThen(getDesignDocsDiffWithCurrent(version)),
+      Effect.tap(removeAllOutdatedDdocs),
+      Effect.flatMap(warmUpdatedDdocs),
+      Effect.map(Stream.provideContext(context)),
+      Effect.map(mapStreamErrorToGeneric),
+      mapErrorToGeneric,
       Effect.provide(context),
     )),
     getReleaseDiff: Effect.fn((

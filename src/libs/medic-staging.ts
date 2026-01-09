@@ -146,7 +146,7 @@ const getUpdatedDdocs = (current: readonly CouchDesign[], target: readonly Couch
     Option.map(targetDdoc => Tuple.make(currentDdoc, targetDdoc))
   )),
   Array.filter(isDdocUpdated),
-  Array.map(([c, t]) => Schema.decodeUnknownSync(CouchDesignWithRev)({ ...t, _rev: c._rev })),
+  Array.map(([c, t]) => new CouchDesign({ ...t, _rev: c._rev })),
 );
 
 const getDdocDiff = (current: readonly CouchDesign[], target: readonly CouchDesign[]): ChtDdocDiff => ({
