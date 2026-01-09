@@ -19,7 +19,7 @@ See the [installation docs](https://github.com/jkuester/chtoolbox/wiki) for comp
 To globally install the app run:
 
 ```shell
-npm i -g git+https://github.com/jkuester/chtoolbox.git
+npm i -g chtoolbox
 ```
 
 Check the help text for the latest usage information:

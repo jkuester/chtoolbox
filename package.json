@@ -9,6 +9,13 @@
     "toolbox"
   ],
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/lib.d.mts",
+      "import": "./dist/lib.mjs",
+      "require": "./dist/lib.cjs"
+    }
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jkuester/chtoolbox.git"
@@ -17,12 +24,13 @@
     "chtx": "bin/index.js"
   },
   "files": [
-    "/src"
+    "src"
   ],
   "engines": {
     "node": ">=20"
   },
   "scripts": {
+    "prepublishOnly": "npm pkg set files='[\"dist\"]' --json && npm remove tsx && tsdown",
     "lint": "tsgo -p tsconfig.json && eslint --color --cache . && knip --production",
     "test": "nyc mocha \"test/**/*\""
   },
@@ -68,6 +76,7 @@
     "semantic-release": "^25.0.1",
     "sinon": "^21.0.0",
     "sinon-chai": "^4.0.1",
+    "tsdown": "^0.19.0-beta.5",
     "typescript-eslint": "^8.46.2"
   },
   "dependencies": {
@@ -103,7 +112,8 @@
     ],
     "exclude": [
       "src/commands/**/*",
-      "src/index.ts"
+      "src/index.ts",
+      "src/services/test-data-generator.ts"
     ],
     "reporter": [
       "html",

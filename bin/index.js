@@ -1,25 +1,30 @@
 #!/usr/bin/env node
 
-import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-const tsxPath = fileURLToPath(import.meta.resolve('tsx'));
 
-/**
- * This file is a shim for running the TS directly as a bin script.
- */
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const entry = resolve(__dirname, '..', 'src', 'index.ts');
+const srcEntry = resolve(__dirname, '..', 'src', 'index.ts');
 
-const result = spawnSync(
-  'node',
-  [
-    '--import',
-    tsxPath,
-    entry,
-    ...process.argv.slice(2)
-  ],
-  { stdio: 'inherit' }
-);
+// If src/index.ts exists, we're in a local clone - use tsx to run TypeScript directly
+// Otherwise, we're installed from npm - run the compiled dist/index.mjs
+if (existsSync(srcEntry)) {
+  const { spawnSync } = await import('node:child_process');
+  const tsxPath = fileURLToPath(import.meta.resolve('tsx'));
 
-process.exit(result.status ?? 0);
+  const result = spawnSync(
+    'node',
+    [
+      '--import',
+      tsxPath,
+      srcEntry,
+      ...process.argv.slice(2)
+    ],
+    { stdio: 'inherit' }
+  );
+
+  process.exit(result.status ?? 0);
+} else {
+  await import('../dist/index.mjs');
+}
