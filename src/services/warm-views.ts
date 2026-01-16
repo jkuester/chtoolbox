@@ -9,9 +9,9 @@ import { getDesignInfo } from '../libs/couch/design-info.ts';
 import { ChtClientService } from './cht-client.ts';
 import {
   activeTasksEffect,
-  CouchActiveTask,
+  CouchActiveTask, filterStreamByDesign,
   filterStreamByType,
-  streamActiveTasks,
+  streamActiveTasks, taskHasDesign,
   taskHasType
 } from '../libs/couch/active-tasks.ts';
 import { warmNouveau } from '../libs/couch/nouveau.ts';
@@ -57,19 +57,17 @@ const isDesignViewsUpdating = Effect.fn((dbName: string, designId: string) => pi
   Effect.map(({ view_index }) => view_index.updater_running),
 ));
 
-const taskForDdoc = (ddocId: string) => (task: CouchActiveTask) => task.design_document === ddocId;
-
-const isDesignNouveauUpdating = Effect.fn((ddocId: string) => pipe(
+const isDesignNouveauUpdating = Effect.fn((dbName: string, ddocId: string) => pipe(
   activeTasksEffect,
+  Effect.map(Array.filter(taskHasDesign(dbName, ddocId))),
   Effect.map(Array.filter(taskHasType('search_indexer'))),
-  Effect.map(Array.filter(taskForDdoc(ddocId))),
   Effect.map(Array.isNonEmptyArray)
 ));
 
-const isDesignUpdating = Effect.fn((dbName: string, designId: string) => pipe(
+const isDesignUpdating = Effect.fn((dbName: string, designName: string) => pipe(
   Effect.all([
-    isDesignViewsUpdating(dbName,  designId),
-    isDesignNouveauUpdating(`_design/${designId}`)
+    isDesignViewsUpdating(dbName,  designName),
+    isDesignNouveauUpdating(dbName, `_design/${designName}`)
   ], { concurrency: 'unbounded' }),
   Effect.map(Function.tupled(Boolean.or)),
 ));
@@ -102,11 +100,8 @@ const warmDesign = (dbName: string, designId: string) => pipe(
 );
 
 const isWarm = Effect.fn((dbName: string, designId: string) => pipe(
-  Effect.all([
-    warmDesign(dbName, designId),
-    isDesignUpdating(dbName, designId),
-  ]),
-  Effect.map(([, updating]) => !updating),
+  isDesignUpdating(dbName, designId),
+  Effect.map(Boolean.not),
 ));
 
 const serviceContext = ChtClientService.pipe(Effect.map(couch => Context.make(ChtClientService, couch)));
@@ -122,11 +117,13 @@ export class WarmViewsService extends Effect.Service<WarmViewsService>()('chtool
       .pipe(Effect.provide(context))),
     warmDesign: (
       dbName: string,
-      designId: string
-    ): Stream.Stream<CouchActiveTask[], Error> => streamActiveTasks().pipe(
+      designName: string
+    ): Stream.Stream<CouchActiveTask[], Error> => pipe(
+      streamActiveTasks(),
+      Stream.onStart(warmDesign(dbName, designName)),
       filterStreamByType('indexer', 'search_indexer'),
-      Stream.map(Array.filter(taskForDdoc(`_design/${designId}`))),
-      Stream.takeUntilEffect(() => isWarm(dbName, designId)),
+      filterStreamByDesign(dbName, `_design/${designName}`),
+      Stream.takeUntilEffect(() => isWarm(dbName, designName)),
       Stream.provideContext(context),
     )
   }))),

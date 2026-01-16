@@ -1,10 +1,27 @@
 import { Args, Command, Options, Prompt } from '@effect/cli';
-import { Array, Console, DateTime, Effect, pipe, Predicate, Schedule, Stream } from 'effect';
+import { Array, Console, DateTime, Effect, Option, pipe, Predicate, Schedule, Stream, String } from 'effect';
 
 import { clearConsoleEffect, clearThen } from '../../libs/console.ts';
 import { UpgradeService } from '../../services/upgrade.ts';
-import { type CouchActiveTaskStream, getDisplayDictByPid } from '../../libs/couch/active-tasks.ts';
-import { getTaskDisplayData } from '../db/compact.ts';
+import {
+  CouchActiveTask,
+  type CouchActiveTaskStream, getDbName,
+  getDesignName,
+  getDisplayDictByPid, getPid, getProgressPct
+} from '../../libs/couch/active-tasks.ts';
+
+const getDesignDisplayName = (task: CouchActiveTask) => pipe(
+  getDesignName(task),
+  Option.map(design => `/${design}`),
+  Option.getOrElse(() => String.empty),
+);
+
+const getTaskDisplayData = (task: CouchActiveTask) => ({
+  type: task.type,
+  database: `${getDbName(task)}${getDesignDisplayName(task)}`,
+  pid: getPid(task),
+  progress: getProgressPct(task),
+});
 
 const getCurrentTime = () => DateTime
   .unsafeNow()

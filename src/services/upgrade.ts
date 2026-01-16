@@ -242,38 +242,37 @@ const installDdoc = (dbName: string) => (ddoc: CouchDesign) => pipe(
   Effect.andThen(WarmViewsService.warmDesign(dbName, pipe(ddoc._id, String.replace(DDOC_PREFIX, '')))),
   Effect.map(Stream.onStart(pipe(
     Effect.logDebug(`Saving ${dbName} ddoc: ${ddoc._id}`),
-    Effect.andThen(ddoc),
+    Effect.andThen({ ...ddoc, _rev: undefined }),
     Effect.flatMap(saveDoc(dbName))
   ))),
   Effect.zip(pipe(
     Effect.logDebug(`Compacting ddoc: ${ddoc._id}`),
-    Effect.andThen(() => CompactService.compactDdoc(dbName, pipe(ddoc._id, String.replace(DDOC_PREFIX, '')))),
-    x => x,
+    Effect.andThen(() => CompactService.compactDesign(dbName, pipe(ddoc._id, String.replace(DDOC_PREFIX, '')))),
   )),
-  // Effect.map(Stream.concatAll),
-  // warmStream => Effect.all([warmStream, CompactService.compactDdoc(dbName, '')]),
-  Effect.map(([s1, s2]) => Stream.concat(s1, s2)),
-  // Effect.map(Stream.concat(CompactService.compactDdoc(dbName, pipe(ddoc._id, String.replace(DDOC_PREFIX, '')))))
+  Effect.map(Chunk.fromIterable),
+  Effect.map(Stream.concatAll),
 );
+
+const orderDddocDiffsByDb = Order.combineAll([
+  Order.mapInput<string, [string, ChtDdocDiff]>((self: string) => self === 'medic' ? -1 : 0, Tuple.getFirst),
+  Order.mapInput<string, [string, ChtDdocDiff]>(Order.string, Tuple.getFirst),
+]);
+const orderDesignsById = Order.combineAll([
+  Order.mapInput<string, CouchDesign>(
+    (self: string) => self === '_design/medic-client' ? -1 : 0,
+    ({ _id }) => _id,
+  ),
+  Order.mapInput<string, CouchDesign>(Order.string, ({ _id }) => _id),
+]);
 
 const warmUpdatedDdocs = (diffByDb: ChtDdocsDiffByDb) => pipe(
   Record.toEntries(diffByDb),
-  Array.sortBy(
-    Order.mapInput((self: string) => self === 'medic' ? -1 : 0, Tuple.getFirst),
-    Order.mapInput(Order.string, Tuple.getFirst),
-  ),
+  Array.sort(orderDddocDiffsByDb),
   Array.map(Tuple.mapSecond(({ created, updated }) => [...created, ...updated])),
   Array.filter(([, ddocs]) => Array.isNonEmptyArray(ddocs)),
   Array.map(([dbName, ddocs]) => pipe(
     ddocs,
-    Array.sortBy(
-      Order.mapInput(
-        (self: string) => self === '_design/medic-client' ? -1 : 0,
-        ({ _id }) => _id,
-      ),
-      Order.mapInput(Order.string, ({ _id }) => _id),
-    ),
-    Array.map(ddoc => ({...ddoc, _rev: undefined })),
+    Array.sort(orderDesignsById),
     Array.map(installDdoc(dbName)),
     Effect.all,
     Effect.map(Chunk.fromIterable),

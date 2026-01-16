@@ -74,12 +74,12 @@ export const getAllDocs = (dbName: string) => (
 // const bulkDocs = (dbName: string) => (
 //   docs: PouchDB.Core.PutDocument<object>[]
 // ) => PouchDBService
-//   .get(dbName)
-//   .pipe(
-//     Effect.flatMap(db => Effect.promise(() => db.bulkDocs(docs))),
-//     Effect.map(Array.map(getPouchResponse)),
-//     Effect.flatMap(Effect.all),
-//   );
+//     .get(dbName)
+//     .pipe(
+//       Effect.flatMap(db => Effect.promise(() => db.bulkDocs(docs))),
+//       Effect.map(Array.map(getPouchResponse)),
+//       Effect.flatMap(Effect.all),
+//     );
 //
 // export const deleteDocs = (dbName: string) => (
 //   docs: NonEmptyArray<Doc>
