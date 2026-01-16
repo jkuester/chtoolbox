@@ -46,15 +46,12 @@ const mockGitHubLib = {
   getReleaseNames: sandbox.stub().returns(getReleaseNames),
 };
 const mockMedicStagingLib = {
-  CHT_DDOC_ATTACHMENT_NAMES: [
-    'ddocs/medic.json',
-    'ddocs/sentinel.json',
-    'ddocs/logs.json',
-    'ddocs/users-meta.json',
-    'ddocs/users.json'
-  ],
   getDesignDocAttachments: sandbox.stub(),
   getDesignDocsDiff: sandbox.stub(),
+  getDesignDocsDiffWithCurrent: sandbox.stub(),
+};
+const mockDesignLib = {
+  deleteCouchDesign: sandbox.stub(),
 };
 
 const { UpgradeService } = await esmock<typeof UpgradeSvc>('../../src/services/upgrade.ts', {
@@ -62,6 +59,7 @@ const { UpgradeService } = await esmock<typeof UpgradeSvc>('../../src/services/u
   '../../src/libs/cht/upgrade.ts': mockUpgradeLib,
   '../../src/libs/github.ts': mockGitHubLib,
   '../../src/libs/medic-staging.ts': mockMedicStagingLib,
+  '../../src/libs/couch/design.ts': mockDesignLib,
 });
 const run = UpgradeService.Default.pipe(
   Layer.provideMerge(Layer.succeed(ChtClientService, { } as unknown as ChtClientService)),
@@ -816,5 +814,172 @@ describe('Upgrade Service', () => {
       expect(mockMedicStagingLib.getDesignDocsDiff).to.have.been.calledOnceWithExactly(baseTag, headTag);
       expect(compareRefs).to.have.been.calledOnceWithExactly(baseTag, headTag);
     }));
+  });
+
+  describe('upgradeDdocs', () => {
+    const medicDdoc = {
+      _id: '_design/medic',
+      _rev: '1-abc',
+      views: { 'contacts_by_depth': {} },
+    };
+    const medicClientDdoc = {
+      _id: '_design/medic-client',
+      _rev: '2-def',
+      views: { 'contacts_by_freetext': {} },
+    };
+    const sentinelDdoc = {
+      _id: '_design/sentinel',
+      _rev: '3-ghi',
+      views: { 'outbound_push_tasks': {} }
+    };
+    const logsDdoc = {
+      _id: '_design/logs',
+      _rev: '4-jkl',
+      views: { 'connected_users': {} }
+    };
+    const usersMetaDdoc = {
+      _id: '_design/users-meta',
+      _rev: '5-mno',
+      views: { 'device_by_user': {} }
+    };
+    const usersDdoc = {
+      _id: '_design/users',
+      _rev: '6-pqr',
+      views: { 'users_by_field': {} }
+    };
+    const deletedDdoc = {
+      _id: '_design/deleted-ddoc',
+      _rev: '7-stu',
+      views: { 'old_view': {} }
+    };
+
+    const emptyDiff = { created: [], deleted: [], updated: [] };
+
+    const medicActiveTask = createActiveTask({ database: 'medic', design_document: medicDdoc._id });
+    const medicClientActiveTask = createActiveTask({ database: 'medic', design_document: medicClientDdoc._id });
+    const sentinelActiveTask = createActiveTask({ database: 'medic-sentinel', design_document: sentinelDdoc._id });
+    const logsActiveTask = createActiveTask({ database: 'medic-logs', design_document: logsDdoc._id });
+    const usersMetaActiveTask = createActiveTask({
+      database: 'medic-users-meta',
+      design_document: usersMetaDdoc._id
+    });
+    const usersActiveTask = createActiveTask({ database: '_users', design_document: usersDdoc._id });
+
+    let saveDoc: sinon.SinonStub;
+    let deleteCouchDesign: sinon.SinonStub;
+
+    beforeEach(() => {
+      saveDoc = sinon.stub().returns(Effect.void);
+      mockPouchSvc.saveDoc.returns(saveDoc);
+      deleteCouchDesign = sinon.stub().returns(Effect.void);
+      mockDesignLib.deleteCouchDesign.returns(deleteCouchDesign);
+      warmDesign.withArgs('medic', 'medic').returns(Stream.succeed([medicActiveTask]));
+      warmDesign.withArgs('medic', 'medic-client').returns(Stream.succeed([medicClientActiveTask]));
+      warmDesign.withArgs('medic-sentinel', 'sentinel').returns(Stream.succeed([sentinelActiveTask]));
+      warmDesign.withArgs('medic-logs', 'logs').returns(Stream.succeed([logsActiveTask]));
+      warmDesign.withArgs('medic-users-meta', 'users-meta').returns(Stream.succeed([usersMetaActiveTask]));
+      warmDesign.withArgs('_users', 'users').returns(Stream.succeed([usersActiveTask]));
+    });
+
+    it('removes outdated ddocs and installs new/updated ddocs', run(function* () {
+      dbAllDocs.resolves({ rows: [] });
+      mockMedicStagingLib.getDesignDocsDiffWithCurrent.returns(Effect.succeed({
+        'medic': { created: [], deleted: [deletedDdoc], updated: [medicDdoc, medicClientDdoc] },
+        'medic-sentinel': { created: [sentinelDdoc], deleted: [], updated: [] },
+        'medic-logs': emptyDiff,
+        'medic-users-meta': emptyDiff,
+        '_users': emptyDiff,
+      }));
+
+      const stream = yield* UpgradeService.upgradeDdocs(version);
+      const results = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
+
+      expect(results).to.deep.equal([
+        [medicActiveTask],
+        [medicClientActiveTask],
+        [sentinelActiveTask],
+      ]);
+      expect(mockMedicStagingLib.getDesignDocsDiffWithCurrent).to.have.been.calledOnceWithExactly(version);
+      expect(mockDesignLib.deleteCouchDesign.args).to.deep.equal([
+        ['medic'], ['medic-sentinel'], ['medic-logs'], ['medic-users-meta'], ['_users']
+      ]);
+      expect(deleteCouchDesign.args).to.deep.equal(Array.map([medicDdoc, medicClientDdoc, deletedDdoc], Array.make));
+      expect(warmDesign.args).to.deep.equal([
+        ['medic', 'medic'],
+        ['medic', 'medic-client'],
+        ['medic-sentinel', 'sentinel']
+      ]);
+      expect(mockPouchSvc.saveDoc.args).to.deep.equal([['medic'], ['medic'], ['medic-sentinel']]);
+      expect(saveDoc.args).to.deep.equal([
+        [{ ...medicDdoc, _rev: undefined }],
+        [{ ...medicClientDdoc, _rev: undefined }],
+        [{ ...sentinelDdoc, _rev: undefined }],
+      ]);
+    }));
+
+    it('does nothing when there are no changes', run(function* () {
+      dbAllDocs.resolves({ rows: [] });
+      mockMedicStagingLib.getDesignDocsDiffWithCurrent.returns(Effect.succeed({
+        'medic': emptyDiff,
+        'medic-sentinel': emptyDiff,
+        'medic-logs': emptyDiff,
+        'medic-users-meta': emptyDiff,
+        '_users': emptyDiff,
+      }));
+
+      const stream = yield* UpgradeService.upgradeDdocs(version);
+      const results = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
+
+      expect(results).to.deep.equal([]);
+      expect(mockMedicStagingLib.getDesignDocsDiffWithCurrent).to.have.been.calledOnceWithExactly(version);
+      expect(mockDesignLib.deleteCouchDesign.args).to.deep.equal([
+        ['medic'], ['medic-sentinel'], ['medic-logs'], ['medic-users-meta'], ['_users']
+      ]);
+      expect(deleteCouchDesign).to.not.have.been.called;
+      expect(warmDesign).to.not.have.been.called;
+      expect(mockPouchSvc.saveDoc).to.not.have.been.called;
+      expect(saveDoc).to.not.have.been.called;
+    }));
+
+    COMPLETED_STATES.forEach(state => {
+      it(`upgrades ddocs when existing upgrade log completed with state ${state}`, run(function* () {
+        const upgradeLog = createUpgradeLog({ idMillis: 1, state });
+        dbAllDocs.resolves({ rows: [{ doc: upgradeLog }] });
+        mockMedicStagingLib.getDesignDocsDiffWithCurrent.returns(Effect.succeed({
+          'medic': emptyDiff,
+          'medic-sentinel': emptyDiff,
+          'medic-logs': emptyDiff,
+          'medic-users-meta': emptyDiff,
+          '_users': emptyDiff,
+        }));
+
+        yield* UpgradeService.upgradeDdocs(version);
+
+        expect(dbAllDocs).to.have.been.calledOnce;
+        expect(dbAllDocs).to.have.been.calledWithMatch(EXPECTED_ALL_DOCS_OPTS);
+        expect(mockMedicStagingLib.getDesignDocsDiffWithCurrent.calledOnceWithExactly(version)).to.be.true;
+      }));
+    });
+
+    IN_PROGRESS_STATES.forEach(state => {
+      it(`returns error when there is already an existing upgrade with status ${state}`, run(function* () {
+        dbAllDocs.resolves({ rows: [{
+          doc: createUpgradeLog({ state })
+        }] });
+
+        const either = yield* Effect.either(UpgradeService.upgradeDdocs(version));
+
+        if (Either.isRight(either)) {
+          expect.fail('Expected error to be thrown');
+        }
+
+        expect(either.left.message).to.equal('Upgrade already in progress.');
+        expect(dbAllDocs).to.have.been.calledOnce;
+        expect(dbAllDocs).to.have.been.calledWithMatch(EXPECTED_ALL_DOCS_OPTS);
+        // Note: getDesignDocsDiffWithCurrent is called during Effect construction but its Effect is not executed
+        expect(warmDesign.notCalled).to.be.true;
+        expect(mockPouchSvc.saveDoc.notCalled).to.be.true;
+      }));
+    });
   });
 });

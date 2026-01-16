@@ -26,9 +26,9 @@ const follow = Options
 
 export const compact = Command
   .make('compact', { follow, database, designs }, Effect.fn(({ follow, database, designs }) => pipe(
-    CompactService.compactDesign(database),
-    Effect.map(compactDesign => Array.map(designs, compactDesign)),
-    Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })),
+    designs,
+    Array.map(d => CompactService.compactDesign(database, d)),
+    Effect.allWith({ concurrency: 'unbounded' }),
     Effect.map(Option.liftPredicate(() => follow)),
     Effect.map(Option.map(mergeArrayStreams)),
     Effect.map(Option.map(streamActiveTasks)),

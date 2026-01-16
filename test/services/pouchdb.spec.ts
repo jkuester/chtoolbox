@@ -322,7 +322,6 @@ describe('PouchDB Service', () => {
   });
 
   // describe('deleteDocs', () => {
-  //   const url = 'https://localhost:5984/';
   //   const dbName = 'medic';
   //   const fakeDdb = { bulkDocs: () => null } as unknown as PouchDB.Database;
   //   const docs = [
@@ -333,15 +332,11 @@ describe('PouchDB Service', () => {
   //
   //   beforeEach(() => {
   //     bulkDocs = sinon.stub(fakeDdb, 'bulkDocs');
-  //     const env = Redacted.make(url).pipe(url => ({ url }));
-  //     environmentGet.returns(Effect.succeed(env));
   //     mockCore.pouchDB.returns(fakeDdb);
   //   });
   //
   //   afterEach(() => {
-  //     expect(environmentGet.calledOnceWithExactly()).to.be.true;
-  //     expect(mockCore.pouchDB.calledOnce).to.be.true;
-  //     expect(mockCore.pouchDB.args[0][0]).to.equal(`${url}${dbName}`);
+  //     expect(mockCore.pouchDB).to.have.been.calledOnceWith(`${DEFAULT_CHT_URL}${dbName}`);
   //   });
   //
   //   it('deletes the given docs', run(function* () {

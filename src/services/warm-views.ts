@@ -1,13 +1,20 @@
 import * as Effect from 'effect/Effect';
 import * as Context from 'effect/Context';
-import { Array, Stream } from 'effect';
+import { Array, Boolean, Function, Option, pipe, Stream } from 'effect';
 import { getDbNames } from '../libs/couch/dbs-info.ts';
 import { getDesignDocNames } from '../libs/couch/design-docs.ts';
-import { getViewNames } from '../libs/couch/design.ts';
+import { CouchDesignWithRev, getCouchDesign, getViewNames } from '../libs/couch/design.ts';
 import { warmView } from '../libs/couch/view.ts';
 import { getDesignInfo } from '../libs/couch/design-info.ts';
 import { ChtClientService } from './cht-client.ts';
-import { CouchActiveTask, filterStreamByType, streamActiveTasks } from '../libs/couch/active-tasks.ts';
+import {
+  activeTasksEffect,
+  CouchActiveTask, filterStreamByDesign,
+  filterStreamByType,
+  streamActiveTasks, taskHasDesign,
+  taskHasType
+} from '../libs/couch/active-tasks.ts';
+import { warmNouveau } from '../libs/couch/nouveau.ts';
 
 const warmCouchView = (dbName: string, designId: string) => Effect.fn((
   viewName: string
@@ -42,27 +49,60 @@ const designsCurrentlyUpdating = Effect.fn(() => getDbNames()
     Effect.map(Array.flatten),
   ));
 
-const isDesignUpdating = Effect.fn((dbName: string, designId: string) => getDesignInfo(dbName, designId).pipe(
+const isDesignViewsUpdating = Effect.fn((dbName: string, designId: string) => pipe(
+  getDesignInfo(dbName, designId),
   Effect.tap(({ view_index }) => Effect.logDebug(
     `${dbName}/${designId} updater_running: ${view_index.updater_running.toString()}`
   )),
   Effect.map(({ view_index }) => view_index.updater_running),
 ));
 
-const warmDesignViews =  Effect.fn((dbName: string, designId: string) => Effect
-  .logDebug(`Warming views for ${dbName}/${designId}`)
-  .pipe(
-    Effect.andThen(getViewNames(dbName, designId)),
-    Effect.map(Array.map(warmCouchView(dbName, designId))),
-    Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })),
-    Effect.timeout(1000),
-    Effect.catchTag('TimeoutException', () => Effect.logDebug(`Timeout warming ${dbName}/${designId}`)),
-  ));
+const isDesignNouveauUpdating = Effect.fn((dbName: string, ddocId: string) => pipe(
+  activeTasksEffect,
+  Effect.map(Array.filter(taskHasDesign(dbName, ddocId))),
+  Effect.map(Array.filter(taskHasType('search_indexer'))),
+  Effect.map(Array.isNonEmptyArray)
+));
 
-const isWarm = Effect.fn((dbName: string, designId: string) => Effect.all([
-  warmDesignViews(dbName, designId),
-  isDesignUpdating(dbName, designId)
-]).pipe(Effect.map(([, updating]) => !updating)));
+const isDesignUpdating = Effect.fn((dbName: string, designName: string) => pipe(
+  Effect.all([
+    isDesignViewsUpdating(dbName,  designName),
+    isDesignNouveauUpdating(dbName, `_design/${designName}`)
+  ], { concurrency: 'unbounded' }),
+  Effect.map(Function.tupled(Boolean.or)),
+));
+
+const warmDesignViews =  Effect.fn((dbName: string, designId: string, { views }: CouchDesignWithRev) => pipe(
+  Option.fromNullable(views),
+  Option.map(Object.keys),
+  Option.getOrElse(() => []),
+  Array.map(view => warmView(dbName, designId, view)),
+  Effect.allWith({ concurrency: 'unbounded' }),
+));
+
+const warmDesignNouveaus = Effect.fn((dbName: string, { _id, nouveau }: CouchDesignWithRev) => pipe(
+  Option.fromNullable(nouveau),
+  Option.map(Object.keys),
+  Option.getOrElse(() => []),
+  Array.map(warmNouveau(dbName, _id)),
+  Effect.allWith({ concurrency: 'unbounded' }),
+));
+
+const warmDesign = (dbName: string, designId: string) => pipe(
+  Effect.logDebug(`Warming views for ${dbName}/${designId}`),
+  Effect.andThen(() => getCouchDesign(dbName, designId)),
+  Effect.flatMap((ddoc) => Effect.all([
+    warmDesignViews(dbName, designId, ddoc),
+    warmDesignNouveaus(dbName, ddoc)
+  ], { concurrency: 'unbounded' })),
+  Effect.timeout(1000),
+  Effect.catchTag('TimeoutException', () => Effect.logDebug(`Timeout warming ${dbName}/${designId}`)),
+);
+
+const isWarm = Effect.fn((dbName: string, designId: string) => pipe(
+  isDesignUpdating(dbName, designId),
+  Effect.map(Boolean.not),
+));
 
 const serviceContext = ChtClientService.pipe(Effect.map(couch => Context.make(ChtClientService, couch)));
 
@@ -77,11 +117,13 @@ export class WarmViewsService extends Effect.Service<WarmViewsService>()('chtool
       .pipe(Effect.provide(context))),
     warmDesign: (
       dbName: string,
-      designId: string
-    ): Stream.Stream<CouchActiveTask[], Error> => streamActiveTasks().pipe(
-      filterStreamByType('indexer'),
-      Stream.map(Array.filter(({ design_document }) => design_document === `_design/${designId}`)),
-      Stream.takeUntilEffect(() => isWarm(dbName, designId)),
+      designName: string
+    ): Stream.Stream<CouchActiveTask[], Error> => pipe(
+      streamActiveTasks(),
+      Stream.onStart(warmDesign(dbName, designName)),
+      filterStreamByType('indexer', 'search_indexer'),
+      filterStreamByDesign(dbName, `_design/${designName}`),
+      Stream.takeUntilEffect(() => isWarm(dbName, designName)),
       Stream.provideContext(context),
     )
   }))),

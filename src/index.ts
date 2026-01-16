@@ -88,13 +88,13 @@ const httpClientNoSslVerify = Layer.provide(NodeHttpClient.layerWithoutAgent.pip
 
 pipe(
   cli(process.argv),
-  Effect.provide(CompactService.Default),
   Effect.provide(MonitorService.Default),
   Effect.provide(LocalDiskUsageService.Default),
   Effect.provide(LocalInstanceService.Default.pipe(httpClientNoSslVerify)),
   Effect.provide(LocalIpService.Default),
   Effect.provide(PurgeService.Default),
   Effect.provide(UpgradeService.Default),
+  Effect.provide(CompactService.Default),
   Effect.provide(WarmViewsService.Default),
   Effect.provide(ReplicateService.Default),
   Effect.provide(SentinelBacklogService.Default),

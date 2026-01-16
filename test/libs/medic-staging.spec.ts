@@ -19,26 +19,32 @@ const currentVersion = '4.4.0';
 const targetVersion = '4.5.0';
 const medicDdoc = {
   _id: '_design/medic',
+  _rev: '1-abc',
   views: { contacts_by_depth: {} }
 } as const;
 const medicClientDdoc = {
   _id: '_design/medic-client',
+  _rev: '2-def',
   views: { contacts_by_freetext: {} }
 } as const;
 const sentinelDdoc = {
   _id: '_design/sentinel',
+  _rev: '3-ghi',
   views: { tasks_by_state: {} }
 } as const;
 const logsDdoc = {
   _id: '_design/logs',
+  _rev: '4-jkl',
   views: { connected_users: {} }
 } as const;
 const usersMetaDdoc = {
   _id: '_design/users-meta',
+  _rev: '5-mno',
   views: { device_by_user: {} }
 } as const;
 const usersDdoc = {
   _id: '_design/users',
+  _rev: '6-pqr',
   views: { users_by_field: {} }
 } as const;
 
@@ -278,7 +284,7 @@ describe('medic-staging libs', () => {
 
     it('detects deleted ddocs in target version', run(function* () {
       mockDesignLib.getCouchDesign.returns(Effect.succeed({ build_info: { base_version: currentVersion } }));
-      const deletedDdoc = { _id: '_design/deleted-ddoc', views: { old_view: {} } };
+      const deletedDdoc = { _id: '_design/deleted-ddoc', _rev: '342342', views: { old_view: {} } };
       const currentStagingAttachments = { _attachments: {
         'ddocs/medic.json': createAttachment([medicDdoc, deletedDdoc]),
         'ddocs/sentinel.json': createAttachment([sentinelDdoc]),
@@ -323,11 +329,11 @@ describe('medic-staging libs', () => {
 
     [
       {
-        currentMedicDdoc: { _id: '_design/medic', views: { contacts_by_depth: { map: 'old' } } },
+        currentMedicDdoc: { _id: '_design/medic', _rev: '2121', views: { contacts_by_depth: { map: 'old' } } },
         targetMedicDdoc: { _id: '_design/medic', views: { contacts_by_depth: { map: 'new' } } }
       },
       {
-        currentMedicDdoc: { _id: '_design/medic', views: {}, nouveau: { search: 'old' } },
+        currentMedicDdoc: { _id: '_design/medic', _rev: '2121', views: {}, nouveau: { search: 'old' } },
         targetMedicDdoc: { _id: '_design/medic', views: {}, nouveau: { search: 'new' } },
       }
     ].forEach(({ currentMedicDdoc, targetMedicDdoc }) => {
