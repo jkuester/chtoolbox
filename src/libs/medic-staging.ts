@@ -55,17 +55,26 @@ const getStagingDocAttachments = Effect.fn((version: string) => Effect
     Effect.filterOrFail(Predicate.isNotNullable),
   ));
 
+const decodeStagingDocAttachment = (attachments: Attachments) => (
+  name: typeof CHT_DDOC_ATTACHMENT_NAMES[number]
+) => pipe(
+  attachments[name] as FullAttachment | undefined,
+  Option.liftPredicate(Predicate.isNotUndefined),
+  Option.map(DesignDocAttachment.decode),
+  Option.map(Effect.map(attachment => Tuple.make(attachment, name)))
+);
+
 const decodeStagingDocAttachments = Effect.fn((attachments: Attachments) => pipe(
   CHT_DDOC_ATTACHMENT_NAMES,
-  Array.map(name => attachments[name] as FullAttachment),
-  Array.map(DesignDocAttachment.decode),
+  Array.map(decodeStagingDocAttachment(attachments)),
+  Array.filter(Option.isSome),
+  Array.map(Option.getOrThrow),
   Effect.allWith({ concurrency: 'unbounded' }),
 ));
 
 export const getDesignDocAttachments = Effect.fn((version: string) => pipe(
   getStagingDocAttachments(version),
   Effect.flatMap(decodeStagingDocAttachments),
-  Effect.map(Array.zip(CHT_DDOC_ATTACHMENT_NAMES))
 ));
 
 type ChtDdocsByDb = Record<typeof CHT_DATABASES[number], readonly CouchDesign[]>;
@@ -78,16 +87,21 @@ export interface ChtDdocDiff {
 
 export type ChtDdocsDiffByDb = Record<typeof CHT_DATABASES[number], ChtDdocDiff>;
 
-const createDdocsRecord = (
-  record: ChtDdocsByDb,
-  [ddocs, dbName]: [readonly CouchDesign[], typeof CHT_DATABASES[number]]
-) => ({ ...record, [dbName]: ddocs });
+const createDdocsRecord = (record: Record<string, readonly CouchDesign[]>) => pipe(
+  CHT_DATABASES,
+  Array.map(db => Tuple.make(db, Record.get(record, db))),
+  Array.map(Tuple.mapSecond(Option.getOrElse(() => [] as CouchDesign[]))),
+  Record.fromEntries,
+  rec => rec as unknown as ChtDdocsByDb
+);
 
 const getStagingDesignDocsByDb = Effect.fn((version: string) => pipe(
   getDesignDocAttachments(version),
   Effect.map(Array.map(Tuple.mapFirst(({ docs }) => docs))),
   Effect.map(Array.map(Tuple.mapSecond(attachName => CHT_DATABASE_BY_ATTACHMENT_NAME[attachName]))),
-  Effect.map(Array.reduce({} as ChtDdocsByDb, createDdocsRecord))
+  Effect.map(Array.map(Tuple.swap)),
+  Effect.map(Record.fromEntries),
+  Effect.map(createDdocsRecord),
 ));
 
 export const currentChtBaseVersionEffect = Effect.suspend(() => pipe(
@@ -110,7 +124,9 @@ const currentDesignDocsByDbEffect = pipe(
   Effect.map(Array.map(Tuple.mapSecond(Array.map(({ _id }) => _id)))),
   Effect.map(Array.map(getCurrentCouchDesigns)),
   Effect.flatMap(Effect.allWith({ concurrency: 'unbounded' })),
-  Effect.map(Array.reduce({} as ChtDdocsByDb, createDdocsRecord)),
+  Effect.map(Array.map(Tuple.swap)),
+  Effect.map(Record.fromEntries),
+  Effect.map(createDdocsRecord),
 );
 
 const getDdocWithId = (ddocs: readonly CouchDesign[]) => (ddoc: CouchDesign) => pipe(

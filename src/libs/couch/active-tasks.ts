@@ -56,13 +56,13 @@ export const getDisplayDictByPid = (
   tasks: { pid: string }[]
 ): Record<string, Record<string, string>> => Array.reduce(tasks, {}, buildDictByPid);
 
-const taskHasType = (types: string[]) => (task: CouchActiveTask) => pipe(
+export const taskHasType = (...types: string[]) => (task: CouchActiveTask): boolean => pipe(
   types,
   Array.contains(task.type),
 );
 export const filterStreamByType = (...types: string[]) => (
   taskStream: CouchActiveTaskStream
-): CouchActiveTaskStream => taskStream.pipe(Stream.map(Array.filter(taskHasType(types))));
+): CouchActiveTaskStream => taskStream.pipe(Stream.map(Array.filter(taskHasType(...types))));
 
 const orderByStartedOn = Order.make(
   (a: CouchActiveTask, b: CouchActiveTask) => Number.Order(a.started_on, b.started_on)

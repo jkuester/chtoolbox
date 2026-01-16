@@ -7,7 +7,7 @@ import {
   DateTime,
   Function,
   Match,
-  Option,
+  Option, Order,
   pipe,
   Record,
   Schedule,
@@ -32,6 +32,8 @@ import {
   getDesignDocAttachments,
   getDesignDocsDiff, getDesignDocsDiffWithCurrent
 } from '../libs/medic-staging.ts';
+import { cleanupDatabaseIndexes } from '../libs/couch/cleanup.ts';
+import { CompactService } from './compact.ts';
 
 const UPGRADE_LOG_NAME = 'upgrade_log';
 const COMPLETED_STATES = ['finalized', 'aborted', 'errored', 'interrupted'] as const;
@@ -205,16 +207,19 @@ const serviceContext = Effect
     ChtClientService,
     PouchDBService,
     WarmViewsService,
+    CompactService
   ])
   .pipe(Effect.map(([
     chtClient,
     pouch,
     warmViews,
+    compact
   ]) => Context
     .make(PouchDBService, pouch)
     .pipe(
       Context.add(ChtClientService, chtClient),
-      Context.add(WarmViewsService, warmViews)
+      Context.add(WarmViewsService, warmViews),
+      Context.add(CompactService, compact)
     )));
 
 type UpgradeLogStreamEffect = Effect.Effect<Stream.Stream<UpgradeLog, Error>, Error>;
@@ -223,6 +228,7 @@ const removeOutdatedDdocs = (dbName: string, diff: ChtDdocDiff) => pipe(
   [...diff.updated, ...diff.deleted],
   Array.map(deleteCouchDesign(dbName)),
   Effect.allWith({ concurrency: 'unbounded' }),
+  Effect.andThen(() => cleanupDatabaseIndexes(dbName))
 );
 
 const removeAllOutdatedDdocs = Effect.fn((diffByDb: ChtDdocsDiffByDb) => pipe(
@@ -239,14 +245,34 @@ const installDdoc = (dbName: string) => (ddoc: CouchDesign) => pipe(
     Effect.andThen(ddoc),
     Effect.flatMap(saveDoc(dbName))
   ))),
+  Effect.zip(pipe(
+    Effect.logDebug(`Compacting ddoc: ${ddoc._id}`),
+    Effect.andThen(() => CompactService.compactDdoc(dbName, pipe(ddoc._id, String.replace(DDOC_PREFIX, '')))),
+    x => x,
+  )),
+  // Effect.map(Stream.concatAll),
+  // warmStream => Effect.all([warmStream, CompactService.compactDdoc(dbName, '')]),
+  Effect.map(([s1, s2]) => Stream.concat(s1, s2)),
+  // Effect.map(Stream.concat(CompactService.compactDdoc(dbName, pipe(ddoc._id, String.replace(DDOC_PREFIX, '')))))
 );
 
 const warmUpdatedDdocs = (diffByDb: ChtDdocsDiffByDb) => pipe(
   Record.toEntries(diffByDb),
+  Array.sortBy(
+    Order.mapInput((self: string) => self === 'medic' ? -1 : 0, Tuple.getFirst),
+    Order.mapInput(Order.string, Tuple.getFirst),
+  ),
   Array.map(Tuple.mapSecond(({ created, updated }) => [...created, ...updated])),
   Array.filter(([, ddocs]) => Array.isNonEmptyArray(ddocs)),
   Array.map(([dbName, ddocs]) => pipe(
     ddocs,
+    Array.sortBy(
+      Order.mapInput(
+        (self: string) => self === '_design/medic-client' ? -1 : 0,
+        ({ _id }) => _id,
+      ),
+      Order.mapInput(Order.string, ({ _id }) => _id),
+    ),
     Array.map(ddoc => ({...ddoc, _rev: undefined })),
     Array.map(installDdoc(dbName)),
     Effect.all,
