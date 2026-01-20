@@ -9,6 +9,7 @@ import { ChtClientService } from '../../src/services/cht-client.ts';
 import esmock from 'esmock';
 import { WarmViewsService } from '../../src/services/warm-views.ts';
 import { createActiveTask } from '../utils/data-models.ts';
+import { CompactService } from '../../src/services/compact.ts';
 
 const version = '3.7.0';
 const EXPECTED_ALL_DOCS_OPTS = {
@@ -67,6 +68,7 @@ const run = UpgradeService.Default.pipe(
     get: pouchGet,
   } as unknown as PouchDBService),),
   Layer.provide(Layer.succeed(WarmViewsService, { warmDesign } as unknown as WarmViewsService)),
+  Layer.provideMerge(Layer.succeed(CompactService, { } as unknown as CompactService)),
   genWithLayer,
 );
 
