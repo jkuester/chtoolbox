@@ -42,7 +42,9 @@ const streamActiveTasks = Effect.fn((
 ));
 
 const getConfirmationPrompt = (version: string) => Prompt.confirm({
-  message: `Are you sure you want to upgrade the CHT design documents to ${version}?`,
+  message: `Are you sure you want to upgrade the CHT design documents to ${version}? The Api and Sentinel `
+  + 'containers should be stopped before performing this operation. Also, the running CouchDB/Nouveau '
+  + `container images must be compatible with the target CHT version.`,
   initial: false,
 });
 
@@ -73,5 +75,15 @@ export const upgrade = Command
     Effect.catchTag('NotConfirmed', () => Console.log('Operation cancelled')),
   )))
   .pipe(Command.withDescription(
-    `Upgrade the design documents in for the current CHT instance to those from the specified CHT version.`
+    `Upgrade the design documents in for the current CHT instance to those from the specified CHT version. This `
+    + 'action is optimized to minimize the disk space required when upgrading to a new CHT version. However, '
+    + 'this operation will take longer than a standard upgrade and requires server downtime. The Api and Sentinel '
+    + 'containers should be stopped before performing this operation. Also, the running CouchDB/Nouveau '
+    + `container images must be compatible with the target CHT version. The expected design upgrade procedure is:
+
+  1. Backup your CHT instance.
+  2. Stop/remove all CHT containers.
+  3. Start the CouchDB/Nouveau containers for the target CHT version.
+  4. Execute the 'chtx design upgrade' command. (This must be done from a shell with access to the CouchDB container.)
+  5. Start the remaining CHT containers for the target CHT version.`
   ));
