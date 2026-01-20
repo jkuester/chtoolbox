@@ -30,6 +30,7 @@ const createUpgradeLog = ({ idMillis = 0, state = '', state_history = [] } = {})
 const pouchGet = sandbox.stub();
 const dbAllDocs = sandbox.stub();
 const warmDesign = sandbox.stub();
+const compactDesign = sandbox.stub();
 const mockPouchSvc = {
   getDoc: sandbox.stub(),
   saveDoc: sandbox.stub(),
@@ -54,6 +55,9 @@ const mockMedicStagingLib = {
 const mockDesignLib = {
   deleteCouchDesign: sandbox.stub(),
 };
+const mockCleanupLib = {
+  cleanupDatabaseIndexes: sandbox.stub(),
+};
 
 const { UpgradeService } = await esmock<typeof UpgradeSvc>('../../src/services/upgrade.ts', {
   '../../src/services/pouchdb.ts': mockPouchSvc,
@@ -61,6 +65,7 @@ const { UpgradeService } = await esmock<typeof UpgradeSvc>('../../src/services/u
   '../../src/libs/github.ts': mockGitHubLib,
   '../../src/libs/medic-staging.ts': mockMedicStagingLib,
   '../../src/libs/couch/design.ts': mockDesignLib,
+  '../../src/libs/couch/cleanup.ts': mockCleanupLib,
 });
 const run = UpgradeService.Default.pipe(
   Layer.provideMerge(Layer.succeed(ChtClientService, { } as unknown as ChtClientService)),
@@ -68,7 +73,7 @@ const run = UpgradeService.Default.pipe(
     get: pouchGet,
   } as unknown as PouchDBService),),
   Layer.provide(Layer.succeed(WarmViewsService, { warmDesign } as unknown as WarmViewsService)),
-  Layer.provideMerge(Layer.succeed(CompactService, { } as unknown as CompactService)),
+  Layer.provideMerge(Layer.succeed(CompactService, { compactDesign } as unknown as CompactService)),
   genWithLayer,
 );
 
@@ -875,8 +880,11 @@ describe('Upgrade Service', () => {
       mockPouchSvc.saveDoc.returns(saveDoc);
       deleteCouchDesign = sinon.stub().returns(Effect.void);
       mockDesignLib.deleteCouchDesign.returns(deleteCouchDesign);
+      mockCleanupLib.cleanupDatabaseIndexes.returns(Effect.void);
+      compactDesign.returns(Stream.empty);
       warmDesign.withArgs('medic', 'medic').returns(Stream.succeed([medicActiveTask]));
       warmDesign.withArgs('medic', 'medic-client').returns(Stream.succeed([medicClientActiveTask]));
+      warmDesign.withArgs('medic', 'users').returns(Stream.succeed([usersActiveTask]));
       warmDesign.withArgs('medic-sentinel', 'sentinel').returns(Stream.succeed([sentinelActiveTask]));
       warmDesign.withArgs('medic-logs', 'logs').returns(Stream.succeed([logsActiveTask]));
       warmDesign.withArgs('medic-users-meta', 'users-meta').returns(Stream.succeed([usersMetaActiveTask]));
@@ -897,25 +905,42 @@ describe('Upgrade Service', () => {
       const results = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
 
       expect(results).to.deep.equal([
-        [medicActiveTask],
         [medicClientActiveTask],
+        [medicActiveTask],
         [sentinelActiveTask],
       ]);
       expect(mockMedicStagingLib.getDesignDocsDiffWithCurrent).to.have.been.calledOnceWithExactly(version);
-      expect(mockDesignLib.deleteCouchDesign.args).to.deep.equal([
-        ['medic'], ['medic-sentinel'], ['medic-logs'], ['medic-users-meta'], ['_users']
-      ]);
-      expect(deleteCouchDesign.args).to.deep.equal(Array.map([medicDdoc, medicClientDdoc, deletedDdoc], Array.make));
+      expect(mockDesignLib.deleteCouchDesign.callCount).to.equal(5);
+      expect(mockDesignLib.deleteCouchDesign).to.have.been.calledWith('medic');
+      expect(mockDesignLib.deleteCouchDesign).to.have.been.calledWith('medic-sentinel');
+      expect(mockDesignLib.deleteCouchDesign).to.have.been.calledWith('medic-logs');
+      expect(mockDesignLib.deleteCouchDesign).to.have.been.calledWith('medic-users-meta');
+      expect(mockDesignLib.deleteCouchDesign).to.have.been.calledWith('_users');
+      expect(deleteCouchDesign.callCount).to.equal(3);
+      expect(deleteCouchDesign).to.have.been.calledWith(medicDdoc);
+      expect(deleteCouchDesign).to.have.been.calledWith(medicClientDdoc);
+      expect(deleteCouchDesign).to.have.been.calledWith(deletedDdoc);
+      expect(mockCleanupLib.cleanupDatabaseIndexes.callCount).to.equal(5);
+      expect(mockCleanupLib.cleanupDatabaseIndexes).to.have.been.calledWith('medic');
+      expect(mockCleanupLib.cleanupDatabaseIndexes).to.have.been.calledWith('medic-sentinel');
+      expect(mockCleanupLib.cleanupDatabaseIndexes).to.have.been.calledWith('medic-logs');
+      expect(mockCleanupLib.cleanupDatabaseIndexes).to.have.been.calledWith('medic-users-meta');
+      expect(mockCleanupLib.cleanupDatabaseIndexes).to.have.been.calledWith('_users');
       expect(warmDesign.args).to.deep.equal([
-        ['medic', 'medic'],
         ['medic', 'medic-client'],
+        ['medic', 'medic'],
         ['medic-sentinel', 'sentinel']
       ]);
       expect(mockPouchSvc.saveDoc.args).to.deep.equal([['medic'], ['medic'], ['medic-sentinel']]);
       expect(saveDoc.args).to.deep.equal([
-        [{ ...medicDdoc, _rev: undefined }],
         [{ ...medicClientDdoc, _rev: undefined }],
+        [{ ...medicDdoc, _rev: undefined }],
         [{ ...sentinelDdoc, _rev: undefined }],
+      ]);
+      expect(compactDesign.args).to.deep.equal([
+        ['medic', 'medic-client'],
+        ['medic', 'medic'],
+        ['medic-sentinel', 'sentinel']
       ]);
     }));
 
@@ -934,13 +959,109 @@ describe('Upgrade Service', () => {
 
       expect(results).to.deep.equal([]);
       expect(mockMedicStagingLib.getDesignDocsDiffWithCurrent).to.have.been.calledOnceWithExactly(version);
-      expect(mockDesignLib.deleteCouchDesign.args).to.deep.equal([
-        ['medic'], ['medic-sentinel'], ['medic-logs'], ['medic-users-meta'], ['_users']
-      ]);
+      expect(mockDesignLib.deleteCouchDesign.callCount).to.equal(5);
+      expect(mockDesignLib.deleteCouchDesign).to.have.been.calledWith('medic');
+      expect(mockDesignLib.deleteCouchDesign).to.have.been.calledWith('medic-sentinel');
+      expect(mockDesignLib.deleteCouchDesign).to.have.been.calledWith('medic-logs');
+      expect(mockDesignLib.deleteCouchDesign).to.have.been.calledWith('medic-users-meta');
+      expect(mockDesignLib.deleteCouchDesign).to.have.been.calledWith('_users');
       expect(deleteCouchDesign).to.not.have.been.called;
+      expect(mockCleanupLib.cleanupDatabaseIndexes.callCount).to.equal(5);
+      expect(mockCleanupLib.cleanupDatabaseIndexes).to.have.been.calledWith('medic');
+      expect(mockCleanupLib.cleanupDatabaseIndexes).to.have.been.calledWith('medic-sentinel');
+      expect(mockCleanupLib.cleanupDatabaseIndexes).to.have.been.calledWith('medic-logs');
+      expect(mockCleanupLib.cleanupDatabaseIndexes).to.have.been.calledWith('medic-users-meta');
+      expect(mockCleanupLib.cleanupDatabaseIndexes).to.have.been.calledWith('_users');
       expect(warmDesign).to.not.have.been.called;
       expect(mockPouchSvc.saveDoc).to.not.have.been.called;
       expect(saveDoc).to.not.have.been.called;
+      expect(compactDesign).to.not.have.been.called;
+    }));
+
+    it('processes medic database first and medic-client ddoc first within medic', run(function* () {
+      dbAllDocs.resolves({ rows: [] });
+      // Return diffs in non-alphabetical order to verify sorting
+      mockMedicStagingLib.getDesignDocsDiffWithCurrent.returns(Effect.succeed({
+        '_users': { created: [], deleted: [], updated: [] },
+        'medic-sentinel': { created: [sentinelDdoc], deleted: [], updated: [] },
+        'medic': { created: [], deleted: [], updated: [usersDdoc, medicDdoc, medicClientDdoc] },
+        'medic-logs': { created: [logsDdoc], deleted: [], updated: [] },
+        'medic-users-meta': { created: [usersMetaDdoc], deleted: [], updated: [] },
+      }));
+
+      const stream = yield* UpgradeService.upgradeDdocs(version);
+      const results = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
+
+      // medic database ddocs should be processed first, with medic-client before medic
+      // Then other databases alphabetically
+      expect(results).to.deep.equal([
+        [medicClientActiveTask],
+        [medicActiveTask],
+        [usersActiveTask],
+        [logsActiveTask],
+        [sentinelActiveTask],
+        [usersMetaActiveTask],
+      ]);
+      expect(warmDesign.args).to.deep.equal([
+        ['medic', 'medic-client'],
+        ['medic', 'medic'],
+        ['medic', 'users'],
+        ['medic-logs', 'logs'],
+        ['medic-sentinel', 'sentinel'],
+        ['medic-users-meta', 'users-meta'],
+      ]);
+      expect(mockPouchSvc.saveDoc.args).to.deep.equal([
+        ['medic'], ['medic'], ['medic'], ['medic-logs'], ['medic-sentinel'], ['medic-users-meta']
+      ]);
+      expect(saveDoc.args).to.deep.equal([
+        [{ ...medicClientDdoc, _rev: undefined }],
+        [{ ...medicDdoc, _rev: undefined }],
+        [{ ...usersDdoc, _rev: undefined }],
+        [{ ...logsDdoc, _rev: undefined }],
+        [{ ...sentinelDdoc, _rev: undefined }],
+        [{ ...usersMetaDdoc, _rev: undefined }],
+      ]);
+      expect(compactDesign.args).to.deep.equal([
+        ['medic', 'medic-client'],
+        ['medic', 'medic'],
+        ['medic', 'users'],
+        ['medic-logs', 'logs'],
+        ['medic-sentinel', 'sentinel'],
+        ['medic-users-meta', 'users-meta'],
+      ]);
+    }));
+
+    it('handles only deleted ddocs without any created or updated', run(function* () {
+      dbAllDocs.resolves({ rows: [] });
+      mockMedicStagingLib.getDesignDocsDiffWithCurrent.returns(Effect.succeed({
+        'medic': { created: [], deleted: [deletedDdoc], updated: [] },
+        'medic-sentinel': emptyDiff,
+        'medic-logs': emptyDiff,
+        'medic-users-meta': emptyDiff,
+        '_users': emptyDiff,
+      }));
+
+      const stream = yield* UpgradeService.upgradeDdocs(version);
+      const results = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
+
+      expect(results).to.deep.equal([]);
+      expect(mockDesignLib.deleteCouchDesign.callCount).to.equal(5);
+      expect(mockDesignLib.deleteCouchDesign).to.have.been.calledWith('medic');
+      expect(mockDesignLib.deleteCouchDesign).to.have.been.calledWith('medic-sentinel');
+      expect(mockDesignLib.deleteCouchDesign).to.have.been.calledWith('medic-logs');
+      expect(mockDesignLib.deleteCouchDesign).to.have.been.calledWith('medic-users-meta');
+      expect(mockDesignLib.deleteCouchDesign).to.have.been.calledWith('_users');
+      expect(deleteCouchDesign.callCount).to.equal(1);
+      expect(deleteCouchDesign).to.have.been.calledWith(deletedDdoc);
+      expect(mockCleanupLib.cleanupDatabaseIndexes.callCount).to.equal(5);
+      expect(mockCleanupLib.cleanupDatabaseIndexes).to.have.been.calledWith('medic');
+      expect(mockCleanupLib.cleanupDatabaseIndexes).to.have.been.calledWith('medic-sentinel');
+      expect(mockCleanupLib.cleanupDatabaseIndexes).to.have.been.calledWith('medic-logs');
+      expect(mockCleanupLib.cleanupDatabaseIndexes).to.have.been.calledWith('medic-users-meta');
+      expect(mockCleanupLib.cleanupDatabaseIndexes).to.have.been.calledWith('_users');
+      expect(warmDesign).to.not.have.been.called;
+      expect(mockPouchSvc.saveDoc).to.not.have.been.called;
+      expect(compactDesign).to.not.have.been.called;
     }));
 
     COMPLETED_STATES.forEach(state => {
@@ -978,7 +1099,6 @@ describe('Upgrade Service', () => {
         expect(either.left.message).to.equal('Upgrade already in progress.');
         expect(dbAllDocs).to.have.been.calledOnce;
         expect(dbAllDocs).to.have.been.calledWithMatch(EXPECTED_ALL_DOCS_OPTS);
-        // Note: getDesignDocsDiffWithCurrent is called during Effect construction but its Effect is not executed
         expect(warmDesign.notCalled).to.be.true;
         expect(mockPouchSvc.saveDoc.notCalled).to.be.true;
       }));
