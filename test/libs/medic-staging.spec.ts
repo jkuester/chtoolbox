@@ -290,14 +290,12 @@ describe('medic-staging libs', () => {
         'ddocs/sentinel.json': createAttachment([sentinelDdoc]),
         'ddocs/logs.json': createAttachment([logsDdoc]),
         'ddocs/users-meta.json': createAttachment([usersMetaDdoc]),
-        'ddocs/users.json': createAttachment([usersDdoc]),
       } };
       const targetStagingAttachments = { _attachments: {
         'ddocs/medic.json': createAttachment([medicDdoc]),
         'ddocs/sentinel.json': createAttachment([sentinelDdoc]),
         'ddocs/logs.json': createAttachment([logsDdoc]),
         'ddocs/users-meta.json': createAttachment([usersMetaDdoc]),
-        'ddocs/users.json': createAttachment([usersDdoc]),
       } };
       dbGet
         .withArgs(`medic:medic:${currentVersion}`, { attachments: true }).resolves(currentStagingAttachments)
@@ -308,7 +306,6 @@ describe('medic-staging libs', () => {
           'medic-sentinel': [sentinelDdoc],
           'medic-logs': [logsDdoc],
           'medic-users-meta': [usersMetaDdoc],
-          '_users': [usersDdoc],
         };
         return Effect.succeed(docsByDb[dbName] ?? []);
       });
