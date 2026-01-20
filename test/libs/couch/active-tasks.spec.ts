@@ -228,11 +228,11 @@ describe('Couch Active Tasks Service', () => {
       const task2 = createActiveTask({ database: 'shards/bbbbb/medic.789012' });
       const task3 = createActiveTask({ database: 'shards/cccccc/other.345678' });
 
-      const taskStream = Stream.succeed([TASK_ALL_DATA, task1, task2, task3, TASK_MIN_DATA]);
-      const filteredStream = filterStreamByDb('shards/aaaaa/medic.123456', 'shards/bbbbb/medic.789012')(taskStream);
+      const taskStream = Stream.succeed([TASK_ALL_DATA, task1, task2, task3]);
+      const filteredStream = filterStreamByDb('medic')(taskStream);
       const tasks = Chunk.toReadonlyArray(yield* Stream.runCollect(filteredStream));
 
-      expect(tasks).to.deep.equal([[task1, task2]]);
+      expect(tasks).to.deep.equal([[TASK_ALL_DATA, task1, task2]]);
     }));
   });
 

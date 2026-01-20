@@ -66,7 +66,7 @@ export const filterStreamByType = (...types: string[]) => (
 
 const taskHasDb = (...dbNames: string[]) => (task: CouchActiveTask): boolean => pipe(
   dbNames,
-  Array.contains(task.database),
+  Array.contains(getDbName(task)),
 );
 export const filterStreamByDb = (...dbNames: string[]) => (
   taskStream: CouchActiveTaskStream

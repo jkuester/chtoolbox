@@ -211,7 +211,7 @@ describe('Compact service', () => {
     const designName = 'medic-client';
 
     const service = yield* CompactService;
-    const taskStream = yield* service.compactDesign(dbName)(designName);
+    const taskStream = service.compactDesign(dbName, designName);
     const tasks = Chunk.toReadonlyArray(yield* Stream.runCollect(taskStream));
 
     expect(tasks).to.deep.equal([expectedTasks]);
