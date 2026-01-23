@@ -39,7 +39,11 @@ const {
   getDisplayDictByPid,
   getPid,
   getProgressPct,
-  streamActiveTasks
+  streamActiveTasks,
+  taskHasType,
+  filterStreamByDb,
+  filterStreamByDesign,
+  taskHasDesign
 } = await esmock<typeof ActiveTasksLib>('../../../src/libs/couch/active-tasks.ts', {
   '@effect/platform': { HttpClientRequest: mockHttpRequest },
   'effect': { Schedule: mockSchedule },
@@ -192,14 +196,92 @@ describe('Couch Active Tasks Service', () => {
     });
   });
 
-  it('filterStreamByType', run(function* () {
-    const task1 = createActiveTask({ type: 'type1' });
-    const task2 = createActiveTask({ type: 'type2' });
+  describe('taskHasType', () => {
+    it('returns true when task type matches one of the provided types', () => {
+      const task = createActiveTask({ type: 'view_compaction' });
+      expect(taskHasType('view_compaction', 'indexer')(task)).to.be.true;
+    });
 
-    const taskStream = Stream.succeed([TASK_ALL_DATA, task1, task2, TASK_MIN_DATA]);
-    const filteredStream = filterStreamByType('type1', 'type2')(taskStream);
-    const tasks = Chunk.toReadonlyArray(yield* Stream.runCollect(filteredStream));
+    it('returns false when task type does not match any of the provided types', () => {
+      const task = createActiveTask({ type: 'view_compaction' });
+      expect(taskHasType('indexer', 'other')(task)).to.be.false;
+    });
+  });
 
-    expect(tasks).to.deep.equal([[task1, task2]]);
-  }));
+  describe('filterStreamByType', () => {
+    it('filters tasks by type', run(function* () {
+      const task1 = createActiveTask({ type: 'type1' });
+      const task2 = createActiveTask({ type: 'type2' });
+      const task3 = createActiveTask({ type: 'type3' });
+
+      const taskStream = Stream.succeed([TASK_ALL_DATA, task1, task2, task3, TASK_MIN_DATA]);
+      const filteredStream = filterStreamByType('type1', 'type2')(taskStream);
+      const tasks = Chunk.toReadonlyArray(yield* Stream.runCollect(filteredStream));
+
+      expect(tasks).to.deep.equal([[task1, task2]]);
+    }));
+  });
+
+  describe('filterStreamByDb', () => {
+    it('filters tasks by database', run(function* () {
+      const task1 = createActiveTask({ database: 'shards/aaaaa/medic.123456' });
+      const task2 = createActiveTask({ database: 'shards/bbbbb/medic.789012' });
+      const task3 = createActiveTask({ database: 'shards/cccccc/other.345678' });
+
+      const taskStream = Stream.succeed([TASK_ALL_DATA, task1, task2, task3]);
+      const filteredStream = filterStreamByDb('medic')(taskStream);
+      const tasks = Chunk.toReadonlyArray(yield* Stream.runCollect(filteredStream));
+
+      expect(tasks).to.deep.equal([[TASK_ALL_DATA, task1, task2]]);
+    }));
+  });
+
+  describe('taskHasDesign', () => {
+    it('returns true when task matches the database name and design id', () => {
+      const task = createActiveTask({
+        database: 'shards/aaaaa/medic.123456',
+        design_document: '_design/test-design'
+      });
+      expect(taskHasDesign('medic', '_design/test-design')(task)).to.be.true;
+    });
+
+    it('returns false when task does not match the database name', () => {
+      const task = createActiveTask({
+        database: 'shards/aaaaa/other.123456',
+        design_document: '_design/test-design'
+      });
+      expect(taskHasDesign('medic', '_design/test-design')(task)).to.be.false;
+    });
+
+    it('returns false when task does not match the design id', () => {
+      const task = createActiveTask({
+        database: 'shards/aaaaa/medic.123456',
+        design_document: '_design/other-design'
+      });
+      expect(taskHasDesign('medic', '_design/test-design')(task)).to.be.false;
+    });
+  });
+
+  describe('filterStreamByDesign', () => {
+    it('filters tasks by database name and design id', run(function* () {
+      const task1 = createActiveTask({
+        database: 'shards/aaaaa/medic.123456',
+        design_document: '_design/test-design'
+      });
+      const task2 = createActiveTask({
+        database: 'shards/bbbbb/medic.789012',
+        design_document: '_design/test-design'
+      });
+      const task3 = createActiveTask({
+        database: 'shards/cccccc/medic.345678',
+        design_document: '_design/other-design'
+      });
+
+      const taskStream = Stream.succeed([TASK_ALL_DATA, task1, task2, task3]);
+      const filteredStream = filterStreamByDesign('medic', '_design/test-design')(taskStream);
+      const tasks = Chunk.toReadonlyArray(yield* Stream.runCollect(filteredStream));
+
+      expect(tasks).to.deep.equal([[task1, task2]]);
+    }));
+  });
 });

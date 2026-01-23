@@ -56,13 +56,28 @@ export const getDisplayDictByPid = (
   tasks: { pid: string }[]
 ): Record<string, Record<string, string>> => Array.reduce(tasks, {}, buildDictByPid);
 
-const taskHasType = (types: string[]) => (task: CouchActiveTask) => pipe(
+export const taskHasType = (...types: string[]) => (task: CouchActiveTask): boolean => pipe(
   types,
   Array.contains(task.type),
 );
 export const filterStreamByType = (...types: string[]) => (
   taskStream: CouchActiveTaskStream
-): CouchActiveTaskStream => taskStream.pipe(Stream.map(Array.filter(taskHasType(types))));
+): CouchActiveTaskStream => taskStream.pipe(Stream.map(Array.filter(taskHasType(...types))));
+
+const taskHasDb = (...dbNames: string[]) => (task: CouchActiveTask): boolean => pipe(
+  dbNames,
+  Array.contains(getDbName(task)),
+);
+export const filterStreamByDb = (...dbNames: string[]) => (
+  taskStream: CouchActiveTaskStream
+): CouchActiveTaskStream => taskStream.pipe(Stream.map(Array.filter(taskHasDb(...dbNames))));
+
+export const taskHasDesign = (dbName: string, designId: string) => (
+  task: CouchActiveTask
+): boolean => getDbName(task) === dbName && task.design_document === designId;
+export const filterStreamByDesign = (dbName: string, designId: string) => (
+  taskStream: CouchActiveTaskStream
+): CouchActiveTaskStream => taskStream.pipe(Stream.map(Array.filter(taskHasDesign(dbName, designId))));
 
 const orderByStartedOn = Order.make(
   (a: CouchActiveTask, b: CouchActiveTask) => Number.Order(a.started_on, b.started_on)
