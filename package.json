@@ -80,12 +80,12 @@
     "typescript-eslint": "^8.56.1"
   },
   "dependencies": {
-    "@effect/cli": "^0.71.0",
-    "@effect/platform": "^0.92.1",
-    "@effect/platform-node": "^0.98.4",
+    "@effect/cli": "^0.73.2",
+    "@effect/platform": "^0.94.5",
+    "@effect/platform-node": "^0.104.1",
     "@octokit/plugin-paginate-rest": "^14.0.0",
     "@octokit/rest": "^22.0.0",
-    "effect": "^3.18.4",
+    "effect": "^3.19.19",
     "env-paths": "^4.0.0",
     "get-port": "^7.1.0",
     "pouchdb-adapter-http": "^9.0.0",
