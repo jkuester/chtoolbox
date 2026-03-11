@@ -1,0 +1,12 @@
+diff --git a/node_modules/exceljs/lib/xlsx/xform/sheet/cf/cf-rule-xform.js b/node_modules/exceljs/lib/xlsx/xform/sheet/cf/cf-rule-xform.js
+index 22b3e44..1767c08 100644
+--- a/node_modules/exceljs/lib/xlsx/xform/sheet/cf/cf-rule-xform.js
++++ b/node_modules/exceljs/lib/xlsx/xform/sheet/cf/cf-rule-xform.js
+@@ -240,6 +240,7 @@ class CfRuleXform extends CompositeXform {
+       dxfId: model.dxfId,
+       priority: model.priority,
+       operator: BaseXform.toStringAttribute(model.operator, 'containsText'),
++      text: model.text,
+     });
+ 
+     const formula = getTextFormula(model);

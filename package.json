@@ -32,7 +32,8 @@
   "scripts": {
     "prepublishOnly": "npm pkg set files='[\"dist\"]' --json && npm remove tsx && tsdown",
     "lint": "tsgo -p tsconfig.json && eslint --color --cache . && knip --production",
-    "test": "nyc mocha \"test/**/*\""
+    "test": "nyc mocha \"test/**/*\"",
+    "postinstall": "patch-package"
   },
   "license": "AGPL-3.0-only",
   "release": {
@@ -73,6 +74,7 @@
     "knip": "^5.85.0",
     "mocha": "11.6.0",
     "nyc": "^18.0.0",
+    "patch-package": "^8.0.1",
     "semantic-release": "^25.0.3",
     "sinon": "^21.0.0",
     "sinon-chai": "^4.0.1",
@@ -87,6 +89,7 @@
     "@octokit/rest": "^22.0.0",
     "effect": "^3.19.19",
     "env-paths": "^4.0.0",
+    "exceljs": "^4.4.0",
     "get-port": "^7.1.0",
     "pouchdb-adapter-http": "^9.0.0",
     "pouchdb-core": "^9.0.0",
