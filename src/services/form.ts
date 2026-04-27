@@ -1,10 +1,28 @@
 import { Effect } from 'effect';
 import ExcelJS from 'exceljs';
 
+const SUPPORTED_SHEETS = ['survey', 'settings', 'choices'];
+const BASE_FONT: Partial<ExcelJS.Font> = { name: 'Liberation Sans', size: 10 };
+const DEFAULT_STYLE = { font: { ...BASE_FONT } };
+
+const setDefaultStyle = (obj: object) => Object.assign(obj, { style: DEFAULT_STYLE });
+const clearRowFormatting = (row: ExcelJS.Row) => row.eachCell({ includeEmpty: true }, setDefaultStyle);
+const clearSheetFormatting = (ws: ExcelJS.Worksheet): void => {
+  ws.removeConditionalFormatting(null);
+  ws.eachRow({ includeEmpty: true }, clearRowFormatting);
+  ws.columns.forEach(setDefaultStyle);
+};
+
 const formatFile = Effect.fn((filePath: string): Effect.Effect<void, Error> => Effect.tryPromise({
   try: async () => {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.readFile(filePath);
+
+    SUPPORTED_SHEETS
+      .map(name => workbook.worksheets.find(ws => ws.name === name))
+      .filter((ws) => !!ws)
+      .forEach(clearSheetFormatting);
+
     const survey = workbook.worksheets.find(ws => ws.name === 'survey');
     if (!survey) {
       throw new Error('No "survey" sheet found in workbook.');
