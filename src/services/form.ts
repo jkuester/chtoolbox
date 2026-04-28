@@ -54,8 +54,19 @@ const getWorksheetWithName = (
   workbook: ExcelJS.Workbook
 ) => (name: string) => Array.findFirst(workbook.worksheets, worksheetHasName(name));
 
-const setDefaultStyle = (obj: object) => Object.assign(obj, { style: STYLE_DEFAULT });
-const clearRowFormatting = (row: ExcelJS.Row) => row.eachCell({ includeEmpty: true }, setDefaultStyle);
+const setDefaultStyle = (obj: object) => Object.assign(obj, { style: { ...STYLE_DEFAULT } });
+const clearComment = (cell: ExcelJS.Cell) => pipe(
+  cell as { _comment?: unknown; _value?: { model?: { comment?: unknown } } },
+  c => Object.assign(c, { _comment: undefined }),
+  c => c._value?.model ? Object.assign(c._value.model, { comment: undefined }) : c
+);
+const clearCellFormatting = (cell: ExcelJS.Cell) => {
+  setDefaultStyle(cell);
+  // ExcelJS has no public API to remove a comment.
+  clearComment(cell);
+};
+const clearRowFormatting = (row: ExcelJS.Row) => row.eachCell({ includeEmpty: true }, clearCellFormatting);
+
 const clearSheetFormatting = (ws: ExcelJS.Worksheet): void => {
   ws.removeConditionalFormatting(null);
   ws.eachRow({ includeEmpty: true }, clearRowFormatting);
@@ -118,7 +129,9 @@ const formatSurveyType = (surveySheet: ExcelJS.Worksheet) => pipe(
 
 const formatHeader = (worksheet: ExcelJS.Worksheet): readonly string[] => pipe(
   worksheet.getRow(1),
-  header => header.eachCell({ includeEmpty: true }, (cell) => Object.assign(cell.style, STYLE_HEADER)),
+  header => header.eachCell({ includeEmpty: true }, (cell) => {
+    cell.style = { ...cell.style, ...STYLE_HEADER };
+  }),
   () => []
 );
 
