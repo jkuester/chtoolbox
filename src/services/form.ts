@@ -38,13 +38,20 @@ const BASE_ALIGNMENT: Partial<ExcelJS.Alignment> = { vertical: 'bottom' };
 const STYLE_DEFAULT: Partial<ExcelJS.Style> = { font: { ...BASE_FONT }, alignment: { ...BASE_ALIGNMENT } };
 const FILL_GREY: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
 const FILL_GREEN: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFAFD095' } };
+const BORDER_DARK_GREY: Partial<ExcelJS.Border> = { style: 'thin', color: { argb: 'FF808080' } };
+const BORDER_HEADER_SIDES: Partial<ExcelJS.Borders> = {
+  left: BORDER_DARK_GREY,
+  right: BORDER_DARK_GREY,
+};
 const STYLE_HEADER: Partial<ExcelJS.Style> = {
   font: { ...BASE_FONT, bold: true },
   fill: FILL_GREY,
+  border: BORDER_HEADER_SIDES,
 };
 const STYLE_HEADER_TRANSLATABLE: Partial<ExcelJS.Style> = {
   font: { ...BASE_FONT, bold: true },
   fill: FILL_GREEN,
+  border: BORDER_HEADER_SIDES,
 };
 
 const loadWorkbook = (filePath: string) => pipe(
