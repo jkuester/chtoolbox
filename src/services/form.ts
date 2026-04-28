@@ -36,9 +36,14 @@ const SHEET_NAMES = ['survey', 'settings', 'choices'];
 const BASE_FONT: Partial<ExcelJS.Font> = { name: 'Liberation Sans', size: 10 };
 const STYLE_DEFAULT: Partial<ExcelJS.Style> = { font: { ...BASE_FONT } };
 const FILL_GREY: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
+const FILL_GREEN: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFAFD095' } };
 const STYLE_HEADER: Partial<ExcelJS.Style> = {
   font: { ...BASE_FONT, bold: true },
   fill: FILL_GREY,
+};
+const STYLE_HEADER_TRANSLATABLE: Partial<ExcelJS.Style> = {
+  font: { ...BASE_FONT, bold: true },
+  fill: FILL_GREEN,
 };
 
 const loadWorkbook = (filePath: string) => pipe(
@@ -63,7 +68,7 @@ const clearComment = (cell: ExcelJS.Cell) => pipe(
 const clearCellFormatting = (cell: ExcelJS.Cell) => {
   setDefaultStyle(cell);
   // ExcelJS has no public API to remove a comment.
-  clearComment(cell);
+  clearComment(cell);// TODO Actually probably do not need this on all cells.
 };
 const clearRowFormatting = (row: ExcelJS.Row) => row.eachCell({ includeEmpty: true }, clearCellFormatting);
 
@@ -127,11 +132,16 @@ const formatSurveyType = (surveySheet: ExcelJS.Worksheet) => pipe(
   () => []
 );
 
+const getHeaderStyle = (cell: ExcelJS.Cell) => pipe(
+  STYLE_HEADER_TRANSLATABLE,
+  Option.liftPredicate(() => typeof cell.value === 'string' && isTranslatableSurveyColumn(cell.value)),
+  Option.getOrElse(() => STYLE_HEADER),
+  style => ({ ...style })
+);
+
 const formatHeader = (worksheet: ExcelJS.Worksheet): readonly string[] => pipe(
   worksheet.getRow(1),
-  header => header.eachCell({ includeEmpty: true }, (cell) => {
-    cell.style = { ...cell.style, ...STYLE_HEADER };
-  }),
+  header => header.eachCell({ includeEmpty: true }, (cell) => Object.assign(cell.style, getHeaderStyle(cell))),
   () => []
 );
 
