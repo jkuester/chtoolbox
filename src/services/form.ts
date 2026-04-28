@@ -1,6 +1,14 @@
 import { Effect, pipe, Array, Option, Match } from 'effect';
 import ExcelJS from 'exceljs';
 
+type Worksheet = ExcelJS.Worksheet & {
+  // worksheet.dataValidations exists at runtime but isn't in the public TS types.
+  dataValidations: {
+    model: object;
+    add: (range: string, validation: ExcelJS.DataValidation) => void;
+  };
+};
+
 const SURVEY_COLUMN_NAMES = [
   'appearance',
   'calculation',
@@ -37,7 +45,7 @@ const SURVEY_FIELD_TYPES = [
   'decimal',
   'note',
   'calculate',
-  'select_one',
+  'select_one list_name',
   'select_multiple list_name',
   'begin_repeat',
   'end_repeat',
@@ -94,7 +102,10 @@ const saveWorkbook = (
 const worksheetHasName = (targetName: string) => ({ name }: ExcelJS.Worksheet) => name === targetName;
 const getWorksheetWithName = (
   workbook: ExcelJS.Workbook
-) => (name: string) => Array.findFirst(workbook.worksheets, worksheetHasName(name));
+) => (name: string) => pipe(
+  Array.findFirst(workbook.worksheets, worksheetHasName(name)),
+  Option.map(worksheet => worksheet as Worksheet)
+);
 
 const setDefaultStyle = (obj: object) => Object.assign(obj, { style: { ...STYLE_DEFAULT } });
 const clearComment = (cell: ExcelJS.Cell) => pipe(
@@ -109,8 +120,9 @@ const clearCellFormatting = (cell: ExcelJS.Cell) => {
 };
 const clearRowFormatting = (row: ExcelJS.Row) => row.eachCell({ includeEmpty: true }, clearCellFormatting);
 
-const clearSheetFormatting = (ws: ExcelJS.Worksheet): void => {
+const clearSheetFormatting = (ws: Worksheet): void => {
   ws.removeConditionalFormatting(null);
+  ws.dataValidations.model = {};
   ws.eachRow({ includeEmpty: true }, clearRowFormatting);
   ws.columns.forEach(setDefaultStyle);
 };
@@ -123,19 +135,19 @@ const clearWorkbookFormatting = (workbook: ExcelJS.Workbook) => pipe(
   () => []
 );
 
-const getHeaderNames = (worksheet: ExcelJS.Worksheet) => pipe(
+const getHeaderNames = (worksheet: Worksheet) => pipe(
   worksheet.getRow(1).values,
   values => Array.isArray(values) ? values : Object.values(values),
   Array.filter(Boolean),
   Array.map(Option.liftPredicate((val) => typeof val === 'string')),
   Array.map(Option.getOrThrowWith(() => new Error('Invalid column header'))),
 );
-const getColumnIndex = (colName: string) => (worksheet: ExcelJS.Worksheet) => pipe(
+const getColumnIndex = (colName: string) => (worksheet: Worksheet) => pipe(
   getHeaderNames(worksheet),
   Array.findFirstIndex(val => val === colName),
   Option.map(index => index + 1), // ExcelJS columns are 1-indexed
 );
-const getColumnLetter = (colName: string, worksheet: ExcelJS.Worksheet) => pipe(
+const getColumnLetter = (colName: string, worksheet: Worksheet) => pipe(
   getColumnIndex(colName)(worksheet),
   Option.map(colIndex => String.fromCharCode(64 + colIndex))
 );
@@ -144,7 +156,7 @@ const isTranslatableSurveyColumn = (header: string) => SURVEY_COLUMN_NAMES_TRANS
   .some(name => header === name || header.startsWith(`${name}::`));
 const isSurveyColumn = (header: string) => SURVEY_COLUMN_NAMES.includes(header)
   || isTranslatableSurveyColumn(header);
-const validateSurveyColumns = (surveySheet: ExcelJS.Worksheet) => pipe(
+const validateSurveyColumns = (surveySheet: Worksheet) => pipe(
   getHeaderNames(surveySheet),
   x => x,
   Array.filter(header => !isSurveyColumn(header)),
@@ -153,7 +165,7 @@ const validateSurveyColumns = (surveySheet: ExcelJS.Worksheet) => pipe(
   Match.orElse(invalidHeaders => [`Invalid survey column(s): ${invalidHeaders.join(', ')}`]),
 );
 
-const formatSurveyType = (surveySheet: ExcelJS.Worksheet) => pipe(
+const formatSurveyType = (surveySheet: Worksheet) => pipe(
   getColumnLetter('type', surveySheet),
   Option.getOrThrowWith(() => new Error('No "type" column found in survey sheet.')),
   column => surveySheet.addConditionalFormatting({
@@ -169,18 +181,14 @@ const formatSurveyType = (surveySheet: ExcelJS.Worksheet) => pipe(
   () => []
 );
 
-const getColumnValuesRange = (column: string, rowCount: number) => `${column}2:${column}${String(rowCount + 1000)}`;
+const getColumnValuesRange = (rowCount: number) => (column: string) => `${column}2:${column}${String(rowCount + 1000)}`;
 
-const validateSurveyType = (surveySheet: ExcelJS.Worksheet) => pipe(
+const validateSurveyType = (surveySheet: Worksheet) => pipe(
   getColumnLetter('type', surveySheet),
   Option.getOrThrowWith(() => new Error('No "type" column found in survey sheet.')),
-  column => {
-    const range = getColumnValuesRange(column, surveySheet.rowCount);
-    // worksheet.dataValidations exists at runtime but isn't in the public TS types.
-    const ws = surveySheet as ExcelJS.Worksheet & {
-      dataValidations: { add: (range: string, validation: ExcelJS.DataValidation) => void };
-    };
-    ws.dataValidations.add(range, {
+  getColumnValuesRange(surveySheet.rowCount),
+  range => {
+    surveySheet.dataValidations.add(range, {
       type: 'list',
       allowBlank: true,
       formulae: [`"${SURVEY_FIELD_TYPES.join(',')}"`],
@@ -200,7 +208,7 @@ const getHeaderStyle = (cell: ExcelJS.Cell) => pipe(
   style => ({ ...style })
 );
 
-const formatHeader = (worksheet: ExcelJS.Worksheet): readonly string[] => pipe(
+const formatHeader = (worksheet: Worksheet): readonly string[] => pipe(
   worksheet.getRow(1),
   header => header.eachCell({ includeEmpty: true }, (cell) => Object.assign(cell.style, getHeaderStyle(cell))),
   () => []
