@@ -1,9 +1,53 @@
-import { Effect, pipe, Array, Option, } from 'effect';
+import { Effect, pipe, Array, Option, Match } from 'effect';
 import ExcelJS from 'exceljs';
 
-const SUPPORTED_SHEETS = ['survey', 'settings', 'choices'];
+const SURVEY_COLUMN_NAMES = [
+  'appearance',
+  'calculation',
+  'choice_filter',
+  'constraint',
+  'default',
+  'instance::cht:duration',
+  'instance::cht:unique_tel',
+  'instance::db-doc',
+  'instance::db-doc-ref',
+  'instance::type',
+  'name',
+  'note',
+  'parameters',
+  'read_only',
+  'relevant',
+  'repeat_count',
+  'repeat_count',
+  'required',
+  'type',
+];
+const SURVEY_COLUMN_NAMES_TRANSLATABLE = [
+  'label',
+  'required_message',
+  'constraint_message',
+  'hint',
+  'image',
+  'audio',
+  'video',
+];
+
+const SHEET_NAMES = ['survey', 'settings', 'choices'];
 const BASE_FONT: Partial<ExcelJS.Font> = { name: 'Liberation Sans', size: 10 };
 const DEFAULT_STYLE = { font: { ...BASE_FONT } };
+
+const loadWorkbook = (filePath: string) => pipe(
+  new ExcelJS.Workbook(),
+  workbook => Effect.tryPromise(() => workbook.xlsx.readFile(filePath)),
+);
+const saveWorkbook = (
+  filePath: string
+) => (workbook: ExcelJS.Workbook) => Effect.promise(() => workbook.xlsx.writeFile(filePath));
+
+const worksheetHasName = (targetName: string) => ({ name }: ExcelJS.Worksheet) => name === targetName;
+const getWorksheetWithName = (
+  workbook: ExcelJS.Workbook
+) => (name: string) => Array.findFirst(workbook.worksheets, worksheetHasName(name));
 
 const setDefaultStyle = (obj: object) => Object.assign(obj, { style: DEFAULT_STYLE });
 const clearRowFormatting = (row: ExcelJS.Row) => row.eachCell({ includeEmpty: true }, setDefaultStyle);
@@ -12,34 +56,43 @@ const clearSheetFormatting = (ws: ExcelJS.Worksheet): void => {
   ws.eachRow({ includeEmpty: true }, clearRowFormatting);
   ws.columns.forEach(setDefaultStyle);
 };
-
-const loadWorkbook = (filePath: string) => pipe(
-  new ExcelJS.Workbook(),
-  workbook => Effect.tryPromise(() => workbook.xlsx.readFile(filePath)),
-);
-
-const worksheetHasName = (targetName: string) => ({ name }: ExcelJS.Worksheet) => name === targetName;
-const getWorksheetWithName = (
-  workbook: ExcelJS.Workbook
-) => (name: string) => Array.findFirst(workbook.worksheets, worksheetHasName(name));
 const clearWorkbookFormatting = (workbook: ExcelJS.Workbook) => pipe(
-  SUPPORTED_SHEETS,
+  SHEET_NAMES,
   Array.map(getWorksheetWithName(workbook)),
   Array.filter(Option.isSome),
   Array.map(Option.getOrThrow),
   Array.forEach(clearSheetFormatting),
+  () => []
 );
 
-const getColumnIndex = (colName: string) => (worksheet: ExcelJS.Worksheet) => pipe(
+const getHeaderNames = (worksheet: ExcelJS.Worksheet) => pipe(
   worksheet.getRow(1).values,
   values => Array.isArray(values) ? values : Object.values(values),
+  Array.filter(Boolean),
+  Array.map(Option.liftPredicate((val) => typeof val === 'string')),
+  Array.map(Option.getOrThrowWith(() => new Error('Invalid column header'))),
+);
+const getColumnIndex = (colName: string) => (worksheet: ExcelJS.Worksheet) => pipe(
+  getHeaderNames(worksheet),
   Array.findFirstIndex(val => val === colName),
   Option.map(index => index + 1), // ExcelJS columns are 1-indexed
 );
-
 const getColumnLetter = (colName: string, worksheet: ExcelJS.Worksheet) => pipe(
   getColumnIndex(colName)(worksheet),
   Option.map(colIndex => String.fromCharCode(64 + colIndex))
+);
+
+const isTranslatableSurveyColumn = (header: string) => SURVEY_COLUMN_NAMES_TRANSLATABLE
+  .some(name => header === name || header.startsWith(`${name}::`));
+const isSurveyColumn = (header: string) => SURVEY_COLUMN_NAMES.includes(header)
+  || isTranslatableSurveyColumn(header);
+const validateSurveyColumns = (surveySheet: ExcelJS.Worksheet) => pipe(
+  getHeaderNames(surveySheet),
+  x => x,
+  Array.filter(header => !isSurveyColumn(header)),
+  Match.value,
+  Match.when(Array.isEmptyArray, () => []),
+  Match.orElse(invalidHeaders => [`Invalid survey column(s): ${invalidHeaders.join(', ')}`]),
 );
 
 const formatSurveyType = (surveySheet: ExcelJS.Worksheet) => pipe(
@@ -55,24 +108,30 @@ const formatSurveyType = (surveySheet: ExcelJS.Worksheet) => pipe(
       priority: 1,
     }]
   }),
+  () => []
 );
 
 const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
   getWorksheetWithName(workbook)('survey'),
   Option.getOrThrowWith(() => new Error('No "survey" sheet found in workbook.')),
-  Effect.succeed,
-  Effect.tap(formatSurveyType),
+  surveyWorksheet => Array.flatten([
+    validateSurveyColumns(surveyWorksheet),
+    formatSurveyType(surveyWorksheet)
+  ]),
 );
 
-const saveWorkbook = (
-  filePath: string
-) => (workbook: ExcelJS.Workbook) => Effect.tryPromise(() => workbook.xlsx.writeFile(filePath));
+const formatWorkbook = (workbook: ExcelJS.Workbook) => pipe(
+  Array.flatten([
+    clearWorkbookFormatting(workbook),
+    formatSurveyWorksheet(workbook)
+  ]),
+  Effect.succeed
+);
 
-const formatFile = Effect.fn((filePath: string): Effect.Effect<void, Error> => pipe(
+const formatFile = Effect.fn((filePath: string): Effect.Effect<string[], Error> => Effect.acquireUseRelease(
   loadWorkbook(filePath),
-  Effect.tap(clearWorkbookFormatting),
-  Effect.tap(formatSurveyWorksheet),
-  Effect.flatMap(saveWorkbook(filePath)),
+  formatWorkbook,
+  saveWorkbook(filePath)
 ));
 
 export class FormService extends Effect.Service<FormService>()('chtoolbox/FormService', {
