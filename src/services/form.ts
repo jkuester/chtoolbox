@@ -31,6 +31,35 @@ const SURVEY_COLUMN_NAMES_TRANSLATABLE = [
   'audio',
   'video',
 ];
+const SURVEY_FIELD_TYPES = [
+  'text',
+  'integer',
+  'decimal',
+  'note',
+  'calculate',
+  'select_one',
+  'select_multiple list_name',
+  'begin_repeat',
+  'end_repeat',
+  'begin_group',
+  'end_group',
+  'geopoint',
+  'geotrace',
+  'geoshape',
+  'range',
+  'image',
+  'audio',
+  'video',
+  'file',
+  'date',
+  'time',
+  'datetime',
+  'rank',
+  'acknowledge',
+  'start',
+  'end',
+  'today',
+];
 
 const SHEET_NAMES = ['survey', 'settings', 'choices'];
 const BASE_FONT: Partial<ExcelJS.Font> = { name: 'Liberation Sans', size: 10 };
@@ -140,6 +169,30 @@ const formatSurveyType = (surveySheet: ExcelJS.Worksheet) => pipe(
   () => []
 );
 
+const getColumnValuesRange = (column: string, rowCount: number) => `${column}2:${column}${String(rowCount + 1000)}`;
+
+const validateSurveyType = (surveySheet: ExcelJS.Worksheet) => pipe(
+  getColumnLetter('type', surveySheet),
+  Option.getOrThrowWith(() => new Error('No "type" column found in survey sheet.')),
+  column => {
+    const range = getColumnValuesRange(column, surveySheet.rowCount);
+    // worksheet.dataValidations exists at runtime but isn't in the public TS types.
+    const ws = surveySheet as ExcelJS.Worksheet & {
+      dataValidations: { add: (range: string, validation: ExcelJS.DataValidation) => void };
+    };
+    ws.dataValidations.add(range, {
+      type: 'list',
+      allowBlank: true,
+      formulae: [`"${SURVEY_FIELD_TYPES.join(',')}"`],
+      showErrorMessage: true,
+      errorStyle: 'warning',
+      errorTitle: 'Unknown type',
+      error: 'If configuring a select, ensure your list name matches a list from the choices sheet.',
+    });
+  },
+  () => []
+);
+
 const getHeaderStyle = (cell: ExcelJS.Cell) => pipe(
   STYLE_HEADER_TRANSLATABLE,
   Option.liftPredicate(() => typeof cell.value === 'string' && isTranslatableSurveyColumn(cell.value)),
@@ -159,6 +212,7 @@ const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
   surveyWorksheet => Array.flatten([
     validateSurveyColumns(surveyWorksheet),
     formatSurveyType(surveyWorksheet),
+    validateSurveyType(surveyWorksheet),
     formatHeader(surveyWorksheet)
   ]),
 );
