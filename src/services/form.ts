@@ -34,7 +34,12 @@ const SURVEY_COLUMN_NAMES_TRANSLATABLE = [
 
 const SHEET_NAMES = ['survey', 'settings', 'choices'];
 const BASE_FONT: Partial<ExcelJS.Font> = { name: 'Liberation Sans', size: 10 };
-const DEFAULT_STYLE = { font: { ...BASE_FONT } };
+const STYLE_DEFAULT: Partial<ExcelJS.Style> = { font: { ...BASE_FONT } };
+const FILL_GREY: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
+const STYLE_HEADER: Partial<ExcelJS.Style> = {
+  font: { ...BASE_FONT, bold: true },
+  fill: FILL_GREY,
+};
 
 const loadWorkbook = (filePath: string) => pipe(
   new ExcelJS.Workbook(),
@@ -49,7 +54,7 @@ const getWorksheetWithName = (
   workbook: ExcelJS.Workbook
 ) => (name: string) => Array.findFirst(workbook.worksheets, worksheetHasName(name));
 
-const setDefaultStyle = (obj: object) => Object.assign(obj, { style: DEFAULT_STYLE });
+const setDefaultStyle = (obj: object) => Object.assign(obj, { style: STYLE_DEFAULT });
 const clearRowFormatting = (row: ExcelJS.Row) => row.eachCell({ includeEmpty: true }, setDefaultStyle);
 const clearSheetFormatting = (ws: ExcelJS.Worksheet): void => {
   ws.removeConditionalFormatting(null);
@@ -111,12 +116,19 @@ const formatSurveyType = (surveySheet: ExcelJS.Worksheet) => pipe(
   () => []
 );
 
+const formatHeader = (worksheet: ExcelJS.Worksheet): readonly string[] => pipe(
+  worksheet.getRow(1),
+  header => header.eachCell({ includeEmpty: true }, (cell) => Object.assign(cell.style, STYLE_HEADER)),
+  () => []
+);
+
 const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
   getWorksheetWithName(workbook)('survey'),
   Option.getOrThrowWith(() => new Error('No "survey" sheet found in workbook.')),
   surveyWorksheet => Array.flatten([
     validateSurveyColumns(surveyWorksheet),
-    formatSurveyType(surveyWorksheet)
+    formatSurveyType(surveyWorksheet),
+    formatHeader(surveyWorksheet)
   ]),
 );
 
