@@ -34,7 +34,8 @@ const SURVEY_COLUMN_NAMES_TRANSLATABLE = [
 
 const SHEET_NAMES = ['survey', 'settings', 'choices'];
 const BASE_FONT: Partial<ExcelJS.Font> = { name: 'Liberation Sans', size: 10 };
-const STYLE_DEFAULT: Partial<ExcelJS.Style> = { font: { ...BASE_FONT } };
+const BASE_ALIGNMENT: Partial<ExcelJS.Alignment> = { vertical: 'bottom' };
+const STYLE_DEFAULT: Partial<ExcelJS.Style> = { font: { ...BASE_FONT }, alignment: { ...BASE_ALIGNMENT } };
 const FILL_GREY: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
 const FILL_GREEN: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFAFD095' } };
 const STYLE_HEADER: Partial<ExcelJS.Style> = {
