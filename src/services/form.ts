@@ -165,39 +165,68 @@ const validateSurveyColumns = (surveySheet: Worksheet) => pipe(
   Match.orElse(invalidHeaders => [`Invalid survey column(s): ${invalidHeaders.join(', ')}`]),
 );
 
-const formatSurveyType = (surveySheet: Worksheet) => pipe(
+const SELECT_ONE_PREFIX = 'select_one ';
+const SELECT_MULTIPLE_PREFIX = 'select_multiple ';
+const FILL_RED: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFF0000' } };
+const TYPE_VALIDATION_BUFFER_ROWS = 1000;
+const getTypeValidationRange = (column: string, rowCount: number) =>
+  `${column}2:${column}${String(rowCount + TYPE_VALIDATION_BUFFER_ROWS)}`;
+
+const buildIsInvalidTypeFormula = (cell: string, choicesListNameRange: string | undefined) => {
+  // Exclude the bare/placeholder select_* entries; they're handled by the dynamic checks below.
+  const fixedTypes = SURVEY_FIELD_TYPES.filter(
+    t => !t.startsWith(SELECT_ONE_PREFIX) && !t.startsWith(SELECT_MULTIPLE_PREFIX) && t !== SELECT_ONE_PREFIX.trim() && t !== SELECT_MULTIPLE_PREFIX.trim()
+  );
+  const fixedListLiteral = fixedTypes.map(t => `"${t}"`).join(',');
+  const isFixed = `NOT(ISERROR(MATCH(${cell},{${fixedListLiteral}},0)))`;
+  const matchListName = (prefix: string) => choicesListNameRange
+    ? `AND(LEFT(${cell},${prefix.length})="${prefix}",NOT(ISERROR(MATCH(MID(${cell},${prefix.length + 1},999),${choicesListNameRange},0))))`
+    : 'FALSE';
+  const isSelectOne = matchListName(SELECT_ONE_PREFIX);
+  const isSelectMultiple = matchListName(SELECT_MULTIPLE_PREFIX);
+  return `AND(${cell}<>"",NOT(OR(${isFixed},${isSelectOne},${isSelectMultiple})))`;
+};
+
+const formatSurveyType = (workbook: ExcelJS.Workbook) => (surveySheet: Worksheet) => pipe(
   getColumnLetter('type', surveySheet),
   Option.getOrThrowWith(() => new Error('No "type" column found in survey sheet.')),
-  column => surveySheet.addConditionalFormatting({
-    ref: `${column}2:${column}${String(surveySheet.rowCount)}`,
-    rules: [{
-      type: 'containsText',
-      operator: 'containsText',
-      text: 'text',
-      style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFF0000' } } },
-      priority: 1,
-    }]
-  }),
+  column => {
+    const choicesListNameRange = pipe(
+      getWorksheetWithName(workbook)('choices'),
+      Option.flatMap(choices => pipe(
+        getColumnLetter('list_name', choices),
+        Option.map(letter => `choices!$${letter}:$${letter}`),
+      )),
+      Option.getOrUndefined,
+    );
+    const formula = buildIsInvalidTypeFormula(`${column}2`, choicesListNameRange);
+    surveySheet.addConditionalFormatting({
+      ref: getTypeValidationRange(column, surveySheet.rowCount),
+      rules: [{
+        type: 'expression',
+        formulae: [formula],
+        style: { fill: FILL_RED },
+        priority: 1,
+      }]
+    });
+  },
   () => []
 );
-
-const getColumnValuesRange = (rowCount: number) => (column: string) => `${column}2:${column}${String(rowCount + 1000)}`;
 
 const validateSurveyType = (surveySheet: Worksheet) => pipe(
   getColumnLetter('type', surveySheet),
   Option.getOrThrowWith(() => new Error('No "type" column found in survey sheet.')),
-  getColumnValuesRange(surveySheet.rowCount),
-  range => {
-    surveySheet.dataValidations.add(range, {
-      type: 'list',
-      allowBlank: true,
-      formulae: [`"${SURVEY_FIELD_TYPES.join(',')}"`],
-      showErrorMessage: true,
-      errorStyle: 'warning',
-      errorTitle: 'Unknown type',
-      error: 'If configuring a select, ensure your list name matches a list from the choices sheet.',
-    });
-  },
+  column => surveySheet.dataValidations.add(getTypeValidationRange(column, surveySheet.rowCount), {
+    type: 'list',
+    allowBlank: true,
+    formulae: [`"${SURVEY_FIELD_TYPES.join(',')}"`],
+    // LibreOffice silently blocks off-list entries when showErrorMessage is false (ignoring the xlsx
+    // spec). Keep it true with errorStyle 'information' so the user can override with a single OK.
+    showErrorMessage: true,
+    errorStyle: 'information',
+    errorTitle: 'Unrecognized field type',
+    error: 'If configuring a select, ensure your list name matches a list from the choices sheet.',
+  }),
   () => []
 );
 
@@ -219,7 +248,7 @@ const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
   Option.getOrThrowWith(() => new Error('No "survey" sheet found in workbook.')),
   surveyWorksheet => Array.flatten([
     validateSurveyColumns(surveyWorksheet),
-    formatSurveyType(surveyWorksheet),
+    formatSurveyType(workbook)(surveyWorksheet),
     validateSurveyType(surveyWorksheet),
     formatHeader(surveyWorksheet)
   ]),
