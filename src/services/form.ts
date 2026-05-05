@@ -1,4 +1,4 @@
-import { Effect, pipe, Array, Option, Match, Predicate } from 'effect';
+import { Effect, pipe, Array, Option, Match, Predicate, Tuple } from 'effect';
 import ExcelJS from 'exceljs';
 
 type Worksheet = ExcelJS.Worksheet & {
@@ -8,6 +8,9 @@ type Worksheet = ExcelJS.Worksheet & {
     add: (range: string, validation: ExcelJS.DataValidation) => void;
   };
 };
+
+const BUFFER_COL_COUNT = 50;
+const BUFFER_ROW_COUNT = 1000;
 
 const SURVEY_COLUMN_NAMES = [
   'appearance',
@@ -91,6 +94,9 @@ const STYLE_HEADER_TRANSLATABLE: Partial<ExcelJS.Style> = {
   fill: FILL_GREEN,
   border: BORDER_HEADER_SIDES,
 };
+const STYLE_ERROR: Partial<ExcelJS.Style> = {
+  fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFF0000' } }
+};
 
 const loadWorkbook = (filePath: string) => pipe(
   new ExcelJS.Workbook(),
@@ -168,10 +174,8 @@ const validateSurveyColumns = (surveySheet: Worksheet) => pipe(
 
 const SELECT_ONE_PREFIX = 'select_one ';
 const SELECT_MULTIPLE_PREFIX = 'select_multiple ';
-const FILL_RED: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFF0000' } };
-const TYPE_VALIDATION_BUFFER_ROWS = 1000;
 const getTypeValidationRange = (column: string, rowCount: number) =>
-  `${column}2:${column}${String(rowCount + TYPE_VALIDATION_BUFFER_ROWS)}`;
+  `${column}2:${column}${String(rowCount + BUFFER_ROW_COUNT)}`;
 const startsWithSelectPrefix = (type: string) => type.startsWith(SELECT_ONE_PREFIX)
   || type.startsWith(SELECT_MULTIPLE_PREFIX);
 const selectChoicesSubFormula = (prefix: string, cell: string, choicesListNameRange: Option.Option<string>) => pipe(
@@ -214,7 +218,7 @@ const setSurveyTypeFormatting = (workbook: ExcelJS.Workbook) => (surveySheet: Wo
       rules: [{
         type: 'expression',
         formulae: [formula],
-        style: { fill: FILL_RED },
+        style: { ...STYLE_ERROR },
         priority: 1,
       }]
     })
@@ -239,16 +243,50 @@ const setSurveyTypeValidation = (surveySheet: Worksheet) => pipe(
   () => []
 );
 
-const getHeaderStyle = (cell: ExcelJS.Cell) => pipe(
-  STYLE_HEADER_TRANSLATABLE,
-  Option.liftPredicate(() => typeof cell.value === 'string' && isTranslatableSurveyColumn(cell.value)),
-  Option.getOrElse(() => STYLE_HEADER),
-  style => ({ ...style })
+const buildTranslatableHeaderFormula = (cell: string) => pipe(
+  SURVEY_COLUMN_NAMES_TRANSLATABLE,
+  Array.flatMap(name => [
+    `${cell}="${name}"`,
+    `LEFT(${cell},${String(name.length + 2)})="${name}::"`,
+  ]),
+  parts => `OR(${parts.join(',')})`,
+);
+const buildSurveyHeaderFormula = (cell: string) => pipe(
+  SURVEY_COLUMN_NAMES,
+  Array.map(name => `"${name}"`),
+  names => `NOT(ISERROR(MATCH(${cell},{${names.join(',')}},0)))`,
 );
 
-const formatHeader = (worksheet: Worksheet): readonly string[] => pipe(
-  worksheet.getRow(1),
-  header => header.eachCell({ includeEmpty: true }, (cell) => Object.assign(cell.style, getHeaderStyle(cell))),
+const setSurveyHeaderFormatting = (worksheet: Worksheet): readonly string[] => pipe(
+  Tuple.make(
+    buildTranslatableHeaderFormula('A1'),
+    buildSurveyHeaderFormula('A1'),
+    worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter
+  ),
+  ([translatable, valid, lastCol]): ExcelJS.ConditionalFormattingOptions => ({
+    ref: `A1:${lastCol}1`,
+    rules: [
+      {
+        type: 'expression',
+        formulae: [translatable],
+        style: { ...STYLE_HEADER_TRANSLATABLE },
+        priority: 1,
+      },
+      {
+        type: 'expression',
+        formulae: [valid],
+        style: { ...STYLE_HEADER },
+        priority: 2,
+      },
+      {
+        type: 'expression',
+        formulae: [`AND(A1<>"",NOT(${translatable}),NOT(${valid}))`],
+        style: { ...STYLE_ERROR },
+        priority: 3,
+      },
+    ],
+  }),
+  formatting => worksheet.addConditionalFormatting(formatting),
   () => []
 );
 
@@ -257,10 +295,10 @@ const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
   Option.getOrThrowWith(() => new Error('No "survey" sheet found in workbook.')),
   surveyWorksheet => pipe(
     Array.make(
+      setSurveyHeaderFormatting,
       validateSurveyColumns,
       setSurveyTypeFormatting(workbook),
       setSurveyTypeValidation,
-      formatHeader
     ),
     Array.map(op => op(surveyWorksheet)),
     Array.flatten,
