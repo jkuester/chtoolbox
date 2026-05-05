@@ -203,7 +203,7 @@ const getChoicesListNameRange = (workbook: ExcelJS.Workbook) => pipe(
   )),
 );
 
-const formatSurveyType = (workbook: ExcelJS.Workbook) => (surveySheet: Worksheet) => pipe(
+const setSurveyTypeFormatting = (workbook: ExcelJS.Workbook) => (surveySheet: Worksheet) => pipe(
   getColumnLetter('type', surveySheet),
   Option.getOrThrowWith(() => new Error('No "type" column found in survey sheet.')),
   column => pipe(
@@ -222,7 +222,7 @@ const formatSurveyType = (workbook: ExcelJS.Workbook) => (surveySheet: Worksheet
   () => []
 );
 
-const validateSurveyType = (surveySheet: Worksheet) => pipe(
+const setSurveyTypeValidation = (surveySheet: Worksheet) => pipe(
   getColumnLetter('type', surveySheet),
   Option.getOrThrowWith(() => new Error('No "type" column found in survey sheet.')),
   column => surveySheet.dataValidations.add(getTypeValidationRange(column, surveySheet.rowCount), {
@@ -255,12 +255,16 @@ const formatHeader = (worksheet: Worksheet): readonly string[] => pipe(
 const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
   getWorksheetWithName(workbook)('survey'),
   Option.getOrThrowWith(() => new Error('No "survey" sheet found in workbook.')),
-  surveyWorksheet => Array.flatten([
-    validateSurveyColumns(surveyWorksheet),
-    formatSurveyType(workbook)(surveyWorksheet),
-    validateSurveyType(surveyWorksheet),
-    formatHeader(surveyWorksheet)
-  ]),
+  surveyWorksheet => pipe(
+    Array.make(
+      validateSurveyColumns,
+      setSurveyTypeFormatting(workbook),
+      setSurveyTypeValidation,
+      formatHeader
+    ),
+    Array.map(op => op(surveyWorksheet)),
+    Array.flatten,
+  ),
 );
 
 const formatWorkbook = (workbook: ExcelJS.Workbook) => pipe(
