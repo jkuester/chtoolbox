@@ -1,4 +1,4 @@
-import { Effect, pipe, Array, Option, Match } from 'effect';
+import { Effect, pipe, Array, Option, Match, Predicate } from 'effect';
 import ExcelJS from 'exceljs';
 
 type Worksheet = ExcelJS.Worksheet & {
@@ -139,7 +139,7 @@ const clearWorkbookFormatting = (workbook: ExcelJS.Workbook) => pipe(
 const getHeaderNames = (worksheet: Worksheet) => pipe(
   worksheet.getRow(1).values,
   values => Array.isArray(values) ? values : Object.values(values),
-  Array.filter(Boolean),
+  Array.filter(Predicate.isNotNullable),
   Array.map(Option.liftPredicate((val) => typeof val === 'string')),
   Array.map(Option.getOrThrowWith(() => new Error('Invalid column header'))),
 );
@@ -150,7 +150,7 @@ const getColumnIndex = (colName: string) => (worksheet: Worksheet) => pipe(
 );
 const getColumnLetter = (colName: string, worksheet: Worksheet) => pipe(
   getColumnIndex(colName)(worksheet),
-  Option.map(colIndex => String.fromCharCode(64 + colIndex))
+  Option.map(colIndex => String.fromCodePoint(64 + colIndex))
 );
 
 const isTranslatableSurveyColumn = (header: string) => SURVEY_COLUMN_NAMES_TRANSLATABLE
@@ -172,36 +172,44 @@ const FILL_RED: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', bgColor: { a
 const TYPE_VALIDATION_BUFFER_ROWS = 1000;
 const getTypeValidationRange = (column: string, rowCount: number) =>
   `${column}2:${column}${String(rowCount + TYPE_VALIDATION_BUFFER_ROWS)}`;
+const startsWithSelectPrefix = (type: string) => type.startsWith(SELECT_ONE_PREFIX)
+  || type.startsWith(SELECT_MULTIPLE_PREFIX);
+const selectChoicesSubFormula = (prefix: string, cell: string, choicesListNameRange: Option.Option<string>) => pipe(
+  choicesListNameRange,
+  Option.map(
+    r => `AND(LEFT(${cell},${prefix.length.toString()})="${prefix}",`
+    + `NOT(ISERROR(MATCH(MID(${cell},${(prefix.length + 1).toString()},999),${r},0))))`
+  ),
+  Option.getOrElse(() => 'FALSE'),
+);
+const buildIsInvalidTypeFormula = (cell: string, choicesListNameRange: Option.Option<string>) => pipe(
+  SURVEY_FIELD_TYPES,
+  Array.filter(Predicate.not(startsWithSelectPrefix)),
+  Array.map(t => `"${t}"`),
+  Array.join(','),
+  fixedListLiteral => `NOT(ISERROR(MATCH(${cell},{${fixedListLiteral}},0)))`,
+  isFixed => `AND(${cell}<>"",NOT(OR(${isFixed},${
+    selectChoicesSubFormula(SELECT_ONE_PREFIX, cell, choicesListNameRange)
+  },${
+    selectChoicesSubFormula(SELECT_MULTIPLE_PREFIX, cell, choicesListNameRange)
+  })))`
+);
 
-const buildIsInvalidTypeFormula = (cell: string, choicesListNameRange: string | undefined) => {
-  // Exclude the bare/placeholder select_* entries; they're handled by the dynamic checks below.
-  const fixedTypes = SURVEY_FIELD_TYPES.filter(
-    t => !t.startsWith(SELECT_ONE_PREFIX) && !t.startsWith(SELECT_MULTIPLE_PREFIX) && t !== SELECT_ONE_PREFIX.trim() && t !== SELECT_MULTIPLE_PREFIX.trim()
-  );
-  const fixedListLiteral = fixedTypes.map(t => `"${t}"`).join(',');
-  const isFixed = `NOT(ISERROR(MATCH(${cell},{${fixedListLiteral}},0)))`;
-  const matchListName = (prefix: string) => choicesListNameRange
-    ? `AND(LEFT(${cell},${prefix.length})="${prefix}",NOT(ISERROR(MATCH(MID(${cell},${prefix.length + 1},999),${choicesListNameRange},0))))`
-    : 'FALSE';
-  const isSelectOne = matchListName(SELECT_ONE_PREFIX);
-  const isSelectMultiple = matchListName(SELECT_MULTIPLE_PREFIX);
-  return `AND(${cell}<>"",NOT(OR(${isFixed},${isSelectOne},${isSelectMultiple})))`;
-};
+const getChoicesListNameRange = (workbook: ExcelJS.Workbook) => pipe(
+  getWorksheetWithName(workbook)('choices'),
+  Option.flatMap(choices => pipe(
+    getColumnLetter('list_name', choices),
+    Option.map(letter => `choices!$${letter}:$${letter}`),
+  )),
+);
 
 const formatSurveyType = (workbook: ExcelJS.Workbook) => (surveySheet: Worksheet) => pipe(
   getColumnLetter('type', surveySheet),
   Option.getOrThrowWith(() => new Error('No "type" column found in survey sheet.')),
-  column => {
-    const choicesListNameRange = pipe(
-      getWorksheetWithName(workbook)('choices'),
-      Option.flatMap(choices => pipe(
-        getColumnLetter('list_name', choices),
-        Option.map(letter => `choices!$${letter}:$${letter}`),
-      )),
-      Option.getOrUndefined,
-    );
-    const formula = buildIsInvalidTypeFormula(`${column}2`, choicesListNameRange);
-    surveySheet.addConditionalFormatting({
+  column => pipe(
+    getChoicesListNameRange(workbook),
+    choicesListNameRange => buildIsInvalidTypeFormula(`${column}2`, choicesListNameRange),
+    formula => surveySheet.addConditionalFormatting({
       ref: getTypeValidationRange(column, surveySheet.rowCount),
       rules: [{
         type: 'expression',
@@ -209,8 +217,8 @@ const formatSurveyType = (workbook: ExcelJS.Workbook) => (surveySheet: Worksheet
         style: { fill: FILL_RED },
         priority: 1,
       }]
-    });
-  },
+    })
+  ),
   () => []
 );
 
@@ -225,7 +233,7 @@ const validateSurveyType = (surveySheet: Worksheet) => pipe(
     // spec). Keep it true with errorStyle 'information' so the user can override with a single OK.
     showErrorMessage: true,
     errorStyle: 'information',
-    errorTitle: 'Unrecognized field type',
+    errorTitle: 'Type warning',
     error: 'If configuring a select, ensure your list name matches a list from the choices sheet.',
   }),
   () => []
