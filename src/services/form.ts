@@ -1,4 +1,4 @@
-import { Effect, pipe, Array, Option, Match, Predicate, Tuple } from 'effect';
+import { Effect, pipe, Array, Option, Predicate, Tuple } from 'effect';
 import ExcelJS from 'exceljs';
 
 type Worksheet = ExcelJS.Worksheet & {
@@ -73,7 +73,10 @@ const SURVEY_FIELD_TYPES = [
   'today',
 ];
 
-const SHEET_NAMES = ['survey', 'settings', 'choices'];
+const SHEET_NAME_SURVEY = 'survey';
+const SHEET_NAME_CHOICES = 'choices';
+const SHEET_NAME_SETTINGS = 'settings';
+const SHEET_NAMES = [SHEET_NAME_SURVEY, SHEET_NAME_CHOICES, SHEET_NAME_SETTINGS];
 const BASE_FONT: Partial<ExcelJS.Font> = { name: 'Liberation Sans', size: 10 };
 const BASE_ALIGNMENT: Partial<ExcelJS.Alignment> = { vertical: 'bottom' };
 const STYLE_DEFAULT: Partial<ExcelJS.Style> = { font: { ...BASE_FONT }, alignment: { ...BASE_ALIGNMENT } };
@@ -159,19 +162,6 @@ const getColumnLetter = (colName: string, worksheet: Worksheet) => pipe(
   Option.map(colIndex => String.fromCodePoint(64 + colIndex))
 );
 
-const isTranslatableSurveyColumn = (header: string) => SURVEY_COLUMN_NAMES_TRANSLATABLE
-  .some(name => header === name || header.startsWith(`${name}::`));
-const isSurveyColumn = (header: string) => SURVEY_COLUMN_NAMES.includes(header)
-  || isTranslatableSurveyColumn(header);
-const validateSurveyColumns = (surveySheet: Worksheet) => pipe(
-  getHeaderNames(surveySheet),
-  x => x,
-  Array.filter(header => !isSurveyColumn(header)),
-  Match.value,
-  Match.when(Array.isEmptyArray, () => []),
-  Match.orElse(invalidHeaders => [`Invalid survey column(s): ${invalidHeaders.join(', ')}`]),
-);
-
 const SELECT_ONE_PREFIX = 'select_one ';
 const SELECT_MULTIPLE_PREFIX = 'select_multiple ';
 const getTypeValidationRange = (column: string, rowCount: number) =>
@@ -200,7 +190,7 @@ const buildIsInvalidTypeFormula = (cell: string, choicesListNameRange: Option.Op
 );
 
 const getChoicesListNameRange = (workbook: ExcelJS.Workbook) => pipe(
-  getWorksheetWithName(workbook)('choices'),
+  getWorksheetWithName(workbook)(SHEET_NAME_CHOICES),
   Option.flatMap(choices => pipe(
     getColumnLetter('list_name', choices),
     Option.map(letter => `choices!$${letter}:$${letter}`),
@@ -257,6 +247,20 @@ const buildSurveyHeaderFormula = (cell: string) => pipe(
   names => `NOT(ISERROR(MATCH(${cell},{${names.join(',')}},0)))`,
 );
 
+const setSurveyHeaderValidation = (worksheet: Worksheet): readonly string[] => pipe(
+  worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter,
+  lastCol => worksheet.dataValidations.add(`A1:${lastCol}1`, {
+    type: 'list',
+    allowBlank: true,
+    formulae: [`"${Array.dedupe([...SURVEY_COLUMN_NAMES, ...SURVEY_COLUMN_NAMES_TRANSLATABLE]).join(',')}"`],
+    showErrorMessage: true,
+    errorStyle: 'information',
+    errorTitle: 'Column warning',
+    error: 'For translatable columns, you can append "::<lang>" to the column name (e.g., label::en).',
+  }),
+  () => []
+);
+
 const setSurveyHeaderFormatting = (worksheet: Worksheet): readonly string[] => pipe(
   Tuple.make(
     buildTranslatableHeaderFormula('A1'),
@@ -291,12 +295,12 @@ const setSurveyHeaderFormatting = (worksheet: Worksheet): readonly string[] => p
 );
 
 const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
-  getWorksheetWithName(workbook)('survey'),
+  getWorksheetWithName(workbook)(SHEET_NAME_SURVEY),
   Option.getOrThrowWith(() => new Error('No "survey" sheet found in workbook.')),
   surveyWorksheet => pipe(
     Array.make(
       setSurveyHeaderFormatting,
-      validateSurveyColumns,
+      setSurveyHeaderValidation,
       setSurveyTypeFormatting(workbook),
       setSurveyTypeValidation,
     ),
