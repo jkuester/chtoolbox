@@ -45,6 +45,7 @@ const SURVEY_FIELD_TYPES = [
   'decimal',
   'note',
   'calculate',
+  'hidden',
   'select_one list_name',
   'select_multiple list_name',
   'begin_repeat',
@@ -113,17 +114,17 @@ const clearComment = (cell: ExcelJS.Cell) => pipe(
   c => Object.assign(c, { _comment: undefined }),
   c => c._value?.model ? Object.assign(c._value.model, { comment: undefined }) : c
 );
-const clearCellFormatting = (cell: ExcelJS.Cell) => {
-  setDefaultStyle(cell);
-  // ExcelJS has no public API to remove a comment.
-  clearComment(cell);// TODO Actually probably do not need this on all cells.
-};
-const clearRowFormatting = (row: ExcelJS.Row) => row.eachCell({ includeEmpty: true }, clearCellFormatting);
+const clearRowFormatting = (row: ExcelJS.Row) => row.eachCell({ includeEmpty: true }, setDefaultStyle);
+// ExcelJS has no public API to remove a comment.
+const clearHeaderComments = (ws: Worksheet) => ws
+  .getRow(1)
+  .eachCell({ includeEmpty: true }, clearComment);
 
 const clearSheetFormatting = (ws: Worksheet): void => {
   ws.removeConditionalFormatting(null);
   ws.dataValidations.model = {};
   ws.eachRow({ includeEmpty: true }, clearRowFormatting);
+  clearHeaderComments(ws);
   ws.columns.forEach(setDefaultStyle);
 };
 const clearWorkbookFormatting = (workbook: ExcelJS.Workbook) => pipe(
