@@ -1,4 +1,4 @@
-import { Effect, pipe, Array, Option, Predicate, Tuple } from 'effect';
+import { Effect, pipe, Array, Option, Predicate, Tuple, Order } from 'effect';
 import ExcelJS from 'exceljs';
 
 type Worksheet = ExcelJS.Worksheet & {
@@ -34,49 +34,51 @@ const SURVEY_COLUMN_NAMES = [
   'type',
 ];
 const SURVEY_COLUMN_NAMES_TRANSLATABLE = [
-  'label',
-  'required_message',
+  'audio',
   'constraint_message',
   'hint',
   'image',
-  'audio',
+  'label',
+  'required_message',
   'video',
 ];
 const SURVEY_FIELD_TYPES = [
-  'text',
-  'integer',
-  'decimal',
-  'note',
-  'calculate',
-  'hidden',
-  'select_one list_name',
-  'select_multiple list_name',
-  'begin_repeat',
-  'end_repeat',
-  'begin_group',
-  'end_group',
-  'geopoint',
-  'geotrace',
-  'geoshape',
-  'range',
-  'image',
-  'audio',
-  'video',
-  'file',
-  'date',
-  'time',
-  'datetime',
-  'rank',
   'acknowledge',
-  'start',
+  'audio',
+  'begin_group',
+  'begin_repeat',
+  'calculate',
+  'date',
+  'datetime',
+  'decimal',
   'end',
+  'end_group',
+  'end_repeat',
+  'file',
+  'geopoint',
+  'geoshape',
+  'geotrace',
+  'hidden',
+  'image',
+  'integer',
+  'note',
+  'range',
+  'rank',
+  'select_multiple list_name',
+  'select_one list_name',
+  'start',
+  'text',
+  'time',
   'today',
+  'video',
 ];
 
 const SHEET_NAME_SURVEY = 'survey';
 const SHEET_NAME_CHOICES = 'choices';
 const SHEET_NAME_SETTINGS = 'settings';
+const SHEET_NAME_CHTX = 'chtx';
 const SHEET_NAMES = [SHEET_NAME_SURVEY, SHEET_NAME_CHOICES, SHEET_NAME_SETTINGS];
+
 const BASE_FONT: Partial<ExcelJS.Font> = { name: 'Liberation Sans', size: 10 };
 const BASE_ALIGNMENT: Partial<ExcelJS.Alignment> = { vertical: 'bottom' };
 const STYLE_DEFAULT: Partial<ExcelJS.Style> = { font: { ...BASE_FONT }, alignment: { ...BASE_ALIGNMENT } };
@@ -118,6 +120,7 @@ const getWorksheetWithName = (
 );
 
 const setDefaultStyle = (obj: object) => Object.assign(obj, { style: { ...STYLE_DEFAULT } });
+// TODO Ultimately we may not want hard-coded comments at all (goal is to have config be as guided as possible).
 const clearComment = (cell: ExcelJS.Cell) => pipe(
   cell as { _comment?: unknown; _value?: { model?: { comment?: unknown } } },
   c => Object.assign(c, { _comment: undefined }),
@@ -136,29 +139,30 @@ const clearSheetFormatting = (ws: Worksheet): void => {
   clearHeaderComments(ws);
   ws.columns.forEach(setDefaultStyle);
 };
+const clearChtxSheet = (workbook: ExcelJS.Workbook) => pipe(
+  workbook.getWorksheet(SHEET_NAME_CHTX),
+  Option.fromNullable,
+  Option.map(sheet => sheet.spliceRows(1, sheet.rowCount)),
+);
 const clearWorkbookFormatting = (workbook: ExcelJS.Workbook) => pipe(
   SHEET_NAMES,
   Array.map(getWorksheetWithName(workbook)),
   Array.filter(Option.isSome),
   Array.map(Option.getOrThrow),
   Array.forEach(clearSheetFormatting),
+  () => clearChtxSheet(workbook),
   () => []
 );
 
 const getHeaderNames = (worksheet: Worksheet) => pipe(
   worksheet.getRow(1).values,
   values => Array.isArray(values) ? values : Object.values(values),
-  Array.filter(Predicate.isNotNullable),
-  Array.map(Option.liftPredicate((val) => typeof val === 'string')),
-  Array.map(Option.getOrThrowWith(() => new Error('Invalid column header'))),
+  Array.map(val => typeof val === 'string' ? val : ''),
 );
-const getColumnIndex = (colName: string) => (worksheet: Worksheet) => pipe(
+
+const getColumnLetter = (colName: string, worksheet: Worksheet) => pipe(
   getHeaderNames(worksheet),
   Array.findFirstIndex(val => val === colName),
-  Option.map(index => index + 1), // ExcelJS columns are 1-indexed
-);
-const getColumnLetter = (colName: string, worksheet: Worksheet) => pipe(
-  getColumnIndex(colName)(worksheet),
   Option.map(colIndex => String.fromCodePoint(64 + colIndex))
 );
 
@@ -247,18 +251,60 @@ const buildSurveyHeaderFormula = (cell: string) => pipe(
   names => `NOT(ISERROR(MATCH(${cell},{${names.join(',')}},0)))`,
 );
 
-const setSurveyHeaderValidation = (worksheet: Worksheet): readonly string[] => pipe(
-  worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter,
-  lastCol => worksheet.dataValidations.add(`A1:${lastCol}1`, {
-    type: 'list',
-    allowBlank: true,
-    formulae: [`"${Array.dedupe([...SURVEY_COLUMN_NAMES, ...SURVEY_COLUMN_NAMES_TRANSLATABLE]).join(',')}"`],
-    showErrorMessage: true,
-    errorStyle: 'information',
-    errorTitle: 'Column warning',
-    error: 'For translatable columns, you can append "::<lang>" to the column name (e.g., label::en).',
-  }),
-  () => []
+const getChtxWorksheet = (workbook: ExcelJS.Workbook): Worksheet => pipe(
+  getWorksheetWithName(workbook)(SHEET_NAME_CHTX),
+  Option.getOrElse(() => workbook.addWorksheet(SHEET_NAME_CHTX) as Worksheet),
+  worksheet => Object.assign(worksheet, { state: 'veryHidden' })
+);
+
+const findFirstEmptyColumnIndex = (sheet: Worksheet) => pipe(
+  getHeaderNames(sheet),
+  names => names.length + 1
+);
+
+const setHeaderValue = (label: string) => (
+  [sheet, columnIndex]: [Worksheet, number]
+) => sheet.getCell(1, columnIndex).value = label;
+const setColumnValues = (values: readonly string[]) => (
+  [sheet, columnIndex]: [Worksheet, number]
+) => values.forEach((value, idx) => sheet.getCell(idx + 2, columnIndex).value = value);
+
+const writeChtxColumn = (
+  workbook: ExcelJS.Workbook,
+  label: string
+) => (
+  values: readonly string[],
+) => pipe(
+  getChtxWorksheet(workbook),
+  sheet => Tuple.make(sheet, findFirstEmptyColumnIndex(sheet)),
+  Effect.succeed,
+  Effect.tap(setHeaderValue(label)),
+  Effect.tap(setColumnValues(values)),
+  Effect.map(([sheet, columnIndex]) => pipe(
+    sheet.getColumn(columnIndex).letter,
+    colLetter => `'${SHEET_NAME_CHTX}'!$${colLetter}$2:$${colLetter}$${String(values.length + 1)}`
+  ))
+);
+
+const setSurveyHeaderValidation = (workbook: ExcelJS.Workbook) => (
+  worksheet: Worksheet
+) => pipe(
+  [...SURVEY_COLUMN_NAMES, ...SURVEY_COLUMN_NAMES_TRANSLATABLE],
+  Array.sort(Order.string),
+  writeChtxColumn(workbook, 'survey_header_names'),
+  Effect.map(formula => pipe(
+    worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter,
+    lastCol => `A1:${lastCol}1`,
+    range => worksheet.dataValidations.add(range, {
+      type: 'list',
+      allowBlank: true,
+      formulae: [formula],
+      showErrorMessage: true,
+      errorStyle: 'information',
+      errorTitle: 'Column warning',
+      error: 'For translatable columns, you can append "::<lang>" to the column name (e.g., label::en).',
+    }),
+  )),
 );
 
 const setSurveyHeaderFormatting = (worksheet: Worksheet): readonly string[] => pipe(
@@ -297,24 +343,18 @@ const setSurveyHeaderFormatting = (worksheet: Worksheet): readonly string[] => p
 const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
   getWorksheetWithName(workbook)(SHEET_NAME_SURVEY),
   Option.getOrThrowWith(() => new Error('No "survey" sheet found in workbook.')),
-  surveyWorksheet => pipe(
-    Array.make(
-      setSurveyHeaderFormatting,
-      setSurveyHeaderValidation,
-      setSurveyTypeFormatting(workbook),
-      setSurveyTypeValidation,
-    ),
-    Array.map(op => op(surveyWorksheet)),
-    Array.flatten,
-  ),
+  Effect.succeed,
+  Effect.tap(setSurveyHeaderFormatting),
+  Effect.tap(setSurveyHeaderValidation(workbook)),
+  Effect.tap(setSurveyTypeFormatting(workbook)),
+  Effect.tap(setSurveyTypeValidation),
 );
 
 const formatWorkbook = (workbook: ExcelJS.Workbook) => pipe(
-  Array.flatten([
-    clearWorkbookFormatting(workbook),
-    formatSurveyWorksheet(workbook)
-  ]),
-  Effect.succeed
+  Effect.succeed(workbook),
+  Effect.tap(clearWorkbookFormatting),
+  Effect.tap(formatSurveyWorksheet),
+  Effect.map(() => [])
 );
 
 const formatFile = Effect.fn((filePath: string): Effect.Effect<string[], Error> => Effect.acquireUseRelease(
