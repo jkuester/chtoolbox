@@ -42,6 +42,27 @@ const SURVEY_COLUMN_NAMES_TRANSLATABLE = [
   'required_message',
   'video',
 ];
+const SURVEY_FIELD_TYPES_LABELED = [
+  'acknowledge',
+  'audio',
+  'date',
+  'datetime',
+  'decimal',
+  'file',
+  'geopoint',
+  'geoshape',
+  'geotrace',
+  'image',
+  'integer',
+  'note',
+  'range',
+  'rank',
+  'select_multiple list_name',
+  'select_one list_name',
+  'text',
+  'time',
+  'video',
+];
 const SURVEY_FIELD_TYPES = [
   'acknowledge',
   'audio',
@@ -220,6 +241,29 @@ const setSurveyTypeFormatting = (workbook: ExcelJS.Workbook) => (surveySheet: Wo
   () => []
 );
 
+const setSurveyNameFormatting = (surveySheet: Worksheet) => pipe(
+  Tuple.make(
+    Option.getOrThrowWith(
+      getColumnLetter('name', surveySheet),
+      () => new Error('No "name" column found in survey sheet.')
+    ),
+    Option.getOrThrowWith(
+      getColumnLetter('type', surveySheet),
+      () => new Error('No "type" column found in survey sheet.')
+    ),
+  ),
+  ([nameCol, typeCol]) => surveySheet.addConditionalFormatting({
+    ref: getTypeValidationRange(nameCol, surveySheet.rowCount),
+    rules: [{
+      type: 'expression',
+      formulae: [`AND(${typeCol}2<>"",${nameCol}2="")`],
+      style: { ...STYLE_ERROR },
+      priority: 1,
+    }]
+  }),
+  () => []
+);
+
 const setSurveyTypeValidation = (surveySheet: Worksheet) => pipe(
   getColumnLetter('type', surveySheet),
   Option.getOrThrowWith(() => new Error('No "type" column found in survey sheet.')),
@@ -348,6 +392,7 @@ const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
   Effect.tap(setSurveyHeaderValidation(workbook)),
   Effect.tap(setSurveyTypeFormatting(workbook)),
   Effect.tap(setSurveyTypeValidation),
+  Effect.tap(setSurveyNameFormatting),
 );
 
 const formatWorkbook = (workbook: ExcelJS.Workbook) => pipe(
