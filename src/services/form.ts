@@ -118,6 +118,7 @@ const FILL_GREY: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { 
 const FILL_BLUE_GREY: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCCCF0' } };
 const FILL_GREEN: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFAFD095' } };
 const BORDER_DARK_GREY: Partial<ExcelJS.Border> = { style: 'thin', color: { argb: 'FF808080' } };
+const BORDER_BLUE: Partial<ExcelJS.Border> = { style: 'medium', color: { argb: 'FF0070C0' } };
 const BORDER_HEADER_SIDES: Partial<ExcelJS.Borders> = {
   left: BORDER_DARK_GREY,
   right: BORDER_DARK_GREY,
@@ -139,6 +140,12 @@ const STYLE_HEADER_EXPRESSION: Partial<ExcelJS.Style> = {
 };
 const STYLE_ERROR: Partial<ExcelJS.Style> = {
   fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFF0000' } }
+};
+const STYLE_BEGIN_GROUP: Partial<ExcelJS.Style> = {
+  border: { top: BORDER_BLUE }
+};
+const STYLE_END_GROUP: Partial<ExcelJS.Style> = {
+  border: { bottom: BORDER_BLUE }
 };
 
 const loadWorkbook = (filePath: string) => pipe(
@@ -499,6 +506,26 @@ const setSurveyHeaderlessCellFormatting = (worksheet: Worksheet) => pipe(
   })
 );
 
+const setSurveyGroupBoundaryFormatting = (type: string, style: Partial<ExcelJS.Style>) => (
+  worksheet: Worksheet
+) => pipe(
+  Tuple.make(
+    getTypeColumnLetter(worksheet),
+    worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter,
+  ),
+  ([typeCol, lastCol]) => worksheet.addConditionalFormatting({
+    ref: `A2:${lastCol}${String(worksheet.rowCount + BUFFER_ROW_COUNT)}`,
+    rules: [{
+      type: 'expression',
+      formulae: [`$${typeCol}2="${type}"`],
+      style: { ...style },
+      priority: 1,
+    }]
+  })
+);
+const setSurveyBeginGroupFormatting = setSurveyGroupBoundaryFormatting('begin_group', STYLE_BEGIN_GROUP);
+const setSurveyEndGroupFormatting = setSurveyGroupBoundaryFormatting('end_group', STYLE_END_GROUP);
+
 const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
   getWorksheetWithName(workbook)(SHEET_NAME_SURVEY),
   Option.map(surveySheet => pipe(
@@ -512,6 +539,8 @@ const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
     Effect.tap(setSurveyTrueOnlyFormatting),
     Effect.tap(setSurveyNameFormatting),
     Effect.tap(setSurveyLabelFormatting),
+    Effect.tap(setSurveyBeginGroupFormatting),
+    Effect.tap(setSurveyEndGroupFormatting),
     Effect.tap(setSurveyHeaderlessCellFormatting),
   )),
   Option.getOrElse(() => Effect.void)
