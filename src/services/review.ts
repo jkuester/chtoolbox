@@ -9,7 +9,7 @@ import { createDir, createTmpDir, writeFile } from '../libs/file.js';
 import { decodeOcrResult, formatReport, type PrTarget, reportFileName } from '../libs/review.js';
 import { mapErrorToGeneric } from '../libs/core.js';
 
-export interface ReviewOptions {
+interface ReviewOptions {
   readonly concurrency: number;
   readonly timeout: number;
   readonly outputDir: string;
@@ -107,12 +107,11 @@ const serviceContext = Effect
 
 export class ReviewService extends Effect.Service<ReviewService>()('chtoolbox/ReviewService', {
   effect: serviceContext.pipe(Effect.map(context => ({
-    // Reviews each PR in sequence, writing one markdown report per PR. Returns the written file paths.
     review: Effect.fn((
-      targets: PrTarget[],
+      target: PrTarget,
       options: ReviewOptions
-    ): Effect.Effect<string[], Error> => pipe(
-      Effect.forEach(targets, target => reviewPr(target, options), { concurrency: 1 }),
+    ): Effect.Effect<string, Error> => pipe(
+      reviewPr(target, options),
       Effect.provide(context),
       mapErrorToGeneric,
     )),

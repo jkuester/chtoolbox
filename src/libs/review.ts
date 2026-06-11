@@ -37,7 +37,7 @@ export const parsePrTarget = (raw: string): Effect.Effect<PrTarget, Error> => pi
 /**
  * A single review comment emitted by the `ocr` command in its JSON output.
  */
-export class OcrComment extends Schema.Class<OcrComment>('OcrComment')({
+class OcrComment extends Schema.Class<OcrComment>('OcrComment')({
   path: Schema.optionalWith(Schema.String, { default: () => '' }),
   start_line: Schema.optionalWith(Schema.Number, { default: () => 0 }),
   end_line: Schema.optionalWith(Schema.Number, { default: () => 0 }),
@@ -49,7 +49,7 @@ export class OcrComment extends Schema.Class<OcrComment>('OcrComment')({
 /**
  * The top-level JSON document produced by `ocr review --format json`.
  */
-export class OcrResult extends Schema.Class<OcrResult>('OcrResult')({
+class OcrResult extends Schema.Class<OcrResult>('OcrResult')({
   comments: Schema.optionalWith(Schema.Array(OcrComment), { default: () => [] }),
   warnings: Schema.optionalWith(Schema.Array(Schema.String), { default: () => [] }),
   message: Schema.optional(Schema.String),

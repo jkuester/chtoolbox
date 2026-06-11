@@ -65,9 +65,9 @@ describe('Review Service', () => {
   });
 
   it('reviews a PR: checks out the branch, runs ocr, and writes a report', run(function* () {
-    const paths = yield* ReviewService.review([TARGET], OPTIONS);
+    const path = yield* ReviewService.review(TARGET, OPTIONS);
 
-    expect(paths).to.deep.equal(['/out/medic-cht-core-pr11050.md']);
+    expect(path).to.equal('/out/medic-cht-core-pr11050.md');
 
     expect(getPullRequest).to.have.been.calledOnceWithExactly('medic', 'cht-core');
     expect(getPr).to.have.been.calledOnceWithExactly(11050);
@@ -100,19 +100,14 @@ describe('Review Service', () => {
     expect(report).to.contain('No comments generated.');
   }));
 
-  it('reviews multiple PRs in sequence, one report per PR', run(function* () {
-    const second = { owner: 'medic', repo: 'cht-core', pullNumber: 11051 };
+  it('derives the report path and fetch refspec from the given target', run(function* () {
+    const target = { owner: 'medic', repo: 'cht-core', pullNumber: 11051 };
 
-    const paths = yield* ReviewService.review([TARGET, second], OPTIONS);
+    const path = yield* ReviewService.review(target, OPTIONS);
 
-    expect(paths).to.deep.equal([
-      '/out/medic-cht-core-pr11050.md',
-      '/out/medic-cht-core-pr11051.md',
-    ]);
-    expect(getPr).to.have.been.calledTwice;
-    expect(getPr.getCall(0).args).to.deep.equal([11050]);
-    expect(getPr.getCall(1).args).to.deep.equal([11051]);
-    expect(writeFile).to.have.been.calledTwice;
+    expect(path).to.equal('/out/medic-cht-core-pr11051.md');
+    expect(getPr).to.have.been.calledOnceWithExactly(11051);
+    expect(writeFile).to.have.been.calledOnceWithExactly('/out/medic-cht-core-pr11051.md');
     expect(mockCommand.make)
       .to.have.been.calledWith('git', 'fetch', '--no-tags', 'origin', 'master:ocr-base', 'pull/11051/head:ocr-head');
   }));
@@ -120,7 +115,7 @@ describe('Review Service', () => {
   it('fails when a git command fails', run(function* () {
     mockCommand.exitCode.returns(Effect.succeed(1));
 
-    const either = yield* ReviewService.review([TARGET], OPTIONS).pipe(Effect.either);
+    const either = yield* ReviewService.review(TARGET, OPTIONS).pipe(Effect.either);
 
     if (Either.isLeft(either)) {
       expect(either.left).to.be.instanceOf(Error);
@@ -134,7 +129,7 @@ describe('Review Service', () => {
   it('propagates errors from the GitHub API', run(function* () {
     getPr.returns(Effect.fail(new Error('boom')));
 
-    const either = yield* ReviewService.review([TARGET], OPTIONS).pipe(Effect.either);
+    const either = yield* ReviewService.review(TARGET, OPTIONS).pipe(Effect.either);
 
     if (Either.isLeft(either)) {
       expect(either.left).to.be.instanceOf(Error);

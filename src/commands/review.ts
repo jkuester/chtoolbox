@@ -42,7 +42,11 @@ export const review = Command
       targets => targets.length > 0,
       () => new Error('At least one --pr must be provided.'),
     ),
-    Effect.flatMap(targets => ReviewService.review(targets, { concurrency, timeout, outputDir })),
+    Effect.flatMap(targets => Effect.forEach(
+      targets,
+      target => ReviewService.review(target, { concurrency, timeout, outputDir }),
+      { concurrency: 1 },
+    )),
     Effect.tap(paths => Console.log(`\nWrote ${paths.length.toString()} report(s):\n${paths.join('\n')}`)),
   )))
   .pipe(Command.withDescription(
