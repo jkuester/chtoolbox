@@ -317,6 +317,37 @@ const setSurveyTypeValidation = (surveySheet: Worksheet) => pipe(
   })
 );
 
+const setSurveyReadOnlyValidation = (surveySheet: Worksheet) => pipe(
+  getColumnLetter('read_only', surveySheet),
+  // The leading comma yields an empty option ahead of "true" in the dropdown.
+  Option.map(column => surveySheet.dataValidations.add(getTypeValidationRange(column, surveySheet.rowCount), {
+    type: 'list',
+    allowBlank: true,
+    formulae: ['",true"'],
+    showErrorMessage: true,
+    errorStyle: 'information',
+    errorTitle: 'Read only warning',
+    error: 'The "read_only" column only accepts "true" or an empty value.',
+  }))
+);
+
+const formatColumnAcceptOnlyTrue = (surveySheet: Worksheet) => (column: string) => {
+  surveySheet.getColumn(column).numFmt = '@';
+  surveySheet.addConditionalFormatting({
+    ref: getTypeValidationRange(column, surveySheet.rowCount),
+    rules: [{
+      type: 'expression',
+      formulae: [`AND(${column}2<>"",${column}2<>"true")`],
+      style: { ...STYLE_ERROR },
+      priority: 1,
+    }]
+  });
+};
+const setSurveyReadOnlyFormatting = (surveySheet: Worksheet) => pipe(
+  getColumnLetter('read_only', surveySheet),
+  Option.map(formatColumnAcceptOnlyTrue(surveySheet))
+);
+
 const buildTranslatableHeaderFormula = (cell: string) => pipe(
   SURVEY_COLUMN_NAMES_TRANSLATABLE,
   Array.flatMap(name => [
@@ -458,6 +489,8 @@ const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
     Effect.tap(setSurveyHeaderValidation(workbook)),
     Effect.tap(setSurveyTypeFormatting(workbook)),
     Effect.tap(setSurveyTypeValidation),
+    Effect.tap(setSurveyReadOnlyValidation),
+    Effect.tap(setSurveyReadOnlyFormatting),
     Effect.tap(setSurveyNameFormatting),
     Effect.tap(setSurveyLabelFormatting),
     Effect.tap(setSurveyHeaderlessCellFormatting),
