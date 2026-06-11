@@ -1,4 +1,4 @@
-import { Effect, pipe, Array, Option, Predicate, Tuple, Order } from 'effect';
+import { Effect, pipe, Array, Option, Predicate, Tuple, Order, Record } from 'effect';
 import ExcelJS from 'exceljs';
 
 type Worksheet = ExcelJS.Worksheet & {
@@ -12,69 +12,82 @@ type Worksheet = ExcelJS.Worksheet & {
 const BUFFER_COL_COUNT = 50;
 const BUFFER_ROW_COUNT = 1000;
 
-const SURVEY_COLUMN_NAMES = [
-  'appearance',
-  'calculation',
-  'choice_filter',
-  'constraint',
-  'default',
-  'instance::cht:duration',
-  'instance::cht:unique_tel',
-  'instance::db-doc',
-  'instance::db-doc-ref',
-  'instance::type',
-  'name',
-  'note',
-  'parameters',
-  'read_only',
-  'relevant',
-  'repeat_count',
-  'repeat_count',
-  'required',
-  'type',
-];
-const SURVEY_COLUMN_NAMES_TRANSLATABLE = [
-  'audio',
-  'constraint_message',
-  'hint',
-  'image',
-  'label',
-  'required_message',
-  'video',
-];
-const SURVEY_FIELD_TYPES_LABELED = [
-  'acknowledge',
-  'audio',
-  'date',
-  'datetime',
-  'decimal',
-  'file',
-  'geopoint',
-  'geoshape',
-  'geotrace',
-  'image',
-  'integer',
-  'note',
-  'range',
-  'rank',
-  'select_multiple list_name',
-  'select_one list_name',
-  'text',
-  'time',
-  'video',
-];
-const SURVEY_FIELD_TYPES = [
-  ...SURVEY_FIELD_TYPES_LABELED,
-  'begin_group',
-  'begin_repeat',
-  'calculate',
-  'end',
-  'end_group',
-  'end_repeat',
-  'hidden',
-  'start',
-  'today',
-];
+const SURVEY_COLUMNS: Record<string, { translatable? : boolean }> = {
+  appearance: {},
+  audio: { translatable: true },
+  calculation: {},
+  choice_filter: {},
+  constraint: {},
+  constraint_message: { translatable: true },
+  default: {},
+  hint: { translatable: true },
+  image: { translatable: true },
+  'instance::cht:duration': {},
+  'instance::cht:unique_tel': {},
+  'instance::db-doc': {},
+  'instance::db-doc-ref': {},
+  'instance::type': {},
+  label: { translatable: true },
+  name: {},
+  note: {},
+  parameters: {},
+  read_only: {},
+  relevant: {},
+  repeat_count: {},
+  required: {},
+  required_message: { translatable: true },
+  type: {},
+  video: { translatable: true },
+};
+const SURVEY_COLUMN_NAMES_TRANSLATABLE = pipe(
+  Record.toEntries(SURVEY_COLUMNS),
+  Array.filter(([, { translatable }]) => !!translatable),
+  Array.map(Tuple.getFirst),
+);
+const SURVEY_COLUMN_NAMES_BASIC = pipe(
+  Record.toEntries(SURVEY_COLUMNS),
+  Array.filter(([, { translatable }]) => !translatable),
+  Array.map(Tuple.getFirst),
+);
+
+const LABEL_TRANSLATABLE_PREFIX = 'label::';
+
+const SURVEY_FIELDS: Record<string, { labeled? : boolean }> = {
+  acknowledge: { labeled: true },
+  audio: { labeled: true },
+  begin_group: {},
+  begin_repeat: {},
+  calculate: {},
+  date: { labeled: true },
+  datetime: { labeled: true },
+  decimal: { labeled: true },
+  end: {},
+  end_group: {},
+  end_repeat: {},
+  file: { labeled: true },
+  geopoint: { labeled: true },
+  geoshape: { labeled: true },
+  geotrace: { labeled: true },
+  hidden: {},
+  image: { labeled: true },
+  integer: { labeled: true },
+  note: { labeled: true },
+  range: { labeled: true },
+  rank: { labeled: true },
+  'select_multiple list_name': { labeled: true },
+  'select_one list_name': { labeled: true },
+  start: {},
+  text: { labeled: true },
+  time: { labeled: true },
+  today: {},
+  video: { labeled: true },
+};
+const SURVEY_FIELD_TYPES = Record.keys(SURVEY_FIELDS);
+const SURVEY_FIELD_TYPES_LABELED = pipe(
+  Record.toEntries(SURVEY_FIELDS),
+  Array.filter(([, { labeled }]) => !!labeled),
+  Array.map(Tuple.getFirst),
+);
 
 const SHEET_NAME_SURVEY = 'survey';
 const SHEET_NAME_CHOICES = 'choices';
@@ -259,7 +272,6 @@ const setSurveyNameFormatting = (surveySheet: Worksheet) => pipe(
   () => []
 );
 
-const LABEL_TRANSLATABLE_PREFIX = 'label::';
 const setSurveyLabelFormatting = (surveySheet: Worksheet) => pipe(
   getColumnLetterMatching(val => !!val?.startsWith(LABEL_TRANSLATABLE_PREFIX), surveySheet),
   Option.map(labelCol => Tuple.make(
@@ -313,7 +325,7 @@ const buildTranslatableHeaderFormula = (cell: string) => pipe(
   parts => `OR(${parts.join(',')})`,
 );
 const buildSurveyHeaderFormula = (cell: string) => pipe(
-  SURVEY_COLUMN_NAMES,
+  SURVEY_COLUMN_NAMES_BASIC,
   Array.map(name => `"${name}"`),
   names => `NOT(ISERROR(MATCH(${cell},{${names.join(',')}},0)))`,
 );
@@ -356,8 +368,7 @@ const writeChtxColumn = (
 const setSurveyHeaderValidation = (workbook: ExcelJS.Workbook) => (
   worksheet: Worksheet
 ) => pipe(
-  [...SURVEY_COLUMN_NAMES, ...SURVEY_COLUMN_NAMES_TRANSLATABLE],
-  Array.sort(Order.string),
+  Record.keys(SURVEY_COLUMNS),
   writeChtxColumn(workbook, 'survey_header_names'),
   Effect.map(formula => pipe(
     worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter,
