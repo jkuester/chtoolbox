@@ -1,16 +1,9 @@
 import { Args, Command } from '@effect/cli';
-import { Array, Effect, pipe, Match, Console } from 'effect';
+import { Array, Effect, pipe } from 'effect';
 import { FormService } from '../../services/form.ts';
 
-const printWarnings = (filePath: string ) => (warns: string[]) => pipe(
-  Match.value(warns),
-  Match.when(Array.isEmptyArray, () => Effect.void),
-  Match.orElse(warns => Console.log(`Warnings for file ${filePath}:\n    - ${warns.join('\n    - ')}`)),
-);
-
 const formatFile = (filePath: string) => pipe(
-  FormService.formatFile(filePath),
-  Effect.flatMap(printWarnings(filePath))
+  FormService.formatFile(filePath)
 );
 
 const files = Args

@@ -49,7 +49,6 @@ const SURVEY_COLUMN_NAMES_BASIC = pipe(
   Array.filter(([, { translatable }]) => !translatable),
   Array.map(Tuple.getFirst),
 );
-
 const LABEL_TRANSLATABLE_PREFIX = 'label::';
 
 const SURVEY_FIELDS: Record<string, { labeled? : boolean }> = {
@@ -166,8 +165,7 @@ const clearWorkbookFormatting = (workbook: ExcelJS.Workbook) => pipe(
   Array.filter(Option.isSome),
   Array.map(Option.getOrThrow),
   Array.forEach(clearSheetFormatting),
-  () => clearChtxSheet(workbook),
-  () => []
+  () => clearChtxSheet(workbook)
 );
 
 const getHeaderNames = (worksheet: Worksheet) => pipe(
@@ -183,6 +181,10 @@ const getColumnLetterMatching = (predicate: (val?: string) => boolean, worksheet
 );
 const getColumnLetter = (colName: string, worksheet: Worksheet) =>
   getColumnLetterMatching(val => val === colName, worksheet);
+const getTypeColumnLetter = (worksheet: Worksheet) => Option.getOrThrowWith(
+  getColumnLetter('type', worksheet),
+  () => new Error('No "type" column found in worksheet.')
+);
 
 const SELECT_ONE_PREFIX = 'select_one ';
 const SELECT_MULTIPLE_PREFIX = 'select_multiple ';
@@ -233,8 +235,7 @@ const getChoicesListNameRange = (workbook: ExcelJS.Workbook) => pipe(
 );
 
 const setSurveyTypeFormatting = (workbook: ExcelJS.Workbook) => (surveySheet: Worksheet) => pipe(
-  getColumnLetter('type', surveySheet),
-  Option.getOrThrowWith(() => new Error('No "type" column found in survey sheet.')),
+  getTypeColumnLetter(surveySheet),
   column => pipe(
     getChoicesListNameRange(workbook),
     choicesListNameRange => buildIsInvalidTypeFormula(`${column}2`, choicesListNameRange),
@@ -247,18 +248,14 @@ const setSurveyTypeFormatting = (workbook: ExcelJS.Workbook) => (surveySheet: Wo
         priority: 1,
       }]
     })
-  ),
-  () => []
+  )
 );
 
 const setSurveyNameFormatting = (surveySheet: Worksheet) => pipe(
   getColumnLetter('name', surveySheet),
   Option.map(nameCol => Tuple.make(
     nameCol,
-    Option.getOrThrowWith(
-      getColumnLetter('type', surveySheet),
-      () => new Error('No "type" column found in survey sheet.')
-    ),
+    getTypeColumnLetter(surveySheet),
   )),
   Option.map(([nameCol, typeCol]) => surveySheet.addConditionalFormatting({
     ref: getTypeValidationRange(nameCol, surveySheet.rowCount),
@@ -268,18 +265,14 @@ const setSurveyNameFormatting = (surveySheet: Worksheet) => pipe(
       style: { ...STYLE_ERROR },
       priority: 1,
     }]
-  })),
-  () => []
+  }))
 );
 
 const setSurveyLabelFormatting = (surveySheet: Worksheet) => pipe(
   getColumnLetterMatching(val => !!val?.startsWith(LABEL_TRANSLATABLE_PREFIX), surveySheet),
   Option.map(labelCol => Tuple.make(
     labelCol,
-    Option.getOrThrowWith(
-      getColumnLetter('type', surveySheet),
-      () => new Error('No "type" column found in survey sheet.')
-    ),
+    getTypeColumnLetter(surveySheet),
   )),
   Option.map(([labelCol, typeCol]) => surveySheet.addConditionalFormatting({
     ref: getTypeValidationRange(labelCol, surveySheet.rowCount),
@@ -289,8 +282,7 @@ const setSurveyLabelFormatting = (surveySheet: Worksheet) => pipe(
       style: { ...STYLE_ERROR },
       priority: 1,
     }]
-  })),
-  () => []
+  }))
 );
 
 const surveyFieldTypesFormulae = pipe(
@@ -300,8 +292,7 @@ const surveyFieldTypesFormulae = pipe(
 );
 
 const setSurveyTypeValidation = (surveySheet: Worksheet) => pipe(
-  getColumnLetter('type', surveySheet),
-  Option.getOrThrowWith(() => new Error('No "type" column found in survey sheet.')),
+  getTypeColumnLetter(surveySheet),
   column => surveySheet.dataValidations.add(getTypeValidationRange(column, surveySheet.rowCount), {
     type: 'list',
     allowBlank: true,
@@ -312,8 +303,7 @@ const setSurveyTypeValidation = (surveySheet: Worksheet) => pipe(
     errorStyle: 'information',
     errorTitle: 'Type warning',
     error: 'If configuring a select, ensure your list name matches a list from the choices sheet.',
-  }),
-  () => []
+  })
 );
 
 const buildTranslatableHeaderFormula = (cell: string) => pipe(
@@ -385,7 +375,7 @@ const setSurveyHeaderValidation = (workbook: ExcelJS.Workbook) => (
   )),
 );
 
-const setSurveyHeaderFormatting = (worksheet: Worksheet): readonly string[] => pipe(
+const setSurveyHeaderFormatting = (worksheet: Worksheet) => pipe(
   Tuple.make(
     buildTranslatableHeaderFormula('A1'),
     buildSurveyHeaderFormula('A1'),
@@ -414,8 +404,7 @@ const setSurveyHeaderFormatting = (worksheet: Worksheet): readonly string[] => p
       },
     ],
   }),
-  formatting => worksheet.addConditionalFormatting(formatting),
-  () => []
+  formatting => worksheet.addConditionalFormatting(formatting)
 );
 
 const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
@@ -434,10 +423,10 @@ const formatWorkbook = (workbook: ExcelJS.Workbook) => pipe(
   Effect.succeed(workbook),
   Effect.tap(clearWorkbookFormatting),
   Effect.tap(formatSurveyWorksheet),
-  Effect.map(() => [])
+  Effect.asVoid
 );
 
-const formatFile = Effect.fn((filePath: string): Effect.Effect<string[], Error> => Effect.acquireUseRelease(
+const formatFile = Effect.fn((filePath: string): Effect.Effect<void, Error> => Effect.acquireUseRelease(
   loadWorkbook(filePath),
   formatWorkbook,
   saveWorkbook(filePath)
