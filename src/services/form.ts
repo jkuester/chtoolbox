@@ -12,14 +12,14 @@ type Worksheet = ExcelJS.Worksheet & {
 const BUFFER_COL_COUNT = 50;
 const BUFFER_ROW_COUNT = 1000;
 
-const SURVEY_COLUMNS: Record<string, { translatable? : boolean }> = {
+const SURVEY_COLUMNS: Record<string, { translatable? : boolean, expression?: boolean }> = {
   appearance: {},
   audio: { translatable: true },
-  calculation: {},
-  choice_filter: {},
-  constraint: {},
+  calculation: { expression: true },
+  choice_filter: { expression: true },
+  constraint: { expression: true },
   constraint_message: { translatable: true },
-  default: {},
+  default: { expression: true },
   hint: { translatable: true },
   image: { translatable: true },
   'instance::cht:duration': {},
@@ -32,9 +32,9 @@ const SURVEY_COLUMNS: Record<string, { translatable? : boolean }> = {
   note: {},
   parameters: {},
   read_only: {},
-  relevant: {},
-  repeat_count: {},
-  required: {},
+  relevant: { expression: true },
+  repeat_count: { expression: true },
+  required: { expression: true },
   required_message: { translatable: true },
   type: {},
   video: { translatable: true },
@@ -44,9 +44,14 @@ const SURVEY_COLUMN_NAMES_TRANSLATABLE = pipe(
   Array.filter(([, { translatable }]) => !!translatable),
   Array.map(Tuple.getFirst),
 );
+const SURVEY_COLUMN_NAMES_EXPRESSION = pipe(
+  Record.toEntries(SURVEY_COLUMNS),
+  Array.filter(([, { expression }]) => !!expression),
+  Array.map(Tuple.getFirst),
+);
 const SURVEY_COLUMN_NAMES_BASIC = pipe(
   Record.toEntries(SURVEY_COLUMNS),
-  Array.filter(([, { translatable }]) => !translatable),
+  Array.filter(([, { translatable, expression }]) => !translatable && !expression),
   Array.map(Tuple.getFirst),
 );
 const LABEL_TRANSLATABLE_PREFIX = 'label::';
@@ -98,6 +103,7 @@ const BASE_FONT: Partial<ExcelJS.Font> = { name: 'Liberation Sans', size: 10 };
 const BASE_ALIGNMENT: Partial<ExcelJS.Alignment> = { vertical: 'bottom' };
 const STYLE_DEFAULT: Partial<ExcelJS.Style> = { font: { ...BASE_FONT }, alignment: { ...BASE_ALIGNMENT } };
 const FILL_GREY: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
+const FILL_BLUE_GREY: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3E8' } };
 const FILL_GREEN: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFAFD095' } };
 const BORDER_DARK_GREY: Partial<ExcelJS.Border> = { style: 'thin', color: { argb: 'FF808080' } };
 const BORDER_HEADER_SIDES: Partial<ExcelJS.Borders> = {
@@ -112,6 +118,11 @@ const STYLE_HEADER: Partial<ExcelJS.Style> = {
 const STYLE_HEADER_TRANSLATABLE: Partial<ExcelJS.Style> = {
   font: { ...BASE_FONT, bold: true },
   fill: FILL_GREEN,
+  border: BORDER_HEADER_SIDES,
+};
+const STYLE_HEADER_EXPRESSION: Partial<ExcelJS.Style> = {
+  font: { ...BASE_FONT, bold: true },
+  fill: FILL_BLUE_GREY,
   border: BORDER_HEADER_SIDES,
 };
 const STYLE_ERROR: Partial<ExcelJS.Style> = {
@@ -319,6 +330,11 @@ const buildSurveyHeaderFormula = (cell: string) => pipe(
   Array.map(name => `"${name}"`),
   names => `NOT(ISERROR(MATCH(${cell},{${names.join(',')}},0)))`,
 );
+const buildExpressionHeaderFormula = (cell: string) => pipe(
+  SURVEY_COLUMN_NAMES_EXPRESSION,
+  Array.map(name => `"${name}"`),
+  names => `NOT(ISERROR(MATCH(${cell},{${names.join(',')}},0)))`,
+);
 
 const getChtxWorksheet = (workbook: ExcelJS.Workbook): Worksheet => pipe(
   getWorksheetWithName(workbook)(SHEET_NAME_CHTX),
@@ -379,9 +395,10 @@ const setSurveyHeaderFormatting = (worksheet: Worksheet) => pipe(
   Tuple.make(
     buildTranslatableHeaderFormula('A1'),
     buildSurveyHeaderFormula('A1'),
+    buildExpressionHeaderFormula('A1'),
     worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter
   ),
-  ([translatable, valid, lastCol]): ExcelJS.ConditionalFormattingOptions => ({
+  ([translatable, valid, expression, lastCol]): ExcelJS.ConditionalFormattingOptions => ({
     ref: `A1:${lastCol}1`,
     rules: [
       {
@@ -398,9 +415,15 @@ const setSurveyHeaderFormatting = (worksheet: Worksheet) => pipe(
       },
       {
         type: 'expression',
-        formulae: [`AND(A1<>"",NOT(${translatable}),NOT(${valid}))`],
-        style: { ...STYLE_ERROR },
+        formulae: [expression],
+        style: { ...STYLE_HEADER_EXPRESSION },
         priority: 3,
+      },
+      {
+        type: 'expression',
+        formulae: [`AND(A1<>"",NOT(${translatable}),NOT(${valid}),NOT(${expression}))`],
+        style: { ...STYLE_ERROR },
+        priority: 4,
       },
     ],
   }),
@@ -409,14 +432,17 @@ const setSurveyHeaderFormatting = (worksheet: Worksheet) => pipe(
 
 const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
   getWorksheetWithName(workbook)(SHEET_NAME_SURVEY),
-  Option.getOrThrowWith(() => new Error('No "survey" sheet found in workbook.')),
-  Effect.succeed,
-  Effect.tap(setSurveyHeaderFormatting),
-  Effect.tap(setSurveyHeaderValidation(workbook)),
-  Effect.tap(setSurveyTypeFormatting(workbook)),
-  Effect.tap(setSurveyTypeValidation),
-  Effect.tap(setSurveyNameFormatting),
-  Effect.tap(setSurveyLabelFormatting),
+  Option.map(surveySheet => pipe(
+    surveySheet,
+    Effect.succeed,
+    Effect.tap(setSurveyHeaderFormatting),
+    Effect.tap(setSurveyHeaderValidation(workbook)),
+    Effect.tap(setSurveyTypeFormatting(workbook)),
+    Effect.tap(setSurveyTypeValidation),
+    Effect.tap(setSurveyNameFormatting),
+    Effect.tap(setSurveyLabelFormatting),
+  )),
+  Option.getOrElse(() => Effect.void)
 );
 
 const formatWorkbook = (workbook: ExcelJS.Workbook) => pipe(
