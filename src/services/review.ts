@@ -1,4 +1,4 @@
-import { Console, Effect, pipe, Redacted } from 'effect';
+import { Effect, pipe, Redacted } from 'effect';
 import * as Context from 'effect/Context';
 import { Command, FileSystem } from '@effect/platform';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
@@ -93,8 +93,7 @@ const writeReport = (outputDir: string, fileName: string, report: string) => pip
 );
 
 const runPrReview = (target: PrTarget, options: ReviewOptions) => pipe(
-  Console.log(`Reviewing ${target.owner}/${target.repo}#${target.pullNumber.toString()}...`),
-  Effect.andThen(getPullRequest(target.owner, target.repo)(target.pullNumber)),
+  getPullRequest(target.owner, target.repo)(target.pullNumber),
   Effect.flatMap(prData => pipe(
     createTmpDir(),
     Effect.tap(tmpDir => checkoutPr(target, prData.base.ref, tmpDir)),
@@ -108,8 +107,7 @@ const runPrReview = (target: PrTarget, options: ReviewOptions) => pipe(
 
 // Reviews a single commit by cloning its repo into a temp dir and running ocr's `--commit` mode against it.
 const runCommitReview = (target: CommitTarget, options: ReviewOptions) => pipe(
-  Console.log(`Reviewing ${target.owner}/${target.repo}@${target.sha}...`),
-  Effect.andThen(createTmpDir()),
+  createTmpDir(),
   Effect.tap(tmpDir => checkoutCommit(target, tmpDir)),
   Effect.flatMap(tmpDir => runOcr(['--repo', tmpDir, '--commit', target.sha], options)),
   Effect.flatMap(decodeOcrResult),

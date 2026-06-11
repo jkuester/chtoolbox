@@ -45,8 +45,14 @@ const outputDir = Options
     Options.withDefault('.'),
   );
 
-const reviewPr = (opts: ReviewOptions) => (target: PrTarget) => ReviewService.reviewPr(target, opts);
-const reviewCommit =  (opts: ReviewOptions) => (target: CommitTarget) => ReviewService.reviewCommit(target, opts);
+const reviewPr = (opts: ReviewOptions) => (target: PrTarget) => pipe(
+  Console.log(`Reviewing ${target.owner}/${target.repo}#${target.pullNumber.toString()}...`),
+  Effect.andThen(ReviewService.reviewPr(target, opts)),
+);
+const reviewCommit = (opts: ReviewOptions) => (target: CommitTarget) => pipe(
+  Console.log(`Reviewing ${target.owner}/${target.repo}@${target.sha}...`),
+  Effect.andThen(ReviewService.reviewCommit(target, opts)),
+);
 
 export const review = Command
   .make(
