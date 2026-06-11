@@ -2,8 +2,12 @@ import { describe, it } from 'mocha';
 import { Effect, Either } from 'effect';
 import { expect } from 'chai';
 import {
+  type CommitTarget,
+  commitReportFileName,
   decodeOcrResult,
+  formatCommitReport,
   formatReport,
+  parseCommitTarget,
   parsePrTarget,
   type PrTarget,
   reportFileName,
@@ -12,6 +16,7 @@ import {
 const run = (test: Effect.Effect<void, Error>) => (): Promise<void> => Effect.runPromise(test);
 
 const TARGET: PrTarget = { owner: 'medic', repo: 'cht-core', pullNumber: 11050 };
+const COMMIT_TARGET: CommitTarget = { owner: 'medic', repo: 'cht-core', sha: 'abc1234' };
 
 const PR_DATA = {
   title: 'Fix the thing',
@@ -50,6 +55,42 @@ describe('Review libs', () => {
       'https://github.com/medic/cht-core/issues/11050',
     ].forEach(raw => it(`fails on invalid value: ${raw}`, run(Effect.gen(function* () {
       const either = yield* parsePrTarget(raw).pipe(Effect.either);
+      if (Either.isRight(either)) {
+        expect.fail('Expected a parse error');
+      }
+      expect(either.left).to.be.instanceOf(Error);
+      expect(either.left.message).to.contain(raw);
+    }))));
+  });
+
+  describe('parseCommitTarget', () => {
+    it('parses org/repo#sha shorthand', run(Effect.gen(function* () {
+      const target = yield* parseCommitTarget('medic/cht-core#abc1234');
+      expect(target).to.deep.equal(COMMIT_TARGET);
+    })));
+
+    it('trims surrounding whitespace', run(Effect.gen(function* () {
+      const target = yield* parseCommitTarget('  medic/cht-core#abc1234  ');
+      expect(target).to.deep.equal(COMMIT_TARGET);
+    })));
+
+    it('parses a full commit URL', run(Effect.gen(function* () {
+      const target = yield* parseCommitTarget('https://github.com/medic/cht-core/commit/abc1234');
+      expect(target).to.deep.equal(COMMIT_TARGET);
+    })));
+
+    it('parses a commit URL with a trailing path', run(Effect.gen(function* () {
+      const target = yield* parseCommitTarget('https://github.com/medic/cht-core/commit/abc1234/files');
+      expect(target).to.deep.equal(COMMIT_TARGET);
+    })));
+
+    [
+      'not-a-commit',
+      'medic/cht-core',
+      'medic/cht-core#',
+      'https://github.com/medic/cht-core/pull/11050',
+    ].forEach(raw => it(`fails on invalid value: ${raw}`, run(Effect.gen(function* () {
+      const either = yield* parseCommitTarget(raw).pipe(Effect.either);
       if (Either.isRight(either)) {
         expect.fail('Expected a parse error');
       }
@@ -160,9 +201,41 @@ describe('Review libs', () => {
     })));
   });
 
+  describe('formatCommitReport', () => {
+    it('renders a commit report with findings', run(Effect.gen(function* () {
+      const result = yield* decodeOcrResult(JSON.stringify({
+        comments: [{ path: 'src/a.ts', start_line: 3, end_line: 3, content: 'off-by-one' }],
+      }));
+      const report = formatCommitReport(COMMIT_TARGET, result);
+      expect(report).to.contain('# medic/cht-core@abc1234');
+      expect(report).to.contain('https://github.com/medic/cht-core/commit/abc1234');
+      expect(report).to.contain('Reviewed commit `abc1234`');
+      expect(report).to.contain('### `src/a.ts:3`');
+      expect(report).to.contain('off-by-one');
+    })));
+
+    it('renders the clean message for a commit', run(Effect.gen(function* () {
+      const result = yield* decodeOcrResult(JSON.stringify({ message: 'Looks good.' }));
+      const report = formatCommitReport(COMMIT_TARGET, result);
+      expect(report).to.contain('# medic/cht-core@abc1234');
+      expect(report).to.contain('Looks good.');
+    })));
+  });
+
   describe('reportFileName', () => {
     it('builds a per-PR filename', () => {
       expect(reportFileName(TARGET)).to.equal('medic-cht-core-pr11050.md');
+    });
+  });
+
+  describe('commitReportFileName', () => {
+    it('builds a per-commit filename', () => {
+      expect(commitReportFileName(COMMIT_TARGET)).to.equal('medic-cht-core-commit-abc1234.md');
+    });
+
+    it('replaces path-unsafe characters in the sha', () => {
+      expect(commitReportFileName({ owner: 'medic', repo: 'cht-core', sha: 'feature/x' }))
+        .to.equal('medic-cht-core-commit-feature-x.md');
     });
   });
 });

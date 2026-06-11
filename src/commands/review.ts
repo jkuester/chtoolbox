@@ -1,7 +1,7 @@
 import { Command, Options } from '@effect/cli';
-import { Console, Effect, pipe } from 'effect';
-import { ReviewService } from '../services/review.ts';
-import { parsePrTarget } from '../libs/review.ts';
+import { Console, Effect, pipe, Array } from 'effect';
+import { type ReviewOptions, ReviewService } from '../services/review.ts';
+import { type CommitTarget, parseCommitTarget, parsePrTarget, type PrTarget } from '../libs/review.ts';
 
 const pr = Options
   .text('pr')
@@ -10,6 +10,16 @@ const pr = Options
     Options.withDescription(
       'A GitHub PR to review, given as "org/repo#number" (e.g. medic/cht-core#11050) or a PR URL. Repeat the option '
       + 'to queue multiple PRs, which are reviewed in sequence.'
+    ),
+  );
+
+const commit = Options
+  .text('commit')
+  .pipe(
+    Options.repeated,
+    Options.withDescription(
+      'A GitHub commit to review against its parent, given as "org/repo#sha" (e.g. medic/cht-core#abc1234) or a '
+      + 'commit URL. Repeat the option to queue multiple commits, which are reviewed in sequence.'
     ),
   );
 
@@ -35,22 +45,34 @@ const outputDir = Options
     Options.withDefault('.'),
   );
 
+const reviewPr = (opts: ReviewOptions) => (target: PrTarget) => ReviewService.reviewPr(target, opts);
+const reviewCommit =  (opts: ReviewOptions) => (target: CommitTarget) => ReviewService.reviewCommit(target, opts);
+
 export const review = Command
-  .make('review', { pr, concurrency, timeout, outputDir }, Effect.fn(({ pr, concurrency, timeout, outputDir }) => pipe(
-    Effect.forEach(pr, parsePrTarget),
-    Effect.filterOrFail(
-      targets => targets.length > 0,
-      () => new Error('At least one --pr must be provided.'),
-    ),
-    Effect.flatMap(targets => Effect.forEach(
-      targets,
-      target => ReviewService.review(target, { concurrency, timeout, outputDir }),
-      { concurrency: 1 },
-    )),
-    Effect.tap(paths => Console.log(`\nWrote ${paths.length.toString()} report(s):\n${paths.join('\n')}`)),
-  )))
+  .make(
+    'review',
+    { pr, commit, concurrency, timeout, outputDir },
+    Effect.fn(({ pr, commit, concurrency, timeout, outputDir }) => pipe(
+      Effect.all({
+        prTargets: Effect.forEach(pr, parsePrTarget),
+        commitTargets: Effect.forEach(commit, parseCommitTarget),
+      }),
+      Effect.filterOrFail(
+        ({ prTargets, commitTargets }) => prTargets.length > 0 || commitTargets.length > 0,
+        () => new Error('At least one --pr or --commit must be provided.'),
+      ),
+      Effect.flatMap(({ prTargets, commitTargets }) => pipe(
+        [
+          ...Array.map(prTargets, reviewPr({ concurrency, timeout, outputDir })),
+          ...Array.map(commitTargets, reviewCommit({ concurrency, timeout, outputDir }))
+        ],
+        Effect.all,
+      )),
+      Effect.tap(paths => Console.log(`\nWrote ${paths.length.toString()} report(s):\n${paths.join('\n')}`)),
+    ))
+  )
   .pipe(Command.withDescription(
-    'Review one or more GitHub PRs with open-code-review (`ocr`). For each PR, checks out the PR branch range into a '
-    + 'temp directory, runs `ocr` against it, and writes a markdown report. Requires GITHUB_TOKEN and the `ocr` binary '
-    + 'on the PATH (with its own LLM configuration).'
+    'Review GitHub PRs and/or commits with open-code-review (`ocr`), writing one markdown report each. requires '
+    + 'GITHUB_TOKEN and the `ocr` binary on the PATH (with its own LLM configuration.  See '
+    + 'https://alibaba.github.io/open-code-review/ for more details on setting up ocr.'
   ));

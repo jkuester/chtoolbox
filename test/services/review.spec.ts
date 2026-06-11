@@ -43,6 +43,7 @@ const run = genWithConfig(ReviewService.Default.pipe(
 ))([['GITHUB_TOKEN', GITHUB_TOKEN]]);
 
 const TARGET = { owner: 'medic', repo: 'cht-core', pullNumber: 11050 };
+const COMMIT_TARGET = { owner: 'medic', repo: 'cht-core', sha: 'abc1234' };
 const OPTIONS = { concurrency: 1, timeout: 60, outputDir: OUTPUT_DIR };
 
 describe('Review Service', () => {
@@ -65,7 +66,7 @@ describe('Review Service', () => {
   });
 
   it('reviews a PR: checks out the branch, runs ocr, and writes a report', run(function* () {
-    const path = yield* ReviewService.review(TARGET, OPTIONS);
+    const path = yield* ReviewService.reviewPr(TARGET, OPTIONS);
 
     expect(path).to.equal('/out/medic-cht-core-pr11050.md');
 
@@ -103,7 +104,7 @@ describe('Review Service', () => {
   it('derives the report path and fetch refspec from the given target', run(function* () {
     const target = { owner: 'medic', repo: 'cht-core', pullNumber: 11051 };
 
-    const path = yield* ReviewService.review(target, OPTIONS);
+    const path = yield* ReviewService.reviewPr(target, OPTIONS);
 
     expect(path).to.equal('/out/medic-cht-core-pr11051.md');
     expect(getPr).to.have.been.calledOnceWithExactly(11051);
@@ -115,7 +116,7 @@ describe('Review Service', () => {
   it('fails when a git command fails', run(function* () {
     mockCommand.exitCode.returns(Effect.succeed(1));
 
-    const either = yield* ReviewService.review(TARGET, OPTIONS).pipe(Effect.either);
+    const either = yield* ReviewService.reviewPr(TARGET, OPTIONS).pipe(Effect.either);
 
     if (Either.isLeft(either)) {
       expect(either.left).to.be.instanceOf(Error);
@@ -129,7 +130,7 @@ describe('Review Service', () => {
   it('propagates errors from the GitHub API', run(function* () {
     getPr.returns(Effect.fail(new Error('boom')));
 
-    const either = yield* ReviewService.review(TARGET, OPTIONS).pipe(Effect.either);
+    const either = yield* ReviewService.reviewPr(TARGET, OPTIONS).pipe(Effect.either);
 
     if (Either.isLeft(either)) {
       expect(either.left).to.be.instanceOf(Error);
@@ -139,4 +140,53 @@ describe('Review Service', () => {
       expect.fail('Expected an error to be returned');
     }
   }));
+
+  describe('reviewCommit', () => {
+    it('clones the commit repo, runs ocr against it, and writes a report', run(function* () {
+      const path = yield* ReviewService.reviewCommit(COMMIT_TARGET, OPTIONS);
+
+      expect(path).to.equal('/out/medic-cht-core-commit-abc1234.md');
+
+      // commit reviews clone into a temp dir but do not hit the PR API
+      expect(getPullRequest).to.not.have.been.called;
+      expect(createTmpDir).to.have.been.calledOnce;
+
+      // git checkout: init, remote add (with tokenized URL), fetch the commit sha
+      expect(mockCommand.make).to.have.been.calledWith('git', 'init', '-q');
+      const remoteUrl = `https://x-access-token:${GITHUB_TOKEN}@github.com/medic/cht-core.git`;
+      expect(mockCommand.make).to.have.been.calledWith('git', 'remote', 'add', 'origin', remoteUrl);
+      expect(mockCommand.make).to.have.been.calledWith('git', 'fetch', '--no-tags', 'origin', 'abc1234');
+      expect(mockCommand.workingDirectory).to.have.always.been.calledWith(TMP_DIR);
+
+      // ocr reviews the commit against its parent in the temp checkout
+      const ocrArgs = [
+        'ocr', 'review',
+        '--repo', TMP_DIR,
+        '--commit', 'abc1234',
+        '--format', 'json',
+        '--audience', 'agent',
+        '--concurrency', '1',
+        '--timeout', '60',
+      ];
+      expect(mockCommand.make).to.have.been.calledWith(...ocrArgs);
+
+      expect(writeFile).to.have.been.calledOnceWithExactly('/out/medic-cht-core-commit-abc1234.md');
+      const [report] = writeContent.getCall(0).args as [string];
+      expect(report).to.contain('# medic/cht-core@abc1234');
+      expect(report).to.contain('No comments generated.');
+    }));
+
+    it('propagates ocr errors', run(function* () {
+      mockCommand.string.returns(Effect.fail(new Error('ocr exploded')));
+
+      const either = yield* ReviewService.reviewCommit(COMMIT_TARGET, OPTIONS).pipe(Effect.either);
+
+      if (Either.isLeft(either)) {
+        expect(either.left).to.be.instanceOf(Error);
+        expect(writeFile).to.not.have.been.called;
+      } else {
+        expect.fail('Expected an error to be returned');
+      }
+    }));
+  });
 });

@@ -11,13 +11,31 @@ export interface PrTarget {
   readonly pullNumber: number;
 }
 
+/**
+ * A GitHub commit to review, parsed from the `org/repo#sha` shorthand (or a full commit URL).
+ */
+export interface CommitTarget {
+  readonly owner: string;
+  readonly repo: string;
+  readonly sha: string;
+}
+
 const PR_SHORTHAND = /^([^/\s]+)\/([^/\s#]+)#(\d+)$/;
 const PR_URL = /^https?:\/\/github\.com\/([^/\s]+)\/([^/\s]+)\/pull\/(\d+)(?:[/?#].*)?$/;
 
-const toTarget = (match: RegExpMatchArray): PrTarget => ({
+const COMMIT_SHORTHAND = /^([^/\s]+)\/([^/\s#]+)#([^/\s#]+)$/;
+const COMMIT_URL = /^https?:\/\/github\.com\/([^/\s]+)\/([^/\s]+)\/commit\/([^/\s#]+)(?:[/?#].*)?$/;
+
+const toPrTarget = (match: RegExpMatchArray): PrTarget => ({
   owner: globalThis.String(match[1]),
   repo: globalThis.String(match[2]),
   pullNumber: Number(match[3]),
+});
+
+const toCommitTarget = (match: RegExpMatchArray): CommitTarget => ({
+  owner: globalThis.String(match[1]),
+  repo: globalThis.String(match[2]),
+  sha: globalThis.String(match[3]),
 });
 
 /**
@@ -27,10 +45,24 @@ const toTarget = (match: RegExpMatchArray): PrTarget => ({
 export const parsePrTarget = (raw: string): Effect.Effect<PrTarget, Error> => pipe(
   String.trim(raw),
   trimmed => Option.fromNullable(PR_SHORTHAND.exec(trimmed) ?? PR_URL.exec(trimmed)),
-  Option.map(toTarget),
+  Option.map(toPrTarget),
   Option.map(Effect.succeed),
   Option.getOrElse(() => Effect.fail(new Error(
     `Invalid --pr value: "${raw}". Expected "org/repo#number" (e.g. medic/cht-core#11050) or a pull request URL.`
+  ))),
+);
+
+/**
+ * Parses a value into a {@link CommitTarget}. Accepts the `org/repo#sha` shorthand (e.g. `medic/cht-core#abc1234`)
+ * or a full commit URL (e.g. `https://github.com/medic/cht-core/commit/abc1234`).
+ */
+export const parseCommitTarget = (raw: string): Effect.Effect<CommitTarget, Error> => pipe(
+  String.trim(raw),
+  trimmed => Option.fromNullable(COMMIT_SHORTHAND.exec(trimmed) ?? COMMIT_URL.exec(trimmed)),
+  Option.map(toCommitTarget),
+  Option.map(Effect.succeed),
+  Option.getOrElse(() => Effect.fail(new Error(
+    `Invalid --commit value: "${raw}". Expected "org/repo#sha" (e.g. medic/cht-core#abc1234) or a commit URL.`
   ))),
 );
 
@@ -117,6 +149,12 @@ const warningsSection = (warnings: readonly string[]): string => pipe(
   }),
 );
 
+const reportBody = (header: readonly string[], result: OcrResult): string => pipe(
+  [...header, `## Findings`, commentsSection(result)],
+  Array.join('\n\n'),
+  report => `${report}${warningsSection(result.warnings)}\n`,
+);
+
 /**
  * Compiles the `ocr` JSON result for a single PR into a readable markdown document.
  */
@@ -124,20 +162,30 @@ export const formatReport = (
   target: PrTarget,
   prData: Pick<PullRequestData, 'title' | 'html_url' | 'base' | 'head'>,
   result: OcrResult,
-): string => pipe(
-  [
-    `# ${target.owner}/${target.repo}#${target.pullNumber.toString()}: ${prData.title}`,
-    prData.html_url,
-    `Reviewed \`${prData.base.ref}...${prData.head.ref}\` with open-code-review.`,
-    `## Findings`,
-    commentsSection(result),
-  ],
-  Array.join('\n\n'),
-  report => `${report}${warningsSection(result.warnings)}\n`,
-);
+): string => reportBody([
+  `# ${target.owner}/${target.repo}#${target.pullNumber.toString()}: ${prData.title}`,
+  prData.html_url,
+  `Reviewed \`${prData.base.ref}...${prData.head.ref}\` with open-code-review.`,
+], result);
+
+/**
+ * Compiles the `ocr` JSON result for a single commit into a readable markdown document.
+ */
+export const formatCommitReport = (target: CommitTarget, result: OcrResult): string => reportBody([
+  `# ${target.owner}/${target.repo}@${target.sha}`,
+  `https://github.com/${target.owner}/${target.repo}/commit/${target.sha}`,
+  `Reviewed commit \`${target.sha}\` with open-code-review.`,
+], result);
 
 /**
  * The markdown filename for a PR's review report, e.g. `medic-cht-core-pr11050.md`.
  */
 export const reportFileName = ({ owner, repo, pullNumber }: PrTarget): string =>
   `${owner}-${repo}-pr${pullNumber.toString()}.md`;
+
+/**
+ * The markdown filename for a commit's review report, e.g. `medic-cht-core-commit-abc1234.md`. Characters in the sha
+ * that are not path-safe are replaced with dashes.
+ */
+export const commitReportFileName = ({ owner, repo, sha }: CommitTarget): string =>
+  `${owner}-${repo}-commit-${sha.replace(/[^\w.-]/g, '-')}.md`;
