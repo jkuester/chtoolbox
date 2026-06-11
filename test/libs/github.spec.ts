@@ -13,7 +13,7 @@ const base = 'base';
 const head = 'head';
 
 const octokit = sandbox.stub();
-const { compareRefs, getReleaseNames } = await esmock<typeof GitHubLibs>('../../src/libs/github.ts', {
+const { compareRefs, getReleaseNames, getPullRequest } = await esmock<typeof GitHubLibs>('../../src/libs/github.ts', {
   '../../src/libs/shim.ts': { octokit },
 });
 
@@ -29,22 +29,40 @@ describe('GitHub libs', () => {
   let compareCommitsWithBasehead: SinonStub;
   let listTags: SinonStub;
   let listCommits: SinonStub;
+  let pullsGet: SinonStub;
 
   beforeEach(() => {
     paginate = sinon.stub();
     compareCommitsWithBasehead = sinon.stub();
     listTags = sinon.stub();
     listCommits = sinon.stub();
+    pullsGet = sinon.stub();
     octokit.returns({
       paginate,
-      rest: { 
-        repos: { 
+      rest: {
+        repos: {
           compareCommitsWithBasehead,
           listTags,
-          listCommits 
-        } 
+          listCommits
+        },
+        pulls: {
+          get: pullsGet
+        }
       }
     });
+  });
+
+  describe('getPullRequest', () => {
+    it('returns the pull request metadata', run(function* () {
+      const data = { title: 'A PR', html_url: 'url', base: { ref: 'master' }, head: { ref: 'feature' } };
+      pullsGet.resolves({ data });
+
+      const result = yield* getPullRequest(owner, repo)(11050);
+
+      expect(result).to.deep.equal(data);
+      expect(octokit).calledOnceWithExactly({ auth: GITHUB_TOKEN });
+      expect(pullsGet).calledOnceWithExactly({ owner, repo, pull_number: 11050 });
+    }));
   });
 
   describe('compareRefs', () => {

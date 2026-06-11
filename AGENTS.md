@@ -17,6 +17,7 @@
 - Naming: files kebab-case; types PascalCase; variables camelCase; constants UPPER_SNAKE only if truly constant; test files mirror source name.
 - Prefer expressions over declarations (func-style=expression). Arrow functions where concise; keep arrow spacing.
 - Error handling: return Effect<E, A>; avoid throwing; convert external promise rejections into Effects; use typed errors or discriminated unions; never swallow errors.
+- Logging: non-debug/user-facing logging (e.g. Console.log) belongs only in src/commands files; libs/services stay side-effect-free and use Effect.logDebug for debug output.
 - Imports: group builtin/external/internal; no unused (eslint); avoid default export—prefer named.
 - Formatting enforced by eslint rules: 1TBS braces, unix linebreaks, consistent newline for arrays/functions, no nested ternaries, dot-notation, spacing rules (arrow, comma, keyword, key, semi, template-curly, rest-spread no space).
 - Testing: use chai + sinon + deep-equal-in-any-order + chai-exclude; reset sandbox afterEach (see test/utils/base.ts). Use Effect.runPromise for async.

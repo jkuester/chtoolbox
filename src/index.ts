@@ -26,6 +26,8 @@ import { localIp } from './commands/local-ip/index.ts';
 import { LocalIpService } from './services/local-ip.ts';
 import { SentinelBacklogService } from './services/sentinel-backlog.ts';
 import { sentinelBacklog } from './commands/sentinel-backlog/index.ts';
+import { ReviewService } from './services/review.ts';
+import { review } from './commands/review.ts';
 import { getChtxConfigProvider } from './libs/config.js';
 
 const withChtxConfigProvider = Effect.fn(<A, E, R>(
@@ -56,7 +58,8 @@ const SUBCOMMANDS = Array.make(
   subCommandWithConfig(db),
   subCommandWithConfig(upgrade),
   subCommandWithConfig(instance),
-  subCommandWithConfig(sentinelBacklog)
+  subCommandWithConfig(sentinelBacklog),
+  subCommandWithConfig(review)
 );
 
 const url = Options
@@ -99,6 +102,7 @@ pipe(
   Effect.provide(ReplicateService.Default),
   Effect.provide(SentinelBacklogService.Default),
   Effect.provide(TestDataGeneratorService.Default),
+  Effect.provide(ReviewService.Default),
   Effect.provide(PouchDBService.Default),
   Effect.provide(ChtClientService.Default.pipe(httpClientNoSslVerify)),
   Effect.provide(NodeContext.layer),
