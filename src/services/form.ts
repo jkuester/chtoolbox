@@ -103,7 +103,7 @@ const BASE_FONT: Partial<ExcelJS.Font> = { name: 'Liberation Sans', size: 10 };
 const BASE_ALIGNMENT: Partial<ExcelJS.Alignment> = { vertical: 'bottom' };
 const STYLE_DEFAULT: Partial<ExcelJS.Style> = { font: { ...BASE_FONT }, alignment: { ...BASE_ALIGNMENT } };
 const FILL_GREY: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
-const FILL_BLUE_GREY: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3E8' } };
+const FILL_BLUE_GREY: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCCCF0' } };
 const FILL_GREEN: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFAFD095' } };
 const BORDER_DARK_GREY: Partial<ExcelJS.Border> = { style: 'thin', color: { argb: 'FF808080' } };
 const BORDER_HEADER_SIDES: Partial<ExcelJS.Borders> = {
@@ -436,6 +436,19 @@ const setSurveyHeaderFormatting = (worksheet: Worksheet) => pipe(
   formatting => worksheet.addConditionalFormatting(formatting)
 );
 
+const setSurveyHeaderlessCellFormatting = (worksheet: Worksheet) => pipe(
+  worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter,
+  lastCol => worksheet.addConditionalFormatting({
+    ref: `A2:${lastCol}${String(worksheet.rowCount + BUFFER_ROW_COUNT)}`,
+    rules: [{
+      type: 'expression',
+      formulae: ['AND(A2<>"",A$1="")'],
+      style: { ...STYLE_ERROR },
+      priority: 1,
+    }]
+  })
+);
+
 const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
   getWorksheetWithName(workbook)(SHEET_NAME_SURVEY),
   Option.map(surveySheet => pipe(
@@ -447,6 +460,7 @@ const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
     Effect.tap(setSurveyTypeValidation),
     Effect.tap(setSurveyNameFormatting),
     Effect.tap(setSurveyLabelFormatting),
+    Effect.tap(setSurveyHeaderlessCellFormatting),
   )),
   Option.getOrElse(() => Effect.void)
 );
