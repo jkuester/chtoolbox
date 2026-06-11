@@ -64,34 +64,16 @@ const SURVEY_FIELD_TYPES_LABELED = [
   'video',
 ];
 const SURVEY_FIELD_TYPES = [
-  'acknowledge',
-  'audio',
+  ...SURVEY_FIELD_TYPES_LABELED,
   'begin_group',
   'begin_repeat',
   'calculate',
-  'date',
-  'datetime',
-  'decimal',
   'end',
   'end_group',
   'end_repeat',
-  'file',
-  'geopoint',
-  'geoshape',
-  'geotrace',
   'hidden',
-  'image',
-  'integer',
-  'note',
-  'range',
-  'rank',
-  'select_multiple list_name',
-  'select_one list_name',
   'start',
-  'text',
-  'time',
   'today',
-  'video',
 ];
 
 const SHEET_NAME_SURVEY = 'survey';
@@ -181,11 +163,13 @@ const getHeaderNames = (worksheet: Worksheet) => pipe(
   Array.map(val => typeof val === 'string' ? val : ''),
 );
 
-const getColumnLetter = (colName: string, worksheet: Worksheet) => pipe(
+const getColumnLetterMatching = (predicate: (val?: string) => boolean, worksheet: Worksheet) => pipe(
   getHeaderNames(worksheet),
-  Array.findFirstIndex(val => val === colName),
+  Array.findFirstIndex(predicate),
   Option.map(colIndex => String.fromCodePoint(64 + colIndex))
 );
+const getColumnLetter = (colName: string, worksheet: Worksheet) =>
+  getColumnLetterMatching(val => val === colName, worksheet);
 
 const SELECT_ONE_PREFIX = 'select_one ';
 const SELECT_MULTIPLE_PREFIX = 'select_multiple ';
@@ -212,6 +196,19 @@ const buildIsInvalidTypeFormula = (cell: string, choicesListNameRange: Option.Op
   },${
     selectChoicesSubFormula(SELECT_MULTIPLE_PREFIX, cell, choicesListNameRange)
   })))`
+);
+
+const buildIsLabeledTypeFormula = (cell: string) => pipe(
+  SURVEY_FIELD_TYPES_LABELED,
+  Array.filter(Predicate.not(startsWithSelectPrefix)),
+  Array.map(t => `"${t}"`),
+  Array.join(','),
+  fixedListLiteral => [
+    `NOT(ISERROR(MATCH(${cell},{${fixedListLiteral}},0)))`,
+    `LEFT(${cell},${SELECT_ONE_PREFIX.length.toString()})="${SELECT_ONE_PREFIX}"`,
+    `LEFT(${cell},${SELECT_MULTIPLE_PREFIX.length.toString()})="${SELECT_MULTIPLE_PREFIX}"`,
+  ],
+  parts => `OR(${parts.join(',')})`,
 );
 
 const getChoicesListNameRange = (workbook: ExcelJS.Workbook) => pipe(
@@ -242,17 +239,15 @@ const setSurveyTypeFormatting = (workbook: ExcelJS.Workbook) => (surveySheet: Wo
 );
 
 const setSurveyNameFormatting = (surveySheet: Worksheet) => pipe(
-  Tuple.make(
-    Option.getOrThrowWith(
-      getColumnLetter('name', surveySheet),
-      () => new Error('No "name" column found in survey sheet.')
-    ),
+  getColumnLetter('name', surveySheet),
+  Option.map(nameCol => Tuple.make(
+    nameCol,
     Option.getOrThrowWith(
       getColumnLetter('type', surveySheet),
       () => new Error('No "type" column found in survey sheet.')
     ),
-  ),
-  ([nameCol, typeCol]) => surveySheet.addConditionalFormatting({
+  )),
+  Option.map(([nameCol, typeCol]) => surveySheet.addConditionalFormatting({
     ref: getTypeValidationRange(nameCol, surveySheet.rowCount),
     rules: [{
       type: 'expression',
@@ -260,8 +255,36 @@ const setSurveyNameFormatting = (surveySheet: Worksheet) => pipe(
       style: { ...STYLE_ERROR },
       priority: 1,
     }]
-  }),
+  })),
   () => []
+);
+
+const LABEL_TRANSLATABLE_PREFIX = 'label::';
+const setSurveyLabelFormatting = (surveySheet: Worksheet) => pipe(
+  getColumnLetterMatching(val => !!val?.startsWith(LABEL_TRANSLATABLE_PREFIX), surveySheet),
+  Option.map(labelCol => Tuple.make(
+    labelCol,
+    Option.getOrThrowWith(
+      getColumnLetter('type', surveySheet),
+      () => new Error('No "type" column found in survey sheet.')
+    ),
+  )),
+  Option.map(([labelCol, typeCol]) => surveySheet.addConditionalFormatting({
+    ref: getTypeValidationRange(labelCol, surveySheet.rowCount),
+    rules: [{
+      type: 'expression',
+      formulae: [`AND(${buildIsLabeledTypeFormula(typeCol + '2')},${labelCol}2="")`],
+      style: { ...STYLE_ERROR },
+      priority: 1,
+    }]
+  })),
+  () => []
+);
+
+const surveyFieldTypesFormulae = pipe(
+  SURVEY_FIELD_TYPES,
+  Array.sort(Order.string),
+  Array.join(',')
 );
 
 const setSurveyTypeValidation = (surveySheet: Worksheet) => pipe(
@@ -270,7 +293,7 @@ const setSurveyTypeValidation = (surveySheet: Worksheet) => pipe(
   column => surveySheet.dataValidations.add(getTypeValidationRange(column, surveySheet.rowCount), {
     type: 'list',
     allowBlank: true,
-    formulae: [`"${SURVEY_FIELD_TYPES.join(',')}"`],
+    formulae: [`"${surveyFieldTypesFormulae}"`],
     // LibreOffice silently blocks off-list entries when showErrorMessage is false (ignoring the xlsx
     // spec). Keep it true with errorStyle 'information' so the user can override with a single OK.
     showErrorMessage: true,
@@ -393,6 +416,7 @@ const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
   Effect.tap(setSurveyTypeFormatting(workbook)),
   Effect.tap(setSurveyTypeValidation),
   Effect.tap(setSurveyNameFormatting),
+  Effect.tap(setSurveyLabelFormatting),
 );
 
 const formatWorkbook = (workbook: ExcelJS.Workbook) => pipe(
