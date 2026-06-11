@@ -403,27 +403,33 @@ const setSurveyHeaderFormatting = (worksheet: Worksheet) => pipe(
     rules: [
       {
         type: 'expression',
+        formulae: [`AND(A1<>"",COUNTIF($A$1:$${lastCol}$1,A1)>1)`],
+        style: { ...STYLE_ERROR },
+        priority: 1,
+      },
+      {
+        type: 'expression',
         formulae: [translatable],
         style: { ...STYLE_HEADER_TRANSLATABLE },
-        priority: 1,
+        priority: 2,
       },
       {
         type: 'expression',
         formulae: [valid],
         style: { ...STYLE_HEADER },
-        priority: 2,
+        priority: 3,
       },
       {
         type: 'expression',
         formulae: [expression],
         style: { ...STYLE_HEADER_EXPRESSION },
-        priority: 3,
+        priority: 4,
       },
       {
         type: 'expression',
         formulae: [`AND(A1<>"",NOT(${translatable}),NOT(${valid}),NOT(${expression}))`],
         style: { ...STYLE_ERROR },
-        priority: 4,
+        priority: 5,
       },
     ],
   }),
