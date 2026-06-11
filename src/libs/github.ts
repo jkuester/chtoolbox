@@ -8,6 +8,7 @@ import type { UnknownException } from 'effect/Cause';
 
 export type CompareCommitsData = RestEndpointMethodTypes['repos']['compareCommitsWithBasehead']['response']['data'];
 type RepoTagData = RestEndpointMethodTypes['repos']['listTags']['response']['data'];
+export type PullRequestData = RestEndpointMethodTypes['pulls']['get']['response']['data'];
 
 const octokitEffect = pipe(
   GITHUB_TOKEN,
@@ -108,6 +109,23 @@ export const compareRefs = (
   Effect.andThen(compareCommitsWithBasehead(owner, repo, baseRef, headRef)),
   Effect.map(reduceCompareCommitsData),
   Effect.flatMap(ensureAllChangedFilesIncluded(owner, repo)),
+));
+
+/**
+ * Fetches the metadata for a single pull request. The returned data includes the base ref (the branch the PR targets),
+ * the head ref, the PR title, and the html_url.
+ */
+export const getPullRequest = (
+  owner: string,
+  repo: string
+): (pullNumber: number) => Effect.Effect<PullRequestData, Error | ConfigError> => Effect.fn((pullNumber) => pipe(
+  octokitEffect,
+  Effect.flatMap(octokit => Effect.tryPromise(() => octokit.rest.pulls.get({
+    owner,
+    repo,
+    pull_number: pullNumber,
+  }))),
+  Effect.map(({ data }) => data),
 ));
 
 const getAllTags = Effect.fn((
