@@ -94,9 +94,14 @@ describe('Review Service', () => {
     ];
     expect(mockCommand.make).to.have.been.calledWith(...ocrArgs);
 
-    // one report written, built from the real formatReport/decode pipeline
-    expect(writeFile).to.have.been.calledOnceWithExactly('/out/medic-cht-core-pr11050.md');
-    const [report] = writeContent.getCall(0).args as [string];
+    // the ocr rule file is written into the cloned repo
+    expect(writeFile).to.have.been.calledWith(`${TMP_DIR}/.opencodereview/rule.json`);
+    const [ruleContent] = writeContent.getCall(0).args as [string];
+    expect(JSON.parse(ruleContent)).to.deep.equal({ rules: [], include: ['**/*.spec.{js,jsx,ts,tsx}'] });
+
+    // the report is written, built from the real formatReport/decode pipeline
+    expect(writeFile).to.have.been.calledWith('/out/medic-cht-core-pr11050.md');
+    const [report] = writeContent.lastCall.args as [string];
     expect(report).to.contain('# medic/cht-core#11050: Fix the thing');
     expect(report).to.contain('No comments generated.');
   }));
@@ -108,7 +113,7 @@ describe('Review Service', () => {
 
     expect(path).to.equal('/out/medic-cht-core-pr11051.md');
     expect(getPr).to.have.been.calledOnceWithExactly(11051);
-    expect(writeFile).to.have.been.calledOnceWithExactly('/out/medic-cht-core-pr11051.md');
+    expect(writeFile).to.have.been.calledWith('/out/medic-cht-core-pr11051.md');
     expect(mockCommand.make)
       .to.have.been.calledWith('git', 'fetch', '--no-tags', 'origin', 'master:ocr-base', 'pull/11051/head:ocr-head');
   }));
@@ -170,20 +175,25 @@ describe('Review Service', () => {
       ];
       expect(mockCommand.make).to.have.been.calledWith(...ocrArgs);
 
-      expect(writeFile).to.have.been.calledOnceWithExactly('/out/medic-cht-core-commit-abc1234.md');
-      const [report] = writeContent.getCall(0).args as [string];
+      // the ocr rule file is written into the cloned repo
+      expect(writeFile).to.have.been.calledWith(`${TMP_DIR}/.opencodereview/rule.json`);
+      const [ruleContent] = writeContent.getCall(0).args as [string];
+      expect(JSON.parse(ruleContent)).to.deep.equal({ rules: [], include: ['**/*.spec.{js,jsx,ts,tsx}'] });
+
+      expect(writeFile).to.have.been.calledWith('/out/medic-cht-core-commit-abc1234.md');
+      const [report] = writeContent.lastCall.args as [string];
       expect(report).to.contain('# medic/cht-core@abc1234');
       expect(report).to.contain('No comments generated.');
     }));
 
-    it('propagates ocr errors', run(function* () {
+    it('propagates ocr errors without writing a report', run(function* () {
       mockCommand.string.returns(Effect.fail(new Error('ocr exploded')));
 
       const either = yield* ReviewService.reviewCommit(COMMIT_TARGET, OPTIONS).pipe(Effect.either);
 
       if (Either.isLeft(either)) {
         expect(either.left).to.be.instanceOf(Error);
-        expect(writeFile).to.not.have.been.called;
+        expect(writeFile).to.not.have.been.calledWith('/out/medic-cht-core-commit-abc1234.md');
       } else {
         expect.fail('Expected an error to be returned');
       }

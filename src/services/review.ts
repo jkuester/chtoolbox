@@ -92,11 +92,22 @@ const writeReport = (outputDir: string, fileName: string, report: string) => pip
   Effect.tap(path => writeFile(path)(report)),
 );
 
+const OCR_RULE = JSON.stringify({
+  rules: [],
+  include: ['**/*.spec.{js,jsx,ts,tsx}'],
+}, null, 2);
+
+const writeOcrRule = (tmpDir: string) => pipe(
+  createDir(join(tmpDir, '.opencodereview')),
+  Effect.andThen(writeFile(join(tmpDir, '.opencodereview', 'rule.json'))(OCR_RULE)),
+);
+
 const runPrReview = (target: PrTarget, options: ReviewOptions) => pipe(
   getPullRequest(target.owner, target.repo)(target.pullNumber),
   Effect.flatMap(prData => pipe(
     createTmpDir(),
     Effect.tap(tmpDir => checkoutPr(target, prData.base.ref, tmpDir)),
+    Effect.tap(writeOcrRule),
     Effect.flatMap(tmpDir => runOcr(['--repo', tmpDir, '--from', 'ocr-base', '--to', 'ocr-head'], options)),
     Effect.flatMap(decodeOcrResult),
     Effect.map(result => formatReport(target, prData, result)),
@@ -109,6 +120,7 @@ const runPrReview = (target: PrTarget, options: ReviewOptions) => pipe(
 const runCommitReview = (target: CommitTarget, options: ReviewOptions) => pipe(
   createTmpDir(),
   Effect.tap(tmpDir => checkoutCommit(target, tmpDir)),
+  Effect.tap(writeOcrRule),
   Effect.flatMap(tmpDir => runOcr(['--repo', tmpDir, '--commit', target.sha], options)),
   Effect.flatMap(decodeOcrResult),
   Effect.map(result => formatCommitReport(target, result)),
