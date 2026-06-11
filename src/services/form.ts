@@ -12,7 +12,14 @@ type Worksheet = ExcelJS.Worksheet & {
 const BUFFER_COL_COUNT = 50;
 const BUFFER_ROW_COUNT = 1000;
 
-const SURVEY_COLUMNS: Record<string, { translatable? : boolean, expression?: boolean }> = {
+const SURVEY_COLUMNS: Record<string, {
+  /** Multiple versions of this column can be added for different languages */
+  translatable?: boolean,
+  /** Values in the column can be XPath expressions */
+  expression?: boolean,
+  /** Values in this column can only be `true` or empty */
+  trueOnly?: boolean,
+}> = {
   appearance: {},
   audio: { translatable: true },
   calculation: { expression: true },
@@ -23,15 +30,15 @@ const SURVEY_COLUMNS: Record<string, { translatable? : boolean, expression?: boo
   hint: { translatable: true },
   image: { translatable: true },
   'instance::cht:duration': {},
-  'instance::cht:unique_tel': {},
-  'instance::db-doc': {},
+  'instance::cht:unique_tel': { trueOnly: true },
+  'instance::db-doc': { trueOnly: true },
   'instance::db-doc-ref': {},
   'instance::type': {},
   label: { translatable: true },
   name: {},
   note: {},
   parameters: {},
-  read_only: {},
+  read_only: { trueOnly: true },
   relevant: { expression: true },
   repeat_count: { expression: true },
   required: { expression: true },
@@ -52,6 +59,11 @@ const SURVEY_COLUMN_NAMES_EXPRESSION = pipe(
 const SURVEY_COLUMN_NAMES_BASIC = pipe(
   Record.toEntries(SURVEY_COLUMNS),
   Array.filter(([, { translatable, expression }]) => !translatable && !expression),
+  Array.map(Tuple.getFirst),
+);
+const SURVEY_COLUMN_NAMES_TRUE_ONLY = pipe(
+  Record.toEntries(SURVEY_COLUMNS),
+  Array.filter(([, { trueOnly }]) => !!trueOnly),
   Array.map(Tuple.getFirst),
 );
 const LABEL_TRANSLATABLE_PREFIX = 'label::';
@@ -317,18 +329,25 @@ const setSurveyTypeValidation = (surveySheet: Worksheet) => pipe(
   })
 );
 
-const setSurveyReadOnlyValidation = (surveySheet: Worksheet) => pipe(
-  getColumnLetter('read_only', surveySheet),
+const trueOnlyColumnLetters = (surveySheet: Worksheet) => pipe(
+  SURVEY_COLUMN_NAMES_TRUE_ONLY,
+  Array.filterMap(name => getColumnLetter(name, surveySheet)),
+);
+
+const validateColumnAcceptOnlyTrue = (surveySheet: Worksheet) => (column: string) =>
   // The leading comma yields an empty option ahead of "true" in the dropdown.
-  Option.map(column => surveySheet.dataValidations.add(getTypeValidationRange(column, surveySheet.rowCount), {
+  surveySheet.dataValidations.add(getTypeValidationRange(column, surveySheet.rowCount), {
     type: 'list',
     allowBlank: true,
     formulae: ['",true"'],
     showErrorMessage: true,
     errorStyle: 'information',
-    errorTitle: 'Read only warning',
-    error: 'The "read_only" column only accepts "true" or an empty value.',
-  }))
+    errorTitle: 'Value warning',
+    error: 'This column only accepts "true" or an empty value.',
+  });
+const setSurveyTrueOnlyValidation = (surveySheet: Worksheet) => pipe(
+  trueOnlyColumnLetters(surveySheet),
+  Array.forEach(validateColumnAcceptOnlyTrue(surveySheet))
 );
 
 const formatColumnAcceptOnlyTrue = (surveySheet: Worksheet) => (column: string) => {
@@ -343,9 +362,9 @@ const formatColumnAcceptOnlyTrue = (surveySheet: Worksheet) => (column: string) 
     }]
   });
 };
-const setSurveyReadOnlyFormatting = (surveySheet: Worksheet) => pipe(
-  getColumnLetter('read_only', surveySheet),
-  Option.map(formatColumnAcceptOnlyTrue(surveySheet))
+const setSurveyTrueOnlyFormatting = (surveySheet: Worksheet) => pipe(
+  trueOnlyColumnLetters(surveySheet),
+  Array.forEach(formatColumnAcceptOnlyTrue(surveySheet))
 );
 
 const buildTranslatableHeaderFormula = (cell: string) => pipe(
@@ -489,8 +508,8 @@ const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
     Effect.tap(setSurveyHeaderValidation(workbook)),
     Effect.tap(setSurveyTypeFormatting(workbook)),
     Effect.tap(setSurveyTypeValidation),
-    Effect.tap(setSurveyReadOnlyValidation),
-    Effect.tap(setSurveyReadOnlyFormatting),
+    Effect.tap(setSurveyTrueOnlyValidation),
+    Effect.tap(setSurveyTrueOnlyFormatting),
     Effect.tap(setSurveyNameFormatting),
     Effect.tap(setSurveyLabelFormatting),
     Effect.tap(setSurveyHeaderlessCellFormatting),
