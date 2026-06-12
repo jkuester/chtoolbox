@@ -12,6 +12,18 @@ type Worksheet = ExcelJS.Worksheet & {
 const BUFFER_COL_COUNT = 50;
 const BUFFER_ROW_COUNT = 1000;
 
+const CHOICES_COLUMNS: Record<string, {
+  /** Multiple versions of this column can be added for different languages */
+  translatable?: boolean,
+}> = {
+  audio: { translatable: true },
+  image: { translatable: true },
+  label: { translatable: true },
+  list_name: {},
+  name: {},
+  video: { translatable: true },
+};
+
 const SURVEY_COLUMNS: Record<string, {
   /** Multiple versions of this column can be added for different languages */
   translatable?: boolean,
@@ -191,11 +203,7 @@ const clearSheetFormatting = (ws: Worksheet): void => {
   clearHeaderComments(ws);
   ws.columns.forEach(setDefaultStyle);
 };
-const clearChtxSheet = (workbook: ExcelJS.Workbook) => pipe(
-  workbook.getWorksheet(SHEET_NAME_CHTX),
-  Option.fromNullable,
-  Option.map(sheet => sheet.spliceRows(1, sheet.rowCount)),
-);
+const clearChtxSheet = (workbook: ExcelJS.Workbook) => workbook.removeWorksheet(SHEET_NAME_CHTX);
 const clearWorkbookFormatting = (workbook: ExcelJS.Workbook) => pipe(
   SHEET_NAMES,
   Array.map(getWorksheetWithName(workbook)),
@@ -455,6 +463,29 @@ const setSurveyHeaderValidation = (workbook: ExcelJS.Workbook) => (
   )),
 );
 
+// The choices sheet permits arbitrary columns, so this only offers the known names as a dropdown; any other
+// value is allowed. errorStyle 'information' lets the user keep an off-list value with a single OK (a fully
+// silent free-entry dropdown isn't possible since LibreOffice blocks off-list entries when the error is off).
+const setChoicesHeaderValidation = (workbook: ExcelJS.Workbook) => (
+  worksheet: Worksheet
+) => pipe(
+  Record.keys(CHOICES_COLUMNS),
+  writeChtxColumn(workbook, 'choices_header_names'),
+  Effect.map(formula => pipe(
+    worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter,
+    lastCol => `A1:${lastCol}1`,
+    range => worksheet.dataValidations.add(range, {
+      type: 'list',
+      allowBlank: true,
+      formulae: [formula],
+      showErrorMessage: true,
+      errorStyle: 'information',
+      errorTitle: 'Column warning',
+      error: 'For translatable columns, you can append "::<lang>" to the column name (e.g., label::en).',
+    }),
+  )),
+);
+
 const setSurveyHeaderFormatting = (worksheet: Worksheet) => pipe(
   Tuple.make(
     buildTranslatableHeaderFormula('A1'),
@@ -557,10 +588,21 @@ const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
   Option.getOrElse(() => Effect.void)
 );
 
+const formatChoicesWorksheet = (workbook: ExcelJS.Workbook) => pipe(
+  getWorksheetWithName(workbook)(SHEET_NAME_CHOICES),
+  Option.map(choicesSheet => pipe(
+    choicesSheet,
+    Effect.succeed,
+    Effect.tap(setChoicesHeaderValidation(workbook)),
+  )),
+  Option.getOrElse(() => Effect.void)
+);
+
 const formatWorkbook = (workbook: ExcelJS.Workbook) => pipe(
   Effect.succeed(workbook),
   Effect.tap(clearWorkbookFormatting),
   Effect.tap(formatSurveyWorksheet),
+  Effect.tap(formatChoicesWorksheet),
   Effect.asVoid
 );
 
@@ -576,3 +618,6 @@ export class FormService extends Effect.Service<FormService>()('chtoolbox/FormSe
   }),
   accessors: true,
 }) {}
+
+
+// TODO froxen cell logic
