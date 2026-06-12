@@ -23,6 +23,11 @@ const CHOICES_COLUMNS: Record<string, {
   name: {},
   video: { translatable: true },
 };
+const CHOICES_COLUMN_NAMES_TRANSLATABLE = pipe(
+  Record.toEntries(CHOICES_COLUMNS),
+  Array.filter(([, { translatable }]) => !!translatable),
+  Array.map(Tuple.getFirst),
+);
 
 const SURVEY_COLUMNS: Record<string, {
   /** Multiple versions of this column can be added for different languages */
@@ -389,8 +394,8 @@ const setSurveyTrueOnlyFormatting = (surveySheet: Worksheet) => pipe(
   Array.forEach(formatColumnAcceptOnlyTrue(surveySheet))
 );
 
-const buildTranslatableHeaderFormula = (cell: string) => pipe(
-  SURVEY_COLUMN_NAMES_TRANSLATABLE,
+const buildTranslatableHeaderFormula = (cell: string, names: readonly string[]) => pipe(
+  names,
   Array.flatMap(name => [
     `${cell}="${name}"`,
     `LEFT(${cell},${String(name.length + 2)})="${name}::"`,
@@ -488,7 +493,7 @@ const setChoicesHeaderValidation = (workbook: ExcelJS.Workbook) => (
 
 const setSurveyHeaderFormatting = (worksheet: Worksheet) => pipe(
   Tuple.make(
-    buildTranslatableHeaderFormula('A1'),
+    buildTranslatableHeaderFormula('A1', SURVEY_COLUMN_NAMES_TRANSLATABLE),
     buildSurveyHeaderFormula('A1'),
     buildExpressionHeaderFormula('A1'),
     worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter
@@ -525,6 +530,37 @@ const setSurveyHeaderFormatting = (worksheet: Worksheet) => pipe(
         formulae: [`AND(A1<>"",NOT(${translatable}),NOT(${valid}),NOT(${expression}))`],
         style: { ...STYLE_ERROR },
         priority: 5,
+      },
+    ],
+  }),
+  formatting => worksheet.addConditionalFormatting(formatting)
+);
+
+const setChoicesHeaderFormatting = (worksheet: Worksheet) => pipe(
+  Tuple.make(
+    buildTranslatableHeaderFormula('A1', CHOICES_COLUMN_NAMES_TRANSLATABLE),
+    worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter
+  ),
+  ([translatable, lastCol]): ExcelJS.ConditionalFormattingOptions => ({
+    ref: `A1:${lastCol}1`,
+    rules: [
+      {
+        type: 'expression',
+        formulae: [`AND(A1<>"",COUNTIF($A$1:$${lastCol}$1,A1)>1)`],
+        style: { ...STYLE_ERROR },
+        priority: 1,
+      },
+      {
+        type: 'expression',
+        formulae: [translatable],
+        style: { ...STYLE_HEADER_TRANSLATABLE },
+        priority: 2,
+      },
+      {
+        type: 'expression',
+        formulae: ['A1<>""'],
+        style: { ...STYLE_HEADER },
+        priority: 3,
       },
     ],
   }),
@@ -593,6 +629,7 @@ const formatChoicesWorksheet = (workbook: ExcelJS.Workbook) => pipe(
   Option.map(choicesSheet => pipe(
     choicesSheet,
     Effect.succeed,
+    Effect.tap(setChoicesHeaderFormatting),
     Effect.tap(setChoicesHeaderValidation(workbook)),
   )),
   Option.getOrElse(() => Effect.void)
