@@ -13,11 +13,11 @@ const BUFFER_COL_COUNT = 50;
 const BUFFER_ROW_COUNT = 1000;
 
 const SETTINGS_COLUMNS: Record<string, object> = {
-  allow_choice_duplicates: { },
-  form_title: {  },
-  namespaces: { },
+  allow_choice_duplicates: {},
+  form_title: {},
+  namespaces: {},
   style: {},
-  version: {  },
+  version: {},
 };
 
 const CHOICES_COLUMNS: Record<string, {
@@ -224,12 +224,17 @@ const clearHeaderComments = (ws: Worksheet) => ws
   .getRow(1)
   .eachCell({ includeEmpty: true }, clearComment);
 
+const clearFrozenPanes = (ws: Worksheet): void => {
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  ws.views = ws.views?.filter(view => view.state !== 'frozen');
+};
 const clearSheetFormatting = (ws: Worksheet): void => {
   ws.removeConditionalFormatting(null);
   ws.dataValidations.model = {};
   ws.eachRow({ includeEmpty: true }, clearRowFormatting);
   clearHeaderComments(ws);
   ws.columns.forEach(setDefaultStyle);
+  clearFrozenPanes(ws);
 };
 const clearChtxSheet = (workbook: ExcelJS.Workbook) => workbook.removeWorksheet(SHEET_NAME_CHTX);
 const clearWorkbookFormatting = (workbook: ExcelJS.Workbook) => pipe(
@@ -710,11 +715,17 @@ const setSurveyEndGroupFormatting = setSurveyGroupBoundaryFormatting('end_group'
 const setSurveyBeginRepeatFormatting = setSurveyGroupBoundaryFormatting('begin_repeat', STYLE_BEGIN_REPEAT);
 const setSurveyEndRepeatFormatting = setSurveyGroupBoundaryFormatting('end_repeat', STYLE_END_REPEAT);
 
+// Freeze the header row and the first two columns so they stay visible while scrolling.
+const freezeHeaderAndKeyColumns = (worksheet: Worksheet): void => {
+  worksheet.views = [{ state: 'frozen', xSplit: 2, ySplit: 1 }];
+};
+
 const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
   getWorksheetWithName(workbook)(SHEET_NAME_SURVEY),
   Option.map(surveySheet => pipe(
     surveySheet,
     Effect.succeed,
+    Effect.tap(freezeHeaderAndKeyColumns),
     Effect.tap(setSurveyHeaderFormatting),
     Effect.tap(setSurveyHeaderValidation(workbook)),
     Effect.tap(setSurveyTypeFormatting(workbook)),
@@ -737,6 +748,7 @@ const formatChoicesWorksheet = (workbook: ExcelJS.Workbook) => pipe(
   Option.map(choicesSheet => pipe(
     choicesSheet,
     Effect.succeed,
+    Effect.tap(freezeHeaderAndKeyColumns),
     Effect.tap(setChoicesHeaderFormatting),
     Effect.tap(setChoicesHeaderValidation(workbook)),
   )),
@@ -775,6 +787,3 @@ export class FormService extends Effect.Service<FormService>()('chtoolbox/FormSe
   }),
   accessors: true,
 }) {}
-
-
-// TODO froxen cell logic
