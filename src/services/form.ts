@@ -429,6 +429,23 @@ const setSurveyLabelFormatting = (surveySheet: Worksheet) => pipe(
   }))
 );
 
+const setSurveyCalculationFormatting = (surveySheet: Worksheet) => pipe(
+  getColumnLetter('calculation', surveySheet),
+  Option.map(calcCol => Tuple.make(
+    calcCol,
+    getTypeColumnLetter(surveySheet),
+  )),
+  Option.map(([calcCol, typeCol]) => surveySheet.addConditionalFormatting({
+    ref: getTypeValidationRange(calcCol, surveySheet.rowCount),
+    rules: [{
+      type: 'expression',
+      formulae: [`AND(${typeCol}2="calculate",${calcCol}2="")`],
+      style: { ...STYLE_ERROR },
+      priority: 1,
+    }]
+  }))
+);
+
 const surveyFieldTypesFormulae = pipe(
   SURVEY_FIELD_TYPES,
   Array.sort(Order.string),
@@ -816,6 +833,7 @@ const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
     Effect.tap(setSurveySupportedValuesFormatting),
     Effect.tap(setSurveyNameFormatting),
     Effect.tap(setSurveyLabelFormatting),
+    Effect.tap(setSurveyCalculationFormatting),
     Effect.tap(setSurveyBeginGroupFormatting),
     Effect.tap(setSurveyEndGroupFormatting),
     Effect.tap(setSurveyBeginRepeatFormatting),
@@ -874,6 +892,4 @@ export class FormService extends Effect.Service<FormService>()('chtoolbox/FormSe
 
 
 // TODO Comments
-// TODO Consider error style for labels on types that do not show label.
-// TODO Type-based validation (calculation for calculate)
 
