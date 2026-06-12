@@ -42,8 +42,8 @@ const SURVEY_COLUMNS: Record<string, {
   translatable?: boolean,
   /** Values in the column can be XPath expressions */
   expression?: boolean,
-  /** Values in this column can only be `true` or empty */
-  trueOnly?: boolean,
+  /** The complete set of values allowed in this column (offered as a dropdown; e.g. ['', 'true']) */
+  supportedValues?: readonly string[],
 }> = {
   appearance: {},
   audio: { translatable: true },
@@ -55,15 +55,15 @@ const SURVEY_COLUMNS: Record<string, {
   hint: { translatable: true },
   image: { translatable: true },
   'instance::cht:duration': {},
-  'instance::cht:unique_tel': { trueOnly: true },
-  'instance::db-doc': { trueOnly: true },
+  'instance::cht:unique_tel': { supportedValues: ['', 'true'] },
+  'instance::db-doc': { supportedValues: ['', 'true'] },
   'instance::db-doc-ref': {},
   'instance::type': {},
   label: { translatable: true },
   name: {},
   note: {},
   parameters: {},
-  read_only: { trueOnly: true },
+  read_only: { supportedValues: ['', 'true'] },
   relevant: { expression: true },
   repeat_count: { expression: true },
   required: { expression: true },
@@ -84,11 +84,6 @@ const SURVEY_COLUMN_NAMES_EXPRESSION = pipe(
 const SURVEY_COLUMN_NAMES_BASIC = pipe(
   Record.toEntries(SURVEY_COLUMNS),
   Array.filter(([, { translatable, expression }]) => !translatable && !expression),
-  Array.map(Tuple.getFirst),
-);
-const SURVEY_COLUMN_NAMES_TRUE_ONLY = pipe(
-  Record.toEntries(SURVEY_COLUMNS),
-  Array.filter(([, { trueOnly }]) => !!trueOnly),
   Array.map(Tuple.getFirst),
 );
 const LABEL_TRANSLATABLE_PREFIX = 'label::';
@@ -384,42 +379,51 @@ const setSurveyTypeValidation = (surveySheet: Worksheet) => pipe(
   })
 );
 
-const trueOnlyColumnLetters = (surveySheet: Worksheet) => pipe(
-  SURVEY_COLUMN_NAMES_TRUE_ONLY,
-  Array.filterMap(name => getColumnLetter(name, surveySheet)),
+const supportedValueColumns = (surveySheet: Worksheet) => pipe(
+  Record.toEntries(SURVEY_COLUMNS),
+  Array.filterMap(([name, { supportedValues }]) => pipe(
+    Option.fromNullable(supportedValues),
+    Option.flatMap(values => pipe(
+      getColumnLetter(name, surveySheet),
+      Option.map(column => Tuple.make(column, values)),
+    )),
+  )),
+);
+const nonEmptyValues = (values: readonly string[]) => Array.filter(values, value => value !== '');
+
+const validateColumnSupportedValues = (surveySheet: Worksheet) => (
+  [column, values]: [string, readonly string[]]
+) => surveySheet.dataValidations.add(getTypeValidationRange(column, surveySheet.rowCount), {
+  type: 'list',
+  allowBlank: true,
+  formulae: [`"${values.join(',')}"`],
+  showErrorMessage: true,
+  errorStyle: 'information',
+  errorTitle: 'Value warning',
+  error: `This column only accepts ${nonEmptyValues(values).map(v => `"${v}"`).join(', ')} or an empty value.`,
+});
+const setSurveySupportedValuesValidation = (surveySheet: Worksheet) => pipe(
+  supportedValueColumns(surveySheet),
+  Array.forEach(validateColumnSupportedValues(surveySheet))
 );
 
-const validateColumnAcceptOnlyTrue = (surveySheet: Worksheet) => (column: string) =>
-  // The leading comma yields an empty option ahead of "true" in the dropdown.
-  surveySheet.dataValidations.add(getTypeValidationRange(column, surveySheet.rowCount), {
-    type: 'list',
-    allowBlank: true,
-    formulae: ['",true"'],
-    showErrorMessage: true,
-    errorStyle: 'information',
-    errorTitle: 'Value warning',
-    error: 'This column only accepts "true" or an empty value.',
-  });
-const setSurveyTrueOnlyValidation = (surveySheet: Worksheet) => pipe(
-  trueOnlyColumnLetters(surveySheet),
-  Array.forEach(validateColumnAcceptOnlyTrue(surveySheet))
-);
-
-const formatColumnAcceptOnlyTrue = (surveySheet: Worksheet) => (column: string) => {
+const formatColumnSupportedValues = (surveySheet: Worksheet) => (
+  [column, values]: [string, readonly string[]]
+) => {
   surveySheet.getColumn(column).numFmt = '@';
   surveySheet.addConditionalFormatting({
     ref: getTypeValidationRange(column, surveySheet.rowCount),
     rules: [{
       type: 'expression',
-      formulae: [`AND(${column}2<>"",${column}2<>"true")`],
+      formulae: [`AND(${column}2<>"",${nonEmptyValues(values).map(v => `${column}2<>"${v}"`).join(',')})`],
       style: { ...STYLE_ERROR },
       priority: 1,
     }]
   });
 };
-const setSurveyTrueOnlyFormatting = (surveySheet: Worksheet) => pipe(
-  trueOnlyColumnLetters(surveySheet),
-  Array.forEach(formatColumnAcceptOnlyTrue(surveySheet))
+const setSurveySupportedValuesFormatting = (surveySheet: Worksheet) => pipe(
+  supportedValueColumns(surveySheet),
+  Array.forEach(formatColumnSupportedValues(surveySheet))
 );
 
 const buildTranslatableHeaderFormula = (cell: string, names: readonly string[]) => pipe(
@@ -730,8 +734,8 @@ const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
     Effect.tap(setSurveyHeaderValidation(workbook)),
     Effect.tap(setSurveyTypeFormatting(workbook)),
     Effect.tap(setSurveyTypeValidation),
-    Effect.tap(setSurveyTrueOnlyValidation),
-    Effect.tap(setSurveyTrueOnlyFormatting),
+    Effect.tap(setSurveySupportedValuesValidation),
+    Effect.tap(setSurveySupportedValuesFormatting),
     Effect.tap(setSurveyNameFormatting),
     Effect.tap(setSurveyLabelFormatting),
     Effect.tap(setSurveyBeginGroupFormatting),
