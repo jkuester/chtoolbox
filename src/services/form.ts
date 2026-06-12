@@ -90,26 +90,28 @@ const SURVEY_COLUMN_NAMES_BASIC = pipe(
   Array.filter(([, { translatable, expression }]) => !translatable && !expression),
   Array.map(Tuple.getFirst),
 );
-const LABEL_TRANSLATABLE_PREFIX = 'label::';
+const LABEL_PREFIX = 'label';
 
 const SURVEY_FIELDS: Record<string, {
   /** Alternative names for the type */
   altTypes?: string[]
   /** Indicates the field should have a label */
-  labeled? : boolean
+  label? : 'optional' | 'required'
 }> = {
-  acknowledge: { labeled: true },
-  audio: { labeled: true },
+  acknowledge: { label: 'required' },
+  audio: { label: 'required' },
   begin_group: {
-    altTypes: ['begin group']
+    altTypes: ['begin group'],
+    label: 'optional'
   },
   begin_repeat: {
-    altTypes: ['begin repeat']
+    altTypes: ['begin repeat'],
+    label: 'optional'
   },
   calculate: {},
-  date: { labeled: true },
-  datetime: { labeled: true },
-  decimal: { labeled: true },
+  date: { label: 'required' },
+  datetime: { label: 'required' },
+  decimal: { label: 'required' },
   end: {},
   end_group: {
     altTypes: ['end group']
@@ -117,31 +119,36 @@ const SURVEY_FIELDS: Record<string, {
   end_repeat: {
     altTypes: ['end repeat']
   },
-  file: { labeled: true },
-  geopoint: { labeled: true },
-  geoshape: { labeled: true },
-  geotrace: { labeled: true },
+  file: { label: 'required' },
+  geopoint: { label: 'required' },
+  geoshape: { label: 'required' },
+  geotrace: { label: 'required' },
   hidden: {},
-  image: { labeled: true },
-  integer: { labeled: true },
-  note: { labeled: true },
-  range: { labeled: true },
-  rank: { labeled: true },
-  'select_multiple list_name': { labeled: true },
-  'select_one list_name': { labeled: true },
+  image: { label: 'required' },
+  integer: { label: 'required' },
+  note: { label: 'required' },
+  range: { label: 'required' },
+  rank: { label: 'required' },
+  'select_multiple list_name': { label: 'required' },
+  'select_one list_name': { label: 'required' },
   start: {},
   text: {
     altTypes: ['string'],
-    labeled: true
+    label: 'required'
   },
-  time: { labeled: true },
+  time: { label: 'required' },
   today: {},
-  video: { labeled: true },
+  video: { label: 'required' },
 };
 const SURVEY_FIELD_TYPES = Record.keys(SURVEY_FIELDS);
 const SURVEY_FIELD_TYPES_LABELED = pipe(
   Record.toEntries(SURVEY_FIELDS),
-  Array.filter(([, { labeled }]) => !!labeled),
+  Array.filter(([, { label }]) => label === 'required'),
+  Array.map(Tuple.getFirst),
+);
+const SURVEY_FIELD_TYPES_UNLABELED = pipe(
+  Record.toEntries(SURVEY_FIELDS),
+  Array.filter(([, { label }]) => !label),
   Array.map(Tuple.getFirst),
 );
 const SURVEY_FIELD_TYPES_BY_ALT_TYPE = pipe(
@@ -277,6 +284,11 @@ const getColumnLetterMatching = (predicate: (val?: string) => boolean, worksheet
   Array.findFirstIndex(predicate),
   Option.map(colIndex => worksheet.getColumn(colIndex).letter)
 );
+const getColumnLettersMatching = (predicate: (val?: string) => boolean, worksheet: Worksheet) => pipe(
+  getHeaderNames(worksheet),
+  Array.filterMap((val, idx) => predicate(val) ? Option.some(idx) : Option.none()),
+  Array.map(colIndex => worksheet.getColumn(colIndex).letter)
+);
 const getColumnLetter = (colName: string, worksheet: Worksheet) =>
   getColumnLetterMatching(val => val === colName, worksheet);
 const getTypeColumnLetter = (worksheet: Worksheet) => Option.getOrThrowWith(
@@ -322,6 +334,13 @@ const buildIsLabeledTypeFormula = (cell: string) => pipe(
     `LEFT(${cell},${SELECT_MULTIPLE_PREFIX.length.toString()})="${SELECT_MULTIPLE_PREFIX}"`,
   ],
   parts => `OR(${parts.join(',')})`,
+);
+
+const buildIsUnlabeledTypeFormula = (cell: string) => pipe(
+  SURVEY_FIELD_TYPES_UNLABELED,
+  Array.map(t => `"${t}"`),
+  Array.join(','),
+  fixedListLiteral => `NOT(ISERROR(MATCH(${cell},{${fixedListLiteral}},0)))`,
 );
 
 const getChoicesListNameRange = (workbook: ExcelJS.Workbook) => pipe(
@@ -376,19 +395,27 @@ const setSurveyNameFormatting = (surveySheet: Worksheet) => pipe(
 );
 
 const setSurveyLabelFormatting = (surveySheet: Worksheet) => pipe(
-  getColumnLetterMatching(val => !!val?.startsWith(LABEL_TRANSLATABLE_PREFIX), surveySheet),
-  Option.map(labelCol => Tuple.make(
+  getColumnLettersMatching(val => !!val?.startsWith(LABEL_PREFIX), surveySheet),
+  Array.map(labelCol => Tuple.make(
     labelCol,
     getTypeColumnLetter(surveySheet),
   )),
-  Option.map(([labelCol, typeCol]) => surveySheet.addConditionalFormatting({
+  Array.forEach(([labelCol, typeCol]) => surveySheet.addConditionalFormatting({
     ref: getTypeValidationRange(labelCol, surveySheet.rowCount),
-    rules: [{
-      type: 'expression',
-      formulae: [`AND(${buildIsLabeledTypeFormula(typeCol + '2')},${labelCol}2="")`],
-      style: { ...STYLE_ERROR },
-      priority: 1,
-    }]
+    rules: [
+      {
+        type: 'expression',
+        formulae: [`AND(${buildIsLabeledTypeFormula(typeCol + '2')},${labelCol}2="")`],
+        style: { ...STYLE_ERROR },
+        priority: 1,
+      },
+      {
+        type: 'expression',
+        formulae: [`AND(${labelCol}2<>"",${buildIsUnlabeledTypeFormula(typeCol + '2')})`],
+        style: { ...STYLE_ERROR },
+        priority: 2,
+      },
+    ]
   }))
 );
 
