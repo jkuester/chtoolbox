@@ -164,6 +164,21 @@ const STYLE_HEADER_EXPRESSION: Partial<ExcelJS.Style> = {
   fill: FILL_BLUE_GREY,
   border: BORDER_HEADER_SIDES,
 };
+const STYLE_HEADER_EMPTY: Partial<ExcelJS.Style> = {
+  font: { ...BASE_FONT, bold: true, italic: true },
+  fill: FILL_GREY,
+  border: BORDER_HEADER_SIDES,
+};
+const STYLE_HEADER_TRANSLATABLE_EMPTY: Partial<ExcelJS.Style> = {
+  font: { ...BASE_FONT, bold: true, italic: true },
+  fill: FILL_GREEN,
+  border: BORDER_HEADER_SIDES,
+};
+const STYLE_HEADER_EXPRESSION_EMPTY: Partial<ExcelJS.Style> = {
+  font: { ...BASE_FONT, bold: true, italic: true },
+  fill: FILL_BLUE_GREY,
+  border: BORDER_HEADER_SIDES,
+};
 const STYLE_ERROR: Partial<ExcelJS.Style> = {
   fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFF0000' } }
 };
@@ -415,6 +430,9 @@ const buildKnownHeaderFormula = (cell: string, names: readonly string[]) => pipe
   Array.map(name => `"${name}"`),
   quoted => `NOT(ISERROR(MATCH(${cell},{${quoted.join(',')}},0)))`,
 );
+const buildEmptyBodyFormula = (worksheet: Worksheet) =>
+  `COUNTA(A$2:A$${String(worksheet.rowCount + BUFFER_ROW_COUNT)})=0`;
+const buildEmptyColumnFormula = (worksheet: Worksheet) => `AND(A1<>"",${buildEmptyBodyFormula(worksheet)})`;
 
 const getChtxWorksheet = (workbook: ExcelJS.Workbook): Worksheet => pipe(
   getWorksheetWithName(workbook)(SHEET_NAME_CHTX),
@@ -532,27 +550,45 @@ const setSurveyHeaderFormatting = (worksheet: Worksheet) => pipe(
       },
       {
         type: 'expression',
+        formulae: [`AND(A1<>"",NOT(${translatable}),NOT(${valid}),NOT(${expression}))`],
+        style: { ...STYLE_ERROR },
+        priority: 2,
+      },
+      {
+        type: 'expression',
+        formulae: [`AND(${translatable},${buildEmptyBodyFormula(worksheet)})`],
+        style: { ...STYLE_HEADER_TRANSLATABLE_EMPTY },
+        priority: 3,
+      },
+      {
+        type: 'expression',
+        formulae: [`AND(${valid},${buildEmptyBodyFormula(worksheet)})`],
+        style: { ...STYLE_HEADER_EMPTY },
+        priority: 4,
+      },
+      {
+        type: 'expression',
+        formulae: [`AND(${expression},${buildEmptyBodyFormula(worksheet)})`],
+        style: { ...STYLE_HEADER_EXPRESSION_EMPTY },
+        priority: 5,
+      },
+      {
+        type: 'expression',
         formulae: [translatable],
         style: { ...STYLE_HEADER_TRANSLATABLE },
-        priority: 2,
+        priority: 6,
       },
       {
         type: 'expression',
         formulae: [valid],
         style: { ...STYLE_HEADER },
-        priority: 3,
+        priority: 7,
       },
       {
         type: 'expression',
         formulae: [expression],
         style: { ...STYLE_HEADER_EXPRESSION },
-        priority: 4,
-      },
-      {
-        type: 'expression',
-        formulae: [`AND(A1<>"",NOT(${translatable}),NOT(${valid}),NOT(${expression}))`],
-        style: { ...STYLE_ERROR },
-        priority: 5,
+        priority: 8,
       },
     ],
   }),
@@ -575,15 +611,27 @@ const setChoicesHeaderFormatting = (worksheet: Worksheet) => pipe(
       },
       {
         type: 'expression',
+        formulae: [`AND(${translatable},${buildEmptyBodyFormula(worksheet)})`],
+        style: { ...STYLE_HEADER_TRANSLATABLE_EMPTY },
+        priority: 2,
+      },
+      {
+        type: 'expression',
+        formulae: [buildEmptyColumnFormula(worksheet)],
+        style: { ...STYLE_HEADER_EMPTY },
+        priority: 3,
+      },
+      {
+        type: 'expression',
         formulae: [translatable],
         style: { ...STYLE_HEADER_TRANSLATABLE },
-        priority: 2,
+        priority: 4,
       },
       {
         type: 'expression',
         formulae: ['A1<>""'],
         style: { ...STYLE_HEADER },
-        priority: 3,
+        priority: 5,
       },
     ],
   }),
@@ -606,15 +654,21 @@ const setSettingsHeaderFormatting = (worksheet: Worksheet) => pipe(
       },
       {
         type: 'expression',
-        formulae: [valid],
-        style: { ...STYLE_HEADER },
+        formulae: [`AND(A1<>"",NOT(${valid}))`],
+        style: { ...STYLE_ERROR },
         priority: 2,
       },
       {
         type: 'expression',
-        formulae: [`AND(A1<>"",NOT(${valid}))`],
-        style: { ...STYLE_ERROR },
+        formulae: [buildEmptyColumnFormula(worksheet)],
+        style: { ...STYLE_HEADER_EMPTY },
         priority: 3,
+      },
+      {
+        type: 'expression',
+        formulae: [valid],
+        style: { ...STYLE_HEADER },
+        priority: 4,
       },
     ],
   }),
