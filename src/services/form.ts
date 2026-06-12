@@ -92,18 +92,31 @@ const SURVEY_COLUMN_NAMES_BASIC = pipe(
 );
 const LABEL_TRANSLATABLE_PREFIX = 'label::';
 
-const SURVEY_FIELDS: Record<string, { labeled? : boolean }> = {
+const SURVEY_FIELDS: Record<string, {
+  /** Alternative names for the type */
+  altTypes?: string[]
+  /** Indicates the field should have a label */
+  labeled? : boolean
+}> = {
   acknowledge: { labeled: true },
   audio: { labeled: true },
-  begin_group: {},
-  begin_repeat: {},
+  begin_group: {
+    altTypes: ['begin group']
+  },
+  begin_repeat: {
+    altTypes: ['begin repeat']
+  },
   calculate: {},
   date: { labeled: true },
   datetime: { labeled: true },
   decimal: { labeled: true },
   end: {},
-  end_group: {},
-  end_repeat: {},
+  end_group: {
+    altTypes: ['end group']
+  },
+  end_repeat: {
+    altTypes: ['end repeat']
+  },
   file: { labeled: true },
   geopoint: { labeled: true },
   geoshape: { labeled: true },
@@ -117,7 +130,10 @@ const SURVEY_FIELDS: Record<string, { labeled? : boolean }> = {
   'select_multiple list_name': { labeled: true },
   'select_one list_name': { labeled: true },
   start: {},
-  text: { labeled: true },
+  text: {
+    altTypes: ['string'],
+    labeled: true
+  },
   time: { labeled: true },
   today: {},
   video: { labeled: true },
@@ -127,6 +143,11 @@ const SURVEY_FIELD_TYPES_LABELED = pipe(
   Record.toEntries(SURVEY_FIELDS),
   Array.filter(([, { labeled }]) => !!labeled),
   Array.map(Tuple.getFirst),
+);
+const SURVEY_FIELD_TYPES_BY_ALT_TYPE = pipe(
+  Record.toEntries(SURVEY_FIELDS),
+  Array.flatMap(([type, { altTypes = [] }]) => Array.map(altTypes, altType => Tuple.make(altType, type))),
+  Record.fromEntries,
 );
 
 const SHEET_NAME_SURVEY = 'survey';
@@ -310,6 +331,15 @@ const getChoicesListNameRange = (workbook: ExcelJS.Workbook) => pipe(
     Option.map(letter => `choices!$${letter}:$${letter}`),
   )),
 );
+
+const normalizeSurveyTypeValues = (surveySheet: Worksheet): void => surveySheet
+  .getColumn(getTypeColumnLetter(surveySheet))
+  .eachCell({ includeEmpty: false }, (cell, rowNumber) => pipe(
+    rowNumber === 1 || typeof cell.value !== 'string'
+      ? Option.none()
+      : Record.get(SURVEY_FIELD_TYPES_BY_ALT_TYPE, cell.value),
+    Option.map(canonicalType => cell.value = canonicalType),
+  ));
 
 const setSurveyTypeFormatting = (workbook: ExcelJS.Workbook) => (surveySheet: Worksheet) => pipe(
   getTypeColumnLetter(surveySheet),
@@ -739,6 +769,7 @@ const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
   Option.map(surveySheet => pipe(
     surveySheet,
     Effect.succeed,
+    Effect.tap(normalizeSurveyTypeValues),
     Effect.tap(freezeHeaderAndKeyColumns),
     Effect.tap(setSurveyHeaderFormatting),
     Effect.tap(setSurveyHeaderValidation(workbook)),
@@ -803,3 +834,9 @@ export class FormService extends Effect.Service<FormService>()('chtoolbox/FormSe
   }),
   accessors: true,
 }) {}
+
+
+// TODO Comments
+// TODO Consider error style for labels on types that do not show label.
+// TODO Type-based validation (calculation for calculate)
+
