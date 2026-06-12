@@ -61,7 +61,7 @@ const SURVEY_COLUMNS: Record<string, {
   'instance::cht:unique_tel': { supportedValues: ['', 'true'] },
   'instance::db-doc': { supportedValues: ['', 'true'] },
   'instance::db-doc-ref': {},
-  'instance::type': {},
+  'instance::type': { supportedValues: ['', 'binary'] },
   label: { translatable: true },
   name: {},
   note: {},
@@ -253,7 +253,7 @@ const getHeaderNames = (worksheet: Worksheet) => pipe(
 const getColumnLetterMatching = (predicate: (val?: string) => boolean, worksheet: Worksheet) => pipe(
   getHeaderNames(worksheet),
   Array.findFirstIndex(predicate),
-  Option.map(colIndex => String.fromCodePoint(64 + colIndex))
+  Option.map(colIndex => worksheet.getColumn(colIndex).letter)
 );
 const getColumnLetter = (colName: string, worksheet: Worksheet) =>
   getColumnLetterMatching(val => val === colName, worksheet);
