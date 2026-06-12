@@ -524,7 +524,7 @@ const setSurveyGroupBoundaryFormatting = (type: string, style: Partial<ExcelJS.S
     ref: `A2:${lastCol}${String(worksheet.rowCount + BUFFER_ROW_COUNT)}`,
     rules: [{
       type: 'expression',
-      formulae: [`$${typeCol}2="${type}"`],
+      formulae: [`AND($${typeCol}2="${type}",A$1<>"")`],
       style: { ...style },
       priority: 1,
     }]
