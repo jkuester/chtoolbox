@@ -402,8 +402,8 @@ const validateColumnSupportedValues = (sheet: Worksheet) => (
   allowBlank: true,
   formulae: [`"${values.join(',')}"`],
   showErrorMessage: true,
-  errorStyle: 'information',
-  errorTitle: 'Value warning',
+  errorStyle: 'stop',
+  errorTitle: 'Invalid value',
   error: `This column only accepts ${nonEmptyValues(values).map(v => `"${v}"`).join(', ')} or an empty value.`,
 });
 const setSupportedValuesValidation = (columns: ColumnsWithSupportedValues) => (sheet: Worksheet) => pipe(
