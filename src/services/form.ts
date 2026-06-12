@@ -91,6 +91,10 @@ const SURVEY_COLUMN_NAMES_BASIC = pipe(
   Array.map(Tuple.getFirst),
 );
 const LABEL_PREFIX = 'label';
+const INVALID_LABELS = [
+  'NO_LABEL',
+  'DELETE_THIS_LINE'
+];
 
 const SURVEY_FIELDS: Record<string, {
   /** Alternative names for the type */
@@ -414,6 +418,12 @@ const setSurveyLabelFormatting = (surveySheet: Worksheet) => pipe(
         formulae: [`AND(${labelCol}2<>"",${buildIsUnlabeledTypeFormula(typeCol + '2')})`],
         style: { ...STYLE_ERROR },
         priority: 2,
+      },
+      {
+        type: 'expression',
+        formulae: [`OR(${INVALID_LABELS.map(label => `${labelCol}2="${label}"`).join(',')})`],
+        style: { ...STYLE_ERROR },
+        priority: 3,
       },
     ]
   }))
