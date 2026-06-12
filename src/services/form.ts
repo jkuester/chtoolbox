@@ -12,6 +12,14 @@ type Worksheet = ExcelJS.Worksheet & {
 const BUFFER_COL_COUNT = 50;
 const BUFFER_ROW_COUNT = 1000;
 
+const SETTINGS_COLUMNS: Record<string, object> = {
+  allow_choice_duplicates: { },
+  form_title: {  },
+  namespaces: { },
+  style: {},
+  version: {  },
+};
+
 const CHOICES_COLUMNS: Record<string, {
   /** Multiple versions of this column can be added for different languages */
   translatable?: boolean,
@@ -402,15 +410,10 @@ const buildTranslatableHeaderFormula = (cell: string, names: readonly string[]) 
   ]),
   parts => `OR(${parts.join(',')})`,
 );
-const buildSurveyHeaderFormula = (cell: string) => pipe(
-  SURVEY_COLUMN_NAMES_BASIC,
+const buildKnownHeaderFormula = (cell: string, names: readonly string[]) => pipe(
+  names,
   Array.map(name => `"${name}"`),
-  names => `NOT(ISERROR(MATCH(${cell},{${names.join(',')}},0)))`,
-);
-const buildExpressionHeaderFormula = (cell: string) => pipe(
-  SURVEY_COLUMN_NAMES_EXPRESSION,
-  Array.map(name => `"${name}"`),
-  names => `NOT(ISERROR(MATCH(${cell},{${names.join(',')}},0)))`,
+  quoted => `NOT(ISERROR(MATCH(${cell},{${quoted.join(',')}},0)))`,
 );
 
 const getChtxWorksheet = (workbook: ExcelJS.Workbook): Worksheet => pipe(
@@ -491,11 +494,31 @@ const setChoicesHeaderValidation = (workbook: ExcelJS.Workbook) => (
   )),
 );
 
+const setSettingsHeaderValidation = (workbook: ExcelJS.Workbook) => (
+  worksheet: Worksheet
+) => pipe(
+  Record.keys(SETTINGS_COLUMNS),
+  writeChtxColumn(workbook, 'settings_header_names'),
+  Effect.map(formula => pipe(
+    worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter,
+    lastCol => `A1:${lastCol}1`,
+    range => worksheet.dataValidations.add(range, {
+      type: 'list',
+      allowBlank: true,
+      formulae: [formula],
+      showErrorMessage: true,
+      errorStyle: 'information',
+      errorTitle: 'Column warning',
+      error: 'Unexpected column name.',
+    }),
+  )),
+);
+
 const setSurveyHeaderFormatting = (worksheet: Worksheet) => pipe(
   Tuple.make(
     buildTranslatableHeaderFormula('A1', SURVEY_COLUMN_NAMES_TRANSLATABLE),
-    buildSurveyHeaderFormula('A1'),
-    buildExpressionHeaderFormula('A1'),
+    buildKnownHeaderFormula('A1', SURVEY_COLUMN_NAMES_BASIC),
+    buildKnownHeaderFormula('A1', SURVEY_COLUMN_NAMES_EXPRESSION),
     worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter
   ),
   ([translatable, valid, expression, lastCol]): ExcelJS.ConditionalFormattingOptions => ({
@@ -560,6 +583,37 @@ const setChoicesHeaderFormatting = (worksheet: Worksheet) => pipe(
         type: 'expression',
         formulae: ['A1<>""'],
         style: { ...STYLE_HEADER },
+        priority: 3,
+      },
+    ],
+  }),
+  formatting => worksheet.addConditionalFormatting(formatting)
+);
+
+const setSettingsHeaderFormatting = (worksheet: Worksheet) => pipe(
+  Tuple.make(
+    buildKnownHeaderFormula('A1', Record.keys(SETTINGS_COLUMNS)),
+    worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter
+  ),
+  ([valid, lastCol]): ExcelJS.ConditionalFormattingOptions => ({
+    ref: `A1:${lastCol}1`,
+    rules: [
+      {
+        type: 'expression',
+        formulae: [`AND(A1<>"",COUNTIF($A$1:$${lastCol}$1,A1)>1)`],
+        style: { ...STYLE_ERROR },
+        priority: 1,
+      },
+      {
+        type: 'expression',
+        formulae: [valid],
+        style: { ...STYLE_HEADER },
+        priority: 2,
+      },
+      {
+        type: 'expression',
+        formulae: [`AND(A1<>"",NOT(${valid}))`],
+        style: { ...STYLE_ERROR },
         priority: 3,
       },
     ],
@@ -635,11 +689,23 @@ const formatChoicesWorksheet = (workbook: ExcelJS.Workbook) => pipe(
   Option.getOrElse(() => Effect.void)
 );
 
+const formatSettingsWorksheet = (workbook: ExcelJS.Workbook) => pipe(
+  getWorksheetWithName(workbook)(SHEET_NAME_SETTINGS),
+  Option.map(settingsSheet => pipe(
+    settingsSheet,
+    Effect.succeed,
+    Effect.tap(setSettingsHeaderFormatting),
+    Effect.tap(setSettingsHeaderValidation(workbook)),
+  )),
+  Option.getOrElse(() => Effect.void)
+);
+
 const formatWorkbook = (workbook: ExcelJS.Workbook) => pipe(
   Effect.succeed(workbook),
   Effect.tap(clearWorkbookFormatting),
   Effect.tap(formatSurveyWorksheet),
   Effect.tap(formatChoicesWorksheet),
+  Effect.tap(formatSettingsWorksheet),
   Effect.asVoid
 );
 
