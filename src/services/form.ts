@@ -61,6 +61,7 @@ const SURVEY_COLUMNS: Record<string, {
   'instance::cht:unique_tel': { supportedValues: ['', 'true'] },
   'instance::db-doc': { supportedValues: ['', 'true'] },
   'instance::db-doc-ref': {},
+  'instance::tag': { supportedValues: ['', 'hidden'] },
   'instance::type': { supportedValues: ['', 'binary'] },
   label: { translatable: true },
   name: {},
