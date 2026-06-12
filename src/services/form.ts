@@ -119,6 +119,7 @@ const FILL_BLUE_GREY: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColo
 const FILL_GREEN: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFAFD095' } };
 const BORDER_DARK_GREY: Partial<ExcelJS.Border> = { style: 'thin', color: { argb: 'FF808080' } };
 const BORDER_BLUE: Partial<ExcelJS.Border> = { style: 'medium', color: { argb: 'FF0070C0' } };
+const BORDER_PURPLE: Partial<ExcelJS.Border> = { style: 'medium', color: { argb: 'FF7030A0' } };
 const BORDER_HEADER_SIDES: Partial<ExcelJS.Borders> = {
   left: BORDER_DARK_GREY,
   right: BORDER_DARK_GREY,
@@ -146,6 +147,12 @@ const STYLE_BEGIN_GROUP: Partial<ExcelJS.Style> = {
 };
 const STYLE_END_GROUP: Partial<ExcelJS.Style> = {
   border: { bottom: BORDER_BLUE }
+};
+const STYLE_BEGIN_REPEAT: Partial<ExcelJS.Style> = {
+  border: { top: BORDER_PURPLE }
+};
+const STYLE_END_REPEAT: Partial<ExcelJS.Style> = {
+  border: { bottom: BORDER_PURPLE }
 };
 
 const loadWorkbook = (filePath: string) => pipe(
@@ -525,6 +532,8 @@ const setSurveyGroupBoundaryFormatting = (type: string, style: Partial<ExcelJS.S
 );
 const setSurveyBeginGroupFormatting = setSurveyGroupBoundaryFormatting('begin_group', STYLE_BEGIN_GROUP);
 const setSurveyEndGroupFormatting = setSurveyGroupBoundaryFormatting('end_group', STYLE_END_GROUP);
+const setSurveyBeginRepeatFormatting = setSurveyGroupBoundaryFormatting('begin_repeat', STYLE_BEGIN_REPEAT);
+const setSurveyEndRepeatFormatting = setSurveyGroupBoundaryFormatting('end_repeat', STYLE_END_REPEAT);
 
 const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
   getWorksheetWithName(workbook)(SHEET_NAME_SURVEY),
@@ -541,6 +550,8 @@ const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
     Effect.tap(setSurveyLabelFormatting),
     Effect.tap(setSurveyBeginGroupFormatting),
     Effect.tap(setSurveyEndGroupFormatting),
+    Effect.tap(setSurveyBeginRepeatFormatting),
+    Effect.tap(setSurveyEndRepeatFormatting),
     Effect.tap(setSurveyHeaderlessCellFormatting),
   )),
   Option.getOrElse(() => Effect.void)
