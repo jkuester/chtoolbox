@@ -12,11 +12,14 @@ type Worksheet = ExcelJS.Worksheet & {
 const BUFFER_COL_COUNT = 50;
 const BUFFER_ROW_COUNT = 1000;
 
-const SETTINGS_COLUMNS: Record<string, object> = {
-  allow_choice_duplicates: {},
+const SETTINGS_COLUMNS: Record<string, {
+  /** The complete set of values allowed in this column (offered as a dropdown; e.g. ['', 'true']) */
+  supportedValues?: readonly string[],
+}> = {
+  allow_choice_duplicates: { supportedValues: ['', 'yes']},
   form_title: {},
   namespaces: {},
-  style: {},
+  style: { supportedValues: ['', 'pages']},
   version: {},
 };
 
@@ -379,21 +382,22 @@ const setSurveyTypeValidation = (surveySheet: Worksheet) => pipe(
   })
 );
 
-const supportedValueColumns = (surveySheet: Worksheet) => pipe(
-  Record.toEntries(SURVEY_COLUMNS),
+type ColumnsWithSupportedValues = Record<string, { supportedValues?: readonly string[] }>;
+const supportedValueColumns = (columns: ColumnsWithSupportedValues, sheet: Worksheet) => pipe(
+  Record.toEntries(columns),
   Array.filterMap(([name, { supportedValues }]) => pipe(
     Option.fromNullable(supportedValues),
     Option.flatMap(values => pipe(
-      getColumnLetter(name, surveySheet),
+      getColumnLetter(name, sheet),
       Option.map(column => Tuple.make(column, values)),
     )),
   )),
 );
 const nonEmptyValues = (values: readonly string[]) => Array.filter(values, value => value !== '');
 
-const validateColumnSupportedValues = (surveySheet: Worksheet) => (
+const validateColumnSupportedValues = (sheet: Worksheet) => (
   [column, values]: [string, readonly string[]]
-) => surveySheet.dataValidations.add(getTypeValidationRange(column, surveySheet.rowCount), {
+) => sheet.dataValidations.add(getTypeValidationRange(column, sheet.rowCount), {
   type: 'list',
   allowBlank: true,
   formulae: [`"${values.join(',')}"`],
@@ -402,17 +406,17 @@ const validateColumnSupportedValues = (surveySheet: Worksheet) => (
   errorTitle: 'Value warning',
   error: `This column only accepts ${nonEmptyValues(values).map(v => `"${v}"`).join(', ')} or an empty value.`,
 });
-const setSurveySupportedValuesValidation = (surveySheet: Worksheet) => pipe(
-  supportedValueColumns(surveySheet),
-  Array.forEach(validateColumnSupportedValues(surveySheet))
+const setSupportedValuesValidation = (columns: ColumnsWithSupportedValues) => (sheet: Worksheet) => pipe(
+  supportedValueColumns(columns, sheet),
+  Array.forEach(validateColumnSupportedValues(sheet))
 );
 
-const formatColumnSupportedValues = (surveySheet: Worksheet) => (
+const formatColumnSupportedValues = (sheet: Worksheet) => (
   [column, values]: [string, readonly string[]]
 ) => {
-  surveySheet.getColumn(column).numFmt = '@';
-  surveySheet.addConditionalFormatting({
-    ref: getTypeValidationRange(column, surveySheet.rowCount),
+  sheet.getColumn(column).numFmt = '@';
+  sheet.addConditionalFormatting({
+    ref: getTypeValidationRange(column, sheet.rowCount),
     rules: [{
       type: 'expression',
       formulae: [`AND(${column}2<>"",${nonEmptyValues(values).map(v => `${column}2<>"${v}"`).join(',')})`],
@@ -421,10 +425,15 @@ const formatColumnSupportedValues = (surveySheet: Worksheet) => (
     }]
   });
 };
-const setSurveySupportedValuesFormatting = (surveySheet: Worksheet) => pipe(
-  supportedValueColumns(surveySheet),
-  Array.forEach(formatColumnSupportedValues(surveySheet))
+const setSupportedValuesFormatting = (columns: ColumnsWithSupportedValues) => (sheet: Worksheet) => pipe(
+  supportedValueColumns(columns, sheet),
+  Array.forEach(formatColumnSupportedValues(sheet))
 );
+
+const setSurveySupportedValuesValidation = setSupportedValuesValidation(SURVEY_COLUMNS);
+const setSurveySupportedValuesFormatting = setSupportedValuesFormatting(SURVEY_COLUMNS);
+const setSettingsSupportedValuesValidation = setSupportedValuesValidation(SETTINGS_COLUMNS);
+const setSettingsSupportedValuesFormatting = setSupportedValuesFormatting(SETTINGS_COLUMNS);
 
 const buildTranslatableHeaderFormula = (cell: string, names: readonly string[]) => pipe(
   names,
@@ -766,6 +775,8 @@ const formatSettingsWorksheet = (workbook: ExcelJS.Workbook) => pipe(
     Effect.succeed,
     Effect.tap(setSettingsHeaderFormatting),
     Effect.tap(setSettingsHeaderValidation(workbook)),
+    Effect.tap(setSettingsSupportedValuesValidation),
+    Effect.tap(setSettingsSupportedValuesFormatting),
   )),
   Option.getOrElse(() => Effect.void)
 );
