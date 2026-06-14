@@ -41,6 +41,8 @@ const CHOICES_COLUMN_NAMES_TRANSLATABLE = pipe(
 );
 
 const SURVEY_COLUMNS: Record<string, {
+  /** Description of the column */
+  comment: string,
   /** Multiple versions of this column can be added for different languages */
   translatable?: boolean,
   /** Values in the column can be XPath expressions */
@@ -48,32 +50,139 @@ const SURVEY_COLUMNS: Record<string, {
   /** The complete set of values allowed in this column (offered as a dropdown; e.g. ['', 'true']) */
   supportedValues?: readonly string[],
 }> = {
-  appearance: {},
-  audio: { translatable: true },
-  calculation: { expression: true },
-  choice_filter: { expression: true },
-  constraint: { expression: true },
-  constraint_message: { translatable: true },
-  default: { expression: true },
-  hint: { translatable: true },
-  image: { translatable: true },
-  'instance::cht:duration': {},
-  'instance::cht:unique_tel': { supportedValues: ['', 'true'] },
-  'instance::db-doc': { supportedValues: ['', 'true'] },
-  'instance::db-doc-ref': {},
-  'instance::tag': { supportedValues: ['', 'hidden'] },
-  'instance::type': { supportedValues: ['', 'binary'] },
-  label: { translatable: true },
-  name: {},
-  note: {},
-  parameters: {},
-  read_only: { supportedValues: ['', 'true'] },
-  relevant: { expression: true },
-  repeat_count: { expression: true },
-  required: { expression: true },
-  required_message: { translatable: true },
-  type: {},
-  video: { translatable: true },
+  appearance: {
+    comment: 'One or more modifiers that determine how the question will be displayed.\n\nThese can be specific to '
+      + 'the field type.',
+  },
+  audio: {
+    comment: 'Specify the filename of an audio file. This will display a button to play the audio next to the '
+      + 'question label.\n\nCan be translated.',
+    translatable: true
+  },
+  calculation: {
+    comment: 'An expression that will be evaluated to determine the value of the field.\n\nExpressions may be '
+      + 're-evaluated at any time. Question types with calculations should be marked as read-only. Otherwise, a '
+      + 'user-provided value may be replaced by a calculated one.\n\nTo limit when expressions are evaluated, '
+      + 'for example to specify dynamic defaults, use the trigger column or the once() function. \n\n'
+      + 'https://docs.getodk.org/form-logic/#when-expressions-are-evaluated',
+    expression: true
+  },
+  choice_filter: {
+    comment: 'Used with select questions to filter the choices shown to the user. The expression will be evaluated '
+      + 'against each choice. If it evaluates to true, the choice is included.\n\nFor example, the expression '
+      + '"country = ${country}" includes choices for which the country column\'s value matches the value of the '
+      + '${country} field in the form.\n\nhttps://docs.getodk.org/form-logic/#filtering-options-in-select-questions',
+    expression: true
+  },
+  constraint: {
+    comment: 'An expression that determines whether a user-provided answer will be allowed or not. Constraint '
+      + 'expressions use . to mean the value of the current field.',
+    expression: true
+  },
+  constraint_message: {
+    comment: 'A message shown when the constraint expression evaluates to false.\n\nCan be translated.',
+    translatable: true
+  },
+  default: {
+    comment: 'A fixed value or an expression that will be evaluated once on form load. The value can then be modified '
+      + 'by the user.\n\nhttps://docs.getodk.org/form-logic/#setting-default-responses',
+    expression: true
+  },
+  hint: {
+    comment: 'A hint that will be shown to the user below the question\'s label in smaller text.\n\nCan be translated.',
+    translatable: true
+  },
+  image: {
+    comment: 'Specify the filename of an image to display in addition to or instead of a text label.\n\nCan be '
+      + 'translated.',
+    translatable: true
+  },
+  'instance::cht:duration': {
+    comment: 'The custom duration to use for a countdown timer.\n\n'
+      + 'https://docs.communityhealthtoolkit.org/apps/reference/forms/app/#countdo'
+  },
+  'instance::cht:unique_tel': {
+    comment: 'Indicates that input for a  telephone field should be rejected if the given number is already '
+      + 'associated with an existing contact.\n\n' +
+      'https://docs.communityhealthtoolkit.org/apps/reference/forms/app/#phone-number-input',
+    supportedValues: ['', 'true']
+  },
+  'instance::db-doc': {
+    comment: 'Indicates the data for a group should be written to the database as a new document.\n\n'
+      + 'https://docs.communityhealthtoolkit.org/apps/guides/forms/additional-docs/',
+    supportedValues: ['', 'true']
+  },
+  'instance::db-doc-ref': {
+    comment: 'Indicates that a calculate should be populated as part of the db-data workflow.\n\nSet the `/form_id` '
+      + 'value to populate the field with the id of the report when it is submitted. Set `${group_name}` to '
+      + 'populate the field with the id of the document written for the group_name group (assuming that group_name '
+      + 'has been marked with instance::db-doc = true).\n\n'
+      + 'https://docs.communityhealthtoolkit.org/apps/guides/forms/additional-docs/'
+  },
+  'instance::tag': {
+    comment: 'Set `hidden` to hide the field on the Reports tab. Can alternatively use the `hidden_fields` array'
+      + 'in the form properties file.\n\n'
+      + 'https://docs.communityhealthtoolkit.org/building/translations/overview/#hiding-report-fields',
+    supportedValues: ['', 'hidden']
+  },
+  'instance::type': {
+    comment: 'Set `binary` to mark an element as having binary data data which should be saved at a file attachment'
+      + 'on the report\n\nhttps://docs.communityhealthtoolkit.org/building/forms/app/#uploading-binary-attachments',
+    supportedValues: ['', 'binary']
+  },
+  label: {
+    comment: 'The user-visible question text for the field. For example: "When was ${first_name} born?" This text can '
+      + 'optionally reference other fields or be styled using subsets of Markdown and HTML.\n\nCan be translated.',
+    translatable: true
+  },
+  name: {
+    comment: 'Variable name. It may not contain spaces and must start with a letter or underscore. You should use a '
+      + 'short, descriptive name and can use underscores to separate words. For example: date_of_birth.'
+  },
+  note: {
+    comment: 'Can include a human-friendly note to describe the row. This will be ignored by all ODK tools.'
+  },
+  parameters: {
+    comment: 'One or more pairs of keys and values that configure aspects of a question type that are not '
+      + 'appearance-related.\n\nFor example, an image question might have: max-pixels=1024',
+  },
+  read_only: {
+    comment: 'An expression used to determine whether the question\'s value can be edited or not',
+    supportedValues: ['', 'true']
+  },
+  relevant: {
+    comment: 'An expression that determines whether a question will be displayed to a user or not. Lets you define '
+      + 'branching or skip logic. \n\nSee the Relevance tab for examples.',
+    expression: true
+  },
+  repeat_count: {
+    comment: 'The number of instances of a repeat to create. Can be a fixed value or a \ndynamic expression.\n\n'
+      + 'https://docs.getodk.org/form-logic/#fixed-repeat-count',
+    expression: true
+  },
+  required: {
+    comment: 'Leave blank for questions that aren\'t required. Write yes for questions that are required. You can also '
+      + 'use an expression to make a question conditionally required.\n\n'
+      + 'https://docs.getodk.org/form-logic/#requiring-responses',
+    expression: true
+  },
+  required_message: {
+    comment: 'A custom message to replace the generic message when a required value is not filled in',
+    translatable: true
+  },
+  trigger: {
+    comment: 'Reference to a question that triggers the specified calculation when its value changes only. Useful for '
+      + 'dynamic defaults.\n\nhttps://docs.getodk.org/form-logic/#dynamic-defaults-from-form-data'
+  },
+  type: {
+    comment: 'Determines what kinds of values are allowed and how the field is displayed. For certain types, further '
+      + 'customization is possible using the appearance and parameters columns.\n\nhttps://docs.getodk.org/form-question-types/'
+  },
+  video: {
+    comment: 'Specify the filename of a video file. This will display a button to play the video next to the question '
+      + 'label.\n\nCan be translated.',
+    translatable: true
+  },
 };
 const SURVEY_COLUMN_NAMES_TRANSLATABLE = pipe(
   Record.toEntries(SURVEY_COLUMNS),
@@ -520,6 +629,32 @@ const setSurveySupportedValuesFormatting = setSupportedValuesFormatting(SURVEY_C
 const setSettingsSupportedValuesValidation = setSupportedValuesValidation(SETTINGS_COLUMNS);
 const setSettingsSupportedValuesFormatting = setSupportedValuesFormatting(SETTINGS_COLUMNS);
 
+type ColumnsWithComment = Record<string, { comment?: string, translatable?: boolean }>;
+// Translatable columns can appear as the bare key or a "key::<lang>" variant, so match every column
+// starting with the key; non-translatable columns match the key exactly.
+const commentColumnLetters = (name: string, translatable: boolean | undefined, sheet: Worksheet) => translatable
+  ? getColumnLettersMatching(val => !!val?.startsWith(name), sheet)
+  : Array.fromOption(getColumnLetter(name, sheet));
+const commentColumns = (columns: ColumnsWithComment, sheet: Worksheet) => pipe(
+  Record.toEntries(columns),
+  Array.flatMap(([name, { comment, translatable }]) => pipe(
+    Option.fromNullable(comment),
+    Option.map(text => pipe(
+      commentColumnLetters(name, translatable, sheet),
+      Array.map(column => Tuple.make(column, text)),
+    )),
+    Option.getOrElse(() => []),
+  )),
+);
+const setColumnHeaderComment = (sheet: Worksheet) => (
+  [column, comment]: [string, string]
+) => sheet.getCell(`${column}1`).note = comment;
+const setHeaderComments = (columns: ColumnsWithComment) => (sheet: Worksheet) => pipe(
+  commentColumns(columns, sheet),
+  Array.forEach(setColumnHeaderComment(sheet))
+);
+const setSurveyHeaderComments = setHeaderComments(SURVEY_COLUMNS);
+
 const buildTranslatableHeaderFormula = (cell: string, names: readonly string[]) => pipe(
   names,
   Array.flatMap(name => [
@@ -826,6 +961,7 @@ const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
     Effect.tap(normalizeSurveyTypeValues),
     Effect.tap(freezeHeaderAndKeyColumns),
     Effect.tap(setSurveyHeaderFormatting),
+    Effect.tap(setSurveyHeaderComments),
     Effect.tap(setSurveyHeaderValidation(workbook)),
     Effect.tap(setSurveyTypeFormatting(workbook)),
     Effect.tap(setSurveyTypeValidation),
