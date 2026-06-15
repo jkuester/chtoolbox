@@ -431,7 +431,7 @@ export const setSurveyTypeValidation = (surveySheet: Worksheet): void => pipe(
 export const setSurveySupportedValuesValidation = setSupportedValuesValidation(SURVEY_COLUMNS);
 export const setSurveySupportedValuesFormatting = setSupportedValuesFormatting(SURVEY_COLUMNS);
 
-export const setSurveyNameFormatting = (surveySheet: Worksheet): Option.Option<void> => pipe(
+export const setSurveyNameFormatting = (surveySheet: Worksheet): void => pipe(
   getColumnLetter('name', surveySheet),
   Option.map(nameCol => Tuple.make(
     nameCol,
@@ -447,7 +447,8 @@ export const setSurveyNameFormatting = (surveySheet: Worksheet): Option.Option<v
         priority: 1,
       }
     ]
-  }))
+  })),
+  Option.getOrElse(() => undefined)
 );
 
 const buildIsLabeledTypeFormula = (cell: string) => pipe(
@@ -501,7 +502,7 @@ export const setSurveyLabelFormatting = (surveySheet: Worksheet): void => pipe(
   }))
 );
 
-export const setSurveyCalculationFormatting = (surveySheet: Worksheet): Option.Option<void> => pipe(
+export const setSurveyCalculationFormatting = (surveySheet: Worksheet): void => pipe(
   getColumnLetter('calculation', surveySheet),
   Option.map(calcCol => Tuple.make(
     calcCol,
@@ -517,7 +518,8 @@ export const setSurveyCalculationFormatting = (surveySheet: Worksheet): Option.O
         priority: 1,
       }
     ]
-  }))
+  })),
+  Option.getOrElse(() => undefined)
 );
 
 const setSurveyGroupBoundaryFormatting = (type: string, style: Partial<ExcelJS.Style>) => (

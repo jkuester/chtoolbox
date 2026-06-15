@@ -40,11 +40,9 @@ describe('Form Service', () => {
     it('formats the survey, choices, and settings sheets', run(function* () {
       const { dir, filePath } = yield* withTempFile(workbook => {
         const survey = workbook.addWorksheet('survey');
-        // The name and calculation columns must exist: the formatting chain taps
-        // setSurveyNameFormatting / setSurveyCalculationFormatting, which return
-        // Option.none() (a failing Effect) when those columns are absent.
-        survey.getRow(1).values = ['type', 'name', 'label', 'calculation'];
-        survey.getRow(2).values = ['begin group', 'grp'];
+        // Only the type column is required: missing name/calculation columns must not fail formatting.
+        survey.getRow(1).values = ['type', 'label'];
+        survey.getRow(2).values = ['begin group', 'A label'];
         workbook.addWorksheet('choices').getRow(1).values = ['list_name', 'name', 'label'];
         workbook.addWorksheet('settings').getRow(1).values = ['form_title', 'style'];
       });

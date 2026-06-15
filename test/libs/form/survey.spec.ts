@@ -1,6 +1,6 @@
 import { describe, it } from 'mocha';
 import { expect } from 'chai';
-import { Effect, Option } from 'effect';
+import { Effect } from 'effect';
 import ExcelJS from 'exceljs';
 import { getHeaderNames, type Worksheet } from '../../../src/libs/xlsx.ts';
 import { BUFFER_COL_COUNT } from '../../../src/libs/form/index.ts';
@@ -160,18 +160,16 @@ describe('form survey libs', () => {
     it('flags rows that have a type but no name', () => {
       const [, worksheet] = newWorkbook(['type', 'name']);
 
-      const result = setSurveyNameFormatting(worksheet);
+      setSurveyNameFormatting(worksheet);
 
-      expect(Option.isSome(result)).to.be.true;
       expect(getConditionalFormattingRule(worksheet, 0).formulae).to.deep.equal(['AND(A2<>"",B2="")']);
     });
 
     it('does nothing when there is no name column', () => {
       const [, worksheet] = newWorkbook(['type', 'label']);
 
-      const result = setSurveyNameFormatting(worksheet);
+      setSurveyNameFormatting(worksheet);
 
-      expect(Option.isNone(result)).to.be.true;
       expect(getConditionalFormattings(worksheet)).to.deep.equal([]);
     });
   });
@@ -194,18 +192,16 @@ describe('form survey libs', () => {
     it('flags calculate rows with no calculation', () => {
       const [, worksheet] = newWorkbook(['type', 'calculation']);
 
-      const result = setSurveyCalculationFormatting(worksheet);
+      setSurveyCalculationFormatting(worksheet);
 
-      expect(Option.isSome(result)).to.be.true;
       expect(getConditionalFormattingRule(worksheet, 0).formulae).to.deep.equal(['AND(A2="calculate",B2="")']);
     });
 
     it('does nothing when there is no calculation column', () => {
       const [, worksheet] = newWorkbook(['type', 'name']);
 
-      const result = setSurveyCalculationFormatting(worksheet);
+      setSurveyCalculationFormatting(worksheet);
 
-      expect(Option.isNone(result)).to.be.true;
       expect(getConditionalFormattings(worksheet)).to.deep.equal([]);
     });
   });
