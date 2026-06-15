@@ -13,26 +13,70 @@ const BUFFER_COL_COUNT = 50;
 const BUFFER_ROW_COUNT = 1000;
 
 const SETTINGS_COLUMNS: Record<string, {
+  /** Description of the column */
+  comment: string,
   /** The complete set of values allowed in this column (offered as a dropdown; e.g. ['', 'true']) */
   supportedValues?: readonly string[],
 }> = {
-  allow_choice_duplicates: { supportedValues: ['', 'yes']},
-  form_title: {},
-  namespaces: {},
-  style: { supportedValues: ['', 'pages']},
-  version: {},
+  allow_choice_duplicates: {
+    comment: 'Add with `yes` value if you want a single list on the choices sheet to have multiple choices with '
+      + 'the same name',
+    supportedValues: ['', 'yes']
+  },
+  form_title: {
+    comment: 'The title that will be displayed to anyone who uses this form.\n\n'
+      + 'https://docs.getodk.org/xlsform/#the-settings-sheet'
+  },
+  namespaces: {
+    comment: 'Specify the custom namespaces used in the form. For example: `cht=https://communityhealthtoolkit.org`.'
+  },
+  style: {
+    comment: 'Specify different ways of displaying questions. \n\npages: show each question or field list on its '
+      + 'own page.\n\nBy default, all questions are shown on a single page.',
+    supportedValues: ['', 'pages']
+  },
+  version: {
+    comment: 'The unique version code that identifies the current state of the form. A common convention is to '
+      + 'use a format like yyyymmddrr. For example, 2017021501 is the 1st revision from Feb 15th, 2017.\n\n'
+      + 'A formula can be used to update the version automatically: `=TEXT(NOW(), "yyyymmddhhmmss")`\n\n'
+      + 'This `version` is recorded in the form xml and is primarily useful for determining which version '
+      + 'of the xlsform was used to produce the xml. A separate `form_version` property is generated for each '
+      + 'form when it is uploaded to the CHT server. This is the version set on report docs produced by the form.'
+      + '\n\nhttps://docs.communityhealthtoolkit.org/building/forms/versioning/'
+  },
 };
 
 const CHOICES_COLUMNS: Record<string, {
+  /** Description of the column */
+  comment: string,
   /** Multiple versions of this column can be added for different languages */
   translatable?: boolean,
 }> = {
-  audio: { translatable: true },
-  image: { translatable: true },
-  label: { translatable: true },
-  list_name: {},
-  name: {},
-  video: { translatable: true },
+  audio: {
+    comment: 'The filename of an audio file for the choice.\n\nCan be translated.',
+    translatable: true
+  },
+  image: {
+    comment: 'The filename of an image file for the choice.\n\nCan be translated.',
+    translatable: true
+  },
+  label: {
+    comment: 'The user-visible text for the choice. This text can have translations or be styled using subsets of '
+      + 'Markdown and HTML.',
+    translatable: true
+  },
+  list_name: {
+    comment: 'The name of a list. To group choices in a list, give them all the same list_name.\n\nYou can use '
+      + 'the list_name with select types and as part of instance statements for looking values in lists.'
+  },
+  name: {
+    comment: 'The value that will be saved when this choice is selected. This is the value you will use in analysis.'
+      + '\n\nLike field names, choice names should be short and descriptive (e.g., y for Yes and n for No).'
+  },
+  video: {
+    comment: 'The filename of a video file for the choice.\n\nCan be translated.',
+    translatable: true
+  },
 };
 const CHOICES_COLUMN_NAMES_TRANSLATABLE = pipe(
   Record.toEntries(CHOICES_COLUMNS),
@@ -98,13 +142,15 @@ const SURVEY_COLUMNS: Record<string, {
     translatable: true
   },
   'instance::cht:duration': {
-    comment: 'The custom duration to use for a countdown timer.\n\n'
+    comment: 'The custom duration to use for a countdown timer. Requires `cht=https://communityhealthtoolkit.org`'
+      + 'to be set in the `namespaces` column on the settings sheet.\n\n'
       + 'https://docs.communityhealthtoolkit.org/apps/reference/forms/app/#countdo'
   },
   'instance::cht:unique_tel': {
-    comment: 'Indicates that input for a  telephone field should be rejected if the given number is already '
-      + 'associated with an existing contact.\n\n' +
-      'https://docs.communityhealthtoolkit.org/apps/reference/forms/app/#phone-number-input',
+    comment: 'Indicates that input for a telephone field should be rejected if the given number is already '
+      + 'associated with an existing contact. Requires `cht=https://communityhealthtoolkit.org` to be'
+      + ' set in the `namespaces` column on the settings sheet.\n\n'
+      + 'https://docs.communityhealthtoolkit.org/apps/reference/forms/app/#phone-number-input',
     supportedValues: ['', 'true']
   },
   'instance::db-doc': {
@@ -654,6 +700,8 @@ const setHeaderComments = (columns: ColumnsWithComment) => (sheet: Worksheet) =>
   Array.forEach(setColumnHeaderComment(sheet))
 );
 const setSurveyHeaderComments = setHeaderComments(SURVEY_COLUMNS);
+const setChoicesHeaderComments = setHeaderComments(CHOICES_COLUMNS);
+const setSettingsHeaderComments = setHeaderComments(SETTINGS_COLUMNS);
 
 const buildTranslatableHeaderFormula = (cell: string, names: readonly string[]) => pipe(
   names,
@@ -986,6 +1034,7 @@ const formatChoicesWorksheet = (workbook: ExcelJS.Workbook) => pipe(
     Effect.succeed,
     Effect.tap(freezeHeaderAndKeyColumns),
     Effect.tap(setChoicesHeaderFormatting),
+    Effect.tap(setChoicesHeaderComments),
     Effect.tap(setChoicesHeaderValidation(workbook)),
   )),
   Option.getOrElse(() => Effect.void)
@@ -997,6 +1046,7 @@ const formatSettingsWorksheet = (workbook: ExcelJS.Workbook) => pipe(
     settingsSheet,
     Effect.succeed,
     Effect.tap(setSettingsHeaderFormatting),
+    Effect.tap(setSettingsHeaderComments),
     Effect.tap(setSettingsHeaderValidation(workbook)),
     Effect.tap(setSettingsSupportedValuesValidation),
     Effect.tap(setSettingsSupportedValuesFormatting),
@@ -1025,7 +1075,3 @@ export class FormService extends Effect.Service<FormService>()('chtoolbox/FormSe
   }),
   accessors: true,
 }) {}
-
-
-// TODO Comments
-
