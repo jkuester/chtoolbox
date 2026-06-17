@@ -27,6 +27,8 @@ import { localIp } from './commands/local-ip/index.ts';
 import { LocalIpService } from './services/local-ip.ts';
 import { SentinelBacklogService } from './services/sentinel-backlog.ts';
 import { sentinelBacklog } from './commands/sentinel-backlog/index.ts';
+import { ReviewService } from './services/review.ts';
+import { review } from './commands/review.ts';
 import { FormService } from './services/form.ts';
 import { getChtxConfigProvider } from './libs/config.js';
 
@@ -59,6 +61,7 @@ const SUBCOMMANDS = Array.make(
   subCommandWithConfig(upgrade),
   subCommandWithConfig(instance),
   subCommandWithConfig(sentinelBacklog),
+  subCommandWithConfig(review),
   subCommandWithConfig(form)
 );
 
@@ -102,6 +105,7 @@ pipe(
   Effect.provide(ReplicateService.Default),
   Effect.provide(SentinelBacklogService.Default),
   Effect.provide(TestDataGeneratorService.Default),
+  Effect.provide(ReviewService.Default),
   Effect.provide(PouchDBService.Default),
   Effect.provide(FormService.Default),
   Effect.provide(ChtClientService.Default.pipe(httpClientNoSslVerify)),
