@@ -1,5 +1,5 @@
-import { Effect, pipe, Record, Tuple } from 'effect';
-import { getHeaderNames, setHeaderComments, type Worksheet } from '../xlsx.ts';
+import { DateTime, Effect, Option, pipe, Record, Tuple } from 'effect';
+import { getColumnLetter, getHeaderNames, setHeaderComments, type Worksheet } from '../xlsx.ts';
 import {
   BUFFER_COL_COUNT,
   buildEmptyColumnFormula,
@@ -44,6 +44,33 @@ const SETTINGS_COLUMNS: Record<string, {
       + '\n\nhttps://docs.communityhealthtoolkit.org/building/forms/versioning/'
   },
 };
+
+const pad = (value: number, length = 2): string => String(value).padStart(length, '0');
+const toVersionStamp = (dateTime: DateTime.DateTime): string => pipe(
+  DateTime.toPartsUtc(dateTime),
+  ({ year, month, day, hours, minutes, seconds }) =>
+    `${pad(year, 4)}${pad(month)}${pad(day)}${pad(hours)}${pad(minutes)}${pad(seconds)}`,
+);
+
+/**
+ * ExcelJS does not always play nicely with the `version` formulas (it does not auto-box from date to number as
+ * forgivingly as other editors). So, just manually cache the value instead.
+ * @param worksheet
+ */
+export const setSettingsVersionCachedValue = (worksheet: Worksheet): Effect.Effect<void> => pipe(
+  getColumnLetter('version', worksheet),
+  Option.map(column => worksheet.getCell(`${column}2`)),
+  Option.filter(cell => cell.type === ExcelJS.ValueType.Formula),
+  Option.match({
+    onNone: () => Effect.void,
+    onSome: cell => pipe(
+      DateTime.now,
+      Effect.map(toVersionStamp),
+      Effect.map(stamp => Object.assign(cell, { value: { formula: cell.formula, result: stamp } })),
+      Effect.asVoid,
+    ),
+  }),
+);
 
 export const setSettingsHeaderComments = setHeaderComments(SETTINGS_COLUMNS);
 export const setSettingsSupportedValuesValidation = setSupportedValuesValidation(SETTINGS_COLUMNS);

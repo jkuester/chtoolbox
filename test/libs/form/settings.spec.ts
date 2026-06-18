@@ -16,6 +16,7 @@ import {
   setSettingsHeaderValidation,
   setSettingsSupportedValuesFormatting,
   setSettingsSupportedValuesValidation,
+  setSettingsVersionCachedValue,
 } from '../../../src/libs/form/settings.ts';
 
 const newWorkbook = (
@@ -89,6 +90,37 @@ describe('form settings libs', () => {
       const rule = getDataValidation(worksheet, `A1:${lastCol}1`);
       expect(rule).to.deep.include({ type: 'list', errorStyle: 'information', error: 'Unexpected column name.' });
       expect(rule?.formulae).to.deep.equal(['\'chtx\'!$A$2:$A$6']);
+    });
+  });
+
+  describe('setSettingsVersionCachedValue', () => {
+    it('caches a timestamp string for a formula version cell, keeping the formula', () => {
+      const [, worksheet] = newWorkbook(['form_title', 'version']);
+      worksheet.getCell('B2').value = { formula: 'TEXT(NOW(), "yyyymmddhhmmss")' } as ExcelJS.CellFormulaValue;
+
+      Effect.runSync(setSettingsVersionCachedValue(worksheet));
+
+      const value = worksheet.getCell('B2').value as { formula: string, result: unknown };
+      expect(value.formula).to.equal('TEXT(NOW(), "yyyymmddhhmmss")');
+      expect(value.result).to.match(/^\d{14}$/);
+    });
+
+    it('leaves a static version value untouched', () => {
+      const [, worksheet] = newWorkbook(['version']);
+      worksheet.getCell('A2').value = '2017021501';
+
+      Effect.runSync(setSettingsVersionCachedValue(worksheet));
+
+      expect(worksheet.getCell('A2').value).to.equal('2017021501');
+    });
+
+    it('does nothing when there is no version column', () => {
+      const [, worksheet] = newWorkbook(['form_title']);
+      worksheet.getCell('A2').value = { formula: 'TEXT(NOW(), "yyyymmddhhmmss")' } as ExcelJS.CellFormulaValue;
+
+      Effect.runSync(setSettingsVersionCachedValue(worksheet));
+
+      expect((worksheet.getCell('A2').value as { result: unknown }).result).to.be.undefined;
     });
   });
 });

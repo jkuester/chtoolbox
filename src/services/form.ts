@@ -35,6 +35,7 @@ import {
   setSettingsHeaderValidation,
   setSettingsSupportedValuesFormatting,
   setSettingsSupportedValuesValidation,
+  setSettingsVersionCachedValue,
 } from '../libs/form/settings.ts';
 
 const loadWorkbook = (filePath: string) => pipe(
@@ -90,6 +91,7 @@ const formatSettingsWorksheet = (workbook: ExcelJS.Workbook) => pipe(
   Option.map(settingsSheet => pipe(
     settingsSheet,
     Effect.succeed,
+    Effect.tap(setSettingsVersionCachedValue),
     Effect.tap(setSettingsHeaderFormatting),
     Effect.tap(setSettingsHeaderComments),
     Effect.tap(setSettingsHeaderValidation(workbook)),
