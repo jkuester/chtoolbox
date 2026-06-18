@@ -1,9 +1,13 @@
-import { FileSystem } from '@effect/platform';
+import { FileSystem, Terminal } from '@effect/platform';
 import { Args, Command, Options } from '@effect/cli';
 import { Array, Effect, pipe } from 'effect';
 import { FormService } from '../../services/form.ts';
 
-const formatFile = (filePath: string) => FormService.formatFile(filePath);
+const formatFile = (filePath: string) => Terminal.Terminal.pipe(
+  Effect.tap(terminal => terminal.display(`Formatting ${filePath}... `)),
+  Effect.tap(() => FormService.formatFile(filePath)),
+  Effect.tap(terminal => terminal.display('done\n')),
+);
 
 const getDirectoryFiles = (directory: string) => FileSystem.FileSystem.pipe(
   Effect.flatMap(fs => fs.readDirectory(directory)),
