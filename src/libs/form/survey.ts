@@ -471,16 +471,19 @@ const buildIsUnlabeledTypeFormula = (cell: string) => pipe(
 );
 export const setSurveyLabelFormatting = (surveySheet: Worksheet): void => pipe(
   getColumnLettersMatching(val => !!val?.startsWith(LABEL_PREFIX), surveySheet),
-  Array.map(labelCol => Tuple.make(
-    labelCol,
-    getTypeColumnLetter(surveySheet),
-  )),
-  Array.forEach(([labelCol, typeCol]) => surveySheet.addConditionalFormatting({
+  labelCols => Tuple.make(labelCols, getTypeColumnLetter(surveySheet)),
+  ([labelCols, typeCol]) => Tuple.make(
+    labelCols,
+    typeCol,
+    // Only flag missing labels when none of the label columns have a value.
+    labelCols.map(col => `${col}2=""`).join(','),
+  ),
+  ([labelCols, typeCol, allLabelsEmpty]) => Array.forEach(labelCols, labelCol => surveySheet.addConditionalFormatting({
     ref: getTypeValidationRange(labelCol, surveySheet.rowCount),
     rules: [
       {
         type: 'expression',
-        formulae: [`AND(${buildIsLabeledTypeFormula(typeCol + '2')},${labelCol}2="")`],
+        formulae: [`AND(${buildIsLabeledTypeFormula(typeCol + '2')},${allLabelsEmpty})`],
         style: { ...FORM_STYLE.ERROR },
         priority: 1,
       },

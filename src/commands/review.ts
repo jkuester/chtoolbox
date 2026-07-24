@@ -79,6 +79,6 @@ export const review = Command
   )
   .pipe(Command.withDescription(
     'Review GitHub PRs and/or commits with open-code-review (`ocr`), writing one markdown report each. requires '
-    + 'GITHUB_TOKEN and the `ocr` binary on the PATH (with its own LLM configuration.  See '
-    + 'https://alibaba.github.io/open-code-review/ for more details on setting up ocr.'
+    + 'GITHUB_TOKEN and the `ocr` binary on the PATH (with its own LLM configuration).  See '
+    + 'https://open-codereview.ai/ for more details on setting up ocr.'
   ));
