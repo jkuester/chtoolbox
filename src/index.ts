@@ -15,6 +15,7 @@ import { PouchDBService } from './services/pouchdb.ts';
 import { ReplicateService } from './services/replicate.ts';
 import { db } from './commands/db/index.ts';
 import { design } from './commands/design/index.ts';
+import { form } from './commands/form/index.ts';
 import { doc } from './commands/doc/index.ts';
 import { PurgeService } from './services/purge.ts';
 import { upgrade } from './commands/upgrade.ts';
@@ -28,6 +29,7 @@ import { SentinelBacklogService } from './services/sentinel-backlog.ts';
 import { sentinelBacklog } from './commands/sentinel-backlog/index.ts';
 import { ReviewService } from './services/review.ts';
 import { review } from './commands/review.ts';
+import { FormService } from './services/form.ts';
 import { getChtxConfigProvider } from './libs/config.js';
 
 const withChtxConfigProvider = Effect.fn(<A, E, R>(
@@ -59,7 +61,8 @@ const SUBCOMMANDS = Array.make(
   subCommandWithConfig(upgrade),
   subCommandWithConfig(instance),
   subCommandWithConfig(sentinelBacklog),
-  subCommandWithConfig(review)
+  subCommandWithConfig(review),
+  subCommandWithConfig(form)
 );
 
 const url = Options
@@ -104,6 +107,7 @@ pipe(
   Effect.provide(TestDataGeneratorService.Default),
   Effect.provide(ReviewService.Default),
   Effect.provide(PouchDBService.Default),
+  Effect.provide(FormService.Default),
   Effect.provide(ChtClientService.Default.pipe(httpClientNoSslVerify)),
   Effect.provide(NodeContext.layer),
   NodeRuntime.runMain
