@@ -1,0 +1,83 @@
+# Based on https://github.com/alibaba/open-code-review/blob/main/examples/github_actions/ocr-review.yml
+name: PR Review
+
+env:
+  OCR_LLM_URL: https://api.anthropic.com
+  OCR_LLM_MODEL: claude-opus-5
+  OCR_LLM_USE_ANTHROPIC: "true"
+  OCR_LLM_AUTH_HEADER: "x-api-key"
+
+# Triggered on demand only: comment `/review` on a pull request.
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write # to post the review summary and inline comments
+  issues: write # to post conversation comments on PR
+
+concurrency:
+  group: >-
+    ${{
+      (
+        github.event.issue.pull_request
+        && github.event.comment.user.type != 'Bot'
+        && startsWith(github.event.comment.body, '/review')
+        && (
+          github.event.comment.author_association == 'OWNER'
+          || github.event.comment.author_association == 'MEMBER'
+          || github.event.comment.author_association == 'COLLABORATOR'
+        )
+      )
+      && format('review-{0}', github.event.issue.number)
+      || format('noop-{0}', github.run_id)
+    }}
+  cancel-in-progress: true
+
+jobs:
+  code-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Only maintainers can trigger a review
+    if: |
+      github.event.issue.pull_request && github.event.comment.user.type != 'Bot'
+      && startsWith(github.event.comment.body, '/review')
+      && (
+        github.event.comment.author_association == 'OWNER'
+        || github.event.comment.author_association == 'MEMBER'
+        || github.event.comment.author_association == 'COLLABORATOR'
+      )
+    steps:
+      - name: Get PR context
+        id: pr-context
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              ...context.repo,
+              comment_id: context.payload.comment.id,
+              content: 'eyes',
+            });
+            // issue_comment carries no PR refs, so look them up for the action.
+            const { data: pullRequest } = await github.rest.pulls.get({
+              ...context.repo,
+              pull_number: context.issue.number,
+            });
+            core.setOutput('base_ref', pullRequest.base.ref);
+            core.setOutput('head_sha', pullRequest.head.sha);
+            core.setOutput('title', pullRequest.title);
+
+      - name: Run OpenCodeReview
+        uses: alibaba/open-code-review@4bcc95acecd629e64ea984c962cfd08dd892a38e # v1.8.10
+        with:
+          llm_url: ${{ env.OCR_LLM_URL }}
+          llm_auth_token: ${{ secrets.OCR_LLM_AUTH_TOKEN }}
+          llm_auth_header: ${{ env.OCR_LLM_AUTH_HEADER }}
+          llm_model: ${{ env.OCR_LLM_MODEL }}
+          llm_use_anthropic: ${{ env.OCR_LLM_USE_ANTHROPIC }}
+          base_ref: ${{ steps.pr-context.outputs.base_ref }}
+          head_sha: ${{ steps.pr-context.outputs.head_sha }}
+          background: ${{ steps.pr-context.outputs.title }}
+          # '{"output_config": {"effort": "high"}}' — low|medium|high|xhigh|max.
+          llm_extra_body: "{}"
