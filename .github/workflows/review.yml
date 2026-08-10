@@ -1,6 +1,12 @@
 # Based on https://github.com/alibaba/open-code-review/blob/main/examples/github_actions/ocr-review.yml
 name: PR Review
 
+env:
+  OCR_LLM_URL: https://api.anthropic.com
+  OCR_LLM_MODEL: claude-opus-5
+  OCR_LLM_USE_ANTHROPIC: "true"
+  OCR_LLM_AUTH_HEADER: "x-api-key"
+
 # Triggered on demand only: comment `/review` on a pull request.
 on:
   issue_comment:
@@ -28,12 +34,6 @@ concurrency:
       || format('noop-{0}', github.run_id)
     }}
   cancel-in-progress: true
-
-env:
-  OCR_LLM_URL: https://api.anthropic.com
-  OCR_LLM_MODEL: claude-opus-5
-  OCR_LLM_USE_ANTHROPIC: "true"
-  OCR_LLM_AUTH_HEADER: "x-api-key"
 
 jobs:
   code-review:
