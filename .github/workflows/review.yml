@@ -2,10 +2,11 @@
 name: PR Review
 
 env:
-  OCR_LLM_URL: https://api.anthropic.com
   OCR_LLM_MODEL: claude-opus-5
+  OCR_LLM_URL: https://api.anthropic.com
   OCR_LLM_USE_ANTHROPIC: "true"
   OCR_LLM_AUTH_HEADER: "x-api-key"
+  CLAUDE_LLM_MODEL: claude-opus-5
 
 # Triggered on demand only: comment `/review` on a pull request.
 on:
@@ -36,6 +37,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Line-by-line correctness review of the diff.
   code-review:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -81,3 +83,61 @@ jobs:
           background: ${{ steps.pr-context.outputs.title }}
           # '{"output_config": {"effort": "high"}}' — low|medium|high|xhigh|max.
           llm_extra_body: "{}"
+
+  # completeness review that confirms the PR deliver what the linked issue and its description promise
+  completeness-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Only maintainers can trigger a review
+    if: |
+      github.event.issue.pull_request && github.event.comment.user.type != 'Bot'
+      && startsWith(github.event.comment.body, '/review')
+      && (
+        github.event.comment.author_association == 'OWNER'
+        || github.event.comment.author_association == 'MEMBER'
+        || github.event.comment.author_association == 'COLLABORATOR'
+      )
+    permissions:
+      contents: read
+      issues: read # to read the linked issue(s) the PR claims to fix
+      pull-requests: write # for the Post review comment step below
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: refs/pull/${{ github.event.issue.number }}/head
+          fetch-depth: 0
+      - name: Review PR for completeness
+        id: review
+        uses: anthropics/claude-code-action@6b082c41935b4c8a3b8b0ef85ba4ba4d9eeb8975 # v1.0.189
+        with:
+          anthropic_api_key: ${{ secrets.OCR_LLM_AUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: |
+            Use the pr-review-completeness skill to review pull request
+            ${{ github.event.issue.number }} in ${{ github.repository }}.
+            Follow that skill exactly.
+
+            Return the skill's report verbatim as `report_markdown`. If the skill concludes the PR's intent could not 
+            be established, return that as the report; an inconclusive report is still the result.
+          # Keep the configured tools synced up with what is configured in the frontmatter of the skill
+          claude_args: |
+            --model ${{ env.CLAUDE_LLM_MODEL }}
+            --allowedTools "Skill,Read,Grep,Glob,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(git log:*),Bash(git blame:*)"
+            --disallowedTools "Edit,Write,NotebookEdit"
+            --json-schema '{"type":"object","required":["report_markdown"],"additionalProperties":false,"properties":{"report_markdown":{"type":"string","description":"The complete review report as GitHub-flavored markdown, using sections 4, 5 and 6 of the skill as headings."}}}'
+      - name: Post review comment
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        env:
+          STRUCTURED_OUTPUT: ${{ steps.review.outputs.structured_output }}
+        with:
+          script: |
+            const { report_markdown } = JSON.parse(process.env.STRUCTURED_OUTPUT || '{}');
+            if (!report_markdown) {
+              core.setFailed('Review produced no report_markdown; nothing to post.');
+              return;
+            }
+            await github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: context.issue.number,
+              body: report_markdown,
+            });
