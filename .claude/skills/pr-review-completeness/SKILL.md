@@ -10,8 +10,7 @@ allowed-tools:
   - Bash(gh pr view:*)
   - Bash(gh pr diff:*)
   - Bash(gh issue view:*)
-  - Bash(git log:*)
-  - Bash(git blame:*)
+  - Bash(git diff:*)
 disallowed-tools:
   - Edit
   - Write
@@ -32,10 +31,16 @@ Everything below refers to that PR as `<pr>`.
 
 ## 1. Gather the stated intent
 
-- `gh pr view <pr> --json title,body,baseRefName`
-- `gh pr view <pr> --comments`
+Fetch the PR in one call, dropping bot comments — automated reviews get posted back to the PR, so an unfiltered fetch feeds you an earlier report on this same PR and you will anchor on it instead of re-deriving:
+
+```
+gh pr view <pr> --json title,body,baseRefName,headRefOid,comments \
+  --jq '{title, body, baseRefName, headRefOid, comments: [.comments[] | select(.author.login | test("\\[bot\\]$") | not) | {author: .author.login, body}]}'
+```
+
+- Note `baseRefName` and `headRefOid` — section 3 needs both.
 - Extract every issue number referenced in the title or body. This repo puts it in the title, e.g. `feat(#315): support formatting xlsxform files`.
-- Read each one with `gh issue view <number> --comments`.
+- Read each one the same way: `gh issue view <number> --json title,body,comments --jq '{title, body, comments: [.comments[] | select(.author.login | test("\\[bot\\]$") | not) | {author: .author.login, body}]}'`
 - If no issue is referenced anywhere, treat the PR title and description as the sole statement of intent and say so explicitly in your output.
 
 ## 2. Restate the requirements
@@ -46,10 +51,18 @@ Derive a requirement only from a statement about **behaviour** — what the code
 
 ## 3. Read the change, then follow it out of the diff
 
-- `gh pr diff <pr>` for the change itself.
+Get the file list, then the patch with generated files excluded — `package-lock.json` alone is ~136k tokens when regenerated, and it carries nothing this review can use:
+
+```
+gh pr diff <pr> --name-only
+git diff origin/<baseRefName>...<headRefOid> -- . ':(exclude)package-lock.json'
+```
+
+Use the name list, not the patch, to account for any excluded file in section 5. If `git diff` fails because the base ref is not available locally, fall back to `gh pr diff <pr>` and say in the report that the patch was read unfiltered.
+
 - Then read and search the working tree to follow the code **outward**: registration sites, exports, barrel files, command tables, call sites, and anything the new code must be wired into in order to actually run.
 - A requirement counts as delivered only if the whole path from user entrypoint to new code is complete. New code that is never registered, exported, or called delivers nothing, even when it is correct in isolation.
-- Where the PR adds user-facing surface (a command, endpoint, export, menu item), name the registration site in the report. A diff-only reader cannot find it, so state it rather than leaving it implied.
+- Trace only requirements that add user-facing surface (a command, endpoint, export, menu item), and name the registration site in the report. Reach for `Grep` before `Read`, and stop at the first site that proves the path rather than mapping the whole call graph.
 - Where a requirement's delivery depends on a library or framework **default** rather than on code in the diff, do not assert the default from memory. Either cite documentation for it, or put the requirement in **Pending verification** and name the default you could not confirm.
 
 ## 4. Bucket every requirement
@@ -66,11 +79,13 @@ Then, separately, list **Preconditions to confirm**: operational facts the chang
 
 Does the PR change anything its description never mentions? Report both directions, but this one matters most: an unmentioned change is the finding a human reviewer is most likely to miss.
 
-Do not limit this to source files. Walk the full file list from the diff.
+Do not limit this to source files. Walk the full `--name-only` list from section 3, including the files excluded from the patch.
 
 ## 6. Better approach
 
-Does an existing module, helper, or established pattern in this repo already solve this, or could it be updated to solve it better (more efficiently/simply)? Cite it by path. "No better approach found" is a correct and expected answer — do not invent hypothetical designs to fill space.
+Does an existing module, helper, or established pattern in this repo already solve this, or could it be updated to solve it better (more efficiently/simply)? Cite it by path.
+
+Answer from code you already read in sections 3 to 5; do not open a fresh search of the repo for this. "No better approach found" is a correct and expected answer — do not invent hypothetical designs to fill space.
 
 ## Output
 
