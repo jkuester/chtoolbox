@@ -1,6 +1,6 @@
 ---
 name: pr-review-completeness
-description: Review whether a pull request completely delivers what its linked issue and its own description promise. Checks requirement-by-requirement delivery, undisclosed changes, and whether an existing pattern in the repo solves it better. Use when asked whether a PR addresses its issue, matches its description, or could be solved a better way. Does not review code correctness or style. Requires the `gh` CLI.
+description: Review whether a pull request completely delivers what its linked issue and its own description promise. Checks requirement-by-requirement delivery, undisclosed changes, and whether an existing pattern in the repo solves it better. Use when asked whether a PR addresses its issue, matches its description, or could be solved a better way. Does not review code correctness or style. Requires the `gh` CLI. The results of the review are output to the current agent session. No comments are added to the PR.
 argument-hint: "[pr-number]"
 # Keep these tools synced up with what is configured in the review.yml workflow
 allowed-tools:
@@ -36,15 +36,13 @@ Everything below refers to that PR as `<pr>`.
 - `gh pr view <pr> --comments`
 - Extract every issue number referenced in the title or body. This repo puts it in the title, e.g. `feat(#315): support formatting xlsxform files`.
 - Read each one with `gh issue view <number> --comments`.
-- If no issue is referenced anywhere, treat the PR description as the sole statement of intent and say so explicitly in your output.
+- If no issue is referenced anywhere, treat the PR title and description as the sole statement of intent and say so explicitly in your output.
 
 ## 2. Restate the requirements
 
 Write out the concrete requirements from those sources as a bullet list, in your own words, including sub-tasks and acceptance criteria.
 
 Derive a requirement only from a statement about **behaviour** — what the code will do, or an acceptance criterion. Rationale and motivation ("this is faster", "this makes batch jobs possible") are not requirements. List any claim you decline to treat as a requirement under "Claims not treated as requirements" so the reader can disagree with the call.
-
-The title counts as a source of behavioural claims too — `feat: add support for X` states that X now exists, so a thin body alongside a substantive title is not grounds for skipping. Only when the title **and** body together yield no concrete requirement, say so and skip to section 5 rather than guessing at intent.
 
 ## 3. Read the change, then follow it out of the diff
 
@@ -78,6 +76,6 @@ Does an existing module, helper, or established pattern in this repo already sol
 
 Report sections 4, 5, and 6 under the headings "Requirements", "Undisclosed Changes", and "Alternative Approaches". Be brief and cite `file:line` for every claim.
 
-Use GitHub flavored Markdown. Write impersonally — report what the code does and what was checked, never narrating yourself ("I traced…", "I confirmed…"). This is published as a bot comment, not a message from a person.
+Use GitHub flavored Markdown. Write impersonally — report what the code does and what was checked, never narrating yourself ("I traced…", "I confirmed…").
 
-Return the report as your response and stop there. If you could not establish the PR's intent (section 0 or 2), say so plainly as the report. That is a valid outcome, not a reason to return nothing.
+Return the report as your response and stop there. If you could not establish the PR's intent (section 0 or 2), say so plainly as the report.
