@@ -2,7 +2,7 @@
 name: PR Review
 
 env:
-  OCR_LLM_MODEL: claude-opus-5
+  OCR_LLM_MODEL: claude-sonnet-5
   OCR_LLM_URL: https://api.anthropic.com
   OCR_LLM_USE_ANTHROPIC: "true"
   OCR_LLM_AUTH_HEADER: "x-api-key"
@@ -90,7 +90,7 @@ jobs:
           head_sha: ${{ needs.pr-context.outputs.head_sha }}
           background: ${{ needs.pr-context.outputs.title }}
           # '{"output_config": {"effort": "high"}}' — low|medium|high|xhigh|max.
-          llm_extra_body: "{}"
+          llm_extra_body: '{"output_config": {"effort": "xhigh"}}'
 
   # completeness review that confirms the PR deliver what the linked issue and its description promise
   completeness-review:
@@ -100,7 +100,8 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: refs/pull/${{ github.event.issue.number }}/head
+          persist-credentials: false
+          ref: ${{ needs.pr-context.outputs.head_sha }}
           fetch-depth: 0
       - name: Review PR for completeness
         id: review
@@ -126,8 +127,11 @@ jobs:
         env:
           STRUCTURED_OUTPUT: ${{ steps.review.outputs.structured_output }}
         with:
-          script: |
-            const { report_markdown } = JSON.parse(process.env.STRUCTURED_OUTPUT || '{}');
+          script: |            
+            let report_markdown;
+            try {
+              ({ report_markdown } = JSON.parse(process.env.STRUCTURED_OUTPUT || '{}'));
+            } catch () { }
             if (!report_markdown) {
               core.setFailed('Review produced no report_markdown; nothing to post.');
               return;
