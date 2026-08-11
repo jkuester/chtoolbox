@@ -80,14 +80,9 @@ Does an existing module, helper, or established pattern in this repo already sol
 
 ## Output
 
-Use GitHub flavored Markdown. Open with exactly these two lines, before any heading:
+Report sections 4, 5, and 6 under the headings "Requirements", "Undisclosed Changes", and "Alternative Approaches". Be brief and cite `file:line` for every claim.
 
-- **Verdict** — one line. Requirement counts must sum to the number of requirements from section 2: `<n> of <total> delivered`, plus not-delivered and pending-verification counts. Then the counts for sections 5 and 6, and last the number of preconditions to confirm — stated separately, never added into the requirement totals.
-- **Basis** — the issue(s) the review was judged against. When no issue was linked, say so here and state plainly that the PR description is both the claim and the only yardstick, so section 4 is a weaker check than it looks.
-
-Then report sections 4, 5, and 6 under the headings "Requirements", "Undisclosed Changes", and "Alternative Approaches". Be brief and cite `file:line` for every claim.
-
-Write impersonally. Report what the code does and what was checked; never narrate yourself ("I traced…", "I confirmed…"). This is published as a bot comment, not a message from a person.
+Use GitHub flavored Markdown. Write impersonally. Report what the code does and what was checked; never narrate yourself ("I traced…", "I confirmed…"). This is published as a bot comment, not a message from a person.
 
 Return the report as your response and stop there. If you could not establish the PR's intent (section 0 or 2), say so plainly as the report. That is a valid outcome, not a reason to return nothing.
 
