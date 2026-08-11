@@ -68,7 +68,7 @@ Does an existing module, helper, or established pattern in this repo already sol
 
 ## Output
 
-Report sections 4, 5, and 6 as headings, most important first. Be brief and cite `file:line` for every claim.
+Report sections 4, 5, and 6 under headings the headings "Requirements", "Undisclosed Changes", and "Alternative Approaches". Be brief and cite `file:line` for every claim. Use GitHub flavored Markdown.
 
 Return the report as your response and stop there. If you could not establish the PR's intent (section 0 or 2), say so plainly as the report. That is a valid outcome, not a reason to return nothing.
 
