@@ -11,10 +11,10 @@
 
 set -euo pipefail
 
-# Paths whose patch body is dropped, matched against the end of each path in
-# the patch. Add generated or vendored paths here.
+# Paths whose patch body is dropped, matched as regexes against the end of each
+# path in the patch, at a "/" boundary. Add generated or vendored paths here.
 readonly EXCLUDE=(
-  'package-lock.json'
+  'package-lock\.json'
 )
 
 die() {
@@ -32,21 +32,11 @@ patch="$(gh pr diff $pr 2>/dev/null)" \
   || die "could not read the diff for PR '${pr}' (does it exist, and is gh authenticated for this repo?)"
 [[ -n "$patch" ]] || die "PR '${pr}' changes no files"
 
-awk -v excl="$(printf '%s\n' "${EXCLUDE[@]}")" '
-  BEGIN { n = split(excl, e, "\n") }
-  # Both path and entry are "/"-prefixed, so one suffix test covers a top-level
-  # file and a nested one.
-  function excluded(path,   i) {
-    path = "/" path
-    for (i = 1; i <= n; i++)
-      if (substr(path, length(path) - length(e[i]))  == "/" e[i]) return 1
-  }
-  # A malformed path here fails open: the file keeps its patch body, costing
-  # tokens but never hiding a change from the review.
+alternation="$(IFS='|'; echo "${EXCLUDE[*]}")"
+exclude_re="/(${alternation})\$"
+EXCLUDE_RE="$exclude_re" awk '
   /^diff --git / {
-    path = $3
-    sub(/^a\//, "", path)
-    skip = excluded(path)
+    skip = ($3 ~ ENVIRON["EXCLUDE_RE"])
     print
     if (skip) print "(patch body excluded to save tokens: this file is generated)"
     next
