@@ -54,9 +54,23 @@ const clearFrozenPanes = (ws: Worksheet): void => {
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   ws.views = ws.views?.filter(view => view.state !== 'frozen');
 };
+
+// ExcelJS has no public API for dropping rows off the end of a sheet
+const getRowRecords = (ws: Worksheet) => (ws as unknown as { _rows: (ExcelJS.Row | undefined)[] })._rows;
+const lastRowWithValues = (rows: readonly (ExcelJS.Row | undefined)[]) => pipe(
+  Array.findLastIndex(rows, row => !!row?.hasValues),
+  Option.map(index => index + 1),
+  Option.getOrElse(() => 0),
+);
+const removeTrailingEmptyRows = (ws: Worksheet): void => {
+  const rows = getRowRecords(ws);
+  rows.length = lastRowWithValues(rows);
+};
+
 export const clearSheetFormatting = (ws: Worksheet): void => {
   ws.removeConditionalFormatting(null);
   ws.dataValidations.model = {};
+  removeTrailingEmptyRows(ws);
   ws.eachRow({ includeEmpty: true }, clearRowFormatting);
   clearHeaderComments(ws);
   ws.columns.forEach(setDefaultStyle);

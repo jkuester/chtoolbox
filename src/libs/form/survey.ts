@@ -224,6 +224,8 @@ const SURVEY_FIELDS: Record<string, {
   rank: { label: 'required' },
   'select_multiple list_name': { label: 'required' },
   'select_one list_name': { label: 'required' },
+  'select_multiple_from_file file.extension': { label: 'required' },
+  'select_one_from_file file.extension': { label: 'required' },
   start: {},
   text: {
     altTypes: ['string'],
@@ -251,6 +253,14 @@ const SURVEY_FIELD_TYPES_BY_ALT_TYPE = pipe(
 );
 const SELECT_ONE_PREFIX = 'select_one ';
 const SELECT_MULTIPLE_PREFIX = 'select_multiple ';
+const SELECT_ONE_FROM_FILE_PREFIX = 'select_one_from_file ';
+const SELECT_MULTIPLE_FROM_FILE_PREFIX = 'select_multiple_from_file ';
+const SELECT_PREFIXES = [
+  SELECT_ONE_PREFIX,
+  SELECT_MULTIPLE_PREFIX,
+  SELECT_ONE_FROM_FILE_PREFIX,
+  SELECT_MULTIPLE_FROM_FILE_PREFIX,
+];
 
 const LABEL_PREFIX = 'label';
 const INVALID_LABELS = [
@@ -271,28 +281,36 @@ const STYLE_END_REPEAT: Partial<ExcelJS.Style> = {
   border: { bottom: STYLE.BORDER.PURPLE }
 };
 
-const startsWithSelectPrefix = (type: string) => type.startsWith(SELECT_ONE_PREFIX)
-  || type.startsWith(SELECT_MULTIPLE_PREFIX);
+const startsWithSelectPrefix = (type: string) => Array.some(SELECT_PREFIXES, prefix => type.startsWith(prefix));
 
+const hasPrefixSubFormula = (prefix: string, cell: string) => `LEFT(${cell},${
+  prefix.length.toString()
+})="${prefix}"`;
 const selectChoicesSubFormula = (prefix: string, cell: string, choicesListNameRange: Option.Option<string>) => pipe(
   choicesListNameRange,
   Option.map(
-    r => `AND(LEFT(${cell},${prefix.length.toString()})="${prefix}",`
+    r => `AND(${hasPrefixSubFormula(prefix, cell)},`
       + `NOT(ISERROR(MATCH(MID(${cell},${(prefix.length + 1).toString()},999),${r},0))))`
   ),
   Option.getOrElse(() => 'FALSE'),
 );
+// The file name/extension is not validated, so any non-empty value after the prefix is accepted.
+const selectFileSubFormula = (prefix: string, cell: string) => `AND(${
+  hasPrefixSubFormula(prefix, cell)
+},LEN(${cell})>${prefix.length.toString()})`;
 const buildIsInvalidTypeFormula = (cell: string, choicesListNameRange: Option.Option<string>) => pipe(
   SURVEY_FIELD_TYPES,
   Array.filter(Predicate.not(startsWithSelectPrefix)),
   Array.map(t => `"${t}"`),
   Array.join(','),
-  fixedListLiteral => `NOT(ISERROR(MATCH(${cell},{${fixedListLiteral}},0)))`,
-  isFixed => `AND(${cell}<>"",NOT(OR(${isFixed},${
-    selectChoicesSubFormula(SELECT_ONE_PREFIX, cell, choicesListNameRange)
-  },${
-    selectChoicesSubFormula(SELECT_MULTIPLE_PREFIX, cell, choicesListNameRange)
-  })))`
+  fixedListLiteral => [
+    `NOT(ISERROR(MATCH(${cell},{${fixedListLiteral}},0)))`,
+    selectChoicesSubFormula(SELECT_ONE_PREFIX, cell, choicesListNameRange),
+    selectChoicesSubFormula(SELECT_MULTIPLE_PREFIX, cell, choicesListNameRange),
+    selectFileSubFormula(SELECT_ONE_FROM_FILE_PREFIX, cell),
+    selectFileSubFormula(SELECT_MULTIPLE_FROM_FILE_PREFIX, cell),
+  ],
+  isValidParts => `AND(${cell}<>"",NOT(OR(${isValidParts.join(',')})))`
 );
 
 export const setSurveyTypeFormatting = (workbook: ExcelJS.Workbook) => (surveySheet: Worksheet): void => pipe(
@@ -458,8 +476,7 @@ const buildIsLabeledTypeFormula = (cell: string) => pipe(
   Array.join(','),
   fixedListLiteral => [
     `NOT(ISERROR(MATCH(${cell},{${fixedListLiteral}},0)))`,
-    `LEFT(${cell},${SELECT_ONE_PREFIX.length.toString()})="${SELECT_ONE_PREFIX}"`,
-    `LEFT(${cell},${SELECT_MULTIPLE_PREFIX.length.toString()})="${SELECT_MULTIPLE_PREFIX}"`,
+    ...Array.map(SELECT_PREFIXES, prefix => hasPrefixSubFormula(prefix, cell)),
   ],
   parts => `OR(${parts.join(',')})`,
 );

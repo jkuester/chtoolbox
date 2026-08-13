@@ -64,6 +64,17 @@ describe('form survey libs', () => {
 
       expect(getConditionalFormattingRule(worksheet, 0).formulae[0] ?? '').to.contain('FALSE');
     });
+
+    it('accepts any non-empty file value for the from_file select types', () => {
+      const [workbook, worksheet] = newWorkbook(['type', 'name']);
+
+      setSurveyTypeFormatting(workbook)(worksheet);
+
+      const formula = getConditionalFormattingRule(worksheet, 0).formulae[0] ?? '';
+      expect(formula).to.contain('AND(LEFT(A2,21)="select_one_from_file ",LEN(A2)>21)');
+      expect(formula).to.contain('AND(LEFT(A2,26)="select_multiple_from_file ",LEN(A2)>26)');
+      expect(formula).to.not.contain('file.extension');
+    });
   });
 
   describe('normalizeSurveyTypeValues', () => {
