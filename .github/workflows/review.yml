@@ -48,6 +48,7 @@ jobs:
         || github.event.comment.author_association == 'MEMBER'
         || github.event.comment.author_association == 'COLLABORATOR'
       )
+    timeout-minutes: 5
     outputs:
       base_ref: ${{ steps.pr-context.outputs.base_ref }}
       head_sha: ${{ steps.pr-context.outputs.head_sha }}
@@ -131,7 +132,7 @@ jobs:
             let report_markdown;
             try {
               ({ report_markdown } = JSON.parse(process.env.STRUCTURED_OUTPUT || '{}'));
-            } catch () { }
+            } catch { }
             if (!report_markdown) {
               core.setFailed('Review produced no report_markdown; nothing to post.');
               return;
