@@ -11,6 +11,12 @@
 
 set -euo pipefail
 
+# Paths whose patch body is dropped, matched against the end of each path in
+# the patch. Add generated or vendored paths here.
+readonly EXCLUDE=(
+  'package-lock.json'
+)
+
 die() {
   echo "pr-diff.sh: $*" >&2
   exit 1
@@ -18,34 +24,23 @@ die() {
 
 command -v gh >/dev/null 2>&1 || die "the gh CLI is not on PATH"
 
-# Paths whose patch body is dropped, matched against the end of each path in
-# the patch. Add generated or vendored paths here.
-readonly EXCLUDE=(
-  'package-lock.json'
-)
-
 pr="${1:-}"
-if [[ -z "$pr" ]]; then
-  pr="$(gh pr view --json number --jq .number 2>/dev/null)" \
-    || die "no PR number given, and no PR found for the current branch"
-fi
-[[ "$pr" =~ ^[0-9]+$ ]] || die "not a PR number: '$pr'"
+[[ -z "$pr" || "$pr" =~ ^[0-9]+$ ]] || die "not a PR number: '$pr'"
 
-patch="$(gh pr diff "$pr")" \
-  || die "could not read the diff for PR #${pr} (is gh authenticated for this repo?)"
-[[ -n "$patch" ]] || die "PR #${pr} changes no files"
+# $pr is unquoted so that no argument leaves gh to resolve the current branch; it is either empty or digits.
+patch="$(gh pr diff $pr 2>/dev/null)" \
+  || die "could not read the diff for PR '${pr}' (does it exist, and is gh authenticated for this repo?)"
+[[ -n "$patch" ]] || die "PR '${pr}' changes no files"
 
-printf '%s\n' "$patch" | awk -v excl="$(printf '%s\n' "${EXCLUDE[@]}")" '
-  function excluded(path,   i, suffix) {
-    for (i = 1; i <= n; i++) {
-      if (path == e[i]) return 1
-      suffix = "/" e[i]
-      if (length(path) > length(suffix) \
-        && substr(path, length(path) - length(suffix) + 1) == suffix) return 1
-    }
-    return 0
+awk -v excl="$(printf '%s\n' "${EXCLUDE[@]}")" '
+  BEGIN { n = split(excl, e, "\n") }
+  # Both path and entry are "/"-prefixed, so one suffix test covers a top-level
+  # file and a nested one.
+  function excluded(path,   i) {
+    path = "/" path
+    for (i = 1; i <= n; i++)
+      if (substr(path, length(path) - length(e[i]))  == "/" e[i]) return 1
   }
-  BEGIN { n = split(excl, e, "\n"); if (e[n] == "") n-- }
   # A malformed path here fails open: the file keeps its patch body, costing
   # tokens but never hiding a change from the review.
   /^diff --git / {
@@ -57,4 +52,4 @@ printf '%s\n' "$patch" | awk -v excl="$(printf '%s\n' "${EXCLUDE[@]}")" '
     next
   }
   !skip
-'
+' <<< "$patch"
