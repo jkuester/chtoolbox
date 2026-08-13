@@ -28,11 +28,12 @@ fi
 [[ "$pr" =~ ^[0-9]+$ ]] || die "not a PR number: '$pr'"
 
 print_comments() {
-  "$@" --json comments --jq "$HUMAN"'[] | "[\(.author.login)] \(.body)"' \
+  local json total human
+  json="$("$@" --json comments)" \
     || die "could not read comments (is gh authenticated for this repo?)"
-  local total human
-  total="$("$@" --json comments --jq '.comments | length')"
-  human="$("$@" --json comments --jq "$HUMAN | length")"
+  jq -r "$HUMAN"'[] | "[\(.author.login)] \(.body)"' <<<"$json"
+  total="$(jq '.comments | length' <<<"$json")"
+  human="$(jq "$HUMAN | length" <<<"$json")"
   echo "(${human} human comments; $((total - human)) bot comments dropped)"
 }
 
@@ -49,10 +50,13 @@ echo
 echo "--- comments ---"
 print_comments gh pr view "$pr"
 
-repo="$(gh pr view "$pr" --json url --jq '.url | capture("github\\.com/(?<r>[^/]+/[^/]+)/pull").r')"
+repo="$(gh repo view --json nameWithOwner --jq .nameWithOwner)" \
+  || die "could not determine the repository for PR #${pr}"
+closing="$(gh pr view "$pr" --json closingIssuesReferences --jq '.closingIssuesReferences[].url')" \
+  || die "could not read linked issues for PR #${pr}"
 issues="$(
   {
-    gh pr view "$pr" --json closingIssuesReferences --jq '.closingIssuesReferences[].url'
+    [[ -z "$closing" ]] || echo "$closing"
     gh pr view "$pr" --json title --jq '.title' \
       | grep -oE '#[0-9]+' | grep -oE '[0-9]+' \
       | sed "s|^|https://github.com/${repo}/issues/|"

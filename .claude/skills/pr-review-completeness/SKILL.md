@@ -41,7 +41,7 @@ Derive a requirement only from a statement about **behaviour** — what the code
 .claude/skills/pr-review-completeness/scripts/pr-diff.sh <pr>
 ```
 
-It prints every file the PR touches, then the patch with generated files excluded.
+It prints the patch. Generated files still appear by path, but their patch body is replaced by a note — an undisclosed change to one of them is still a finding.
 
 - Then read and search the working tree to follow the code **outward**: registration sites, exports, barrel files, command tables, call sites, and anything the new code must be wired into in order to actually run.
 - A requirement counts as delivered only if the whole path from user entrypoint to new code is complete. New code that is never registered, exported, or called delivers nothing, even when it is correct in isolation.
