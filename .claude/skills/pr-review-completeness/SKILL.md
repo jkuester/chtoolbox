@@ -60,7 +60,7 @@ Then, separately, list **Preconditions to confirm**: operational facts the chang
 
 ## 4. Undisclosed changes
 
-Does the PR change anything its description never mentions? Report both directions, but this one matters most: an unmentioned change is the finding a human reviewer is most likely to miss.
+Does the PR change anything its description never mentions? Report both directions, but this one matters most: an unmentioned change is the finding a human reviewer is most likely to miss. Do not include changes supporting a stated requirement (even if those changes were not explicitly mentioned).
 
 Do not limit this to source files. Walk the full file list from section 2, including the files whose patch was excluded.
 
