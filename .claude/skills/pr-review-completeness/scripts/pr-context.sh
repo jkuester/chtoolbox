@@ -3,9 +3,6 @@
 # Gather the stated intent for a pull request: its title, description and human
 # comments, plus the same for every issue it references.
 #
-# Comments posted by bots are dropped. The count of dropped comments is always
-# reported so the filtering is visible rather than silent.
-#
 # Usage: pr-context.sh [pr-number]
 #   With no argument, resolves the PR from the current branch.
 
@@ -18,71 +15,49 @@ die() {
 
 command -v gh >/dev/null 2>&1 || die "the gh CLI is not on PATH"
 
-readonly HUMAN='[.comments[] | select(.author.login != "github-actions")]'
-
 pr="${1:-}"
-if [[ -z "$pr" ]]; then
-  pr="$(gh pr view --json number --jq .number 2>/dev/null)" \
-    || die "no PR number given, and no PR found for the current branch"
-fi
-[[ "$pr" =~ ^[0-9]+$ ]] || die "not a PR number: '$pr'"
+[[ -z "$pr" || "$pr" =~ ^[0-9]+$ ]] || die "not a PR number: '$pr'"
 
-print_comments() {
-  local json total human
-  json="$("$@" --json comments)" \
-    || die "could not read comments (is gh authenticated for this repo?)"
-  jq -r "$HUMAN"'[] | "[\(.author.login)] \(.body)"' <<<"$json"
-  total="$(jq '.comments | length' <<<"$json")"
-  human="$(jq "$HUMAN | length" <<<"$json")"
-  echo "(${human} human comments; $((total - human)) bot comments dropped)"
+# $pr is unquoted so that no argument leaves gh to resolve the current branch; it is either empty or digits.
+pr_json="$(gh pr view $pr --json number,title,baseRefName,headRefOid,url,body,comments,closingIssuesReferences 2>/dev/null)" \
+  || die "could not read PR ${pr:+#}${pr:-for the current branch} (does it exist, and is gh authenticated for this repo?)"
+pr="$(jq -r .number <<<"$pr_json")"
+
+print_body_and_comments() {
+  local json="$1"
+  echo "--- description ---"
+  jq -r '.body // "(no description)"' <<<"$json"
+  echo "--- comments ---"
+  jq -r '.comments[]
+    | select(.author.login != "github-actions")
+    | "[\(.author.login)] \(.body)"' <<<"$json"
 }
 
 echo "=== PR #${pr} ==="
-gh pr view "$pr" --json title,baseRefName,headRefOid \
-  --jq '"title: \(.title)\nbase:  \(.baseRefName)\nhead:  \(.headRefOid)"' \
-  || die "could not read PR #${pr}"
+jq -r '"title: \(.title)\nbase:  \(.baseRefName)\nhead:  \(.headRefOid)"' <<<"$pr_json"
+print_body_and_comments "$pr_json"
 
-echo
-echo "--- description ---"
-gh pr view "$pr" --json body --jq '.body // "(no description)"'
+# Issues come from the closing references GitHub tracks and from any "#123" in the title
+mapfile -t issues < <(jq -r '
+  (.url | sub("/pull/[0-9]+$"; "")) as $repo
+  | [ .closingIssuesReferences[].url, (.title | scan("#[0-9]+") | "\($repo)/issues/\(ltrimstr("#"))") ]
+  | unique[]
+' <<<"$pr_json")
 
-echo
-echo "--- comments ---"
-print_comments gh pr view "$pr"
-
-repo="$(gh repo view --json nameWithOwner --jq .nameWithOwner)" \
-  || die "could not determine the repository for PR #${pr}"
-closing="$(gh pr view "$pr" --json closingIssuesReferences --jq '.closingIssuesReferences[].url')" \
-  || die "could not read linked issues for PR #${pr}"
-issues="$(
-  {
-    [[ -z "$closing" ]] || echo "$closing"
-    gh pr view "$pr" --json title --jq '.title' \
-      | grep -oE '#[0-9]+' | grep -oE '[0-9]+' \
-      | sed "s|^|https://github.com/${repo}/issues/|"
-  } 2>/dev/null | sort -u || true
-)"
-
-echo
-if [[ -z "$issues" ]]; then
+if (( ${#issues[@]} == 0 )); then
   echo "--- linked issues: none ---"
   echo "No issue is referenced. The PR title and description are the sole"
   echo "statement of intent; say so explicitly in the report."
   exit 0
 fi
 
-echo "--- linked issues: $(echo "$issues" | grep -oE '[0-9]+$' | tr '\n' ' ')---"
-for url in $issues; do
-  echo
-  echo "=== issue #${url##*/} (${url}) ==="
-  if ! gh issue view "$url" --json title --jq '"title: \(.title)"' 2>/dev/null; then
+echo "--- linked issues ---"
+for url in "${issues[@]}"; do
+  echo "=== issue ${url} ==="
+  if ! issue_json="$(gh issue view "$url" --json title,body,comments 2>/dev/null)"; then
     echo "(could not be read: no such issue, or not accessible)"
     continue
   fi
-  echo
-  echo "--- description ---"
-  gh issue view "$url" --json body --jq '.body // "(no description)"'
-  echo
-  echo "--- comments ---"
-  print_comments gh issue view "$url"
+  jq -r '"title: \(.title)"' <<<"$issue_json"
+  print_body_and_comments "$issue_json"
 done
