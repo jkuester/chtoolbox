@@ -14,6 +14,7 @@ die() {
 }
 
 command -v gh >/dev/null 2>&1 || die "the gh CLI is not on PATH"
+command -v jq >/dev/null 2>&1 || die "jq is not on PATH"
 
 pr="${1:-}"
 [[ -z "$pr" || "$pr" =~ ^[0-9]+$ ]] || die "not a PR number: '$pr'"
@@ -26,11 +27,12 @@ pr="$(jq -r .number <<<"$pr_json")"
 print_body_and_comments() {
   local json="$1"
   echo "--- description ---"
-  jq -r '.body // "(no description)"' <<<"$json"
+  jq -r 'if (.body // "") == "" then "(no description)" else .body end' <<<"$json"
   echo "--- comments ---"
-  jq -r '.comments[]
-    | select(.author.login != "github-actions")
-    | "[\(.author.login)] \(.body)"' <<<"$json"
+  jq -r '[ .comments[]
+    | select((.author.login | sub("\\[bot\\]$"; "")) != "github-actions")
+    | "[\(.author.login)] \(.body)" ]
+    | if length == 0 then "(no comments)" else .[] end' <<<"$json"
 }
 
 echo "=== PR #${pr} ==="
@@ -38,11 +40,16 @@ jq -r '"title: \(.title)\nbase:  \(.baseRefName)\nhead:  \(.headRefOid)"' <<<"$p
 print_body_and_comments "$pr_json"
 
 # Issues come from the closing references GitHub tracks and from any "#123" in the title
-mapfile -t issues < <(jq -r '
+issue_urls="$(jq -r '
   (.url | sub("/pull/[0-9]+$"; "")) as $repo
-  | [ .closingIssuesReferences[].url, (.title | scan("#[0-9]+") | "\($repo)/issues/\(ltrimstr("#"))") ]
+  | [ (.closingIssuesReferences // [])[].url, (.title | scan("#[0-9]+") | "\($repo)/issues/\(ltrimstr("#"))") ]
   | unique[]
-' <<<"$pr_json")
+' <<<"$pr_json")" || die "could not read the issue references from PR #${pr}"
+
+issues=()
+if [[ -n "$issue_urls" ]]; then
+  mapfile -t issues <<<"$issue_urls"
+fi
 
 if (( ${#issues[@]} == 0 )); then
   echo "--- linked issues: none ---"
