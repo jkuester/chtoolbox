@@ -11,8 +11,9 @@
 
 set -euo pipefail
 
-# Paths whose patch body is dropped, matched as regexes against the end of each
-# path in the patch, at a "/" boundary. Add generated or vendored paths here.
+# Paths whose patch body is dropped, matched as regexes against the end of the
+# post-image path in the patch, at a "/" boundary. Add generated or vendored
+# paths here.
 readonly EXCLUDE=(
   'package-lock\.json'
 )
@@ -33,10 +34,13 @@ patch="$(gh pr diff $pr 2>/dev/null)" \
 [[ -n "$patch" ]] || die "PR '${pr}' changes no files"
 
 alternation="$(IFS='|'; echo "${EXCLUDE[*]}")"
-exclude_re="/(${alternation})\$"
+# The "b/" path ends the header line, so anchoring to end-of-line reads it without
+# splitting on whitespace, which would mangle a path containing a space. Git wraps
+# the pair in double quotes when it has to escape a path, hence the optional quote.
+exclude_re="/(${alternation})\"?\$"
 EXCLUDE_RE="$exclude_re" awk '
   /^diff --git / {
-    skip = ($3 ~ ENVIRON["EXCLUDE_RE"])
+    skip = ($0 ~ ENVIRON["EXCLUDE_RE"])
     print
     if (skip) print "(patch body excluded to save tokens: this file is generated)"
     next
