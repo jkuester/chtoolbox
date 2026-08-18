@@ -25,12 +25,15 @@ die() {
 
 command -v gh >/dev/null 2>&1 || die "the gh CLI is not on PATH"
 
+gh_err="$(mktemp)"
+trap 'rm -f "$gh_err"' EXIT
+
 pr="${1:-}"
 [[ -z "$pr" || "$pr" =~ ^[0-9]+$ ]] || die "not a PR number: '$pr'"
 
 # $pr is unquoted so that no argument leaves gh to resolve the current branch; it is either empty or digits.
-patch="$(gh pr diff $pr 2>/dev/null)" \
-  || die "could not read the diff for PR '${pr}' (does it exist, and is gh authenticated for this repo?)"
+patch="$(gh pr diff $pr 2>"$gh_err")" \
+  || die "could not read the diff for PR '${pr}': $(tr '\n' ' ' <"$gh_err")"
 [[ -n "$patch" ]] || die "PR '${pr}' changes no files"
 
 alternation="$(IFS='|'; echo "${EXCLUDE[*]}")"
