@@ -155,6 +155,8 @@ describe('xlsx libs', () => {
         removeConditionalFormatting: () => undefined,
         dataValidations: { model: clearedModel },
         _rows: [],
+        rowCount: 0,
+        findRow: () => undefined,
         eachRow: () => undefined,
         getRow: () => ({ eachCell: (_opts: unknown, cb: (cell: unknown) => void) => cb(fakeCell) }),
         columns: [],
