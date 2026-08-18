@@ -1,0 +1,10 @@
+{
+  "include": ["test/**/*.spec.ts"],
+  "rules": [
+    {
+      "path": "test/**/*.spec.ts",
+      "rule": ".opencodereview/test-rules.md",
+      "merge_system_rule": true
+    }
+  ]
+}

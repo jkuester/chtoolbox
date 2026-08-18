@@ -129,6 +129,12 @@ jobs:
             --allowedTools "Skill,Read,Grep,Glob,Bash(.claude/skills/pr-review-completeness/scripts/pr-context.sh:*),Bash(.claude/skills/pr-review-completeness/scripts/pr-diff.sh:*)"
             --disallowedTools "Edit,Write,NotebookEdit"
             --json-schema '{"type":"object","required":["report_markdown"],"additionalProperties":false,"properties":{"report_markdown":{"type":"string","description":"The complete review report as GitHub-flavored markdown."}}}'
+      - name: Upload Claude execution log
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: completeness-review-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ steps.review.outputs.execution_file }}
+          if-no-files-found: warn
       - name: Post review comment
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         env:
