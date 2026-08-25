@@ -101,9 +101,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read # to read the diff under review
-      pull-requests: write # to post the review
+      pull-requests: read # to read the PR description
       issues: read # for `gh issue view` on the linked issues
     timeout-minutes: 30
+    outputs:
+      structured_output: ${{ steps.review.outputs.structured_output }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -135,12 +137,20 @@ jobs:
           name: completeness-review-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ steps.review.outputs.execution_file }}
           if-no-files-found: warn
+
+  post-review:
+    needs: [code-review, completeness-review]
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write # to update (or post) the review summary comment
+    timeout-minutes: 5
+    steps:
       - name: Post review comment
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         env:
-          STRUCTURED_OUTPUT: ${{ steps.review.outputs.structured_output }}
+          STRUCTURED_OUTPUT: ${{ needs.completeness-review.outputs.structured_output }}
         with:
-          script: |            
+          script: |
             let report_markdown;
             try {
               ({ report_markdown } = JSON.parse(process.env.STRUCTURED_OUTPUT || '{}'));
@@ -151,8 +161,25 @@ jobs:
               core.setFailed('Review produced no report_markdown; nothing to post.');
               return;
             }
-            await github.rest.issues.createComment({
+            // OCR tags its summary comment with the id of the run that posted it.
+            const marker = `<!-- ocr-summary-run:${context.runId}-`;
+            const comments = await github.paginate(github.rest.issues.listComments, {
               ...context.repo,
               issue_number: context.issue.number,
-              body: report_markdown,
+              per_page: 100,
+            });
+            const summary = comments.findLast(comment => comment.body?.includes(marker));
+            if (!summary) {
+              core.warning('Found no OpenCodeReview summary comment for this run; posting the report on its own.');
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: context.issue.number,
+                body: report_markdown,
+              });
+              return;
+            }
+            await github.rest.issues.updateComment({
+              ...context.repo,
+              comment_id: summary.id,
+              body: `${summary.body}\n\n---\n\n${report_markdown}`,
             });
