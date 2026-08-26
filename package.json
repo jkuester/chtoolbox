@@ -83,7 +83,7 @@
     "@effect/cli": "^0.77.0",
     "@effect/platform": "^0.97.1",
     "@effect/platform-node": "^0.108.1",
-    "@octokit/plugin-paginate-rest": "^14.0.0",
+    "@octokit/plugin-paginate-rest": "^15.0.0",
     "@octokit/rest": "^22.0.0",
     "effect": "^3.22.1",
     "env-paths": "^4.0.0",
