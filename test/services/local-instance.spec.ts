@@ -4,7 +4,6 @@ import sinon, { type SinonStub } from 'sinon';
 import { expect } from 'chai';
 import { genWithLayer, sandbox } from '../utils/base.ts';
 import * as LocalInstanceSvc from '../../src/services/local-instance.ts';
-import { type SSLType } from '../../src/services/local-instance.ts';
 import { NodeContext } from '@effect/platform-node';
 import { FileSystem, HttpClient, HttpClientRequest } from '@effect/platform';
 import esmock from 'esmock';
@@ -739,7 +738,7 @@ describe('Local Instance Service', () => {
         mockFileLib.getRemoteFile.withArgs(chainURL).returns(Effect.succeed(expectedFullChain));
         mockFileLib.getRemoteFile.withArgs(keyURL).returns(Effect.succeed(expectedKey));
 
-        yield* LocalInstanceService.setSSLCerts(INSTANCE_NAME, sslType as SSLType);
+        yield* LocalInstanceService.setSSLCerts(INSTANCE_NAME, sslType);
 
         expect(mockDockerLib.doesVolumeExistWithLabel.calledOnceWithExactly(
           `chtx.instance=${INSTANCE_NAME}`

@@ -61,7 +61,7 @@ describe('xlsx libs', () => {
 
   describe('getHeaderNames', () => {
     it('returns the header values, replacing non-string cells with empty strings', () => {
-      const [, worksheet] = newSheet('survey', ['type', 42 as unknown as string, 'name']);
+      const [, worksheet] = newSheet('survey', ['type', 42, 'name']);
 
       // ExcelJS row.values is 1-based, so index 0 is an unset hole.
       expect(getHeaderNames(worksheet)).to.deep.equal([undefined, 'type', '', 'name']);

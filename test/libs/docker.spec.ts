@@ -56,7 +56,7 @@ const {
 describe('docker libs', () => {
   beforeEach(() => {
     mockCommand.make.returns(FAKE_COMMAND);
-    mockCommand.env.returns(sinon.stub().returns(FAKE_COMMAND) as unknown as Command.Command);
+    mockCommand.env.returns(sinon.stub().returns(FAKE_COMMAND) as unknown);
   });
 
   describe('runForExitCode', () => {
