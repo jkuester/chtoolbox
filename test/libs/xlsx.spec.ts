@@ -126,12 +126,37 @@ describe('xlsx libs', () => {
       expect(worksheet.getCell('A1').style.font?.name).to.equal('Liberation Sans');
     });
 
+    it('removes empty rows trailing the end of the data', () => {
+      const [, worksheet] = newSheet('survey', ['type', 'name'], [['calculate', 'x']]);
+      worksheet.getRow(4).height = 12.75;
+      worksheet.getRow(1048576).height = 12.75;
+      expect(worksheet.rowCount).to.equal(1048576);
+
+      clearSheetFormatting(worksheet);
+
+      expect(worksheet.rowCount).to.equal(2);
+      expect(worksheet.getCell('A2').value).to.equal('calculate');
+    });
+
+    it('keeps empty rows that fall within the data', () => {
+      const [, worksheet] = newSheet('survey', ['type', 'name'], [['calculate', 'x'], [], ['note', 'y']]);
+      worksheet.getRow(1000).height = 12.75;
+
+      clearSheetFormatting(worksheet);
+
+      expect(worksheet.rowCount).to.equal(4);
+      expect(worksheet.getCell('A4').value).to.equal('note');
+    });
+
     it('handles a worksheet with no frozen panes and comment-less cells', () => {
       const clearedModel = { A1: {} };
       const fakeCell = { _value: undefined };
       const fakeWorksheet = {
         removeConditionalFormatting: () => undefined,
         dataValidations: { model: clearedModel },
+        _rows: [],
+        rowCount: 0,
+        findRow: () => undefined,
         eachRow: () => undefined,
         getRow: () => ({ eachCell: (_opts: unknown, cb: (cell: unknown) => void) => cb(fakeCell) }),
         columns: [],
