@@ -57,7 +57,14 @@ export const FORM_STYLE = {
       border: BORDER_HEADER_SIDES,
     } satisfies Partial<ExcelJS.Style>
   },
-  ERROR: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFF0000' } } } satisfies Partial<ExcelJS.Style>
+  ERROR: {
+    fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFFC7CE' } },
+    font: { color: { argb: 'FF9C0006' } },
+  } satisfies Partial<ExcelJS.Style>,
+  WARNING: {
+    fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFFEB9C' } },
+    font: { color: { argb: 'FF9C6500' } },
+  } satisfies Partial<ExcelJS.Style>
 };
 
 export const getTypeColumnLetter = (worksheet: Worksheet): string => Option.getOrThrowWith(
@@ -162,7 +169,7 @@ const formatColumnSupportedValues = (sheet: Worksheet) => (
             .map(v => `${column}2<>"${v}"`)
             .join(',')})`
         ],
-        style: { ...FORM_STYLE.ERROR },
+        style: { ...FORM_STYLE.WARNING },
         priority: 1,
       }
     ]

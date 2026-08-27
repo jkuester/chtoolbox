@@ -154,7 +154,7 @@ describe('form libs', () => {
   });
 
   describe('setSupportedValuesFormatting', () => {
-    it('adds error formatting for values outside the supported set', () => {
+    it('adds warning formatting for values outside the supported set', () => {
       const [, worksheet] = newSheet('settings', ['style']);
 
       setSupportedValuesFormatting({
@@ -164,7 +164,10 @@ describe('form libs', () => {
 
       expect(worksheet.getColumn('A').numFmt).to.equal('@');
       expect(getConditionalFormattings(worksheet)).to.have.length(1);
-      expect(getConditionalFormattingRule(worksheet, 0).formulae).to.deep.equal(['AND(A2<>"",A2<>"pages")']);
+      const rule = getConditionalFormattingRule(worksheet, 0);
+      expect(rule.formulae).to.deep.equal(['AND(A2<>"",A2<>"pages")']);
+      // The supported values are a curated recommendation, not everything pyxform accepts.
+      expect(rule.style).to.deep.equal(FORM_STYLE.WARNING);
     });
   });
 

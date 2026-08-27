@@ -93,7 +93,7 @@ export const setSettingsHeaderFormatting = (worksheet: Worksheet): void => pipe(
       {
         type: 'expression',
         formulae: [`AND(A1<>"",NOT(${valid}))`],
-        style: { ...FORM_STYLE.ERROR },
+        style: { ...FORM_STYLE.WARNING },
         priority: 2,
       },
       {

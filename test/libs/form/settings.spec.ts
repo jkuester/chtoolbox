@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { Effect } from 'effect';
 import ExcelJS from 'exceljs';
 import { getHeaderNames, type Worksheet } from '../../../src/libs/xlsx.ts';
-import { BUFFER_COL_COUNT } from '../../../src/libs/form/index.ts';
+import { BUFFER_COL_COUNT, FORM_STYLE } from '../../../src/libs/form/index.ts';
 import {
   getConditionalFormatting,
   getConditionalFormattingRule,
@@ -52,7 +52,7 @@ describe('form settings libs', () => {
   });
 
   describe('setSettingsSupportedValuesFormatting', () => {
-    it('adds error formatting for unsupported values', () => {
+    it('adds warning formatting for unsupported values', () => {
       const [, worksheet] = newWorkbook(['style']);
 
       setSettingsSupportedValuesFormatting(worksheet);
@@ -75,6 +75,9 @@ describe('form settings libs', () => {
       const known = 'NOT(ISERROR(MATCH(A1,{"allow_choice_duplicates","form_title","namespaces","style","version"},0)))';
       expect(getConditionalFormattingRule(worksheet, 1).formulae).to.deep.equal([`AND(A1<>"",NOT(${known}))`]);
       expect(getConditionalFormattingRule(worksheet, 3).formulae).to.deep.equal([known]);
+      // A duplicate header breaks the pyxform build; an unrecognized one is only silently ignored.
+      expect(getConditionalFormattingRule(worksheet, 0).style).to.deep.equal(FORM_STYLE.ERROR);
+      expect(getConditionalFormattingRule(worksheet, 1).style).to.deep.equal(FORM_STYLE.WARNING);
     });
   });
 

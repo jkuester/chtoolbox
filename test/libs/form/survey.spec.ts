@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { Effect } from 'effect';
 import ExcelJS from 'exceljs';
 import { getHeaderNames, type Worksheet } from '../../../src/libs/xlsx.ts';
-import { BUFFER_COL_COUNT } from '../../../src/libs/form/index.ts';
+import { BUFFER_COL_COUNT, FORM_STYLE } from '../../../src/libs/form/index.ts';
 import {
   getConditionalFormatting,
   getConditionalFormattingRule,
@@ -105,6 +105,9 @@ describe('form survey libs', () => {
       expect(getConditionalFormatting(worksheet).rules).to.have.length(8);
       expect(getConditionalFormattingRule(worksheet, 0).formulae)
         .to.deep.equal([`AND(A1<>"",COUNTIF($A$1:$${lastCol}$1,A1)>1)`]);
+      // A duplicate header breaks the pyxform build; an unrecognized one is only silently ignored.
+      expect(getConditionalFormattingRule(worksheet, 0).style).to.deep.equal(FORM_STYLE.ERROR);
+      expect(getConditionalFormattingRule(worksheet, 1).style).to.deep.equal(FORM_STYLE.WARNING);
     });
   });
 
@@ -157,7 +160,7 @@ describe('form survey libs', () => {
   });
 
   describe('setSurveySupportedValuesFormatting', () => {
-    it('adds error formatting for supported-value columns', () => {
+    it('adds warning formatting for supported-value columns', () => {
       const [, worksheet] = newWorkbook(['type', 'read_only']);
 
       setSurveySupportedValuesFormatting(worksheet);
@@ -168,12 +171,27 @@ describe('form survey libs', () => {
   });
 
   describe('setSurveyNameFormatting', () => {
-    it('flags rows that have a type but no name', () => {
+    it('flags rows that have a type requiring a name but no name', () => {
       const [, worksheet] = newWorkbook(['type', 'name']);
 
       setSurveyNameFormatting(worksheet);
 
-      expect(getConditionalFormattingRule(worksheet, 0).formulae).to.deep.equal(['AND(A2<>"",B2="")']);
+      const rule = getConditionalFormattingRule(worksheet, 0);
+      expect(rule.formulae).to.deep.equal([
+        'AND(A2<>"",B2="",NOT(NOT(ISERROR(MATCH(A2,{"end_group","end_repeat"},0)))))'
+      ]);
+      expect(rule.style).to.deep.equal(FORM_STYLE.ERROR);
+    });
+
+    it('warns instead of erroring on the boundary types where a name is optional', () => {
+      const [, worksheet] = newWorkbook(['type', 'name']);
+
+      setSurveyNameFormatting(worksheet);
+
+      expect(getConditionalFormatting(worksheet).rules).to.have.length(2);
+      const rule = getConditionalFormattingRule(worksheet, 1);
+      expect(rule.formulae).to.deep.equal(['AND(B2="",NOT(ISERROR(MATCH(A2,{"end_group","end_repeat"},0))))']);
+      expect(rule.style).to.deep.equal(FORM_STYLE.WARNING);
     });
 
     it('does nothing when there is no name column', () => {
@@ -196,6 +214,9 @@ describe('form survey libs', () => {
       expect(getConditionalFormattingRule(worksheet, 2).formulae).to.deep.equal([
         'OR(B2="NO_LABEL",B2="DELETE_THIS_LINE")'
       ]);
+      // All three label problems still convert, so they warn rather than erroring.
+      expect(getConditionalFormatting(worksheet).rules.map(({ style }) => style))
+        .to.deep.equal([FORM_STYLE.WARNING, FORM_STYLE.WARNING, FORM_STYLE.WARNING]);
     });
   });
 
