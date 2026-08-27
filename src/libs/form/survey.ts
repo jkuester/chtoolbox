@@ -190,6 +190,8 @@ const SURVEY_FIELDS: Record<string, {
   altTypes?: string[]
   /** Indicates the field should have a label */
   label?: 'optional' | 'required'
+  /** Indicates the field does not need a name */
+  name?: 'optional'
 }> = {
   acknowledge: { label: 'required' },
   audio: { label: 'required' },
@@ -207,10 +209,12 @@ const SURVEY_FIELDS: Record<string, {
   decimal: { label: 'required' },
   end: {},
   end_group: {
-    altTypes: ['end group']
+    altTypes: ['end group'],
+    name: 'optional'
   },
   end_repeat: {
-    altTypes: ['end repeat']
+    altTypes: ['end repeat'],
+    name: 'optional'
   },
   file: { label: 'required' },
   geopoint: { label: 'required' },
@@ -244,6 +248,11 @@ const SURVEY_FIELD_TYPES_LABELED = pipe(
 const SURVEY_FIELD_TYPES_UNLABELED = pipe(
   Record.toEntries(SURVEY_FIELDS),
   Array.filter(([, { label }]) => !label),
+  Array.map(Tuple.getFirst),
+);
+const SURVEY_FIELD_TYPES_NAME_OPTIONAL = pipe(
+  Record.toEntries(SURVEY_FIELDS),
+  Array.filter(([, { name }]) => name === 'optional'),
   Array.map(Tuple.getFirst),
 );
 const SURVEY_FIELD_TYPES_BY_ALT_TYPE = pipe(
@@ -360,7 +369,7 @@ export const setSurveyHeaderFormatting = (worksheet: Worksheet): void => pipe(
       {
         type: 'expression',
         formulae: [`AND(A1<>"",NOT(${translatable}),NOT(${valid}),NOT(${expression}))`],
-        style: { ...FORM_STYLE.ERROR },
+        style: { ...FORM_STYLE.WARNING },
         priority: 2,
       },
       {
@@ -449,21 +458,38 @@ export const setSurveyTypeValidation = (surveySheet: Worksheet): void => pipe(
 export const setSurveySupportedValuesValidation = setSupportedValuesValidation(SURVEY_COLUMNS);
 export const setSurveySupportedValuesFormatting = setSupportedValuesFormatting(SURVEY_COLUMNS);
 
+const buildIsNameOptionalTypeFormula = (cell: string) => pipe(
+  SURVEY_FIELD_TYPES_NAME_OPTIONAL,
+  Array.map(t => `"${t}"`),
+  Array.join(','),
+  fixedListLiteral => `NOT(ISERROR(MATCH(${cell},{${fixedListLiteral}},0)))`,
+);
 export const setSurveyNameFormatting = (surveySheet: Worksheet): void => pipe(
   getColumnLetter('name', surveySheet),
   Option.map(nameCol => Tuple.make(
     nameCol,
     getTypeColumnLetter(surveySheet),
   )),
-  Option.map(([nameCol, typeCol]) => surveySheet.addConditionalFormatting({
+  Option.map(([nameCol, typeCol]) => Tuple.make(
+    nameCol,
+    typeCol,
+    buildIsNameOptionalTypeFormula(typeCol + '2'),
+  )),
+  Option.map(([nameCol, typeCol, nameOptional]) => surveySheet.addConditionalFormatting({
     ref: getTypeValidationRange(nameCol, surveySheet.rowCount),
     rules: [
       {
         type: 'expression',
-        formulae: [`AND(${typeCol}2<>"",${nameCol}2="")`],
+        formulae: [`AND(${typeCol}2<>"",${nameCol}2="",NOT(${nameOptional}))`],
         style: { ...FORM_STYLE.ERROR },
         priority: 1,
-      }
+      },
+      {
+        type: 'expression',
+        formulae: [`AND(${nameCol}2="",${nameOptional})`],
+        style: { ...FORM_STYLE.WARNING },
+        priority: 2,
+      },
     ]
   })),
   Option.getOrElse(() => undefined)
@@ -501,13 +527,13 @@ export const setSurveyLabelFormatting = (surveySheet: Worksheet): void => pipe(
       {
         type: 'expression',
         formulae: [`AND(${buildIsLabeledTypeFormula(typeCol + '2')},${allLabelsEmpty})`],
-        style: { ...FORM_STYLE.ERROR },
+        style: { ...FORM_STYLE.WARNING },
         priority: 1,
       },
       {
         type: 'expression',
         formulae: [`AND(${labelCol}2<>"",${buildIsUnlabeledTypeFormula(typeCol + '2')})`],
-        style: { ...FORM_STYLE.ERROR },
+        style: { ...FORM_STYLE.WARNING },
         priority: 2,
       },
       {
@@ -515,7 +541,7 @@ export const setSurveyLabelFormatting = (surveySheet: Worksheet): void => pipe(
         formulae: [
           `OR(${INVALID_LABELS.map(label => `${labelCol}2="${label}"`).join(',')})`
         ],
-        style: { ...FORM_STYLE.ERROR },
+        style: { ...FORM_STYLE.WARNING },
         priority: 3,
       },
     ]
