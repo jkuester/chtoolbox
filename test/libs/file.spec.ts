@@ -1,4 +1,4 @@
-import { FileSystem, HttpClient, HttpClientRequest } from '@effect/platform';
+import { FileSystem, HttpClient } from '@effect/platform';
 import { describe, it } from 'mocha';
 import { Effect, Either, Layer, pipe } from 'effect';
 import { expect } from 'chai';
@@ -77,7 +77,7 @@ describe('file libs', () => {
     mockHttpClient.filterStatusOk.returnsArg(0);
     const url = 'myURL';
     const expectedRequest = { url };
-    mockHttpRequest.get.returns(expectedRequest as HttpClientRequest.HttpClientRequest);
+    mockHttpRequest.get.returns(expectedRequest);
     const remoteFileText = 'myText';
     httpClientExecute.returns(Effect.succeed({ text: Effect.succeed(remoteFileText) }));
 

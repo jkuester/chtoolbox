@@ -96,7 +96,7 @@ describe('form settings libs', () => {
   describe('setSettingsVersionCachedValue', () => {
     it('caches a timestamp string for a formula version cell, keeping the formula', () => {
       const [, worksheet] = newWorkbook(['form_title', 'version']);
-      worksheet.getCell('B2').value = { formula: 'TEXT(NOW(), "yyyymmddhhmmss")' } as ExcelJS.CellFormulaValue;
+      worksheet.getCell('B2').value = { formula: 'TEXT(NOW(), "yyyymmddhhmmss")' };
 
       Effect.runSync(setSettingsVersionCachedValue(worksheet));
 
@@ -116,7 +116,7 @@ describe('form settings libs', () => {
 
     it('does nothing when there is no version column', () => {
       const [, worksheet] = newWorkbook(['form_title']);
-      worksheet.getCell('A2').value = { formula: 'TEXT(NOW(), "yyyymmddhhmmss")' } as ExcelJS.CellFormulaValue;
+      worksheet.getCell('A2').value = { formula: 'TEXT(NOW(), "yyyymmddhhmmss")' };
 
       Effect.runSync(setSettingsVersionCachedValue(worksheet));
 

@@ -4,7 +4,6 @@ import sinon from 'sinon';
 import { expect } from 'chai';
 import * as TestDataGeneratorSvc from '../../src/services/test-data-generator.ts';
 import { CommandExecutor } from '@effect/platform/CommandExecutor';
-import { Command } from '@effect/platform';
 import { DEFAULT_CHT_URL_AUTH, genWithDefaultConfig, sandbox } from '../utils/base.ts';
 import esmock from 'esmock';
 import { fileURLToPath } from 'node:url';
@@ -31,10 +30,10 @@ const run = TestDataGeneratorService.Default.pipe(
 
 describe('Test Data Generator Service', () => {
   beforeEach(() => {
-    mockCommand.make.returns(Effect.void as unknown as Command.Command);
-    mockCommand.env.returns(sinon.stub().returns(Effect.void) as unknown as Command.Command);
-    mockCommand.stdout.returns(sinon.stub().returns(Effect.void) as unknown as Command.Command);
-    mockCommand.stderr.returns(sinon.stub().returns(Effect.void) as unknown as Command.Command);
+    mockCommand.make.returns(Effect.void);
+    mockCommand.env.returns(sinon.stub().returns(Effect.void) as unknown);
+    mockCommand.stdout.returns(sinon.stub().returns(Effect.void) as unknown);
+    mockCommand.stderr.returns(sinon.stub().returns(Effect.void) as unknown);
   });
 
   it('executes the test-data-generator command', run(function* () {
