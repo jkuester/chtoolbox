@@ -36,8 +36,8 @@ const SURVEY_COLUMNS: Record<string, {
 }> = {
   '#': {
     comment: 'Indicates how deeply the row is nested inside groups and repeats. The value is a formula and the '
-      + 'bar is drawn by conditional formatting, so both update as the form is edited.\n\nThis column is '
-      + 'ignored by pyxform and is safe to delete.',
+      + 'background fades in more blue with depth, drawn by conditional formatting, so both update as '
+      + 'the form is edited.\n\nThis column is ignored by pyxform and is safe to delete.',
   },
   appearance: {
     comment: 'One or more modifiers that determine how the question will be displayed.\n\nThese can be specific to '
@@ -277,6 +277,7 @@ const SELECT_PREFIXES = [
   SELECT_MULTIPLE_FROM_FILE_PREFIX,
 ];
 
+const DEPTH_COLUMN_NAME = '#';
 const LABEL_PREFIX = 'label';
 const INVALID_LABELS = [
   'NO_LABEL',
@@ -574,19 +575,39 @@ export const setSurveyCalculationFormatting = (surveySheet: Worksheet): void => 
   Option.getOrElse(() => undefined)
 );
 
+/**
+ * First column a row-spanning rule may cover: the depth column is an indicator gutter rather than
+ * form content, so rules that sweep the whole row stop short of it.
+ *
+ * Two rules overlapping one cell are meant to layer, each claiming only the properties it sets, but
+ * LibreOffice applies the winning rule's style whole. A border rule reaching into the gutter
+ * therefore drops the depth shading on exactly the rows it matches. Leaving the gutter to the depth
+ * rules alone keeps that from happening, whatever the reader does with overlaps.
+ */
+const getBodyStartColumn = (worksheet: Worksheet): string => pipe(
+  getColumnLetter(DEPTH_COLUMN_NAME, worksheet),
+  Option.map(depthCol => worksheet.getColumn(depthCol).number),
+  // Only skip the gutter while it leads the sheet. Anywhere else it would split the range in two.
+  Option.filter(colNumber => colNumber === 1),
+  Option.map(colNumber => worksheet.getColumn(colNumber + 1).letter),
+  Option.getOrElse(() => 'A'),
+);
+
 const setSurveyGroupBoundaryFormatting = (type: string, style: Partial<ExcelJS.Style>) => (
   worksheet: Worksheet
 ) => pipe(
   Tuple.make(
     getTypeColumnLetter(worksheet),
+    getBodyStartColumn(worksheet),
     worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter,
   ),
-  ([typeCol, lastCol]) => worksheet.addConditionalFormatting({
-    ref: `A2:${lastCol}${String(worksheet.rowCount + BUFFER_ROW_COUNT)}`,
+  ([typeCol, firstCol, lastCol]) => worksheet.addConditionalFormatting({
+    ref: `${firstCol}2:${lastCol}${String(worksheet.rowCount + BUFFER_ROW_COUNT)}`,
     rules: [
       {
         type: 'expression',
-        formulae: [`AND($${typeCol}2="${type}",A$1<>"")`],
+        // The header reference is relative to the range, so it has to name its first column.
+        formulae: [`AND($${typeCol}2="${type}",${firstCol}$1<>"")`],
         style: { ...style },
         priority: 1,
       }
@@ -598,16 +619,13 @@ export const setSurveyEndGroupFormatting = setSurveyGroupBoundaryFormatting('end
 export const setSurveyBeginRepeatFormatting = setSurveyGroupBoundaryFormatting('begin_repeat', STYLE_BEGIN_REPEAT);
 export const setSurveyEndRepeatFormatting = setSurveyGroupBoundaryFormatting('end_repeat', STYLE_END_REPEAT);
 
-const DEPTH_COLUMN_NAME = '#';
 // xlsx stores column width in character widths, not absolute units, so this is an approximation of
 // 0.13in: ~13px at 96 DPI given the ~6px digit width of the 10pt base font. The rendered width
 // shifts with the font the reader resolves and with display scaling.
 const DEPTH_COLUMN_WIDTH = 2.17;
-// Blank the displayed value. The data bar is the indicator; the number is only what sizes it.
+// Blank the displayed value. The background is the indicator; the number only selects it.
 const DEPTH_NUMBER_FORMAT = ';;;';
 const DEFAULT_NUMBER_FORMAT = 'General';
-// ExcelJS omits `color` from DataBarRuleType, but its xform renders it.
-type DataBarRule = ExcelJS.DataBarRuleType & { color: Partial<ExcelJS.Color> };
 
 /**
  * Running count of the groups/repeats open at this row. `end_` rows report the depth of the group
@@ -666,33 +684,62 @@ export const setSurveyDepthColumn = (worksheet: Worksheet): void => pipe(
   () => undefined,
 );
 
-// ExcelJS types `Cvfo.value` as a number, but the cfvo xform writes the attribute through
-// unchanged, so a formula string serializes correctly as `<cfvo type="formula" val="..."/>`.
-const buildMaxDepthCfvo = (depthCol: string, rowCount: number): ExcelJS.Cvfo => pipe(
-  `MAX($${depthCol}$2:$${depthCol}$${String(rowCount + BUFFER_ROW_COUNT)})+1`,
-  formula => ({ type: 'formula', value: formula as unknown as number }),
+/**
+ * The fade the depth gutter draws as nesting deepens: steps blended from the dark-theme sheet
+ * background (#1c1c1c) toward STYLE.COLOR.BLUE. One entry per nesting level, shallowest first,
+ * the last covering anything deeper.
+ *
+ * The blend is baked rather than layered because a cell fill cannot be translucent: the alpha byte
+ * of an ARGB fill is inert in both Excel and LibreOffice, and Calc has no pattern fill to dither
+ * with. Nor can the colour follow the reader's theme — theme colours resolve to fixed RGB stored in
+ * the document, so only the absence of a fill adapts. Hence level 0 is left unfilled, and the rest
+ * are tuned for a dark theme, which leaves the gutter darker than the sheet in a light one.
+ *
+ * Spaced by equal perceptual steps rather than equal blend fractions, so each level reads as the
+ * same size change, and running the blend out to STYLE.COLOR.BLUE itself to spread those steps as
+ * far apart as the two endpoints allow. The shallowest starts a little way along the blend rather
+ * than at the background, so level 1 is still distinguishable from an unfilled level 0.
+ */
+const DEPTH_SHADE_COLORS = [
+  'FF172B3A',
+  'FF14344B',
+  'FF113E5E',
+  'FF0E4771',
+  'FF0A5184',
+  'FF075B98',
+  'FF0466AC',
+  'FF0070C0',
+] as const;
+// Solid conditional-formatting fills take their colour from `bgColor` (as FORM_STYLE does), unlike
+// the `fgColor` that solid cell fills use.
+const buildDepthShadeFill = (argb: string): ExcelJS.Fill => ({
+  type: 'pattern',
+  pattern: 'solid',
+  bgColor: { argb },
+});
+
+const buildDepthShadeRules = (depthCol: string): ExcelJS.ConditionalFormattingRule[] => pipe(
+  DEPTH_SHADE_COLORS,
+  Array.reverse,
+  Array.map((argb, idx): ExcelJS.ConditionalFormattingRule => ({
+    type: 'expression',
+    // Deepest rule first, so the deepest one that matches wins the fill. `>=` rather than `=` so a
+    // row nested deeper than the ramp keeps the last step instead of losing its shading. Nothing
+    // matches at depth 0, leaving those rows unfilled to show the reader's own background.
+    formulae: [`${depthCol}2>=${String(DEPTH_SHADE_COLORS.length - idx)}`],
+    style: { fill: buildDepthShadeFill(argb) },
+    priority: idx + 1,
+  })),
 );
 
-const buildDepthBarRule = (depthCol: string, rowCount: number): DataBarRule => ({
-  type: 'dataBar',
-  // The low bound is pinned to 0 rather than `min` so the shallowest group always draws a visible
-  // bar; `min` would rebase to the shallowest value present and render those rows empty. The high
-  // bound tracks the deepest group, plus headroom so it never fills the whole cell.
-  cfvo: [{ type: 'num', value: 0 }, buildMaxDepthCfvo(depthCol, rowCount)],
-  color: { argb: STYLE.COLOR.BLUE },
-  gradient: false,
-  border: false,
-  priority: 1,
-});
-
-const addDepthBar = (worksheet: Worksheet, depthCol: string): void => worksheet.addConditionalFormatting({
+const addDepthCellFormatting = (worksheet: Worksheet, depthCol: string): void => worksheet.addConditionalFormatting({
   ref: getTypeValidationRange(depthCol, worksheet.rowCount),
-  rules: [buildDepthBarRule(depthCol, worksheet.rowCount)],
+  rules: buildDepthShadeRules(depthCol),
 });
 
-const setDepthBarAndFormulas = (worksheet: Worksheet) => (depthCol: string): void => {
-  // The bar's range has to be resolved before the formulas below grow `rowCount`.
-  addDepthBar(worksheet, depthCol);
+const setDepthFormattingAndFormulas = (worksheet: Worksheet) => (depthCol: string): void => {
+  // The formatting's range has to be resolved before the formulas below grow `rowCount`.
+  addDepthCellFormatting(worksheet, depthCol);
   Array.forEach(
     Array.range(2, worksheet.rowCount + BUFFER_ROW_COUNT),
     setDepthFormula(worksheet, depthCol, getTypeColumnLetter(worksheet)),
@@ -701,10 +748,10 @@ const setDepthBarAndFormulas = (worksheet: Worksheet) => (depthCol: string): voi
 
 /**
  * Must run last: filling the buffer rows grows `rowCount`, so every range derived from it has to
- * already be resolved. The buffer is covered so rows appended below the form still show a bar.
+ * already be resolved. The buffer is covered so rows appended below the form are shaded too.
  */
 export const setSurveyDepthFormatting = (worksheet: Worksheet): void => pipe(
   getColumnLetter(DEPTH_COLUMN_NAME, worksheet),
-  Option.map(setDepthBarAndFormulas(worksheet)),
+  Option.map(setDepthFormattingAndFormulas(worksheet)),
   Option.getOrElse(() => undefined),
 );

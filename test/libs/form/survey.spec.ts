@@ -2,7 +2,7 @@ import { describe, it } from 'mocha';
 import { expect } from 'chai';
 import { Effect } from 'effect';
 import ExcelJS from 'exceljs';
-import { getHeaderNames, STYLE, type Worksheet } from '../../../src/libs/xlsx.ts';
+import { getHeaderNames, type Worksheet } from '../../../src/libs/xlsx.ts';
 import { BUFFER_COL_COUNT, FORM_STYLE } from '../../../src/libs/form/index.ts';
 import {
   getConditionalFormatting,
@@ -253,6 +253,25 @@ describe('form survey libs', () => {
       expect(getConditionalFormattingRule(worksheet, 0, 0).formulae).to.deep.equal(['AND($A2="begin_group",A$1<>"")']);
       expect(getConditionalFormattingRule(worksheet, 0, 3).formulae).to.deep.equal(['AND($A2="end_repeat",A$1<>"")']);
     });
+
+    it('stops short of the depth gutter, which would drop the depth fill on boundary rows', () => {
+      const [, worksheet] = newWorkbook(['type', 'name']);
+      setSurveyDepthColumn(worksheet);
+
+      setSurveyBeginGroupFormatting(worksheet);
+
+      // Starts at B, so nothing but the depth rules covers the `#` column.
+      expect(getConditionalFormatting(worksheet, 0).ref).to.equal('B2:BB1001');
+      expect(getConditionalFormattingRule(worksheet, 0).formulae).to.deep.equal(['AND($B2="begin_group",B$1<>"")']);
+    });
+
+    it('covers the whole row when the depth column has been deleted', () => {
+      const [, worksheet] = newWorkbook(['type', 'name']);
+
+      setSurveyBeginGroupFormatting(worksheet);
+
+      expect(getConditionalFormatting(worksheet, 0).ref).to.equal('A2:BA1001');
+    });
   });
   describe('setSurveyDepthColumn', () => {
     it('inserts the depth column ahead of the existing columns', () => {
@@ -326,30 +345,7 @@ describe('form survey libs', () => {
   });
 
   describe('setSurveyDepthFormatting', () => {
-    it('scales the bar from zero to one past the deepest group', () => {
-      const [, worksheet] = newWorkbook(['type', 'name'], [['begin_group', 'g1']]);
-      setSurveyDepthColumn(worksheet);
-
-      setSurveyDepthFormatting(worksheet);
-
-      const formatting = getConditionalFormatting(worksheet, 0);
-      expect(formatting.ref).to.equal('A2:A1002');
-      const rule = getConditionalFormattingRule(worksheet, 0) as unknown as {
-        type: string,
-        gradient: boolean,
-        color: { argb: string },
-        cfvo: { type: string, value: string | number }[],
-      };
-      expect(rule.type).to.equal('dataBar');
-      expect(rule.gradient).to.equal(false);
-      expect(rule.color).to.deep.equal({ argb: STYLE.COLOR.BLUE });
-      expect(rule.cfvo).to.deep.equal([
-        { type: 'num', value: 0 },
-        { type: 'formula', value: 'MAX($A$2:$A$1002)+1' },
-      ]);
-    });
-
-    it('fills the buffer rows so rows appended below the form still show a bar', () => {
+    it('fills the buffer rows so rows appended below the form are shaded too', () => {
       const [, worksheet] = newWorkbook(['type', 'name'], [['begin_group', 'g1']]);
       setSurveyDepthColumn(worksheet);
 
@@ -380,6 +376,48 @@ describe('form survey libs', () => {
       expect(worksheet.getCell('A3').value).to.deep.equal({
         formula: 'COUNTIF($B$2:$B3,"begin_*")-COUNTIF($B$2:$B3,"end_*")+IF(LEFT($B3,4)="end_",1,0)',
       });
+    });
+
+    it('shades the depth cell darker at each nesting level, deepest rule first', () => {
+      const [, worksheet] = newWorkbook(['type', 'name'], [['begin_group', 'g1']]);
+      setSurveyDepthColumn(worksheet);
+
+      setSurveyDepthFormatting(worksheet);
+
+      const formatting = getConditionalFormatting(worksheet, 0);
+      expect(formatting.ref).to.equal('A2:A1002');
+      expect(formatting.rules.map(({ formulae }) => formulae[0])).to.deep.equal([
+        'A2>=8',
+        'A2>=7',
+        'A2>=6',
+        'A2>=5',
+        'A2>=4',
+        'A2>=3',
+        'A2>=2',
+        'A2>=1',
+      ]);
+      // Deepest first, fading back toward the dark-theme background. Nothing matches at depth 0.
+      expect(formatting.rules.map(({ style }) => (style as { fill: { bgColor: object } }).fill.bgColor))
+        .to.deep.equal([
+          { argb: 'FF0070C0' },
+          { argb: 'FF0466AC' },
+          { argb: 'FF075B98' },
+          { argb: 'FF0A5184' },
+          { argb: 'FF0E4771' },
+          { argb: 'FF113E5E' },
+          { argb: 'FF14344B' },
+          { argb: 'FF172B3A' },
+        ]);
+    });
+
+    it('orders the fade deepest first, so the deepest match wins the fill', () => {
+      const [, worksheet] = newWorkbook(['type', 'name'], [['begin_group', 'g1']]);
+      setSurveyDepthColumn(worksheet);
+
+      setSurveyDepthFormatting(worksheet);
+
+      expect(getConditionalFormatting(worksheet, 0).rules.map(({ priority }) => priority))
+        .to.deep.equal([1, 2, 3, 4, 5, 6, 7, 8]);
     });
 
     it('does nothing when there is no depth column', () => {
