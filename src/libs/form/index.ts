@@ -75,9 +75,9 @@ export const getTypeColumnLetter = (worksheet: Worksheet): string => Option.getO
 export const getTypeValidationRange = (column: string, rowCount: number): string =>
   `${column}2:${column}${String(rowCount + BUFFER_ROW_COUNT)}`;
 
-// Freeze the header row and the first two columns so they stay visible while scrolling.
-export const freezeHeaderAndKeyColumns = (worksheet: Worksheet): void => {
-  worksheet.views = [{ state: 'frozen', xSplit: 2, ySplit: 1 }];
+// Freeze the header row and the leading key columns so they stay visible while scrolling.
+export const freezeHeaderAndKeyColumns = (xSplit = 2) => (worksheet: Worksheet): void => {
+  worksheet.views = [{ state: 'frozen', xSplit, ySplit: 1 }];
 };
 
 export const buildTranslatableHeaderFormula = (cell: string, names: readonly string[]): string => pipe(

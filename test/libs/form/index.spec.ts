@@ -64,12 +64,20 @@ describe('form libs', () => {
   });
 
   describe('freezeHeaderAndKeyColumns', () => {
-    it('freezes the header row and the first two columns', () => {
+    it('freezes the header row and the first two columns by default', () => {
       const [, worksheet] = newSheet('survey', ['type', 'name']);
 
-      freezeHeaderAndKeyColumns(worksheet);
+      freezeHeaderAndKeyColumns()(worksheet);
 
       expect(worksheet.views).to.deep.equal([{ state: 'frozen', xSplit: 2, ySplit: 1 }]);
+    });
+
+    it('freezes the given number of columns', () => {
+      const [, worksheet] = newSheet('survey', ['#', 'type', 'name']);
+
+      freezeHeaderAndKeyColumns(3)(worksheet);
+
+      expect(worksheet.views).to.deep.equal([{ state: 'frozen', xSplit: 3, ySplit: 1 }]);
     });
   });
 

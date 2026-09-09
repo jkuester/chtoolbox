@@ -4,6 +4,7 @@ import {
   getColumnLetter,
   getColumnLettersMatching,
   getHeaderNames,
+  removeTrailingEmptyRows,
   setHeaderComments,
   STYLE,
   type Worksheet
@@ -33,6 +34,11 @@ const SURVEY_COLUMNS: Record<string, {
   /** The complete set of values allowed in this column (offered as a dropdown; e.g. ['', 'true']) */
   supportedValues?: readonly string[],
 }> = {
+  '#': {
+    comment: 'Indicates how deeply the row is nested inside groups and repeats. The value is a formula and the '
+      + 'bar is drawn by conditional formatting, so both update as the form is edited.\n\nThis column is '
+      + 'ignored by pyxform and is safe to delete.',
+  },
   appearance: {
     comment: 'One or more modifiers that determine how the question will be displayed.\n\nThese can be specific to '
       + 'the field type.',
@@ -591,3 +597,114 @@ export const setSurveyBeginGroupFormatting = setSurveyGroupBoundaryFormatting('b
 export const setSurveyEndGroupFormatting = setSurveyGroupBoundaryFormatting('end_group', STYLE_END_GROUP);
 export const setSurveyBeginRepeatFormatting = setSurveyGroupBoundaryFormatting('begin_repeat', STYLE_BEGIN_REPEAT);
 export const setSurveyEndRepeatFormatting = setSurveyGroupBoundaryFormatting('end_repeat', STYLE_END_REPEAT);
+
+const DEPTH_COLUMN_NAME = '#';
+// xlsx stores column width in character widths, not absolute units, so this is an approximation of
+// 0.13in: ~13px at 96 DPI given the ~6px digit width of the 10pt base font. The rendered width
+// shifts with the font the reader resolves and with display scaling.
+const DEPTH_COLUMN_WIDTH = 2.17;
+// Blank the displayed value. The data bar is the indicator; the number is only what sizes it.
+const DEPTH_NUMBER_FORMAT = ';;;';
+const DEFAULT_NUMBER_FORMAT = 'General';
+// ExcelJS omits `color` from DataBarRuleType, but its xform renders it.
+type DataBarRule = ExcelJS.DataBarRuleType & { color: Partial<ExcelJS.Color> };
+
+/**
+ * Running count of the groups/repeats open at this row. `end_` rows report the depth of the group
+ * they close rather than the level below it, so a group's opening and closing rows read the same.
+ *
+ * Deliberately unguarded against a blank type, so blank rows inside a group still report the
+ * enclosing depth and draw a bar. Rows outside any group resolve to 0, which draws nothing.
+ */
+const buildDepthFormula = (typeCol: string, row: number): string => pipe(
+  Tuple.make(`$${typeCol}${String(row)}`, `$${typeCol}$2:$${typeCol}${String(row)}`),
+  ([cell, range]) => `COUNTIF(${range},"begin_*")-COUNTIF(${range},"end_*")`
+    + `+IF(LEFT(${cell},4)="end_",1,0)`,
+);
+
+const addDepthColumn = (worksheet: Worksheet) => (): string => {
+  worksheet.spliceColumns(1, 0, []);
+  worksheet.getCell(1, 1).value = DEPTH_COLUMN_NAME;
+  return worksheet.getColumn(1).letter;
+};
+
+// The format is set per cell, not just on the column: cells belonging to rows that already existed
+// resolve to the default style instead of inheriting the column's, and would show their number.
+const setDepthFormula = (worksheet: Worksheet, depthCol: string, typeCol: string) => (row: number) => pipe(
+  worksheet.getCell(`${depthCol}${String(row)}`),
+  cell => Object.assign(cell, {
+    value: { formula: buildDepthFormula(typeCol, row) },
+    numFmt: DEPTH_NUMBER_FORMAT,
+  }),
+);
+
+const setDepthColumnStyle = (worksheet: Worksheet, depthCol: string): string => pipe(
+  worksheet.getColumn(depthCol),
+  column => Object.assign(column, { width: DEPTH_COLUMN_WIDTH, numFmt: DEPTH_NUMBER_FORMAT }),
+  // `;;;` blanks the text section too, so the column format would hide the header label as well.
+  () => Object.assign(worksheet.getCell(`${depthCol}1`), { numFmt: DEFAULT_NUMBER_FORMAT }),
+  () => depthCol,
+);
+
+/**
+ * The formulas run past the last populated row, so on a re-format they are the sheet's trailing
+ * content and `rowCount` would grow by the buffer size every run. Drop them before anything
+ * measures the sheet, then re-trim so `rowCount` reflects the form itself.
+ */
+const clearDepthValues = (worksheet: Worksheet, depthCol: string): string => pipe(
+  Array.range(2, worksheet.rowCount),
+  Array.forEach(row => worksheet.getCell(`${depthCol}${String(row)}`).value = null),
+  () => removeTrailingEmptyRows(worksheet),
+  () => depthCol,
+);
+
+export const setSurveyDepthColumn = (worksheet: Worksheet): void => pipe(
+  getColumnLetter(DEPTH_COLUMN_NAME, worksheet),
+  Option.getOrElse(addDepthColumn(worksheet)),
+  depthCol => clearDepthValues(worksheet, depthCol),
+  depthCol => setDepthColumnStyle(worksheet, depthCol),
+  () => undefined,
+);
+
+// ExcelJS types `Cvfo.value` as a number, but the cfvo xform writes the attribute through
+// unchanged, so a formula string serializes correctly as `<cfvo type="formula" val="..."/>`.
+const buildMaxDepthCfvo = (depthCol: string, rowCount: number): ExcelJS.Cvfo => pipe(
+  `MAX($${depthCol}$2:$${depthCol}$${String(rowCount + BUFFER_ROW_COUNT)})+1`,
+  formula => ({ type: 'formula', value: formula as unknown as number }),
+);
+
+const buildDepthBarRule = (depthCol: string, rowCount: number): DataBarRule => ({
+  type: 'dataBar',
+  // The low bound is pinned to 0 rather than `min` so the shallowest group always draws a visible
+  // bar; `min` would rebase to the shallowest value present and render those rows empty. The high
+  // bound tracks the deepest group, plus headroom so it never fills the whole cell.
+  cfvo: [{ type: 'num', value: 0 }, buildMaxDepthCfvo(depthCol, rowCount)],
+  color: { argb: STYLE.COLOR.BLUE },
+  gradient: false,
+  border: false,
+  priority: 1,
+});
+
+const addDepthBar = (worksheet: Worksheet, depthCol: string): void => worksheet.addConditionalFormatting({
+  ref: getTypeValidationRange(depthCol, worksheet.rowCount),
+  rules: [buildDepthBarRule(depthCol, worksheet.rowCount)],
+});
+
+const setDepthBarAndFormulas = (worksheet: Worksheet) => (depthCol: string): void => {
+  // The bar's range has to be resolved before the formulas below grow `rowCount`.
+  addDepthBar(worksheet, depthCol);
+  Array.forEach(
+    Array.range(2, worksheet.rowCount + BUFFER_ROW_COUNT),
+    setDepthFormula(worksheet, depthCol, getTypeColumnLetter(worksheet)),
+  );
+};
+
+/**
+ * Must run last: filling the buffer rows grows `rowCount`, so every range derived from it has to
+ * already be resolved. The buffer is covered so rows appended below the form still show a bar.
+ */
+export const setSurveyDepthFormatting = (worksheet: Worksheet): void => pipe(
+  getColumnLetter(DEPTH_COLUMN_NAME, worksheet),
+  Option.map(setDepthBarAndFormulas(worksheet)),
+  Option.getOrElse(() => undefined),
+);

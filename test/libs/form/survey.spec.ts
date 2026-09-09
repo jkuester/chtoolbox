@@ -2,7 +2,7 @@ import { describe, it } from 'mocha';
 import { expect } from 'chai';
 import { Effect } from 'effect';
 import ExcelJS from 'exceljs';
-import { getHeaderNames, type Worksheet } from '../../../src/libs/xlsx.ts';
+import { getHeaderNames, STYLE, type Worksheet } from '../../../src/libs/xlsx.ts';
 import { BUFFER_COL_COUNT, FORM_STYLE } from '../../../src/libs/form/index.ts';
 import {
   getConditionalFormatting,
@@ -15,6 +15,8 @@ import {
   setSurveyBeginGroupFormatting,
   setSurveyBeginRepeatFormatting,
   setSurveyCalculationFormatting,
+  setSurveyDepthColumn,
+  setSurveyDepthFormatting,
   setSurveyEndGroupFormatting,
   setSurveyEndRepeatFormatting,
   setSurveyHeaderComments,
@@ -250,6 +252,142 @@ describe('form survey libs', () => {
       expect(getConditionalFormattings(worksheet)).to.have.length(4);
       expect(getConditionalFormattingRule(worksheet, 0, 0).formulae).to.deep.equal(['AND($A2="begin_group",A$1<>"")']);
       expect(getConditionalFormattingRule(worksheet, 0, 3).formulae).to.deep.equal(['AND($A2="end_repeat",A$1<>"")']);
+    });
+  });
+  describe('setSurveyDepthColumn', () => {
+    it('inserts the depth column ahead of the existing columns', () => {
+      const [, worksheet] = newWorkbook(['type', 'name'], [['begin_group', 'g1']]);
+
+      setSurveyDepthColumn(worksheet);
+
+      expect(getHeaderNames(worksheet).slice(1)).to.deep.equal(['#', 'type', 'name']);
+      expect(worksheet.getCell('B2').value).to.equal('begin_group');
+      expect(worksheet.getCell('C2').value).to.equal('g1');
+    });
+
+    it('counts open groups and repeats, crediting end rows to the group they close', () => {
+      const [, worksheet] = newWorkbook(['type', 'name'], [['begin_group', 'g1']]);
+
+      setSurveyDepthColumn(worksheet);
+      setSurveyDepthFormatting(worksheet);
+
+      expect(worksheet.getCell('A2').value).to.deep.equal({
+        formula: 'COUNTIF($B$2:$B2,"begin_*")-COUNTIF($B$2:$B2,"end_*")+IF(LEFT($B2,4)="end_",1,0)',
+      });
+    });
+
+    it('hides the depth values, leaving the data bar as the only indicator', () => {
+      const [, worksheet] = newWorkbook(['type', 'name'], [['text', 'q1']]);
+
+      setSurveyDepthColumn(worksheet);
+
+      expect(worksheet.getColumn('A').numFmt).to.equal(';;;');
+    });
+
+    it('leaves the header label visible, which the column format would otherwise blank', () => {
+      const [, worksheet] = newWorkbook(['type', 'name'], [['text', 'q1']]);
+
+      setSurveyDepthColumn(worksheet);
+
+      expect(worksheet.getCell('A1').value).to.equal('#');
+      expect(worksheet.getCell('A1').numFmt).to.equal('General');
+      expect(worksheet.getCell('A2').numFmt).to.equal(';;;');
+    });
+
+    it('reuses the existing depth column instead of adding another', () => {
+      const [, worksheet] = newWorkbook(['type', 'name'], [['begin_group', 'g1']]);
+
+      setSurveyDepthColumn(worksheet);
+      setSurveyDepthColumn(worksheet);
+
+      expect(getHeaderNames(worksheet).slice(1)).to.deep.equal(['#', 'type', 'name']);
+    });
+
+    it('adds the column to a survey sheet with no rows', () => {
+      const [, worksheet] = newWorkbook(['type', 'name']);
+
+      setSurveyDepthColumn(worksheet);
+
+      expect(getHeaderNames(worksheet).slice(1)).to.deep.equal(['#', 'type', 'name']);
+      expect(worksheet.rowCount).to.equal(1);
+    });
+
+    it('drops stale formulas so repeat runs do not grow the sheet by the buffer each time', () => {
+      const [, worksheet] = newWorkbook(['type', 'name'], [['begin_group', 'g1']]);
+
+      setSurveyDepthColumn(worksheet);
+      setSurveyDepthFormatting(worksheet);
+      const grownRowCount = worksheet.rowCount;
+      setSurveyDepthColumn(worksheet);
+
+      expect(grownRowCount).to.equal(1002);
+      expect(worksheet.rowCount).to.equal(2);
+    });
+  });
+
+  describe('setSurveyDepthFormatting', () => {
+    it('scales the bar from zero to one past the deepest group', () => {
+      const [, worksheet] = newWorkbook(['type', 'name'], [['begin_group', 'g1']]);
+      setSurveyDepthColumn(worksheet);
+
+      setSurveyDepthFormatting(worksheet);
+
+      const formatting = getConditionalFormatting(worksheet, 0);
+      expect(formatting.ref).to.equal('A2:A1002');
+      const rule = getConditionalFormattingRule(worksheet, 0) as unknown as {
+        type: string,
+        gradient: boolean,
+        color: { argb: string },
+        cfvo: { type: string, value: string | number }[],
+      };
+      expect(rule.type).to.equal('dataBar');
+      expect(rule.gradient).to.equal(false);
+      expect(rule.color).to.deep.equal({ argb: STYLE.COLOR.BLUE });
+      expect(rule.cfvo).to.deep.equal([
+        { type: 'num', value: 0 },
+        { type: 'formula', value: 'MAX($A$2:$A$1002)+1' },
+      ]);
+    });
+
+    it('fills the buffer rows so rows appended below the form still show a bar', () => {
+      const [, worksheet] = newWorkbook(['type', 'name'], [['begin_group', 'g1']]);
+      setSurveyDepthColumn(worksheet);
+
+      setSurveyDepthFormatting(worksheet);
+
+      expect(worksheet.getCell('A1002').value).to.have.property('formula');
+      expect(worksheet.getCell('A1003').value).to.equal(null);
+    });
+
+    it('hides the number on rows that already existed, which miss the column format', () => {
+      const [, worksheet] = newWorkbook(['type', 'name'], [['begin_group', 'g1']]);
+      // An empty row record, as left behind by a user appending further down the sheet.
+      worksheet.getRow(3);
+      setSurveyDepthColumn(worksheet);
+
+      setSurveyDepthFormatting(worksheet);
+
+      expect(worksheet.getCell('A3').numFmt).to.equal(';;;');
+    });
+
+    it('reports the enclosing depth for blank rows inside a group', () => {
+      const [, worksheet] = newWorkbook(['type', 'name'], [['begin_group', 'g1'], ['', '']]);
+      setSurveyDepthColumn(worksheet);
+
+      setSurveyDepthFormatting(worksheet);
+
+      // No blank-type guard, so the running count carries through the empty row.
+      expect(worksheet.getCell('A3').value).to.deep.equal({
+        formula: 'COUNTIF($B$2:$B3,"begin_*")-COUNTIF($B$2:$B3,"end_*")+IF(LEFT($B3,4)="end_",1,0)',
+      });
+    });
+
+    it('does nothing when there is no depth column', () => {
+      const [, worksheet] = newWorkbook(['type', 'name'], [['begin_group', 'g1']]);
+
+      setSurveyDepthFormatting(worksheet);
+
+      expect(getConditionalFormattings(worksheet)).to.have.length(0);
     });
   });
 });
