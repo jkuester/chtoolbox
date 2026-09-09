@@ -36,8 +36,8 @@ const SURVEY_COLUMNS: Record<string, {
 }> = {
   '#': {
     comment: 'Indicates how deeply the row is nested inside groups and repeats. The value is a formula and the '
-      + 'background fades in more blue with depth, drawn by conditional formatting, so both update as '
-      + 'the form is edited.\n\nThis column is ignored by pyxform and is safe to delete.',
+      + 'grey background takes on more blue with depth, drawn by conditional formatting, so both '
+      + 'update as the form is edited.\n\nThis column is ignored by pyxform and is safe to delete.',
   },
   appearance: {
     comment: 'One or more modifiers that determine how the question will be displayed.\n\nThese can be specific to '
@@ -620,11 +620,25 @@ export const setSurveyBeginRepeatFormatting = setSurveyGroupBoundaryFormatting('
 export const setSurveyEndRepeatFormatting = setSurveyGroupBoundaryFormatting('end_repeat', STYLE_END_REPEAT);
 
 // xlsx stores column width in character widths, not absolute units, so this is an approximation of
-// 0.13in: ~13px at 96 DPI given the ~6px digit width of the 10pt base font. The rendered width
+// 0.065in: ~6px at 96 DPI given the ~6px digit width of the 10pt base font. The rendered width
 // shifts with the font the reader resolves and with display scaling.
-const DEPTH_COLUMN_WIDTH = 2.17;
+const DEPTH_COLUMN_WIDTH = 1.09;
 // Blank the displayed value. The background is the indicator; the number only selects it.
 const DEPTH_NUMBER_FORMAT = ';;;';
+// Level 0 of the depth ramp, and so the gutter's resting colour.
+const DEPTH_BASE_FILL = STYLE.FILL.GREY;
+
+/**
+ * Breathing room between the gutter's fill and the text beside it. There is nowhere to put it
+ * inside the gutter, since a cell fill covers the whole of its cell, so it is taken out of the
+ * next column instead, leaving a strip of that column's own unfilled background between the two.
+ *
+ * The gap is padded onto the displayed text rather than set as an `indent`, which is an integer
+ * count of roughly three spaces and so has no step this small. A leading literal in the number
+ * format pads by a single space and leaves the cell's value untouched, so what pyxform reads is
+ * unchanged. `@` is the text placeholder; every column this lands on holds text.
+ */
+const GUTTER_GAP_NUMBER_FORMAT = '" "@';
 const DEFAULT_NUMBER_FORMAT = 'General';
 
 /**
@@ -646,14 +660,34 @@ const addDepthColumn = (worksheet: Worksheet) => (): string => {
   return worksheet.getColumn(1).letter;
 };
 
-// The format is set per cell, not just on the column: cells belonging to rows that already existed
-// resolve to the default style instead of inheriting the column's, and would show their number.
+/**
+ * The number format is set per cell, not just on the column: cells belonging to rows that already
+ * existed resolve to the default style instead of inheriting the column's, and would show their
+ * number.
+ *
+ * The base fill is set per cell for that same reason, and deliberately *only* per cell — on the
+ * column it would run the grey stripe to the foot of the sheet, far below the form. Bounding it to
+ * the rows that carry a depth formula keeps the gutter the same height as the form itself.
+ */
 const setDepthFormula = (worksheet: Worksheet, depthCol: string, typeCol: string) => (row: number) => pipe(
   worksheet.getCell(`${depthCol}${String(row)}`),
   cell => Object.assign(cell, {
     value: { formula: buildDepthFormula(typeCol, row) },
     numFmt: DEPTH_NUMBER_FORMAT,
+    fill: { ...DEPTH_BASE_FILL },
   }),
+);
+
+// Applied per cell as well as on the column because rows that already exist carry their own style
+// and do not inherit the column's; the column entry covers rows added later.
+const setGutterGap = (worksheet: Worksheet, depthCol: string): string => pipe(
+  worksheet.getColumn(worksheet.getColumn(depthCol).number + 1),
+  column => Object.assign(column, { numFmt: GUTTER_GAP_NUMBER_FORMAT }),
+  column => Array.forEach(
+    Array.range(1, worksheet.rowCount),
+    row => worksheet.getCell(row, column.number).numFmt = GUTTER_GAP_NUMBER_FORMAT,
+  ),
+  () => depthCol,
 );
 
 const setDepthColumnStyle = (worksheet: Worksheet, depthCol: string): string => pipe(
@@ -681,33 +715,34 @@ export const setSurveyDepthColumn = (worksheet: Worksheet): void => pipe(
   Option.getOrElse(addDepthColumn(worksheet)),
   depthCol => clearDepthValues(worksheet, depthCol),
   depthCol => setDepthColumnStyle(worksheet, depthCol),
+  depthCol => setGutterGap(worksheet, depthCol),
   () => undefined,
 );
 
 /**
- * The fade the depth gutter draws as nesting deepens: steps blended from the dark-theme sheet
- * background (#1c1c1c) toward STYLE.COLOR.BLUE. One entry per nesting level, shallowest first,
- * the last covering anything deeper.
+ * The tinge the depth gutter takes on as nesting deepens: DEPTH_BASE_FILL's grey blended toward
+ * STYLE.COLOR.BLUE, ending on it. One entry per nesting level, shallowest first, the last covering
+ * anything deeper. Level 0 is not here — it is the base fill, painted on the cell rather than by a
+ * rule.
  *
- * The blend is baked rather than layered because a cell fill cannot be translucent: the alpha byte
- * of an ARGB fill is inert in both Excel and LibreOffice, and Calc has no pattern fill to dither
- * with. Nor can the colour follow the reader's theme — theme colours resolve to fixed RGB stored in
- * the document, so only the absence of a fill adapts. Hence level 0 is left unfilled, and the rest
- * are tuned for a dark theme, which leaves the gutter darker than the sheet in a light one.
+ * Because level 0 carries a fill of its own, every level has one, and the ramp reads identically on
+ * a light or a dark sheet. That is the only way to get theme independence here: a cell fill cannot
+ * be translucent (the alpha byte of an ARGB fill is inert in both Excel and LibreOffice, and Calc
+ * has no pattern fill to dither with), and it cannot follow the reader's theme either, since theme
+ * colours resolve to fixed RGB stored in the document.
  *
- * Spaced by equal perceptual steps rather than equal blend fractions, so each level reads as the
- * same size change, and running the blend out to STYLE.COLOR.BLUE itself to spread those steps as
- * far apart as the two endpoints allow. The shallowest starts a little way along the blend rather
- * than at the background, so level 1 is still distinguishable from an unfilled level 0.
+ * The levels are spaced by equal perceptual steps along the blend rather than by equal blend
+ * fractions, so each reads as the same size change — including level 1, which separates from the
+ * base fill by the same step as any other neighbouring pair. Their count is a trade against that
+ * step size, the blend being a fixed length: six keeps every neighbouring pair clearly apart, at
+ * the cost of nesting past level 6 clamping to the last entry (see the `>=` in the rules below).
  */
 const DEPTH_SHADE_COLORS = [
-  'FF172B3A',
-  'FF14344B',
-  'FF113E5E',
-  'FF0E4771',
-  'FF0A5184',
-  'FF075B98',
-  'FF0466AC',
+  'FFB4C5D0',
+  'FF96B6CD',
+  'FF75A7CB',
+  'FF5296C7',
+  'FF2C84C4',
   'FF0070C0',
 ] as const;
 // Solid conditional-formatting fills take their colour from `bgColor` (as FORM_STYLE does), unlike

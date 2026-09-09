@@ -2,7 +2,7 @@ import { describe, it } from 'mocha';
 import { expect } from 'chai';
 import { Effect } from 'effect';
 import ExcelJS from 'exceljs';
-import { getHeaderNames, type Worksheet } from '../../../src/libs/xlsx.ts';
+import { getHeaderNames, STYLE, type Worksheet } from '../../../src/libs/xlsx.ts';
 import { BUFFER_COL_COUNT, FORM_STYLE } from '../../../src/libs/form/index.ts';
 import {
   getConditionalFormatting,
@@ -295,7 +295,7 @@ describe('form survey libs', () => {
       });
     });
 
-    it('hides the depth values, leaving the data bar as the only indicator', () => {
+    it('hides the depth values, leaving the background as the only indicator', () => {
       const [, worksheet] = newWorkbook(['type', 'name'], [['text', 'q1']]);
 
       setSurveyDepthColumn(worksheet);
@@ -311,6 +311,29 @@ describe('form survey libs', () => {
       expect(worksheet.getCell('A1').value).to.equal('#');
       expect(worksheet.getCell('A1').numFmt).to.equal('General');
       expect(worksheet.getCell('A2').numFmt).to.equal(';;;');
+    });
+
+    it('pads the column beside the gutter, so the fill does not run into its text', () => {
+      const [, worksheet] = newWorkbook(['type', 'name'], [['begin_group', 'g1']]);
+
+      setSurveyDepthColumn(worksheet);
+
+      // On the column, for rows added later...
+      expect(worksheet.getColumn('B').numFmt).to.equal('" "@');
+      // ...and on the cells of rows that already exist and so do not inherit it.
+      expect(worksheet.getCell('B1').numFmt).to.equal('" "@');
+      expect(worksheet.getCell('B2').numFmt).to.equal('" "@');
+      // Only the neighbour: the columns past it are left alone.
+      expect(worksheet.getCell('C2').numFmt).to.equal(undefined);
+    });
+
+    it('pads only the display, leaving the value pyxform reads untouched', () => {
+      const [, worksheet] = newWorkbook(['type', 'name'], [['begin_group', 'g1']]);
+
+      setSurveyDepthColumn(worksheet);
+
+      expect(worksheet.getCell('B2').value).to.equal('begin_group');
+      expect(getHeaderNames(worksheet).slice(1)).to.deep.equal(['#', 'type', 'name']);
     });
 
     it('reuses the existing depth column instead of adding another', () => {
@@ -378,7 +401,7 @@ describe('form survey libs', () => {
       });
     });
 
-    it('shades the depth cell darker at each nesting level, deepest rule first', () => {
+    it('tinges the depth cell bluer at each nesting level, deepest rule first', () => {
       const [, worksheet] = newWorkbook(['type', 'name'], [['begin_group', 'g1']]);
       setSurveyDepthColumn(worksheet);
 
@@ -387,8 +410,6 @@ describe('form survey libs', () => {
       const formatting = getConditionalFormatting(worksheet, 0);
       expect(formatting.ref).to.equal('A2:A1002');
       expect(formatting.rules.map(({ formulae }) => formulae[0])).to.deep.equal([
-        'A2>=8',
-        'A2>=7',
         'A2>=6',
         'A2>=5',
         'A2>=4',
@@ -400,13 +421,11 @@ describe('form survey libs', () => {
       expect(formatting.rules.map(({ style }) => (style as { fill: { bgColor: object } }).fill.bgColor))
         .to.deep.equal([
           { argb: 'FF0070C0' },
-          { argb: 'FF0466AC' },
-          { argb: 'FF075B98' },
-          { argb: 'FF0A5184' },
-          { argb: 'FF0E4771' },
-          { argb: 'FF113E5E' },
-          { argb: 'FF14344B' },
-          { argb: 'FF172B3A' },
+          { argb: 'FF2C84C4' },
+          { argb: 'FF5296C7' },
+          { argb: 'FF75A7CB' },
+          { argb: 'FF96B6CD' },
+          { argb: 'FFB4C5D0' },
         ]);
     });
 
@@ -417,7 +436,28 @@ describe('form survey libs', () => {
       setSurveyDepthFormatting(worksheet);
 
       expect(getConditionalFormatting(worksheet, 0).rules.map(({ priority }) => priority))
-        .to.deep.equal([1, 2, 3, 4, 5, 6, 7, 8]);
+        .to.deep.equal([1, 2, 3, 4, 5, 6]);
+    });
+
+    it('paints the resting grey on the depth cells, which is level 0 of the ramp', () => {
+      const [, worksheet] = newWorkbook(['type', 'name'], [['text', 'q1']]);
+      setSurveyDepthColumn(worksheet);
+
+      setSurveyDepthFormatting(worksheet);
+
+      expect(worksheet.getCell('A2').fill).to.deep.equal(STYLE.FILL.GREY);
+    });
+
+    it('leaves the grey off the column, which would run it to the foot of the sheet', () => {
+      const [, worksheet] = newWorkbook(['type', 'name'], [['text', 'q1']]);
+      setSurveyDepthColumn(worksheet);
+
+      setSurveyDepthFormatting(worksheet);
+
+      expect(worksheet.getColumn('A').style.fill).to.equal(undefined);
+      // Bounded to the rows carrying a depth formula.
+      expect(worksheet.getCell('A1002').fill).to.deep.equal(STYLE.FILL.GREY);
+      expect(worksheet.getCell('A1003').fill).to.equal(undefined);
     });
 
     it('does nothing when there is no depth column', () => {
