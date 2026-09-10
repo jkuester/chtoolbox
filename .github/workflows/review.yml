@@ -118,17 +118,20 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.OCR_LLM_AUTH_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          plugin_marketplaces: https://github.com/medic/cht-ai-tools.git
+          plugins: |
+            cht-pr-review@medic-cht-ai-tools
+            cht-docs-mcp@medic-cht-ai-tools
           prompt: |
-            Use the pr-review-completeness skill to review pull request
+            Use the cht-pr-review skill to review pull request
             ${{ github.event.issue.number }} in ${{ github.repository }}.
             Follow that skill exactly.
 
             Return the skill's report verbatim as `report_markdown`. If the skill concludes the PR's intent could not 
             be established, return that as the report; an inconclusive report is still the result.
-          # Keep the configured tools synced up with what is configured in the frontmatter of the skill
           claude_args: |
             --model ${{ env.CLAUDE_LLM_MODEL }}
-            --allowedTools "Skill,Read,Grep,Glob,Bash(.claude/skills/pr-review-completeness/scripts/pr-context.sh:*),Bash(.claude/skills/pr-review-completeness/scripts/pr-diff.sh:*)"
+            --allowedTools "Skill,Read,Grep,Glob,mcp__plugin_cht-docs-mcp_cht-docs__ask_question,mcp__plugin_cht-docs-mcp_cht-docs__search_docs"
             --disallowedTools "Edit,Write,NotebookEdit"
             --json-schema '{"type":"object","required":["report_markdown"],"additionalProperties":false,"properties":{"report_markdown":{"type":"string","description":"The complete review report as GitHub-flavored markdown."}}}'
       - name: Upload Claude execution log
