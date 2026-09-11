@@ -48,17 +48,12 @@ const saveWorkbook = (
   filePath: string
 ) => (workbook: ExcelJS.Workbook) => Effect.promise(() => workbook.xlsx.writeFile(filePath));
 
-// The depth column, plus the `type` and `name` columns it sits in front of.
-const SURVEY_FROZEN_COLUMN_COUNT = 3;
-
-// Split in two only because `pipe` tops out at 20 arguments.
 const formatSurveyHeaders = (workbook: ExcelJS.Workbook) => (surveySheet: Worksheet) => pipe(
   surveySheet,
   Effect.succeed,
   Effect.tap(normalizeSurveyTypeValues),
-  // Must precede everything that resolves column letters: it shifts the survey columns right.
   Effect.tap(setSurveyDepthColumn),
-  Effect.tap(freezeHeaderAndKeyColumns(SURVEY_FROZEN_COLUMN_COUNT)),
+  Effect.tap(freezeHeaderAndKeyColumns(3)),
   Effect.tap(setSurveyHeaderFormatting),
   Effect.tap(setSurveyHeaderComments),
   Effect.tap(setSurveyHeaderValidation(workbook)),

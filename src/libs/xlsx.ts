@@ -9,7 +9,6 @@ export type Worksheet = ExcelJS.Worksheet & {
   };
 };
 
-// Shared so fills, borders, and data bars drawn in the same colour cannot drift apart.
 const COLOR = {
   DARK_GREY: 'FF808080',
   BLUE: 'FF0070C0',
