@@ -28,7 +28,6 @@ const DEPTH_COLUMN_NAME = '#';
 // The gutter always leads the sheet. Normalising it here is what lets everything downstream take
 // its position as given rather than resolving it.
 const DEPTH_COLUMN_INDEX = 1;
-// And so the form's own columns start just past it.
 const BODY_START_COLUMN_INDEX = DEPTH_COLUMN_INDEX + 1;
 const SURVEY_COLUMNS: Record<string, {
   /** Description of the column */
@@ -578,14 +577,6 @@ export const setSurveyCalculationFormatting = (surveySheet: Worksheet): void => 
   Option.getOrElse(() => undefined)
 );
 
-/**
- * Starts past the gutter, which is an indicator column rather than form content.
- *
- * Two rules overlapping one cell are meant to layer, each claiming only the properties it sets, but
- * LibreOffice applies the winning rule's style whole. A border rule reaching into the gutter
- * therefore drops the depth shading on exactly the rows it matches. Leaving the gutter to the depth
- * rules alone keeps that from happening, whatever the reader does with overlaps.
- */
 const setSurveyGroupBoundaryFormatting = (type: string, style: Partial<ExcelJS.Style>) => (
   worksheet: Worksheet
 ) => pipe(
@@ -599,7 +590,6 @@ const setSurveyGroupBoundaryFormatting = (type: string, style: Partial<ExcelJS.S
     rules: [
       {
         type: 'expression',
-        // The header reference is relative to the range, so it has to name its first column.
         formulae: [`AND($${typeCol}2="${type}",${firstCol}$1<>"")`],
         style: { ...style },
         priority: 1,
@@ -612,14 +602,9 @@ export const setSurveyEndGroupFormatting = setSurveyGroupBoundaryFormatting('end
 export const setSurveyBeginRepeatFormatting = setSurveyGroupBoundaryFormatting('begin_repeat', STYLE_BEGIN_REPEAT);
 export const setSurveyEndRepeatFormatting = setSurveyGroupBoundaryFormatting('end_repeat', STYLE_END_REPEAT);
 
-// xlsx stores column width in character widths, not absolute units, so this is an approximation of
-// 0.065in: ~6px at 96 DPI given the ~6px digit width of the 10pt base font. The rendered width
-// shifts with the font the reader resolves and with display scaling.
-const DEPTH_COLUMN_WIDTH = 1.09;
+const DEPTH_COLUMN_WIDTH = 1;
 // Blank the displayed value. The background is the indicator; the number only selects it.
 const DEPTH_NUMBER_FORMAT = ';;;';
-// Level 0 of the depth ramp, and so the gutter's resting colour.
-const DEPTH_BASE_FILL = STYLE.FILL.GREY;
 
 /**
  * Breathing room between the gutter's fill and the text beside it. There is nowhere to put it
@@ -681,7 +666,7 @@ const setDepthFormula = (worksheet: Worksheet, depthCol: string, typeCol: string
   cell => Object.assign(cell, {
     value: { formula: buildDepthFormula(typeCol, row) },
     numFmt: DEPTH_NUMBER_FORMAT,
-    fill: { ...DEPTH_BASE_FILL },
+    fill: { ...STYLE.FILL.GREY },
   }),
 );
 
@@ -726,33 +711,18 @@ export const setSurveyDepthColumn = (worksheet: Worksheet): void => pipe(
 );
 
 /**
- * The tinge the depth gutter takes on as nesting deepens: DEPTH_BASE_FILL's grey blended toward
- * STYLE.COLOR.BLUE, ending on it. One entry per nesting level, shallowest first, the last covering
- * anything deeper. Level 0 is not here — it is the base fill, painted on the cell rather than by a
- * rule.
- *
- * Because level 0 carries a fill of its own, every level has one, and the ramp reads identically on
- * a light or a dark sheet. That is the only way to get theme independence here: a cell fill cannot
- * be translucent (the alpha byte of an ARGB fill is inert in both Excel and LibreOffice, and Calc
- * has no pattern fill to dither with), and it cannot follow the reader's theme either, since theme
- * colours resolve to fixed RGB stored in the document.
- *
- * The levels are spaced by equal perceptual steps along the blend rather than by equal blend
- * fractions, so each reads as the same size change — including level 1, which separates from the
- * base fill by the same step as any other neighbouring pair. Their count is a trade against that
- * step size, the blend being a fixed length: six keeps every neighbouring pair clearly apart, at
- * the cost of nesting past level 6 clamping to the last entry (see the `>=` in the rules below).
+ * The tinge the depth gutter takes on as nesting deepens: STYLE.FILL.GREY's grey blended toward
+ * STYLE.COLOR.BLUE, ending on it. One entry per nesting level. Level 0 is not here — it is the base
+ * fill, painted on the cell rather than by a rule.
  */
 const DEPTH_SHADE_COLORS = [
-  'FFB4C5D0',
-  'FF96B6CD',
-  'FF75A7CB',
-  'FF5296C7',
+  STYLE.COLOR.BLUE,
   'FF2C84C4',
-  'FF0070C0',
+  'FF5296C7',
+  'FF75A7CB',
+  'FF96B6CD',
+  'FFB4C5D0',
 ] as const;
-// Solid conditional-formatting fills take their colour from `bgColor` (as FORM_STYLE does), unlike
-// the `fgColor` that solid cell fills use.
 const buildDepthShadeFill = (argb: string): ExcelJS.Fill => ({
   type: 'pattern',
   pattern: 'solid',
@@ -761,12 +731,8 @@ const buildDepthShadeFill = (argb: string): ExcelJS.Fill => ({
 
 const buildDepthShadeRules = (depthCol: string): ExcelJS.ConditionalFormattingRule[] => pipe(
   DEPTH_SHADE_COLORS,
-  Array.reverse,
   Array.map((argb, idx): ExcelJS.ConditionalFormattingRule => ({
     type: 'expression',
-    // Deepest rule first, so the deepest one that matches wins the fill. `>=` rather than `=` so a
-    // row nested deeper than the ramp keeps the last step instead of losing its shading. Nothing
-    // matches at depth 0, leaving those rows unfilled to show the reader's own background.
     formulae: [`${depthCol}2>=${String(DEPTH_SHADE_COLORS.length - idx)}`],
     style: { fill: buildDepthShadeFill(argb) },
     priority: idx + 1,
