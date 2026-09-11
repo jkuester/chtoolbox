@@ -96,6 +96,8 @@ jobs:
           llm_auth_header: ${{ env.OCR_LLM_AUTH_HEADER }}
           llm_model: ${{ env.OCR_LLM_MODEL }}
           llm_use_anthropic: ${{ env.OCR_LLM_USE_ANTHROPIC }}
+          incremental: 'true'
+          sticky_summary: 'false'
           base_ref: ${{ needs.pr-context.outputs.base_ref }}
           head_sha: ${{ needs.pr-context.outputs.head_sha }}
           background: ${{ needs.pr-context.outputs.title }}
@@ -183,8 +185,8 @@ jobs:
               core.setFailed('Review produced no report_markdown; nothing to post.');
               return;
             }
-            // OCR tags its summary comment with the id of the run that posted it.
-            const marker = `<!-- ocr-summary-run:${context.runId}-`;
+            // Every OCR summary comment opens with this marker
+            const marker = '<!-- ocr-summary';
             const comments = await github.paginate(github.rest.issues.listComments, {
               ...context.repo,
               issue_number: context.issue.number,
