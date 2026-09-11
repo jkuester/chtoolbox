@@ -24,6 +24,12 @@ import {
 } from './index.ts';
 import { getChoicesListNameRange } from './choices.ts';
 
+const DEPTH_COLUMN_NAME = '#';
+// The gutter always leads the sheet. Normalising it here is what lets everything downstream take
+// its position as given rather than resolving it.
+const DEPTH_COLUMN_INDEX = 1;
+// And so the form's own columns start just past it.
+const BODY_START_COLUMN_INDEX = DEPTH_COLUMN_INDEX + 1;
 const SURVEY_COLUMNS: Record<string, {
   /** Description of the column */
   comment: string,
@@ -34,10 +40,8 @@ const SURVEY_COLUMNS: Record<string, {
   /** The complete set of values allowed in this column (offered as a dropdown; e.g. ['', 'true']) */
   supportedValues?: readonly string[],
 }> = {
-  '#': {
-    comment: 'Indicates how deeply the row is nested inside groups and repeats. The value is a formula and the '
-      + 'grey background takes on more blue with depth, drawn by conditional formatting, so both '
-      + 'update as the form is edited.\n\nThis column is ignored by pyxform and is safe to delete.',
+  [DEPTH_COLUMN_NAME]: {
+    comment: 'Indicates how deeply the row is nested inside groups and repeats. This column is ignored by pyxform.',
   },
   appearance: {
     comment: 'One or more modifiers that determine how the question will be displayed.\n\nThese can be specific to '
@@ -277,7 +281,6 @@ const SELECT_PREFIXES = [
   SELECT_MULTIPLE_FROM_FILE_PREFIX,
 ];
 
-const DEPTH_COLUMN_NAME = '#';
 const LABEL_PREFIX = 'label';
 const INVALID_LABELS = [
   'NO_LABEL',
@@ -576,29 +579,19 @@ export const setSurveyCalculationFormatting = (surveySheet: Worksheet): void => 
 );
 
 /**
- * First column a row-spanning rule may cover: the depth column is an indicator gutter rather than
- * form content, so rules that sweep the whole row stop short of it.
+ * Starts past the gutter, which is an indicator column rather than form content.
  *
  * Two rules overlapping one cell are meant to layer, each claiming only the properties it sets, but
  * LibreOffice applies the winning rule's style whole. A border rule reaching into the gutter
  * therefore drops the depth shading on exactly the rows it matches. Leaving the gutter to the depth
  * rules alone keeps that from happening, whatever the reader does with overlaps.
  */
-const getBodyStartColumn = (worksheet: Worksheet): string => pipe(
-  getColumnLetter(DEPTH_COLUMN_NAME, worksheet),
-  Option.map(depthCol => worksheet.getColumn(depthCol).number),
-  // Only skip the gutter while it leads the sheet. Anywhere else it would split the range in two.
-  Option.filter(colNumber => colNumber === 1),
-  Option.map(colNumber => worksheet.getColumn(colNumber + 1).letter),
-  Option.getOrElse(() => 'A'),
-);
-
 const setSurveyGroupBoundaryFormatting = (type: string, style: Partial<ExcelJS.Style>) => (
   worksheet: Worksheet
 ) => pipe(
   Tuple.make(
     getTypeColumnLetter(worksheet),
-    getBodyStartColumn(worksheet),
+    worksheet.getColumn(BODY_START_COLUMN_INDEX).letter,
     worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter,
   ),
   ([typeCol, firstCol, lastCol]) => worksheet.addConditionalFormatting({
@@ -655,10 +648,24 @@ const buildDepthFormula = (typeCol: string, row: number): string => pipe(
 );
 
 const addDepthColumn = (worksheet: Worksheet) => (): string => {
-  worksheet.spliceColumns(1, 0, []);
-  worksheet.getCell(1, 1).value = DEPTH_COLUMN_NAME;
-  return worksheet.getColumn(1).letter;
+  worksheet.spliceColumns(DEPTH_COLUMN_INDEX, 0, []);
+  worksheet.getCell(1, DEPTH_COLUMN_INDEX).value = DEPTH_COLUMN_NAME;
+  return worksheet.getColumn(DEPTH_COLUMN_INDEX).letter;
 };
+
+/**
+ * A gutter that has drifted off the leading column — a user inserting a column ahead of it, say —
+ * is dropped rather than followed, leaving it to be rebuilt in place. It holds nothing but
+ * generated formulas, and honouring its position would put it back under the row-spanning rules,
+ * which is the one thing the row-spanning rules are kept clear of.
+ */
+const dropStrayDepthColumn = (worksheet: Worksheet): Worksheet => pipe(
+  getColumnLetter(DEPTH_COLUMN_NAME, worksheet),
+  Option.map(depthCol => worksheet.getColumn(depthCol).number),
+  Option.filter(colNumber => colNumber !== DEPTH_COLUMN_INDEX),
+  Option.map(colNumber => worksheet.spliceColumns(colNumber, 1)),
+  () => worksheet,
+);
 
 /**
  * The number format is set per cell, not just on the column: cells belonging to rows that already
@@ -680,14 +687,13 @@ const setDepthFormula = (worksheet: Worksheet, depthCol: string, typeCol: string
 
 // Applied per cell as well as on the column because rows that already exist carry their own style
 // and do not inherit the column's; the column entry covers rows added later.
-const setGutterGap = (worksheet: Worksheet, depthCol: string): string => pipe(
-  worksheet.getColumn(worksheet.getColumn(depthCol).number + 1),
+const setGutterGap = (worksheet: Worksheet): void => pipe(
+  worksheet.getColumn(BODY_START_COLUMN_INDEX),
   column => Object.assign(column, { numFmt: GUTTER_GAP_NUMBER_FORMAT }),
   column => Array.forEach(
     Array.range(1, worksheet.rowCount),
     row => worksheet.getCell(row, column.number).numFmt = GUTTER_GAP_NUMBER_FORMAT,
   ),
-  () => depthCol,
 );
 
 const setDepthColumnStyle = (worksheet: Worksheet, depthCol: string): string => pipe(
@@ -711,12 +717,12 @@ const clearDepthValues = (worksheet: Worksheet, depthCol: string): string => pip
 );
 
 export const setSurveyDepthColumn = (worksheet: Worksheet): void => pipe(
-  getColumnLetter(DEPTH_COLUMN_NAME, worksheet),
+  dropStrayDepthColumn(worksheet),
+  ws => getColumnLetter(DEPTH_COLUMN_NAME, ws),
   Option.getOrElse(addDepthColumn(worksheet)),
   depthCol => clearDepthValues(worksheet, depthCol),
   depthCol => setDepthColumnStyle(worksheet, depthCol),
-  depthCol => setGutterGap(worksheet, depthCol),
-  () => undefined,
+  () => setGutterGap(worksheet),
 );
 
 /**

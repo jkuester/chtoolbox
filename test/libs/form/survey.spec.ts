@@ -243,6 +243,8 @@ describe('form survey libs', () => {
   describe('group boundary formatting', () => {
     it('adds a top/bottom border rule for each group and repeat boundary type', () => {
       const [, worksheet] = newWorkbook(['type', 'name']);
+      // The gutter is always in place by the time the body formatters run.
+      setSurveyDepthColumn(worksheet);
 
       setSurveyBeginGroupFormatting(worksheet);
       setSurveyEndGroupFormatting(worksheet);
@@ -250,8 +252,8 @@ describe('form survey libs', () => {
       setSurveyEndRepeatFormatting(worksheet);
 
       expect(getConditionalFormattings(worksheet)).to.have.length(4);
-      expect(getConditionalFormattingRule(worksheet, 0, 0).formulae).to.deep.equal(['AND($A2="begin_group",A$1<>"")']);
-      expect(getConditionalFormattingRule(worksheet, 0, 3).formulae).to.deep.equal(['AND($A2="end_repeat",A$1<>"")']);
+      expect(getConditionalFormattingRule(worksheet, 0, 0).formulae).to.deep.equal(['AND($B2="begin_group",B$1<>"")']);
+      expect(getConditionalFormattingRule(worksheet, 0, 3).formulae).to.deep.equal(['AND($B2="end_repeat",B$1<>"")']);
     });
 
     it('stops short of the depth gutter, which would drop the depth fill on boundary rows', () => {
@@ -263,14 +265,6 @@ describe('form survey libs', () => {
       // Starts at B, so nothing but the depth rules covers the `#` column.
       expect(getConditionalFormatting(worksheet, 0).ref).to.equal('B2:BB1001');
       expect(getConditionalFormattingRule(worksheet, 0).formulae).to.deep.equal(['AND($B2="begin_group",B$1<>"")']);
-    });
-
-    it('covers the whole row when the depth column has been deleted', () => {
-      const [, worksheet] = newWorkbook(['type', 'name']);
-
-      setSurveyBeginGroupFormatting(worksheet);
-
-      expect(getConditionalFormatting(worksheet, 0).ref).to.equal('A2:BA1001');
     });
   });
   describe('setSurveyDepthColumn', () => {
@@ -334,6 +328,28 @@ describe('form survey libs', () => {
 
       expect(worksheet.getCell('B2').value).to.equal('begin_group');
       expect(getHeaderNames(worksheet).slice(1)).to.deep.equal(['#', 'type', 'name']);
+    });
+
+    it('moves a gutter that has drifted back to the leading column', () => {
+      // As left by a user inserting a column ahead of the generated gutter.
+      const [, worksheet] = newWorkbook(['notes', '#', 'type', 'name'], [['', '', 'begin_group', 'g1']]);
+
+      setSurveyDepthColumn(worksheet);
+
+      expect(getHeaderNames(worksheet).slice(1)).to.deep.equal(['#', 'notes', 'type', 'name']);
+      // Rebuilt in place rather than duplicated, and the row's own values ride along.
+      expect(worksheet.getCell('C2').value).to.equal('begin_group');
+      expect(worksheet.getCell('D2').value).to.equal('g1');
+    });
+
+    it('keeps the row-spanning rules clear of a gutter that had drifted', () => {
+      const [, worksheet] = newWorkbook(['notes', '#', 'type', 'name'], [['', '', 'begin_group', 'g1']]);
+      setSurveyDepthColumn(worksheet);
+
+      setSurveyBeginGroupFormatting(worksheet);
+
+      // Starts past the gutter, which before normalising it would have overlapped and suppressed.
+      expect(getConditionalFormatting(worksheet, 0).ref).to.match(/^B2:/);
     });
 
     it('reuses the existing depth column instead of adding another', () => {
