@@ -91,7 +91,7 @@ jobs:
           # Keep the configured tools synced up with what is configured in the frontmatter of the skill
           claude_args: |
             --model ${{ env.CLAUDE_LLM_MODEL }}
-            --allowedTools "Skill,Read,Grep,Glob,Bash(/home/runner/.claude/plugins/cache/medic-cht-ai-tools/cht-pr-review/*/scripts/pr-context.sh*),Bash(/home/runner/.claude/plugins/cache/medic-cht-ai-tools/cht-pr-review/*/scripts/pr-diff.sh*),mcp__plugin_cht-docs-mcp_cht-docs__ask_question,mcp__plugin_cht-docs-mcp_cht-docs__search_docs"
+            --allowedTools "Skill,Read,Grep,Glob,Bash(/home/runner/.claude/plugins/cache/medic-cht-ai-tools/cht-pr-review/*/scripts/pr-context.sh:*),Bash(/home/runner/.claude/plugins/cache/medic-cht-ai-tools/cht-pr-review/*/scripts/pr-diff.sh:*),mcp__plugin_cht-docs-mcp_cht-docs__ask_question,mcp__plugin_cht-docs-mcp_cht-docs__search_docs"
             --disallowedTools "Edit,Write,NotebookEdit"
             --json-schema '{"type":"object","required":["report_markdown"],"additionalProperties":false,"properties":{"report_markdown":{"type":"string","description":"The complete review report as GitHub-flavored markdown."}}}'
       - name: Upload Claude execution log
@@ -105,7 +105,7 @@ jobs:
     needs: [code-review, completeness-review]
     runs-on: ubuntu-latest
     permissions:
-      pull-requests: write # to update (or post) the review summary comment
+      pull-requests: write # to update (or post) the review summary comment and clear the label
     timeout-minutes: 5
     steps:
       - name: Post review comment
@@ -146,17 +146,8 @@ jobs:
               comment_id: summary.id,
               body: `${summary.body}\n\n---\n\n${report_markdown}`,
             });
-
-  # Clear the label so re-applying it triggers a clean re-review
-  remove-label:
-    needs: post-review # transitively ordered after both review jobs
-    if: always() && github.event.label.name == 'review'
-    runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write # to remove the triggering label
-    timeout-minutes: 5
-    steps:
-      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+      - name: Remove the review label
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             try {
