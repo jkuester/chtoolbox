@@ -51,8 +51,11 @@ describe('Form Service', () => {
 
       const output = yield* readWorkbook(filePath);
       const survey = getSheet(output, 'survey');
+      // The depth column is prepended, so the original columns shift one to the right.
+      expect(survey.getCell('A1').value).to.equal('#');
+      expect(survey.getCell('A2').value).to.have.property('formula');
       // The alternative "begin group" type is normalized to its canonical form.
-      expect(survey.getCell('A2').value).to.equal('begin_group');
+      expect(survey.getCell('B2').value).to.equal('begin_group');
       expect(getConditionalFormattings(survey)).to.not.be.empty;
       expect(survey.views.some(view => view.state === 'frozen')).to.be.true;
       expect(getConditionalFormattings(getSheet(output, 'choices'))).to.not.be.empty;

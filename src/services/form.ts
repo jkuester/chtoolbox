@@ -1,11 +1,13 @@
 import { Effect, Option, pipe } from 'effect';
 import ExcelJS from 'exceljs';
-import { getWorksheetWithName } from '../libs/xlsx.ts';
+import { getWorksheetWithName, type Worksheet } from '../libs/xlsx.ts';
 import {
   normalizeSurveyTypeValues,
   setSurveyBeginGroupFormatting,
   setSurveyBeginRepeatFormatting,
   setSurveyCalculationFormatting,
+  setSurveyDepthColumn,
+  setSurveyDepthFormatting,
   setSurveyEndGroupFormatting,
   setSurveyEndRepeatFormatting,
   setSurveyHeaderComments,
@@ -46,28 +48,42 @@ const saveWorkbook = (
   filePath: string
 ) => (workbook: ExcelJS.Workbook) => Effect.promise(() => workbook.xlsx.writeFile(filePath));
 
+const formatSurveyHeaders = (workbook: ExcelJS.Workbook) => (surveySheet: Worksheet) => pipe(
+  surveySheet,
+  Effect.succeed,
+  Effect.tap(normalizeSurveyTypeValues),
+  Effect.tap(setSurveyDepthColumn),
+  Effect.tap(freezeHeaderAndKeyColumns(3)),
+  Effect.tap(setSurveyHeaderFormatting),
+  Effect.tap(setSurveyHeaderComments),
+  Effect.tap(setSurveyHeaderValidation(workbook)),
+);
+
+const formatSurveyBody = (workbook: ExcelJS.Workbook) => (surveySheet: Worksheet) => pipe(
+  surveySheet,
+  Effect.succeed,
+  Effect.tap(setSurveyTypeFormatting(workbook)),
+  Effect.tap(setSurveyTypeValidation),
+  Effect.tap(setSurveySupportedValuesValidation),
+  Effect.tap(setSurveySupportedValuesFormatting),
+  Effect.tap(setSurveyNameFormatting),
+  Effect.tap(setSurveyLabelFormatting),
+  Effect.tap(setSurveyCalculationFormatting),
+  Effect.tap(setSurveyBeginGroupFormatting),
+  Effect.tap(setSurveyEndGroupFormatting),
+  Effect.tap(setSurveyBeginRepeatFormatting),
+  Effect.tap(setSurveyEndRepeatFormatting),
+  Effect.tap(setHeaderlessCellFormatting),
+  // Last: it fills the buffer rows, which grows `rowCount` for anything that reads it afterwards.
+  Effect.tap(setSurveyDepthFormatting),
+);
+
 const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
   getWorksheetWithName(workbook)(SHEET_NAME_SURVEY),
   Option.map(surveySheet => pipe(
-    surveySheet,
-    Effect.succeed,
-    Effect.tap(normalizeSurveyTypeValues),
-    Effect.tap(freezeHeaderAndKeyColumns),
-    Effect.tap(setSurveyHeaderFormatting),
-    Effect.tap(setSurveyHeaderComments),
-    Effect.tap(setSurveyHeaderValidation(workbook)),
-    Effect.tap(setSurveyTypeFormatting(workbook)),
-    Effect.tap(setSurveyTypeValidation),
-    Effect.tap(setSurveySupportedValuesValidation),
-    Effect.tap(setSurveySupportedValuesFormatting),
-    Effect.tap(setSurveyNameFormatting),
-    Effect.tap(setSurveyLabelFormatting),
-    Effect.tap(setSurveyCalculationFormatting),
-    Effect.tap(setSurveyBeginGroupFormatting),
-    Effect.tap(setSurveyEndGroupFormatting),
-    Effect.tap(setSurveyBeginRepeatFormatting),
-    Effect.tap(setSurveyEndRepeatFormatting),
-    Effect.tap(setHeaderlessCellFormatting),
+    formatSurveyHeaders(workbook)(surveySheet),
+    Effect.flatMap(formatSurveyBody(workbook)),
+    Effect.asVoid,
   )),
   Option.getOrElse(() => Effect.void)
 );
@@ -77,7 +93,7 @@ const formatChoicesWorksheet = (workbook: ExcelJS.Workbook) => pipe(
   Option.map(choicesSheet => pipe(
     choicesSheet,
     Effect.succeed,
-    Effect.tap(freezeHeaderAndKeyColumns),
+    Effect.tap(freezeHeaderAndKeyColumns()),
     Effect.tap(setChoicesHeaderFormatting),
     Effect.tap(setChoicesHeaderComments),
     Effect.tap(setChoicesHeaderValidation(workbook)),

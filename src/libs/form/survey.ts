@@ -4,6 +4,7 @@ import {
   getColumnLetter,
   getColumnLettersMatching,
   getHeaderNames,
+  removeTrailingEmptyRows,
   setHeaderComments,
   STYLE,
   type Worksheet
@@ -23,6 +24,11 @@ import {
 } from './index.ts';
 import { getChoicesListNameRange } from './choices.ts';
 
+const DEPTH_COLUMN_NAME = '#';
+// The gutter always leads the sheet. Normalising it here is what lets everything downstream take
+// its position as given rather than resolving it.
+const DEPTH_COLUMN_INDEX = 1;
+const BODY_START_COLUMN_INDEX = DEPTH_COLUMN_INDEX + 1;
 const SURVEY_COLUMNS: Record<string, {
   /** Description of the column */
   comment: string,
@@ -33,6 +39,9 @@ const SURVEY_COLUMNS: Record<string, {
   /** The complete set of values allowed in this column (offered as a dropdown; e.g. ['', 'true']) */
   supportedValues?: readonly string[],
 }> = {
+  [DEPTH_COLUMN_NAME]: {
+    comment: 'Indicates how deeply the row is nested inside groups and repeats. This column is ignored by pyxform.',
+  },
   appearance: {
     comment: 'One or more modifiers that determine how the question will be displayed.\n\nThese can be specific to '
       + 'the field type.',
@@ -573,14 +582,15 @@ const setSurveyGroupBoundaryFormatting = (type: string, style: Partial<ExcelJS.S
 ) => pipe(
   Tuple.make(
     getTypeColumnLetter(worksheet),
+    worksheet.getColumn(BODY_START_COLUMN_INDEX).letter,
     worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter,
   ),
-  ([typeCol, lastCol]) => worksheet.addConditionalFormatting({
-    ref: `A2:${lastCol}${String(worksheet.rowCount + BUFFER_ROW_COUNT)}`,
+  ([typeCol, firstCol, lastCol]) => worksheet.addConditionalFormatting({
+    ref: `${firstCol}2:${lastCol}${String(worksheet.rowCount + BUFFER_ROW_COUNT)}`,
     rules: [
       {
         type: 'expression',
-        formulae: [`AND($${typeCol}2="${type}",A$1<>"")`],
+        formulae: [`AND($${typeCol}2="${type}",${firstCol}$1<>"")`],
         style: { ...style },
         priority: 1,
       }
@@ -591,3 +601,164 @@ export const setSurveyBeginGroupFormatting = setSurveyGroupBoundaryFormatting('b
 export const setSurveyEndGroupFormatting = setSurveyGroupBoundaryFormatting('end_group', STYLE_END_GROUP);
 export const setSurveyBeginRepeatFormatting = setSurveyGroupBoundaryFormatting('begin_repeat', STYLE_BEGIN_REPEAT);
 export const setSurveyEndRepeatFormatting = setSurveyGroupBoundaryFormatting('end_repeat', STYLE_END_REPEAT);
+
+const DEPTH_COLUMN_WIDTH = 1;
+// Blank the displayed value. The background is the indicator; the number only selects it.
+const DEPTH_NUMBER_FORMAT = ';;;';
+
+/**
+ * Breathing room between the gutter's fill and the text beside it. There is nowhere to put it
+ * inside the gutter, since a cell fill covers the whole of its cell, so it is taken out of the
+ * next column instead, leaving a strip of that column's own unfilled background between the two.
+ *
+ * The gap is padded onto the displayed text rather than set as an `indent`, which is an integer
+ * count of roughly three spaces and so has no step this small. A leading literal in the number
+ * format pads by a single space and leaves the cell's value untouched, so what pyxform reads is
+ * unchanged. `@` is the text placeholder; every column this lands on holds text.
+ */
+const GUTTER_GAP_NUMBER_FORMAT = '" "@';
+const DEFAULT_NUMBER_FORMAT = 'General';
+
+/**
+ * Running count of the groups/repeats open at this row. `end_` rows report the depth of the group
+ * they close rather than the level below it, so a group's opening and closing rows read the same.
+ *
+ * Deliberately unguarded against a blank type, so blank rows inside a group still report the
+ * enclosing depth and draw a bar. Rows outside any group resolve to 0, which draws nothing.
+ */
+const buildDepthFormula = (typeCol: string, row: number): string => pipe(
+  Tuple.make(`$${typeCol}${String(row)}`, `$${typeCol}$2:$${typeCol}${String(row)}`),
+  ([cell, range]) => `COUNTIF(${range},"begin_*")-COUNTIF(${range},"end_*")`
+    + `+IF(LEFT(${cell},4)="end_",1,0)`,
+);
+
+const addDepthColumn = (worksheet: Worksheet) => (): string => {
+  worksheet.spliceColumns(DEPTH_COLUMN_INDEX, 0, []);
+  worksheet.getCell(1, DEPTH_COLUMN_INDEX).value = DEPTH_COLUMN_NAME;
+  return worksheet.getColumn(DEPTH_COLUMN_INDEX).letter;
+};
+
+/**
+ * A gutter that has drifted off the leading column — a user inserting a column ahead of it, say —
+ * is dropped rather than followed, leaving it to be rebuilt in place. It holds nothing but
+ * generated formulas, and honouring its position would put it back under the row-spanning rules,
+ * which is the one thing the row-spanning rules are kept clear of.
+ */
+const dropStrayDepthColumn = (worksheet: Worksheet): Worksheet => pipe(
+  getColumnLetter(DEPTH_COLUMN_NAME, worksheet),
+  Option.map(depthCol => worksheet.getColumn(depthCol).number),
+  Option.filter(colNumber => colNumber !== DEPTH_COLUMN_INDEX),
+  Option.map(colNumber => worksheet.spliceColumns(colNumber, 1)),
+  () => worksheet,
+);
+
+/**
+ * The number format is set per cell, not just on the column: cells belonging to rows that already
+ * existed resolve to the default style instead of inheriting the column's, and would show their
+ * number.
+ *
+ * The base fill is set per cell for that same reason, and deliberately *only* per cell — on the
+ * column it would run the grey stripe to the foot of the sheet, far below the form. Bounding it to
+ * the rows that carry a depth formula keeps the gutter the same height as the form itself.
+ */
+const setDepthFormula = (worksheet: Worksheet, depthCol: string, typeCol: string) => (row: number) => pipe(
+  worksheet.getCell(`${depthCol}${String(row)}`),
+  cell => Object.assign(cell, {
+    value: { formula: buildDepthFormula(typeCol, row) },
+    numFmt: DEPTH_NUMBER_FORMAT,
+    fill: { ...STYLE.FILL.GREY },
+  }),
+);
+
+// Applied per cell as well as on the column because rows that already exist carry their own style
+// and do not inherit the column's; the column entry covers rows added later.
+const setGutterGap = (worksheet: Worksheet): void => pipe(
+  worksheet.getColumn(BODY_START_COLUMN_INDEX),
+  column => Object.assign(column, { numFmt: GUTTER_GAP_NUMBER_FORMAT }),
+  column => Array.forEach(
+    Array.range(1, worksheet.rowCount),
+    row => worksheet.getCell(row, column.number).numFmt = GUTTER_GAP_NUMBER_FORMAT,
+  ),
+);
+
+const setDepthColumnStyle = (worksheet: Worksheet, depthCol: string): string => pipe(
+  worksheet.getColumn(depthCol),
+  column => Object.assign(column, { width: DEPTH_COLUMN_WIDTH, numFmt: DEPTH_NUMBER_FORMAT }),
+  // `;;;` blanks the text section too, so the column format would hide the header label as well.
+  () => Object.assign(worksheet.getCell(`${depthCol}1`), { numFmt: DEFAULT_NUMBER_FORMAT }),
+  () => depthCol,
+);
+
+/**
+ * The formulas run past the last populated row, so on a re-format they are the sheet's trailing
+ * content and `rowCount` would grow by the buffer size every run. Drop them before anything
+ * measures the sheet, then re-trim so `rowCount` reflects the form itself.
+ */
+const clearDepthValues = (worksheet: Worksheet, depthCol: string): string => pipe(
+  Array.range(2, worksheet.rowCount),
+  Array.forEach(row => worksheet.getCell(`${depthCol}${String(row)}`).value = null),
+  () => removeTrailingEmptyRows(worksheet),
+  () => depthCol,
+);
+
+export const setSurveyDepthColumn = (worksheet: Worksheet): void => pipe(
+  dropStrayDepthColumn(worksheet),
+  ws => getColumnLetter(DEPTH_COLUMN_NAME, ws),
+  Option.getOrElse(addDepthColumn(worksheet)),
+  depthCol => clearDepthValues(worksheet, depthCol),
+  depthCol => setDepthColumnStyle(worksheet, depthCol),
+  () => setGutterGap(worksheet),
+);
+
+/**
+ * The tinge the depth gutter takes on as nesting deepens: STYLE.FILL.GREY's grey blended toward
+ * STYLE.COLOR.BLUE, ending on it. One entry per nesting level. Level 0 is not here — it is the base
+ * fill, painted on the cell rather than by a rule.
+ */
+const DEPTH_SHADE_COLORS = [
+  STYLE.COLOR.BLUE,
+  'FF2C84C4',
+  'FF5296C7',
+  'FF75A7CB',
+  'FF96B6CD',
+  'FFB4C5D0',
+] as const;
+const buildDepthShadeFill = (argb: string): ExcelJS.Fill => ({
+  type: 'pattern',
+  pattern: 'solid',
+  bgColor: { argb },
+});
+
+const buildDepthShadeRules = (depthCol: string): ExcelJS.ConditionalFormattingRule[] => pipe(
+  DEPTH_SHADE_COLORS,
+  Array.map((argb, idx): ExcelJS.ConditionalFormattingRule => ({
+    type: 'expression',
+    formulae: [`${depthCol}2>=${String(DEPTH_SHADE_COLORS.length - idx)}`],
+    style: { fill: buildDepthShadeFill(argb) },
+    priority: idx + 1,
+  })),
+);
+
+const addDepthCellFormatting = (worksheet: Worksheet, depthCol: string): void => worksheet.addConditionalFormatting({
+  ref: getTypeValidationRange(depthCol, worksheet.rowCount),
+  rules: buildDepthShadeRules(depthCol),
+});
+
+const setDepthFormattingAndFormulas = (worksheet: Worksheet) => (depthCol: string): void => {
+  // The formatting's range has to be resolved before the formulas below grow `rowCount`.
+  addDepthCellFormatting(worksheet, depthCol);
+  Array.forEach(
+    Array.range(2, worksheet.rowCount + BUFFER_ROW_COUNT),
+    setDepthFormula(worksheet, depthCol, getTypeColumnLetter(worksheet)),
+  );
+};
+
+/**
+ * Must run last: filling the buffer rows grows `rowCount`, so every range derived from it has to
+ * already be resolved. The buffer is covered so rows appended below the form are shaded too.
+ */
+export const setSurveyDepthFormatting = (worksheet: Worksheet): void => pipe(
+  getColumnLetter(DEPTH_COLUMN_NAME, worksheet),
+  Option.map(setDepthFormattingAndFormulas(worksheet)),
+  Option.getOrElse(() => undefined),
+);

@@ -9,7 +9,14 @@ export type Worksheet = ExcelJS.Worksheet & {
   };
 };
 
+const COLOR = {
+  DARK_GREY: 'FF808080',
+  BLUE: 'FF0070C0',
+  PURPLE: 'FF7030A0',
+} as const;
+
 export const STYLE = {
+  COLOR,
   FONT: { BASE: { name: 'Liberation Sans', size: 10 } satisfies Partial<ExcelJS.Font> },
   FILL: {
     GREY: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } } satisfies ExcelJS.Fill,
@@ -17,9 +24,9 @@ export const STYLE = {
     GREEN: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFAFD095' } } satisfies ExcelJS.Fill,
   },
   BORDER: {
-    DARK_GREY: { style: 'thin', color: { argb: 'FF808080' } } satisfies Partial<ExcelJS.Border>,
-    BLUE: { style: 'medium', color: { argb: 'FF0070C0' } } satisfies Partial<ExcelJS.Border>,
-    PURPLE: { style: 'medium', color: { argb: 'FF7030A0' } } satisfies Partial<ExcelJS.Border>,
+    DARK_GREY: { style: 'thin', color: { argb: COLOR.DARK_GREY } } satisfies Partial<ExcelJS.Border>,
+    BLUE: { style: 'medium', color: { argb: COLOR.BLUE } } satisfies Partial<ExcelJS.Border>,
+    PURPLE: { style: 'medium', color: { argb: COLOR.PURPLE } } satisfies Partial<ExcelJS.Border>,
   }
 };
 const BASE_ALIGNMENT: Partial<ExcelJS.Alignment> = { vertical: 'bottom' };
@@ -63,7 +70,7 @@ const lastRowWithValues = (ws: Worksheet) => pipe(
 // ExcelJS has no public API for dropping rows off the end of a sheet. (spliceRows is a no-op when the
 // range runs to the end of the sheet, so it cannot be used here.)
 const getRowRecords = (ws: Worksheet) => (ws as unknown as { _rows: (ExcelJS.Row | undefined)[] })._rows;
-const removeTrailingEmptyRows = (ws: Worksheet): void => {
+export const removeTrailingEmptyRows = (ws: Worksheet): void => {
   getRowRecords(ws).length = lastRowWithValues(ws);
 };
 
