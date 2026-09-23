@@ -53,7 +53,8 @@ describe('Form Service', () => {
       const survey = getSheet(output, 'survey');
       // The depth column is prepended, so the original columns shift one to the right.
       expect(survey.getCell('A1').value).to.equal('#');
-      expect(survey.getCell('A2').value).to.have.property('formula');
+      // The gutter is drawn by conditional formatting alone; its cells hold nothing pyxform can read.
+      expect(survey.getCell('A2').value).to.equal(null);
       // The alternative "begin group" type is normalized to its canonical form.
       expect(survey.getCell('B2').value).to.equal('begin_group');
       expect(getConditionalFormattings(survey)).to.not.be.empty;

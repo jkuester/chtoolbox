@@ -10,6 +10,7 @@ export type Worksheet = ExcelJS.Worksheet & {
 };
 
 const COLOR = {
+  LIGHT_GREY: 'FFD3D3D3',
   DARK_GREY: 'FF808080',
   BLUE: 'FF0070C0',
   PURPLE: 'FF7030A0',
@@ -19,7 +20,7 @@ export const STYLE = {
   COLOR,
   FONT: { BASE: { name: 'Liberation Sans', size: 10 } satisfies Partial<ExcelJS.Font> },
   FILL: {
-    GREY: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } } satisfies ExcelJS.Fill,
+    GREY: { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR.LIGHT_GREY } } satisfies ExcelJS.Fill,
     BLUE_GREY: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCCCF0' } } satisfies ExcelJS.Fill,
     GREEN: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFAFD095' } } satisfies ExcelJS.Fill,
   },
