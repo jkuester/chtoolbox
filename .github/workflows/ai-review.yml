@@ -1,5 +1,5 @@
-# Triggered by setting the `review` label on a PR.
-name: PR Review
+# Triggered by setting the `ai-review` label on a PR.
+name: AI Review
 
 env:
   OCR_LLM_MODEL: claude-sonnet-5
@@ -16,15 +16,18 @@ permissions: {}
 jobs:
   # Line-by-line correctness review of the diff based on https://github.com/alibaba/open-code-review/blob/main/examples/github_actions/ocr-review.yml
   code-review:
-    if: github.event.label.name == 'review'
+    if: github.event.label.name == 'ai-review'
     runs-on: ubuntu-latest
     permissions:
       contents: read # to read the diff under review
       pull-requests: write # to post the review summary and inline comments
     timeout-minutes: 30
+    outputs:
+      summary_comment_url: ${{ steps.ocr.outputs.summary_comment_url }}
     steps:
       - name: Run OpenCodeReview
-        uses: alibaba/open-code-review@420bae824a43335e2fc4266eb71f33756715e232 # v1.10.1
+        id: ocr
+        uses: alibaba/open-code-review@bccbc15f785269400735d5255540c231e6c02b6d # v1.12.9 - keep in sync with the ocr_version below
         env:
           OCR_ENABLE_TELEMETRY: "1"
           OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
@@ -32,20 +35,21 @@ jobs:
           OTEL_EXPORTER_OTLP_HEADERS: Authorization=Basic ${{ secrets.LANGFUSE_OTEL_BASIC_AUTH }},x-langfuse-ingestion-version=4
           OTEL_RESOURCE_ATTRIBUTES: deployment.environment.name=ci,cicd.pipeline.task.name=${{ github.job }},vcs.repository.name=${{ github.repository }},vcs.change.id=${{ github.event.pull_request.number }},cicd.pipeline.run.id=${{ github.run_id }}
         with:
-          llm_url: ${{ env.OCR_LLM_URL }}
-          llm_auth_token: ${{ secrets.OCR_LLM_AUTH_TOKEN }}
-          llm_auth_header: "x-api-key"
-          llm_model: ${{ env.OCR_LLM_MODEL }}
-          llm_use_anthropic: "true"
-          incremental: 'true'
-          sticky_summary: 'false'
           background: ${{ github.event.pull_request.title }}
-          # '{"output_config": {"effort": "high"}}' — low|medium|high|xhigh|max.
+          effort: medium # Controls number of review rounds - low=1, medium=2, high=3 - default=medium
+          incremental: 'true'
+          llm_auth_header: "x-api-key"
+          llm_auth_token: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
           llm_extra_body: '{"output_config": {"effort": "xhigh"}}'
+          llm_model: ${{ env.OCR_LLM_MODEL }}
+          llm_url: ${{ env.OCR_LLM_URL }}
+          llm_use_anthropic: "true"
+          ocr_version: '1.12.9' # keep in sync with the action version above
+          sticky_summary: 'false'
 
   # completeness review that confirms the PR deliver what the linked issue and its description promise
   completeness-review:
-    if: github.event.label.name == 'review'
+    if: github.event.label.name == 'ai-review'
     runs-on: ubuntu-latest
     permissions:
       contents: read # to read the diff under review
@@ -75,7 +79,7 @@ jobs:
           OTEL_LOG_TOOL_DETAILS: "1"
           OTEL_RESOURCE_ATTRIBUTES: deployment.environment.name=ci,cicd.pipeline.task.name=${{ github.job }},vcs.repository.name=${{ github.repository }},vcs.change.id=${{ github.event.pull_request.number }},cicd.pipeline.run.id=${{ github.run_id }}
         with:
-          anthropic_api_key: ${{ secrets.OCR_LLM_AUTH_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           plugin_marketplaces: https://github.com/medic/cht-ai-tools.git
           plugins: |
@@ -88,13 +92,13 @@ jobs:
 
             Return the skill's report verbatim as `report_markdown`. If the skill concludes the PR's intent could not 
             be established, return that as the report; an inconclusive report is still the result.
-          # Keep the configured tools synced up with what is configured in the frontmatter of the skill
           claude_args: |
             --model ${{ env.CLAUDE_LLM_MODEL }}
-            --allowedTools "Skill,Read,Grep,Glob,Bash(/home/runner/.claude/plugins/cache/medic-cht-ai-tools/cht-pr-review/*/scripts/pr-context.sh*),Bash(/home/runner/.claude/plugins/cache/medic-cht-ai-tools/cht-pr-review/*/scripts/pr-diff.sh*),mcp__plugin_cht-docs-mcp_cht-docs__ask_question,mcp__plugin_cht-docs-mcp_cht-docs__search_docs"
+            --allowedTools "Skill,Bash(/home/runner/.claude/plugins/cache/medic-cht-ai-tools/cht-pr-review/*/scripts/pr-context.sh:*),Bash(/home/runner/.claude/plugins/cache/medic-cht-ai-tools/cht-pr-review/*/scripts/pr-diff.sh:*),mcp__plugin_cht-docs-mcp_cht-docs__ask_question,mcp__plugin_cht-docs-mcp_cht-docs__search_docs"
             --disallowedTools "Edit,Write,NotebookEdit"
             --json-schema '{"type":"object","required":["report_markdown"],"additionalProperties":false,"properties":{"report_markdown":{"type":"string","description":"The complete review report as GitHub-flavored markdown."}}}'
       - name: Upload Claude execution log
+        if: ${{ !cancelled() && steps.review.outputs.execution_file }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: completeness-review-${{ github.run_id }}-${{ github.run_attempt }}
@@ -103,15 +107,17 @@ jobs:
 
   post-review:
     needs: [code-review, completeness-review]
+    if: ${{ !cancelled() && github.event.label.name == 'ai-review' }}
     runs-on: ubuntu-latest
     permissions:
-      pull-requests: write # to update (or post) the review summary comment
+      pull-requests: write # to update (or post) the review summary comment and clear the label
     timeout-minutes: 5
     steps:
       - name: Post review comment
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         env:
           STRUCTURED_OUTPUT: ${{ needs.completeness-review.outputs.structured_output }}
+          SUMMARY_COMMENT_URL: ${{ needs.code-review.outputs.summary_comment_url }}
         with:
           script: |
             let report_markdown;
@@ -120,54 +126,52 @@ jobs:
             } catch (error) {
               core.warning(`Could not parse structured_output: ${error.message}`);
             }
-            if (!report_markdown) {
-              core.setFailed('Review produced no report_markdown; nothing to post.');
+            const intro = '> [!NOTE]\n> ' + [
+              `🤖 **This is an AI-generated review**, requested by @${context.payload.sender.login}.`,
+              'Its content and suggestions can be wrong. Please respond with a comment if you doubts regarding any ',
+              'of the review. A maintainer will also review this PR.',
+            ].join(' ');
+            const commentId = process.env.SUMMARY_COMMENT_URL?.match(/#issuecomment-(\d+)$/)?.[1];
+            if (!commentId && !report_markdown) {
+              core.setFailed('Neither review produced anything to post.');
               return;
             }
-            // Every OCR summary comment opens with this marker
-            const marker = '<!-- ocr-summary';
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              ...context.repo,
-              issue_number: context.issue.number,
-              per_page: 100,
-            });
-            const summary = comments.findLast(comment => comment.body?.includes(marker));
-            if (!summary) {
+            if (!commentId) {
               core.warning('Found no OpenCodeReview summary comment for this run; posting the report on its own.');
               await github.rest.issues.createComment({
                 ...context.repo,
                 issue_number: context.issue.number,
-                body: report_markdown,
+                body: `${intro}\n\n${report_markdown}`,
               });
               return;
             }
+            const { data: summary } = await github.rest.issues.getComment({
+              ...context.repo,
+              comment_id: commentId,
+            });
+            const sections = [intro, summary.body, '---', report_markdown];
             await github.rest.issues.updateComment({
               ...context.repo,
               comment_id: summary.id,
-              body: `${summary.body}\n\n---\n\n${report_markdown}`,
+              body: sections.join('\n\n'),
             });
-
-  # Clear the label so re-applying it triggers a clean re-review
-  remove-label:
-    needs: post-review # transitively ordered after both review jobs
-    if: always() && github.event.label.name == 'review'
-    runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write # to remove the triggering label
-    timeout-minutes: 5
-    steps:
-      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+            if (!report_markdown) {
+              core.setFailed('Completeness review produced no report_markdown.');
+            }
+      - name: Remove the ai-review label
+        if: always()
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             try {
               await github.rest.issues.removeLabel({
                 ...context.repo,
                 issue_number: context.issue.number,
-                name: 'review',
+                name: 'ai-review',
               });
             } catch (error) {
               if (error.status !== 404) {
                 throw error;
               }
-              core.info('Label "review" was already gone.');
+              core.info('Label "ai-review" was already gone.');
             }
