@@ -75,7 +75,19 @@ export const removeTrailingEmptyRows = (ws: Worksheet): void => {
   getRowRecords(ws).length = lastRowWithValues(ws);
 };
 
+const isSharedFormula = (cell: ExcelJS.Cell) => cell.formulaType === ExcelJS.FormulaType.Shared
+  || (cell.value as { shareType?: string }).shareType === 'shared';
+// A shared formula's clones reference their master by address, and ExcelJS does not update that address when
+// columns/rows are spliced. Giving every cell its own formula keeps them valid across a splice.
+const unshareFormula = (cell: ExcelJS.Cell) => pipe(
+  cell,
+  Option.liftPredicate(isSharedFormula),
+  Option.map(c => Object.assign(c, { value: { formula: c.formula, result: c.result } })),
+);
+const unshareFormulas = (ws: Worksheet) => ws.eachRow(row => row.eachCell(unshareFormula));
+
 export const clearSheetFormatting = (ws: Worksheet): void => {
+  unshareFormulas(ws);
   ws.removeConditionalFormatting(null);
   ws.dataValidations.model = {};
   removeTrailingEmptyRows(ws);
