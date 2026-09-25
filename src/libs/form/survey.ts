@@ -371,9 +371,10 @@ export const setSurveyHeaderFormatting = (worksheet: Worksheet): void => pipe(
     buildTranslatableHeaderFormula(`${firstCol}1`, SURVEY_COLUMN_NAMES_TRANSLATABLE),
     buildKnownHeaderFormula(`${firstCol}1`, SURVEY_COLUMN_NAMES_BASIC),
     buildKnownHeaderFormula(`${firstCol}1`, SURVEY_COLUMN_NAMES_EXPRESSION),
+    buildEmptyBodyFormula(worksheet, firstCol),
     lastCol
   ),
-  ([cell, headerRow, translatable, valid, expression, lastCol]): ExcelJS.ConditionalFormattingOptions => ({
+  ([cell, headerRow, translatable, valid, expression, emptyBody, lastCol]): ExcelJS.ConditionalFormattingOptions => ({
     ref: `${cell}:${lastCol}1`,
     rules: [
       {
@@ -390,19 +391,19 @@ export const setSurveyHeaderFormatting = (worksheet: Worksheet): void => pipe(
       },
       {
         type: 'expression',
-        formulae: [`AND(${translatable},${buildEmptyBodyFormula(worksheet)})`],
+        formulae: [`AND(${translatable},${emptyBody})`],
         style: { ...FORM_STYLE.HEADER.TRANSLATABLE_EMPTY },
         priority: 3,
       },
       {
         type: 'expression',
-        formulae: [`AND(${valid},${buildEmptyBodyFormula(worksheet)})`],
+        formulae: [`AND(${valid},${emptyBody})`],
         style: { ...FORM_STYLE.HEADER.EMPTY },
         priority: 4,
       },
       {
         type: 'expression',
-        formulae: [`AND(${expression},${buildEmptyBodyFormula(worksheet)})`],
+        formulae: [`AND(${expression},${emptyBody})`],
         style: { ...FORM_STYLE.HEADER.EXPRESSION_EMPTY },
         priority: 5,
       },

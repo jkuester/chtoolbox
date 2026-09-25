@@ -103,6 +103,12 @@ describe('form libs', () => {
 
       expect(buildEmptyBodyFormula(worksheet)).to.equal('COUNTA(A$2:A$1002)=0');
     });
+
+    it('counts the given column', () => {
+      const [, worksheet] = newSheet('survey', ['#', 'type'], [['', 'calculate']]);
+
+      expect(buildEmptyBodyFormula(worksheet, 'B')).to.equal('COUNTA(B$2:B$1002)=0');
+    });
   });
 
   describe('buildEmptyColumnFormula', () => {

@@ -112,6 +112,16 @@ describe('form survey libs', () => {
       expect(getConditionalFormattingRule(worksheet, 0).style).to.deep.equal(FORM_STYLE.ERROR);
       expect(getConditionalFormattingRule(worksheet, 1).style).to.deep.equal(FORM_STYLE.WARNING);
     });
+
+    it('checks for an empty body in the same column as the header being formatted', () => {
+      const [, worksheet] = newWorkbook(['type', 'name', 'label'], [['note', 'n', 'l']]);
+
+      setSurveyHeaderFormatting(worksheet);
+
+      // Relative references resolve from the range's top-left cell (B1), so the body must be counted from B too.
+      [2, 3, 4].forEach(idx => expect(getConditionalFormattingRule(worksheet, idx).formulae[0])
+        .to.contain(',COUNTA(B$2:B$1002)=0)'));
+    });
   });
 
   describe('setSurveyHeaderComments', () => {

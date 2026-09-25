@@ -169,6 +169,22 @@ describe('xlsx libs', () => {
       expect((fakeCell as { _comment?: unknown })._comment).to.be.undefined;
       expect(fakeWorksheet.views).to.be.undefined;
     });
+
+    it('converts shared formulas into standalone formulas so they survive a column splice', async () => {
+      const [workbook, worksheet] = newSheet('survey', ['type', 'constraint'], [['integer', 'x']]);
+      const sharedMaster = { formula: 'TRUE()', result: true, shareType: 'shared', ref: 'B3:B4' };
+      worksheet.getCell('B3').value = sharedMaster;
+      worksheet.getCell('B4').value = { sharedFormula: 'B3', result: true };
+      worksheet.getCell('C3').value = { formula: 'NOW()', result: 1 };
+
+      clearSheetFormatting(worksheet);
+      worksheet.spliceColumns(1, 0, []);
+
+      expect(worksheet.getCell('C3').value).to.deep.equal({ formula: 'TRUE()', result: true });
+      expect(worksheet.getCell('C4').value).to.deep.equal({ formula: 'TRUE()', result: true });
+      expect(worksheet.getCell('D3').value).to.deep.equal({ formula: 'NOW()', result: 1 });
+      await workbook.xlsx.writeBuffer();
+    });
   });
 
   describe('setHeaderComments', () => {
