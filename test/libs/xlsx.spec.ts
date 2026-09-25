@@ -185,6 +185,16 @@ describe('xlsx libs', () => {
       expect(worksheet.getCell('D3').value).to.deep.equal({ formula: 'NOW()', result: 1 });
       await workbook.xlsx.writeBuffer();
     });
+
+    it('handles merged cells whose master is empty', () => {
+      const [, worksheet] = newSheet('survey', ['type', 'name'], [['calculate', 'x']]);
+      worksheet.mergeCells('C2:D2');
+
+      clearSheetFormatting(worksheet);
+
+      expect(worksheet.getCell('D2').value).to.be.null;
+      expect(worksheet.getCell('A2').value).to.equal('calculate');
+    });
   });
 
   describe('setHeaderComments', () => {
