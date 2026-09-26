@@ -95,8 +95,9 @@ export const buildKnownHeaderFormula = (cell: string, names: readonly string[]):
   quoted => `NOT(ISERROR(MATCH(${cell},{${quoted.join(',')}},0)))`,
 );
 
-export const buildEmptyBodyFormula = (worksheet: Worksheet): string =>
-  `COUNTA(A$2:A$${String(worksheet.rowCount + BUFFER_ROW_COUNT)})=0`;
+// Relative to the top-left cell of the formatting range, so `column` must be that range's first column.
+export const buildEmptyBodyFormula = (worksheet: Worksheet, column = 'A'): string =>
+  `COUNTA(${column}$2:${column}$${String(worksheet.rowCount + BUFFER_ROW_COUNT)})=0`;
 export const buildEmptyColumnFormula = (
   worksheet: Worksheet
 ): string => `AND(A1<>"",${buildEmptyBodyFormula(worksheet)})`;

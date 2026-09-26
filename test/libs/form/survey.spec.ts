@@ -103,13 +103,24 @@ describe('form survey libs', () => {
 
       const lastCol = worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter;
       expect(getConditionalFormattings(worksheet)).to.have.length(1);
-      expect(getConditionalFormatting(worksheet).ref).to.equal(`A1:${lastCol}1`);
+      // Starts past the depth gutter, whose header is styled directly.
+      expect(getConditionalFormatting(worksheet).ref).to.equal(`B1:${lastCol}1`);
       expect(getConditionalFormatting(worksheet).rules).to.have.length(8);
       expect(getConditionalFormattingRule(worksheet, 0).formulae)
-        .to.deep.equal([`AND(A1<>"",COUNTIF($A$1:$${lastCol}$1,A1)>1)`]);
+        .to.deep.equal([`AND(B1<>"",COUNTIF($B$1:$${lastCol}$1,B1)>1)`]);
       // A duplicate header breaks the pyxform build; an unrecognized one is only silently ignored.
       expect(getConditionalFormattingRule(worksheet, 0).style).to.deep.equal(FORM_STYLE.ERROR);
       expect(getConditionalFormattingRule(worksheet, 1).style).to.deep.equal(FORM_STYLE.WARNING);
+    });
+
+    it('checks for an empty body in the same column as the header being formatted', () => {
+      const [, worksheet] = newWorkbook(['type', 'name', 'label'], [['note', 'n', 'l']]);
+
+      setSurveyHeaderFormatting(worksheet);
+
+      // Relative references resolve from the range's top-left cell (B1), so the body must be counted from B too.
+      [2, 3, 4].forEach(idx => expect(getConditionalFormattingRule(worksheet, idx).formulae[0])
+        .to.contain(',COUNTA(B$2:B$1002)=0)'));
     });
   });
 
@@ -278,33 +289,25 @@ describe('form survey libs', () => {
       expect(worksheet.getCell('C2').value).to.equal('g1');
     });
 
-    it('counts open groups and repeats, crediting end rows to the group they close', () => {
-      const [, worksheet] = newWorkbook(['type', 'name'], [['begin_group', 'g1']]);
+    it('leaves the gutter cells empty, so pyxform has nothing to read from them', () => {
+      const [, worksheet] = newWorkbook(['type', 'name'], [['begin_group', 'g1'], ['', ''], ['end_group', '']]);
 
       setSurveyDepthColumn(worksheet);
       setSurveyDepthFormatting(worksheet);
 
-      expect(worksheet.getCell('A2').value).to.deep.equal({
-        formula: 'COUNTIF($B$2:$B2,"begin_*")-COUNTIF($B$2:$B2,"end_*")+IF(LEFT($B2,4)="end_",1,0)',
-      });
+      expect(worksheet.getCell('A2').value).to.equal(null);
+      expect(worksheet.getCell('A3').value).to.equal(null);
+      expect(worksheet.getCell('A4').value).to.equal(null);
     });
 
-    it('hides the depth values, leaving the background as the only indicator', () => {
-      const [, worksheet] = newWorkbook(['type', 'name'], [['text', 'q1']]);
-
-      setSurveyDepthColumn(worksheet);
-
-      expect(worksheet.getColumn('A').numFmt).to.equal(';;;');
-    });
-
-    it('leaves the header label visible, which the column format would otherwise blank', () => {
+    it('styles the header directly, as the header rules start past the gutter', () => {
       const [, worksheet] = newWorkbook(['type', 'name'], [['text', 'q1']]);
 
       setSurveyDepthColumn(worksheet);
 
       expect(worksheet.getCell('A1').value).to.equal('#');
-      expect(worksheet.getCell('A1').numFmt).to.equal('General');
-      expect(worksheet.getCell('A2').numFmt).to.equal(';;;');
+      expect(worksheet.getCell('A1').style).to.deep.equal(FORM_STYLE.HEADER.BASE);
+      expect(worksheet.getColumn('A').width).to.equal(1);
     });
 
     it('pads the column beside the gutter, so the fill does not run into its text', () => {
@@ -370,51 +373,45 @@ describe('form survey libs', () => {
       expect(worksheet.rowCount).to.equal(1);
     });
 
-    it('drops stale formulas so repeat runs do not grow the sheet by the buffer each time', () => {
-      const [, worksheet] = newWorkbook(['type', 'name'], [['begin_group', 'g1']]);
+    it('clears values left in the gutter by an earlier formatter or by hand', () => {
+      // An earlier formatter wrote depth formulas into the cells, running on into the buffer rows.
+      const [, worksheet] = newWorkbook(['#', 'type', 'name'], [['', 'begin_group', 'g1']]);
+      worksheet.getCell('A2').value = { formula: 'COUNTIF($B$2:$B2,"begin_*")' };
+      worksheet.getCell('A3').value = 0;
+      worksheet.getCell('A1002').value = { formula: 'COUNTIF($B$2:$B1002,"begin_*")' };
 
       setSurveyDepthColumn(worksheet);
-      setSurveyDepthFormatting(worksheet);
-      const grownRowCount = worksheet.rowCount;
-      setSurveyDepthColumn(worksheet);
 
-      expect(grownRowCount).to.equal(1002);
+      // Re-trimmed once the stale formulas are gone, so the buffer does not count as form. (Checked
+      // first: `getCell` on a row past the end recreates its record.)
       expect(worksheet.rowCount).to.equal(2);
+      expect(worksheet.getCell('A2').value).to.equal(null);
+      expect(worksheet.getCell('A3').value).to.equal(null);
     });
   });
 
   describe('setSurveyDepthFormatting', () => {
-    it('fills the buffer rows so rows appended below the form are shaded too', () => {
+    const depth = 'COUNTIF($B$2:$B2,"begin_*")-COUNTIF($B$2:$B2,"end_*")+IF(LEFT($B2,4)="end_",1,0)';
+
+    it('counts open groups and repeats in the rule itself, crediting end rows to the group they close', () => {
       const [, worksheet] = newWorkbook(['type', 'name'], [['begin_group', 'g1']]);
       setSurveyDepthColumn(worksheet);
 
       setSurveyDepthFormatting(worksheet);
 
-      expect(worksheet.getCell('A1002').value).to.have.property('formula');
-      expect(worksheet.getCell('A1003').value).to.equal(null);
+      // Relative to the first row of the range, so each row counts the types above and including it.
+      expect(getConditionalFormattingRule(worksheet, 5).formulae).to.deep.equal([`${depth}>=1`]);
     });
 
-    it('hides the number on rows that already existed, which miss the column format', () => {
+    it('covers the form and the buffer rows without adding cell records for them', () => {
       const [, worksheet] = newWorkbook(['type', 'name'], [['begin_group', 'g1']]);
-      // An empty row record, as left behind by a user appending further down the sheet.
-      worksheet.getRow(3);
       setSurveyDepthColumn(worksheet);
 
       setSurveyDepthFormatting(worksheet);
 
-      expect(worksheet.getCell('A3').numFmt).to.equal(';;;');
-    });
-
-    it('reports the enclosing depth for blank rows inside a group', () => {
-      const [, worksheet] = newWorkbook(['type', 'name'], [['begin_group', 'g1'], ['', '']]);
-      setSurveyDepthColumn(worksheet);
-
-      setSurveyDepthFormatting(worksheet);
-
-      // No blank-type guard, so the running count carries through the empty row.
-      expect(worksheet.getCell('A3').value).to.deep.equal({
-        formula: 'COUNTIF($B$2:$B3,"begin_*")-COUNTIF($B$2:$B3,"end_*")+IF(LEFT($B3,4)="end_",1,0)',
-      });
+      expect(getConditionalFormatting(worksheet, 0).ref).to.equal('A2:A1002');
+      // Nothing written past the form, so `rowCount` still reflects the form itself.
+      expect(worksheet.rowCount).to.equal(2);
     });
 
     it('tinges the depth cell bluer at each nesting level, deepest rule first', () => {
@@ -424,16 +421,16 @@ describe('form survey libs', () => {
       setSurveyDepthFormatting(worksheet);
 
       const formatting = getConditionalFormatting(worksheet, 0);
-      expect(formatting.ref).to.equal('A2:A1002');
       expect(formatting.rules.map(({ formulae }) => formulae[0])).to.deep.equal([
-        'A2>=6',
-        'A2>=5',
-        'A2>=4',
-        'A2>=3',
-        'A2>=2',
-        'A2>=1',
+        `${depth}>=6`,
+        `${depth}>=5`,
+        `${depth}>=4`,
+        `${depth}>=3`,
+        `${depth}>=2`,
+        `${depth}>=1`,
+        'TRUE',
       ]);
-      // Deepest first, fading back toward the dark-theme background. Nothing matches at depth 0.
+      // Deepest first, fading back toward the resting grey, which the catch-all paints at depth 0.
       expect(formatting.rules.map(({ style }) => (style as { fill: { bgColor: object } }).fill.bgColor))
         .to.deep.equal([
           { argb: 'FF0070C0' },
@@ -442,6 +439,7 @@ describe('form survey libs', () => {
           { argb: 'FF75A7CB' },
           { argb: 'FF96B6CD' },
           { argb: 'FFB4C5D0' },
+          { argb: STYLE.FILL.GREY.fgColor.argb },
         ]);
     });
 
@@ -452,28 +450,17 @@ describe('form survey libs', () => {
       setSurveyDepthFormatting(worksheet);
 
       expect(getConditionalFormatting(worksheet, 0).rules.map(({ priority }) => priority))
-        .to.deep.equal([1, 2, 3, 4, 5, 6]);
+        .to.deep.equal([1, 2, 3, 4, 5, 6, 7]);
     });
 
-    it('paints the resting grey on the depth cells, which is level 0 of the ramp', () => {
-      const [, worksheet] = newWorkbook(['type', 'name'], [['text', 'q1']]);
-      setSurveyDepthColumn(worksheet);
-
-      setSurveyDepthFormatting(worksheet);
-
-      expect(worksheet.getCell('A2').fill).to.deep.equal(STYLE.FILL.GREY);
-    });
-
-    it('leaves the grey off the column, which would run it to the foot of the sheet', () => {
+    it('leaves the grey off the cells and the column, which would grow the sheet or run it to the foot', () => {
       const [, worksheet] = newWorkbook(['type', 'name'], [['text', 'q1']]);
       setSurveyDepthColumn(worksheet);
 
       setSurveyDepthFormatting(worksheet);
 
       expect(worksheet.getColumn('A').style.fill).to.equal(undefined);
-      // Bounded to the rows carrying a depth formula.
-      expect(worksheet.getCell('A1002').fill).to.deep.equal(STYLE.FILL.GREY);
-      expect(worksheet.getCell('A1003').fill).to.equal(undefined);
+      expect(worksheet.getCell('A2').fill).to.equal(undefined);
     });
 
     it('does nothing when there is no depth column', () => {

@@ -10,6 +10,7 @@ export type Worksheet = ExcelJS.Worksheet & {
 };
 
 const COLOR = {
+  LIGHT_GREY: 'FFD3D3D3',
   DARK_GREY: 'FF808080',
   BLUE: 'FF0070C0',
   PURPLE: 'FF7030A0',
@@ -19,7 +20,7 @@ export const STYLE = {
   COLOR,
   FONT: { BASE: { name: 'Liberation Sans', size: 10 } satisfies Partial<ExcelJS.Font> },
   FILL: {
-    GREY: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } } satisfies ExcelJS.Fill,
+    GREY: { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR.LIGHT_GREY } } satisfies ExcelJS.Fill,
     BLUE_GREY: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCCCF0' } } satisfies ExcelJS.Fill,
     GREEN: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFAFD095' } } satisfies ExcelJS.Fill,
   },
@@ -74,7 +75,19 @@ export const removeTrailingEmptyRows = (ws: Worksheet): void => {
   getRowRecords(ws).length = lastRowWithValues(ws);
 };
 
+const isSharedFormula = (cell: ExcelJS.Cell) => cell.formulaType === ExcelJS.FormulaType.Shared
+  || (cell.value as { shareType?: string } | null)?.shareType === 'shared';
+// A shared formula's clones reference their master by address, and ExcelJS does not update that address when
+// columns/rows are spliced. Giving every cell its own formula keeps them valid across a splice.
+const unshareFormula = (cell: ExcelJS.Cell) => pipe(
+  cell,
+  Option.liftPredicate(isSharedFormula),
+  Option.map(c => Object.assign(c, { value: { formula: c.formula, result: c.result } })),
+);
+const unshareFormulas = (ws: Worksheet) => ws.eachRow(row => row.eachCell(unshareFormula));
+
 export const clearSheetFormatting = (ws: Worksheet): void => {
+  unshareFormulas(ws);
   ws.removeConditionalFormatting(null);
   ws.dataValidations.model = {};
   removeTrailingEmptyRows(ws);

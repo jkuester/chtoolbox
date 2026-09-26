@@ -74,7 +74,6 @@ const formatSurveyBody = (workbook: ExcelJS.Workbook) => (surveySheet: Worksheet
   Effect.tap(setSurveyBeginRepeatFormatting),
   Effect.tap(setSurveyEndRepeatFormatting),
   Effect.tap(setHeaderlessCellFormatting),
-  // Last: it fills the buffer rows, which grows `rowCount` for anything that reads it afterwards.
   Effect.tap(setSurveyDepthFormatting),
 );
 

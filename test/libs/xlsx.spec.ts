@@ -169,6 +169,32 @@ describe('xlsx libs', () => {
       expect((fakeCell as { _comment?: unknown })._comment).to.be.undefined;
       expect(fakeWorksheet.views).to.be.undefined;
     });
+
+    it('converts shared formulas into standalone formulas so they survive a column splice', async () => {
+      const [workbook, worksheet] = newSheet('survey', ['type', 'constraint'], [['integer', 'x']]);
+      const sharedMaster = { formula: 'A3+1', result: 1, shareType: 'shared', ref: 'B3:B4' };
+      worksheet.getCell('B3').value = sharedMaster;
+      worksheet.getCell('B4').value = { sharedFormula: 'B3', result: 1 };
+      worksheet.getCell('C3').value = { formula: 'NOW()', result: 1 };
+
+      clearSheetFormatting(worksheet);
+      worksheet.spliceColumns(1, 0, []);
+
+      expect(worksheet.getCell('C3').value).to.deep.equal({ formula: 'A3+1', result: 1 });
+      expect(worksheet.getCell('C4').value).to.deep.equal({ formula: 'A4+1', result: 1 });
+      expect(worksheet.getCell('D3').value).to.deep.equal({ formula: 'NOW()', result: 1 });
+      await workbook.xlsx.writeBuffer();
+    });
+
+    it('handles merged cells whose master is empty', () => {
+      const [, worksheet] = newSheet('survey', ['type', 'name'], [['calculate', 'x']]);
+      worksheet.mergeCells('C2:D2');
+
+      clearSheetFormatting(worksheet);
+
+      expect(worksheet.getCell('D2').value).to.be.null;
+      expect(worksheet.getCell('A2').value).to.equal('calculate');
+    });
   });
 
   describe('setHeaderComments', () => {
