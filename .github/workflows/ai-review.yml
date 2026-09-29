@@ -30,6 +30,7 @@ jobs:
         uses: alibaba/open-code-review@bccbc15f785269400735d5255540c231e6c02b6d # v1.12.9 - keep in sync with the ocr_version below
         env:
           OCR_ENABLE_TELEMETRY: "1"
+          OCR_NO_UPDATE: "1"
           OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
           OTEL_EXPORTER_OTLP_ENDPOINT: ${{ env.LANGFUSE_OTEL_BASE }}
           OTEL_EXPORTER_OTLP_HEADERS: Authorization=Basic ${{ secrets.LANGFUSE_OTEL_BASIC_AUTH }},x-langfuse-ingestion-version=4
