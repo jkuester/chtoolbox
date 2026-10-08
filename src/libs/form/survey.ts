@@ -4,6 +4,7 @@ import {
   getColumnLetter,
   getColumnLettersMatching,
   getHeaderNames,
+  removeColumnsPastSheetEnd,
   removeTrailingEmptyRows,
   setHeaderComments,
   STYLE,
@@ -644,6 +645,7 @@ const buildDepthFormula = (typeCol: string): string => pipe(
 
 const addDepthColumn = (worksheet: Worksheet) => (): string => {
   worksheet.spliceColumns(DEPTH_COLUMN_INDEX, 0, []);
+  removeColumnsPastSheetEnd(worksheet);
   worksheet.getCell(1, DEPTH_COLUMN_INDEX).value = DEPTH_COLUMN_NAME;
   return worksheet.getColumn(DEPTH_COLUMN_INDEX).letter;
 };

@@ -298,6 +298,15 @@ describe('form survey libs', () => {
       expect(worksheet.getCell('C2').value).to.equal('g1');
     });
 
+    it('does not push column definitions past the last sheet column', () => {
+      const [, worksheet] = newWorkbook(['type', 'name'], [['begin_group', 'g1']]);
+      worksheet.getColumn(16384).width = 12;
+
+      setSurveyDepthColumn(worksheet);
+
+      expect(worksheet.columns).to.have.length(16384);
+    });
+
     it('leaves the gutter cells empty, so pyxform has nothing to read from them', () => {
       const [, worksheet] = newWorkbook(['type', 'name'], [['begin_group', 'g1'], ['', ''], ['end_group', '']]);
 

@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import { Array, Option, pipe, Record, Tuple } from 'effect';
+import { Array, Option, pipe, Predicate, Record, Tuple } from 'effect';
 
 export type Worksheet = ExcelJS.Worksheet & {
   // worksheet.dataValidations exists at runtime but isn't in the public TS types.
@@ -46,7 +46,24 @@ export const getWorksheetWithName = (
 
 const setDefaultStyle = (obj: object) => Object.assign(obj, { style: { ...STYLE_DEFAULT } });
 
-const clearRowFormatting = (row: ExcelJS.Row) => row.eachCell({ includeEmpty: true }, setDefaultStyle);
+// ExcelJS writes a column with no width as width 9, but merges adjacent columns into one <col> by comparing the
+// unset width. So without an explicit width, every styled column is written as its own <col>.
+const DEFAULT_COLUMN_WIDTH = 9;
+const setDefaultColumnStyle = (column: Partial<ExcelJS.Column>) => Object.assign(
+  setDefaultStyle(column),
+  { width: column.width ?? DEFAULT_COLUMN_WIDTH }
+);
+
+// Only the cells that already exist are reset. eachCell's includeEmpty creates every missing cell up to the
+// last one in the row, which then gets written out as an empty styled cell. The gaps fall back to the row's
+// style, so that is reset too.
+const getRowCells = (row: ExcelJS.Row) => (row as unknown as { _cells: (ExcelJS.Cell | undefined)[] })._cells;
+const clearRowFormatting = (row: ExcelJS.Row) => pipe(
+  setDefaultStyle(row),
+  () => getRowCells(row),
+  Array.filter(Predicate.isNotUndefined),
+  Array.forEach(setDefaultStyle),
+);
 
 const clearComment = (cell: ExcelJS.Cell) => pipe(
   cell as { _comment?: unknown; _value?: { model?: { comment?: unknown } } },
@@ -57,6 +74,20 @@ const clearComment = (cell: ExcelJS.Cell) => pipe(
 const clearHeaderComments = (ws: Worksheet) => ws
   .getRow(1)
   .eachCell({ includeEmpty: true }, clearComment);
+
+// ExcelJS reads a comment box that has no inset as [NaN], and then writes it back out as "NaNmm,...". A null
+// inset (as ExcelJS reads it from other writers) is written with no inset at all, where undefined gets defaults.
+interface NoteMargins { inset?: number[] }
+const getNoteMargins = (cell: ExcelJS.Cell) => pipe(
+  Option.fromNullable(cell.note as unknown as string | { margins?: NoteMargins } | undefined),
+  Option.flatMap(note => typeof note === 'string' ? Option.none() : Option.fromNullable(note.margins)),
+);
+const clearInvalidNoteInset = (cell: ExcelJS.Cell) => pipe(
+  getNoteMargins(cell),
+  Option.filter(({ inset }) => !!inset?.some(margin => !Number.isFinite(margin))),
+  Option.map(margins => Object.assign(margins, { inset: null })),
+);
+const clearInvalidNoteInsets = (ws: Worksheet) => ws.eachRow(row => row.eachCell(clearInvalidNoteInset));
 
 const clearFrozenPanes = (ws: Worksheet): void => {
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -73,6 +104,14 @@ const lastRowWithValues = (ws: Worksheet) => pipe(
 const getRowRecords = (ws: Worksheet) => (ws as unknown as { _rows: (ExcelJS.Row | undefined)[] })._rows;
 export const removeTrailingEmptyRows = (ws: Worksheet): void => {
   getRowRecords(ws).length = lastRowWithValues(ws);
+};
+
+// Sheets end at column XFD. Inserting a column into a sheet whose column definitions already reach the end
+// (as LibreOffice writes them) pushes the last definition past it, and ExcelJS writes it out regardless.
+// `columns` returns ExcelJS's own array, so truncating it drops the extra definitions.
+const MAX_COLUMN_COUNT = 16384;
+export const removeColumnsPastSheetEnd = (ws: Worksheet): void => {
+  ws.columns.length = Math.min(ws.columns.length, MAX_COLUMN_COUNT);
 };
 
 const isSharedFormula = (cell: ExcelJS.Cell) => cell.formulaType === ExcelJS.FormulaType.Shared
@@ -93,7 +132,9 @@ export const clearSheetFormatting = (ws: Worksheet): void => {
   removeTrailingEmptyRows(ws);
   ws.eachRow({ includeEmpty: true }, clearRowFormatting);
   clearHeaderComments(ws);
-  ws.columns.forEach(setDefaultStyle);
+  clearInvalidNoteInsets(ws);
+  removeColumnsPastSheetEnd(ws);
+  ws.columns.forEach(setDefaultColumnStyle);
   clearFrozenPanes(ws);
 };
 

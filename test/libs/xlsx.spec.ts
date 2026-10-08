@@ -9,6 +9,7 @@ import {
   getColumnLettersMatching,
   getHeaderNames,
   getWorksheetWithName,
+  removeColumnsPastSheetEnd,
   setColumnValues,
   setHeaderComments,
   setHeaderValue,
@@ -186,6 +187,62 @@ describe('xlsx libs', () => {
       await workbook.xlsx.writeBuffer();
     });
 
+    it('gives columns without a width the default width, so adjacent columns merge into one <col>', () => {
+      const [, worksheet] = newSheet('survey', ['type', 'name'], [['calculate', 'x']]);
+      worksheet.getColumn(1).width = 20;
+      worksheet.getColumn(5).width = undefined as unknown as number;
+
+      clearSheetFormatting(worksheet);
+
+      expect(worksheet.columns.map(({ width }) => width)).to.deep.equal([20, 9, 9, 9, 9]);
+      const { cols } = worksheet.model as unknown as { cols: { min: number, max: number }[] };
+      expect(cols.map(({ min, max }) => [min, max])).to.deep.equal([[1, 1], [2, 5]]);
+    });
+
+    it('drops column definitions already past the last sheet column', () => {
+      const [, worksheet] = newSheet('survey', ['type', 'name'], [['calculate', 'x']]);
+      worksheet.getColumn(16385).width = 12;
+
+      clearSheetFormatting(worksheet);
+
+      expect(worksheet.columns).to.have.length(16384);
+    });
+
+    it('resets existing cells and the row style without filling in the missing cells', () => {
+      const [, worksheet] = newSheet('survey', ['type', 'name'], [['calculate', 'x']]);
+      worksheet.getCell('E2').numFmt = '@';
+      const rowWithStyle = worksheet.getRow(2) as unknown as { style: Partial<ExcelJS.Style> };
+      rowWithStyle.style = { font: { bold: true } };
+
+      clearSheetFormatting(worksheet);
+
+      const row = worksheet.getRow(2) as unknown as { _cells: unknown[] };
+      expect(row._cells.filter(Boolean)).to.have.length(3);
+      expect(worksheet.getCell('E2').numFmt).to.be.undefined;
+      expect(rowWithStyle.style).to.deep.equal({
+        font: { name: 'Liberation Sans', size: 10 },
+        alignment: { vertical: 'bottom' },
+      });
+    });
+
+    it('drops comment insets that ExcelJS read as NaN, keeping valid ones', () => {
+      const [, worksheet] = newSheet('survey', ['type', 'name', 'hint'], [['calculate', 'x', 'y']]);
+      const note = (inset: number[]) => ({ texts: [{ text: 'a note' }], margins: { insetmode: 'auto', inset } });
+      worksheet.getCell('A2').note = note([NaN]) as unknown as ExcelJS.Comment;
+      worksheet.getCell('B2').note = note([0.13, 0.13, 0.25, 0.25]) as unknown as ExcelJS.Comment;
+      worksheet.getCell('C2').note = 'a plain note';
+      worksheet.getCell('C3').value = 'no note';
+
+      clearSheetFormatting(worksheet);
+
+      const getInset = (address: string) => (worksheet.getCell(address).note as unknown as {
+        margins: { inset?: number[] | null }
+      }).margins.inset;
+      expect(getInset('A2')).to.be.null;
+      expect(getInset('B2')).to.deep.equal([0.13, 0.13, 0.25, 0.25]);
+      expect(worksheet.getCell('C2').note).to.equal('a plain note');
+    });
+
     it('handles merged cells whose master is empty', () => {
       const [, worksheet] = newSheet('survey', ['type', 'name'], [['calculate', 'x']]);
       worksheet.mergeCells('C2:D2');
@@ -194,6 +251,30 @@ describe('xlsx libs', () => {
 
       expect(worksheet.getCell('D2').value).to.be.null;
       expect(worksheet.getCell('A2').value).to.equal('calculate');
+    });
+  });
+
+  describe('removeColumnsPastSheetEnd', () => {
+    it('drops column definitions pushed past the last sheet column', () => {
+      const [, worksheet] = newSheet('survey', ['type']);
+      worksheet.getColumn(16384).width = 12;
+      worksheet.spliceColumns(1, 0, []);
+      expect(worksheet.columns).to.have.length(16385);
+
+      removeColumnsPastSheetEnd(worksheet);
+
+      expect(worksheet.columns).to.have.length(16384);
+      expect(worksheet.getColumn(2).letter).to.equal('B');
+    });
+
+    it('leaves a sheet within the column limit unchanged', () => {
+      const [, worksheet] = newSheet('survey', ['type', 'name']);
+      worksheet.getColumn(3).width = 12;
+
+      removeColumnsPastSheetEnd(worksheet);
+
+      expect(worksheet.columns).to.have.length(3);
+      expect(worksheet.getColumn(3).width).to.equal(12);
     });
   });
 
