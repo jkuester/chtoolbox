@@ -63,7 +63,7 @@ const formatSurveyBody = (workbook: ExcelJS.Workbook) => (surveySheet: Worksheet
   surveySheet,
   Effect.succeed,
   Effect.tap(setSurveyTypeFormatting(workbook)),
-  Effect.tap(setSurveyTypeValidation),
+  Effect.tap(setSurveyTypeValidation(workbook)),
   Effect.tap(setSurveySupportedValuesValidation),
   Effect.tap(setSurveySupportedValuesFormatting),
   Effect.tap(setSurveyNameFormatting),

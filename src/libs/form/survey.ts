@@ -452,24 +452,28 @@ export const setSurveyHeaderValidation = (workbook: ExcelJS.Workbook) => (
   )),
 );
 
-const surveyFieldTypesFormulae = pipe(
+// Inline list validations are capped at 255 chars (LibreOffice truncates longer lists on save), so the types
+// are referenced from the chtx sheet instead.
+export const setSurveyTypeValidation = (workbook: ExcelJS.Workbook) => (
+  surveySheet: Worksheet
+): Effect.Effect<void> => pipe(
   SURVEY_FIELD_TYPES,
   Array.sort(Order.string),
-  Array.join(',')
-);
-export const setSurveyTypeValidation = (surveySheet: Worksheet): void => pipe(
-  getTypeColumnLetter(surveySheet),
-  column => surveySheet.dataValidations.add(getTypeValidationRange(column, surveySheet.rowCount), {
-    type: 'list',
-    allowBlank: true,
-    formulae: [`"${surveyFieldTypesFormulae}"`],
-    // LibreOffice silently blocks off-list entries when showErrorMessage is false (ignoring the xlsx
-    // spec). Keep it true with errorStyle 'information' so the user can override with a single OK.
-    showErrorMessage: true,
-    errorStyle: 'information',
-    errorTitle: 'Type warning',
-    error: 'If configuring a select, ensure your list name matches a list from the choices sheet.',
-  })
+  writeChtxColumn(workbook, 'survey_type_names'),
+  Effect.map(formula => surveySheet.dataValidations.add(
+    getTypeValidationRange(getTypeColumnLetter(surveySheet), surveySheet.rowCount),
+    {
+      type: 'list',
+      allowBlank: true,
+      formulae: [formula],
+      // LibreOffice silently blocks off-list entries when showErrorMessage is false (ignoring the xlsx
+      // spec). Keep it true with errorStyle 'information' so the user can override with a single OK.
+      showErrorMessage: true,
+      errorStyle: 'information',
+      errorTitle: 'Type warning',
+      error: 'If configuring a select, ensure your list name matches a list from the choices sheet.',
+    }
+  )),
 );
 
 export const setSurveySupportedValuesValidation = setSupportedValuesValidation(SURVEY_COLUMNS);

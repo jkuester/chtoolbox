@@ -151,14 +151,23 @@ describe('form survey libs', () => {
   });
 
   describe('setSurveyTypeValidation', () => {
-    it('adds a sorted list validation on the type column', () => {
-      const [, worksheet] = newWorkbook(['type', 'name']);
+    it('writes the sorted types to the chtx sheet and adds list validation on the type column', () => {
+      const [workbook, worksheet] = newWorkbook(['type', 'name']);
 
-      setSurveyTypeValidation(worksheet);
+      Effect.runSync(setSurveyTypeValidation(workbook)(worksheet));
 
+      const chtx = workbook.getWorksheet('chtx');
+      expect(chtx?.getCell('A1').value).to.equal('survey_type_names');
+      const types = chtx?.getColumn('A').values.slice(2) as string[];
+      expect(types).to.include.members(['calculate', 'text', 'video']);
+      expect(types).to.deep.equal([...types].sort());
       const rule = getDataValidation(worksheet, 'A2:A1001');
-      expect(rule).to.deep.include({ type: 'list', errorStyle: 'information', errorTitle: 'Type warning' });
-      expect(rule?.formulae[0]).to.contain('calculate');
+      expect(rule).to.deep.include({
+        type: 'list',
+        errorStyle: 'information',
+        errorTitle: 'Type warning',
+        formulae: [`'chtx'!$A$2:$A$${String(types.length + 1)}`],
+      });
     });
   });
 
