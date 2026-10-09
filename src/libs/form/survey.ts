@@ -3,22 +3,24 @@ import ExcelJS from 'exceljs';
 import {
   getColumnLetter,
   getColumnLettersMatching,
-  getHeaderNames,
   removeColumnsPastSheetEnd,
   removeTrailingEmptyRows,
+  setDefaultColumnStyle,
   setHeaderComments,
+  spliceColumns,
   STYLE,
   type Worksheet
 } from '../xlsx.ts';
 import {
-  BUFFER_COL_COUNT,
   BUFFER_ROW_COUNT,
   buildEmptyBodyFormula,
   buildKnownHeaderFormula,
   buildTranslatableHeaderFormula,
   FORM_STYLE,
+  getBufferedLastColumnLetter,
   getTypeColumnLetter,
   getTypeValidationRange,
+  setHeaderValidation,
   setSupportedValuesFormatting,
   setSupportedValuesValidation,
   writeChtxColumn
@@ -306,11 +308,12 @@ const startsWithSelectPrefix = (type: string) => Array.some(SELECT_PREFIXES, pre
 const hasPrefixSubFormula = (prefix: string, cell: string) => `LEFT(${cell},${
   prefix.length.toString()
 })="${prefix}"`;
+// pyxform accepts an " or_other" suffix after the list name, so it is stripped before looking up the list.
 const selectChoicesSubFormula = (prefix: string, cell: string, choicesListNameRange: Option.Option<string>) => pipe(
   choicesListNameRange,
   Option.map(
-    r => `AND(${hasPrefixSubFormula(prefix, cell)},`
-      + `NOT(ISERROR(MATCH(MID(${cell},${(prefix.length + 1).toString()},999),${r},0))))`
+    r => `AND(${hasPrefixSubFormula(prefix, cell)},NOT(ISERROR(MATCH(`
+      + `SUBSTITUTE(MID(${cell},${(prefix.length + 1).toString()},999)," or_other",""),${r},0))))`
   ),
   Option.getOrElse(() => 'FALSE'),
 );
@@ -364,7 +367,7 @@ export const normalizeSurveyTypeValues = (surveySheet: Worksheet): void => surve
 export const setSurveyHeaderFormatting = (worksheet: Worksheet): void => pipe(
   Tuple.make(
     getBodyStartColumnLetter(worksheet),
-    worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter
+    getBufferedLastColumnLetter(worksheet)
   ),
   ([firstCol, lastCol]) => Tuple.make(
     `${firstCol}1`,
@@ -433,24 +436,10 @@ export const setSurveyHeaderFormatting = (worksheet: Worksheet): void => pipe(
 
 export const setSurveyHeaderComments = setHeaderComments(SURVEY_COLUMNS);
 
-export const setSurveyHeaderValidation = (workbook: ExcelJS.Workbook) => (
-  worksheet: Worksheet
-): Effect.Effect<void> => pipe(
-  Record.keys(SURVEY_COLUMNS),
-  writeChtxColumn(workbook, 'survey_header_names'),
-  Effect.map(formula => pipe(
-    worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter,
-    lastCol => `A1:${lastCol}1`,
-    range => worksheet.dataValidations.add(range, {
-      type: 'list',
-      allowBlank: true,
-      formulae: [formula],
-      showErrorMessage: true,
-      errorStyle: 'information',
-      errorTitle: 'Column warning',
-      error: 'For translatable columns, you can append "::<lang>" to the column name (e.g., label::en).',
-    }),
-  )),
+export const setSurveyHeaderValidation = setHeaderValidation(
+  SURVEY_COLUMNS,
+  'survey_header_names',
+  'For translatable columns, you can append "::<lang>" to the column name (e.g., label::en).',
 );
 
 // Inline list validations are capped at 255 chars (LibreOffice truncates longer lists on save), so the types
@@ -596,7 +585,7 @@ const setSurveyGroupBoundaryFormatting = (type: string, style: Partial<ExcelJS.S
   Tuple.make(
     getTypeColumnLetter(worksheet),
     getBodyStartColumnLetter(worksheet),
-    worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter,
+    getBufferedLastColumnLetter(worksheet),
   ),
   ([typeCol, firstCol, lastCol]) => worksheet.addConditionalFormatting({
     ref: `${firstCol}2:${lastCol}${String(worksheet.rowCount + BUFFER_ROW_COUNT)}`,
@@ -643,11 +632,15 @@ const buildDepthFormula = (typeCol: string): string => pipe(
     + `+IF(LEFT(${cell},4)="end_",1,0)`,
 );
 
-const addDepthColumn = (worksheet: Worksheet) => (): string => {
-  worksheet.spliceColumns(DEPTH_COLUMN_INDEX, 0, []);
+const hasDepthColumn = (worksheet: Worksheet) => worksheet.findCell(1, DEPTH_COLUMN_INDEX)?.text === DEPTH_COLUMN_NAME;
+
+const addDepthColumn = (worksheet: Worksheet): void => {
+  spliceColumns(worksheet, DEPTH_COLUMN_INDEX, 0, 1);
   removeColumnsPastSheetEnd(worksheet);
+  // Styled to match the columns already cleared, so that a later run (which clears this column too) finds it
+  // unchanged.
+  setDefaultColumnStyle(worksheet.getColumn(DEPTH_COLUMN_INDEX));
   worksheet.getCell(1, DEPTH_COLUMN_INDEX).value = DEPTH_COLUMN_NAME;
-  return worksheet.getColumn(DEPTH_COLUMN_INDEX).letter;
 };
 
 /**
@@ -656,12 +649,11 @@ const addDepthColumn = (worksheet: Worksheet) => (): string => {
  * user's, and honouring its position would put it back under the row-spanning rules, which is the
  * one thing the row-spanning rules are kept clear of.
  */
-const dropStrayDepthColumn = (worksheet: Worksheet): Worksheet => pipe(
+const dropStrayDepthColumn = (worksheet: Worksheet): void => pipe(
   getColumnLetter(DEPTH_COLUMN_NAME, worksheet),
   Option.map(depthCol => worksheet.getColumn(depthCol).number),
   Option.filter(colNumber => colNumber !== DEPTH_COLUMN_INDEX),
-  Option.map(colNumber => worksheet.spliceColumns(colNumber, 1)),
-  () => worksheet,
+  Option.match({ onNone: () => undefined, onSome: colNumber => spliceColumns(worksheet, colNumber, 1) }),
 );
 
 // Applied per cell as well as on the column because rows that already exist carry their own style
@@ -676,28 +668,28 @@ const setGutterGap = (worksheet: Worksheet): void => pipe(
 );
 
 // The header is styled directly because the header rules start past the gutter.
-const setDepthColumnStyle = (worksheet: Worksheet, depthCol: string): string => pipe(
-  worksheet.getColumn(depthCol),
-  column => Object.assign(column, { width: DEPTH_COLUMN_WIDTH }),
-  () => Object.assign(worksheet.getCell(`${depthCol}1`), { style: { ...FORM_STYLE.HEADER.BASE } }),
-  () => depthCol,
-);
+const setDepthColumnStyle = (worksheet: Worksheet): void => {
+  worksheet.getColumn(DEPTH_COLUMN_INDEX).width = DEPTH_COLUMN_WIDTH;
+  worksheet.getCell(1, DEPTH_COLUMN_INDEX).style = { ...FORM_STYLE.HEADER.BASE };
+};
 
-const clearDepthValues = (worksheet: Worksheet, depthCol: string): string => pipe(
-  Array.range(2, worksheet.rowCount),
-  Array.forEach(row => worksheet.getCell(`${depthCol}${String(row)}`).value = null),
-  () => removeTrailingEmptyRows(worksheet),
-  () => depthCol,
-);
+const clearDepthValues = (worksheet: Worksheet): void => {
+  Array.range(2, worksheet.rowCount)
+    .map(row => worksheet.findCell(row, DEPTH_COLUMN_INDEX))
+    .filter(Predicate.isNotUndefined)
+    .forEach(cell => cell.value = null);
+  removeTrailingEmptyRows(worksheet);
+};
 
-export const setSurveyDepthColumn = (worksheet: Worksheet): void => pipe(
-  dropStrayDepthColumn(worksheet),
-  ws => getColumnLetter(DEPTH_COLUMN_NAME, ws),
-  Option.getOrElse(addDepthColumn(worksheet)),
-  depthCol => clearDepthValues(worksheet, depthCol),
-  depthCol => setDepthColumnStyle(worksheet, depthCol),
-  () => setGutterGap(worksheet),
-);
+export const setSurveyDepthColumn = (worksheet: Worksheet): void => {
+  dropStrayDepthColumn(worksheet);
+  if (!hasDepthColumn(worksheet)) {
+    addDepthColumn(worksheet);
+  }
+  clearDepthValues(worksheet);
+  setDepthColumnStyle(worksheet);
+  setGutterGap(worksheet);
+};
 
 /**
  * The tinge the depth gutter takes on as nesting deepens: STYLE.FILL.GREY's grey blended toward
@@ -741,18 +733,10 @@ const buildDepthBaseRule = (): ExcelJS.ConditionalFormattingRule => ({
   priority: DEPTH_SHADE_COLORS.length + 1,
 });
 
-const addDepthCellFormatting = (worksheet: Worksheet) => (
-  depthCol: string
-): void => worksheet.addConditionalFormatting({
-  ref: getTypeValidationRange(depthCol, worksheet.rowCount),
+export const setSurveyDepthFormatting = (worksheet: Worksheet): void => worksheet.addConditionalFormatting({
+  ref: getTypeValidationRange(worksheet.getColumn(DEPTH_COLUMN_INDEX).letter, worksheet.rowCount),
   rules: [
     ...buildDepthShadeRules(buildDepthFormula(getTypeColumnLetter(worksheet))),
     buildDepthBaseRule(),
   ],
 });
-
-export const setSurveyDepthFormatting = (worksheet: Worksheet): void => pipe(
-  getColumnLetter(DEPTH_COLUMN_NAME, worksheet),
-  Option.map(addDepthCellFormatting(worksheet)),
-  Option.getOrElse(() => undefined),
-);

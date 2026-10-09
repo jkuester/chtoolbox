@@ -13,6 +13,7 @@ import {
   setColumnValues,
   setHeaderComments,
   setHeaderValue,
+  spliceColumns,
   STYLE,
   type Worksheet,
 } from '../../src/libs/xlsx.ts';
@@ -61,19 +62,25 @@ describe('xlsx libs', () => {
   });
 
   describe('getHeaderNames', () => {
-    it('returns the header values, replacing non-string cells with empty strings', () => {
-      const [, worksheet] = newSheet('survey', ['type', 42, 'name']);
+    it('returns the displayed text of each header, indexed by column number', () => {
+      const [, worksheet] = newSheet('survey', ['type', 42]);
+      worksheet.getCell('D1').value = { richText: [{ text: 'la' }, { font: { bold: true }, text: 'bel' }] };
+      worksheet.getCell('E1').value = { formula: 'LOWER("NAME")', result: 'name' };
 
-      // ExcelJS row.values is 1-based, so index 0 is an unset hole.
-      expect(getHeaderNames(worksheet)).to.deep.equal([undefined, 'type', '', 'name']);
+      expect(getHeaderNames(worksheet)).to.deep.equal(['', 'type', '42', '', 'label', 'name']);
     });
 
-    it('handles a values object that is not an array', () => {
-      const fakeWorksheet = {
-        getRow: () => ({ values: { 1: 'type', 2: 'name' } }),
-      } as unknown as Worksheet;
+    it('drops trailing header cells that have no value', () => {
+      const [, worksheet] = newSheet('survey', ['type']);
+      worksheet.getCell('C1').style = { font: { bold: true } };
 
-      expect(getHeaderNames(fakeWorksheet)).to.deep.equal(['type', 'name']);
+      expect(getHeaderNames(worksheet)).to.deep.equal(['', 'type']);
+    });
+
+    it('returns no names for an empty sheet', () => {
+      const [, worksheet] = newSheet('survey');
+
+      expect(getHeaderNames(worksheet)).to.deep.equal([]);
     });
   });
 
@@ -116,14 +123,21 @@ describe('xlsx libs', () => {
         rules: [{ type: 'expression', formulae: ['A1<>""'], style: {}, priority: 1 }],
       });
       worksheet.dataValidations.add('A2', { type: 'list', allowBlank: true, formulae: ['"a,b"'] });
-      worksheet.views = [{ state: 'frozen', xSplit: 2, ySplit: 1 }];
+      worksheet.views = [
+        { state: 'frozen', xSplit: 2, ySplit: 1, topLeftCell: 'C2', rightToLeft: true },
+        { state: 'normal', zoomScale: 150 },
+      ];
 
       clearSheetFormatting(worksheet);
 
       expect(getConditionalFormattings(worksheet)).to.deep.equal([]);
       expect(worksheet.dataValidations.model).to.deep.equal({});
       expect((worksheet.getCell('A1') as unknown as { _comment?: unknown })._comment).to.be.undefined;
-      expect(worksheet.views.some(view => view.state === 'frozen')).to.be.false;
+      // Only the panes are dropped from the view.
+      expect(worksheet.views).to.deep.equal([
+        { state: 'normal', rightToLeft: true },
+        { state: 'normal', zoomScale: 150 },
+      ]);
       expect(worksheet.getCell('A1').style.font?.name).to.equal('Liberation Sans');
     });
 
@@ -187,6 +201,19 @@ describe('xlsx libs', () => {
       await workbook.xlsx.writeBuffer();
     });
 
+    it('keeps a falsy cached result when unsharing a formula', () => {
+      const [, worksheet] = newSheet('survey', ['type', 'relevant']);
+      const sharedMaster = { formula: 'FALSE()', result: false, shareType: 'shared', ref: 'B2:B3' };
+      worksheet.getCell('B2').value = sharedMaster;
+      worksheet.getCell('B3').value = { sharedFormula: 'B2', result: false };
+
+      clearSheetFormatting(worksheet);
+
+      expect(worksheet.getCell('B2').result).to.equal(false);
+      expect(worksheet.getCell('B3').formula).to.equal('FALSE()');
+      expect(worksheet.getCell('B3').result).to.equal(false);
+    });
+
     it('gives columns without a width the default width, so adjacent columns merge into one <col>', () => {
       const [, worksheet] = newSheet('survey', ['type', 'name'], [['calculate', 'x']]);
       worksheet.getColumn(1).width = 20;
@@ -216,8 +243,9 @@ describe('xlsx libs', () => {
 
       clearSheetFormatting(worksheet);
 
+      // The trailing empty E2 is dropped rather than reset.
       const row = worksheet.getRow(2) as unknown as { _cells: unknown[] };
-      expect(row._cells.filter(Boolean)).to.have.length(3);
+      expect(row._cells.filter(Boolean)).to.have.length(2);
       expect(worksheet.getCell('E2').numFmt).to.be.undefined;
       expect(rowWithStyle.style).to.deep.equal({
         font: { name: 'Liberation Sans', size: 10 },
@@ -267,6 +295,14 @@ describe('xlsx libs', () => {
       expect(worksheet.getColumn(2).letter).to.equal('B');
     });
 
+    it('handles a sheet with no column definitions', () => {
+      const [, worksheet] = newSheet('survey');
+
+      removeColumnsPastSheetEnd(worksheet);
+
+      expect(worksheet.columns).to.be.null;
+    });
+
     it('leaves a sheet within the column limit unchanged', () => {
       const [, worksheet] = newSheet('survey', ['type', 'name']);
       worksheet.getColumn(3).width = 12;
@@ -275,6 +311,113 @@ describe('xlsx libs', () => {
 
       expect(worksheet.columns).to.have.length(3);
       expect(worksheet.getColumn(3).width).to.equal(12);
+    });
+  });
+
+  describe('spliceColumns', () => {
+    it('can insert a column once a row\'s trailing empty cells are cleared', () => {
+      const [, worksheet] = newSheet('survey', ['type', 'name'], [['note', 'n']]);
+      // As LibreOffice writes a formatted row.
+      worksheet.getCell(1, 16384).style = { font: { bold: true } };
+      worksheet.getCell(2, 16384).style = { font: { bold: true } };
+
+      clearSheetFormatting(worksheet);
+      spliceColumns(worksheet, 1, 0, 1);
+
+      expect(worksheet.getRow(1).cellCount).to.equal(3);
+      expect(worksheet.getCell('C1').value).to.equal('name');
+    });
+
+    it('keeps a trailing empty cell that has a note', () => {
+      const [, worksheet] = newSheet('survey', ['type', 'name'], [['note', 'n']]);
+      worksheet.getCell('E2').note = 'kept';
+
+      clearSheetFormatting(worksheet);
+
+      expect(worksheet.getRow(2).cellCount).to.equal(5);
+      expect(worksheet.getCell('E2').note).to.equal('kept');
+    });
+
+    const getMerges = (worksheet: Worksheet) => (worksheet.model as unknown as { merges: string[] }).merges;
+
+    it('moves merged ranges along with the inserted columns', () => {
+      const [, worksheet] = newSheet('survey', ['type', 'name', 'label'], [['note', 'n', 'Note']]);
+      worksheet.mergeCells('B2:C2');
+
+      spliceColumns(worksheet, 1, 0, 1);
+
+      expect(getMerges(worksheet)).to.deep.equal(['C2:D2']);
+      expect(worksheet.getCell('C2').value).to.equal('n');
+      expect(worksheet.getCell('D1').value).to.equal('label');
+    });
+
+    it('shrinks, moves, or drops merged ranges around a removed column', () => {
+      const [, worksheet] = newSheet('survey', ['a', 'b', 'c', 'd', 'e']);
+      worksheet.mergeCells('A2:C2');
+      worksheet.mergeCells('D3:E3');
+      worksheet.mergeCells('B4:B5');
+      worksheet.mergeCells('A6:B6');
+
+      spliceColumns(worksheet, 2, 1);
+
+      expect(getMerges(worksheet)).to.deep.equal(['A2:B2', 'C3:D3']);
+      expect(worksheet.getCell('B1').value).to.equal('c');
+    });
+
+    it('moves cell references in formulas on the sheet and in other sheets', () => {
+      const [workbook, worksheet] = newSheet('survey', ['type', 'name', 'label', 'hint']);
+      worksheet.getCell('D2').value = { formula: 'C2&" B2 "&$C$2&SUM(A2:C2)&LOG10(1)', result: 'x' };
+      worksheet.getCell('AB2').value = { formula: 'Z2&AA2', result: 'y' };
+      const settings = workbook.addWorksheet('settings');
+      settings.getCell('A2').value = { formula: 'survey!C2&\'survey\'!B2:C3&B2&other!C2', result: 'z' };
+      settings.getCell('A3').value = { formula: '\'SURVEY\'!B2&\'it\'\'s\'!B2&Лист1!B2', result: 'z' };
+      worksheet.getCell('D3').value = { formula: 'Лист1!$C$5:D6&Ésurvey!C2&C2', result: 'w' };
+
+      spliceColumns(worksheet, 1, 0, 1);
+
+      expect(worksheet.getCell('E2').formula).to.equal('D2&" B2 "&$D$2&SUM(B2:D2)&LOG10(1)');
+      expect(worksheet.getCell('AC2').formula).to.equal('AA2&AB2');
+      expect(settings.getCell('A2').formula).to.equal('survey!D2&\'survey\'!C2:D3&B2&other!C2');
+      expect(settings.getCell('A3').formula).to.equal('\'SURVEY\'!C2&\'it\'\'s\'!B2&Лист1!B2');
+      expect(worksheet.getCell('E3').formula).to.equal('Лист1!$C$5:D6&Ésurvey!C2&D2');
+    });
+
+    it('shrinks references to a removed column, or replaces them with #REF!', () => {
+      const [, worksheet] = newSheet('survey', ['type', '#', 'name', 'calc']);
+      worksheet.getCell('D2').value = { formula: 'B2&A2:C2', result: 'x' };
+
+      spliceColumns(worksheet, 2, 1);
+
+      expect(worksheet.getCell('C2').formula).to.equal('#REF!&A2:B2');
+    });
+
+    it('moves the auto filter with the columns, and drops it once its columns are gone', () => {
+      const [, worksheet] = newSheet('survey', ['type', 'name']);
+      worksheet.autoFilter = 'A1:B4';
+
+      spliceColumns(worksheet, 1, 0, 1);
+      expect(worksheet.autoFilter).to.equal('B1:C4');
+
+      worksheet.autoFilter = 'A1:A4';
+      spliceColumns(worksheet, 1, 1);
+      expect(worksheet.autoFilter).to.be.undefined;
+
+      worksheet.autoFilter = { from: 'A1', to: 'B4' };
+      spliceColumns(worksheet, 1, 0, 1);
+      expect(worksheet.autoFilter).to.deep.equal({ from: 'A1', to: 'B4' });
+    });
+
+    it('keeps falsy cached formula results on the cells it moves', () => {
+      const [, worksheet] = newSheet('survey', ['type', 'relevant', 'calculation']);
+      worksheet.getCell('B2').value = { formula: 'FALSE()', result: false };
+      worksheet.getCell('C2').value = { formula: '1-1', result: 0 };
+      worksheet.getCell('A2').value = { formula: 'TRUE()', result: true };
+
+      spliceColumns(worksheet, 1, 1);
+
+      // ExcelJS's value getter itself omits a falsy result, so the result is read directly.
+      expect([worksheet.getCell('A2').formula, worksheet.getCell('A2').result]).to.deep.equal(['FALSE()', false]);
+      expect([worksheet.getCell('B2').formula, worksheet.getCell('B2').result]).to.deep.equal(['1-1', 0]);
     });
   });
 
@@ -299,8 +442,13 @@ describe('xlsx libs', () => {
     it('returns the index just past the last header', () => {
       const [, worksheet] = newSheet('survey', ['type', 'name', 'label']);
 
-      // getHeaderNames includes the leading 1-based hole, so length is 4 here.
-      expect(findFirstEmptyColumnIndex(worksheet)).to.equal(5);
+      expect(findFirstEmptyColumnIndex(worksheet)).to.equal(4);
+    });
+
+    it('returns the first column for an empty sheet', () => {
+      const [, worksheet] = newSheet('survey');
+
+      expect(findFirstEmptyColumnIndex(worksheet)).to.equal(1);
     });
   });
 

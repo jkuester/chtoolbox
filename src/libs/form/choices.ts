@@ -1,12 +1,14 @@
-import { Array, Effect, Option, pipe, Record, Tuple } from 'effect';
+import { Array, Option, pipe, Record, Tuple } from 'effect';
 import ExcelJS from 'exceljs';
-import { getColumnLetter, getHeaderNames, getWorksheetWithName, setHeaderComments, type Worksheet } from '../xlsx.ts';
+import { getColumnLetter, getWorksheetWithName, setHeaderComments, type Worksheet } from '../xlsx.ts';
 import {
-  BUFFER_COL_COUNT,
   buildEmptyBodyFormula,
   buildEmptyColumnFormula,
   buildTranslatableHeaderFormula,
-  FORM_STYLE, SHEET_NAME_CHOICES, writeChtxColumn
+  FORM_STYLE,
+  getBufferedLastColumnLetter,
+  setHeaderValidation,
+  SHEET_NAME_CHOICES,
 } from './index.ts';
 
 const CHOICES_COLUMNS: Record<string, {
@@ -60,7 +62,7 @@ export const setChoicesHeaderComments = setHeaderComments(CHOICES_COLUMNS);
 export const setChoicesHeaderFormatting = (worksheet: Worksheet): void => pipe(
   Tuple.make(
     buildTranslatableHeaderFormula('A1', CHOICES_COLUMN_NAMES_TRANSLATABLE),
-    worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter
+    getBufferedLastColumnLetter(worksheet)
   ),
   ([translatable, lastCol]): ExcelJS.ConditionalFormattingOptions => ({
     ref: `A1:${lastCol}1`,
@@ -100,22 +102,8 @@ export const setChoicesHeaderFormatting = (worksheet: Worksheet): void => pipe(
   formatting => worksheet.addConditionalFormatting(formatting)
 );
 
-export const setChoicesHeaderValidation = (workbook: ExcelJS.Workbook) => (
-  worksheet: Worksheet
-): Effect.Effect<void> => pipe(
-  Record.keys(CHOICES_COLUMNS),
-  writeChtxColumn(workbook, 'choices_header_names'),
-  Effect.map(formula => pipe(
-    worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter,
-    lastCol => `A1:${lastCol}1`,
-    range => worksheet.dataValidations.add(range, {
-      type: 'list',
-      allowBlank: true,
-      formulae: [formula],
-      showErrorMessage: true,
-      errorStyle: 'information',
-      errorTitle: 'Column warning',
-      error: 'For translatable columns, you can append "::<lang>" to the column name (e.g., label::en).',
-    }),
-  )),
+export const setChoicesHeaderValidation = setHeaderValidation(
+  CHOICES_COLUMNS,
+  'choices_header_names',
+  'For translatable columns, you can append "::<lang>" to the column name (e.g., label::en).',
 );

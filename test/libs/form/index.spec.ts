@@ -2,7 +2,7 @@ import { describe, it } from 'mocha';
 import { expect } from 'chai';
 import { Effect } from 'effect';
 import ExcelJS from 'exceljs';
-import { getHeaderNames, type Worksheet } from '../../../src/libs/xlsx.ts';
+import { type Worksheet } from '../../../src/libs/xlsx.ts';
 import {
   getConditionalFormatting,
   getConditionalFormattingRule,
@@ -14,10 +14,10 @@ import {
   buildEmptyColumnFormula,
   buildKnownHeaderFormula,
   buildTranslatableHeaderFormula,
-  BUFFER_COL_COUNT,
   clearWorkbookFormatting,
   FORM_STYLE,
   freezeHeaderAndKeyColumns,
+  getBufferedLastColumnLetter,
   getTypeColumnLetter,
   getTypeValidationRange,
   setHeaderlessCellFormatting,
@@ -78,6 +78,30 @@ describe('form libs', () => {
       freezeHeaderAndKeyColumns(3)(worksheet);
 
       expect(worksheet.views).to.deep.equal([{ state: 'frozen', xSplit: 3, ySplit: 1 }]);
+    });
+
+    it('keeps the rest of the existing view', () => {
+      const [, worksheet] = newSheet('survey', ['type', 'name']);
+      worksheet.views = [
+        { state: 'normal', rightToLeft: true, zoomScale: 150 },
+        { state: 'normal', showGridLines: false },
+      ];
+
+      freezeHeaderAndKeyColumns()(worksheet);
+
+      expect(worksheet.views).to.deep.equal([
+        { state: 'frozen', rightToLeft: true, zoomScale: 150, xSplit: 2, ySplit: 1 },
+        { state: 'normal', showGridLines: false },
+      ]);
+    });
+
+    it('freezes a sheet that has no views', () => {
+      const [, worksheet] = newSheet('survey', ['type', 'name']);
+      Object.assign(worksheet, { views: undefined });
+
+      freezeHeaderAndKeyColumns()(worksheet);
+
+      expect(worksheet.views).to.deep.equal([{ state: 'frozen', xSplit: 2, ySplit: 1 }]);
     });
   });
 
@@ -142,7 +166,7 @@ describe('form libs', () => {
       const range = Effect.runSync(writeChtxColumn(workbook, 'second_col')(['a']));
 
       expect(workbook.worksheets.filter(ws => ws.name === 'chtx')).to.have.length(1);
-      expect(range).to.equal('\'chtx\'!$C$2:$C$2');
+      expect(range).to.equal('\'chtx\'!$B$2:$B$2');
     });
   });
 
@@ -191,7 +215,7 @@ describe('form libs', () => {
 
       setHeaderlessCellFormatting(worksheet);
 
-      const lastCol = worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter;
+      const lastCol = getBufferedLastColumnLetter(worksheet);
       expect(getConditionalFormattings(worksheet)).to.have.length(1);
       expect(getConditionalFormatting(worksheet).ref).to.equal(`A2:${lastCol}1001`);
       const rule = getConditionalFormattingRule(worksheet, 0);

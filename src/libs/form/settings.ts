@@ -1,13 +1,13 @@
 import { DateTime, Effect, Option, pipe, Record, Tuple } from 'effect';
-import { getColumnLetter, getHeaderNames, setHeaderComments, type Worksheet } from '../xlsx.ts';
+import { getColumnLetter, setHeaderComments, type Worksheet } from '../xlsx.ts';
 import {
-  BUFFER_COL_COUNT,
   buildEmptyColumnFormula,
   buildKnownHeaderFormula,
   FORM_STYLE,
+  getBufferedLastColumnLetter,
+  setHeaderValidation,
   setSupportedValuesFormatting,
   setSupportedValuesValidation,
-  writeChtxColumn
 } from './index.ts';
 import ExcelJS from 'exceljs';
 
@@ -79,7 +79,7 @@ export const setSettingsSupportedValuesFormatting = setSupportedValuesFormatting
 export const setSettingsHeaderFormatting = (worksheet: Worksheet): void => pipe(
   Tuple.make(
     buildKnownHeaderFormula('A1', Record.keys(SETTINGS_COLUMNS)),
-    worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter
+    getBufferedLastColumnLetter(worksheet)
   ),
   ([valid, lastCol]): ExcelJS.ConditionalFormattingOptions => ({
     ref: `A1:${lastCol}1`,
@@ -113,22 +113,8 @@ export const setSettingsHeaderFormatting = (worksheet: Worksheet): void => pipe(
   formatting => worksheet.addConditionalFormatting(formatting)
 );
 
-export const setSettingsHeaderValidation = (workbook: ExcelJS.Workbook) => (
-  worksheet: Worksheet
-): Effect.Effect<void> => pipe(
-  Record.keys(SETTINGS_COLUMNS),
-  writeChtxColumn(workbook, 'settings_header_names'),
-  Effect.map(formula => pipe(
-    worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter,
-    lastCol => `A1:${lastCol}1`,
-    range => worksheet.dataValidations.add(range, {
-      type: 'list',
-      allowBlank: true,
-      formulae: [formula],
-      showErrorMessage: true,
-      errorStyle: 'information',
-      errorTitle: 'Column warning',
-      error: 'Unexpected column name.',
-    }),
-  )),
+export const setSettingsHeaderValidation = setHeaderValidation(
+  SETTINGS_COLUMNS,
+  'settings_header_names',
+  'Unexpected column name.',
 );

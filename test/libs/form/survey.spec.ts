@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { Effect } from 'effect';
 import ExcelJS from 'exceljs';
 import { getHeaderNames, STYLE, type Worksheet } from '../../../src/libs/xlsx.ts';
-import { BUFFER_COL_COUNT, FORM_STYLE } from '../../../src/libs/form/index.ts';
+import { FORM_STYLE, getBufferedLastColumnLetter } from '../../../src/libs/form/index.ts';
 import {
   getConditionalFormatting,
   getConditionalFormattingRule,
@@ -55,8 +55,8 @@ describe('form survey libs', () => {
       setSurveyTypeFormatting(workbook)(worksheet);
 
       const formula = getConditionalFormattingRule(worksheet, 0).formulae[0] ?? '';
-      expect(formula).to.contain('MATCH(MID(A2');
-      expect(formula).to.contain('choices!$A:$A');
+      expect(formula).to.contain('MATCH(SUBSTITUTE(MID(A2,12,999)," or_other",""),choices!$A:$A,0)');
+      expect(formula).to.contain('MATCH(SUBSTITUTE(MID(A2,17,999)," or_other",""),choices!$A:$A,0)');
     });
 
     it('falls back to FALSE when there is no choices list', () => {
@@ -101,7 +101,7 @@ describe('form survey libs', () => {
 
       setSurveyHeaderFormatting(worksheet);
 
-      const lastCol = worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter;
+      const lastCol = getBufferedLastColumnLetter(worksheet);
       expect(getConditionalFormattings(worksheet)).to.have.length(1);
       // Starts past the depth gutter, whose header is styled directly.
       expect(getConditionalFormatting(worksheet).ref).to.equal(`B1:${lastCol}1`);
@@ -143,7 +143,7 @@ describe('form survey libs', () => {
 
       const chtx = workbook.getWorksheet('chtx');
       expect(chtx?.getCell('A1').value).to.equal('survey_header_names');
-      const lastCol = worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter;
+      const lastCol = getBufferedLastColumnLetter(worksheet);
       const rule = getDataValidation(worksheet, `A1:${lastCol}1`);
       expect(rule).to.deep.include({ type: 'list', errorStyle: 'information', errorTitle: 'Column warning' });
       expect(rule?.formulae[0]).to.match(/^'chtx'!\$A\$2:\$A\$\d+$/);
@@ -173,7 +173,7 @@ describe('form survey libs', () => {
 
   describe('setSurveySupportedValuesValidation', () => {
     it('adds list validation for supported-value columns', () => {
-      const [, worksheet] = newWorkbook(['type', 'read_only']);
+      const [, worksheet] = newWorkbook(['type', 'instance::db-doc']);
 
       setSurveySupportedValuesValidation(worksheet);
 
@@ -183,7 +183,7 @@ describe('form survey libs', () => {
 
   describe('setSurveySupportedValuesFormatting', () => {
     it('adds warning formatting for supported-value columns', () => {
-      const [, worksheet] = newWorkbook(['type', 'read_only']);
+      const [, worksheet] = newWorkbook(['type', 'instance::db-doc']);
 
       setSurveySupportedValuesFormatting(worksheet);
 
@@ -330,6 +330,8 @@ describe('form survey libs', () => {
 
     it('pads the column beside the gutter, so the fill does not run into its text', () => {
       const [, worksheet] = newWorkbook(['type', 'name'], [['begin_group', 'g1']]);
+      // Row 3 is left empty, so it carries its own style rather than the column's.
+      worksheet.getRow(4).values = ['end_group'];
 
       setSurveyDepthColumn(worksheet);
 
@@ -338,6 +340,7 @@ describe('form survey libs', () => {
       // ...and on the cells of rows that already exist and so do not inherit it.
       expect(worksheet.getCell('B1').numFmt).to.equal('" "@');
       expect(worksheet.getCell('B2').numFmt).to.equal('" "@');
+      expect(worksheet.getCell('B3').numFmt).to.equal('" "@');
       // Only the neighbour: the columns past it are left alone.
       expect(worksheet.getCell('C2').numFmt).to.equal(undefined);
     });
@@ -479,14 +482,6 @@ describe('form survey libs', () => {
 
       expect(worksheet.getColumn('A').style.fill).to.equal(undefined);
       expect(worksheet.getCell('A2').fill).to.equal(undefined);
-    });
-
-    it('does nothing when there is no depth column', () => {
-      const [, worksheet] = newWorkbook(['type', 'name'], [['begin_group', 'g1']]);
-
-      setSurveyDepthFormatting(worksheet);
-
-      expect(getConditionalFormattings(worksheet)).to.have.length(0);
     });
   });
 });

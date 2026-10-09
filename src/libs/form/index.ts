@@ -2,6 +2,7 @@ import ExcelJS from 'exceljs';
 import {
   clearSheetFormatting,
   findFirstEmptyColumnIndex,
+  freezeView,
   getColumnLetter,
   getHeaderNames,
   getWorksheetWithName,
@@ -17,7 +18,7 @@ export const SHEET_NAME_SETTINGS = 'settings';
 export const SHEET_NAME_CHOICES = 'choices';
 const SHEET_NAMES = [SHEET_NAME_SURVEY, SHEET_NAME_CHOICES, SHEET_NAME_SETTINGS];
 const SHEET_NAME_CHTX = 'chtx';
-export const BUFFER_COL_COUNT = 50;
+const BUFFER_COL_COUNT = 50;
 export const BUFFER_ROW_COUNT = 1000;
 
 const BORDER_HEADER_SIDES: Partial<ExcelJS.Borders> = {
@@ -72,12 +73,20 @@ export const getTypeColumnLetter = (worksheet: Worksheet): string => Option.getO
   () => new Error('No "type" column found in worksheet.')
 );
 
+// The last column that sheet-wide formatting reaches, leaving room for columns the user adds later.
+export const getBufferedLastColumnLetter = (worksheet: Worksheet): string => worksheet
+  .getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT)
+  .letter;
+
 export const getTypeValidationRange = (column: string, rowCount: number): string =>
   `${column}2:${column}${String(rowCount + BUFFER_ROW_COUNT)}`;
 
 // Freeze the header row and the leading key columns so they stay visible while scrolling.
+// The rest of the sheet's view (e.g. right-to-left, zoom) is kept.
 export const freezeHeaderAndKeyColumns = (xSplit = 2) => (worksheet: Worksheet): void => {
-  worksheet.views = [{ state: 'frozen', xSplit, ySplit: 1 }];
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  const [first, ...rest] = worksheet.views ?? [];
+  worksheet.views = [freezeView(xSplit, 1)(first), ...rest];
 };
 
 export const buildTranslatableHeaderFormula = (cell: string, names: readonly string[]): string => pipe(
@@ -123,6 +132,24 @@ export const writeChtxColumn = (
     sheet.getColumn(columnIndex).letter,
     colLetter => `'${SHEET_NAME_CHTX}'!$${colLetter}$2:$${colLetter}$${String(values.length + 1)}`
   )),
+);
+
+export const setHeaderValidation = (
+  columns: Record<string, unknown>,
+  chtxLabel: string,
+  error: string,
+) => (workbook: ExcelJS.Workbook) => (worksheet: Worksheet): Effect.Effect<void> => pipe(
+  Record.keys(columns),
+  writeChtxColumn(workbook, chtxLabel),
+  Effect.map(formula => worksheet.dataValidations.add(`A1:${getBufferedLastColumnLetter(worksheet)}1`, {
+    type: 'list',
+    allowBlank: true,
+    formulae: [formula],
+    showErrorMessage: true,
+    errorStyle: 'information',
+    errorTitle: 'Column warning',
+    error,
+  })),
 );
 
 type ColumnsWithSupportedValues = Record<string, { supportedValues?: readonly string[] }>;
@@ -182,7 +209,7 @@ export const setSupportedValuesFormatting = (columns: ColumnsWithSupportedValues
 );
 
 export const setHeaderlessCellFormatting = (worksheet: Worksheet): void => pipe(
-  worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter,
+  getBufferedLastColumnLetter(worksheet),
   lastCol => worksheet.addConditionalFormatting({
     ref: `A2:${lastCol}${String(worksheet.rowCount + BUFFER_ROW_COUNT)}`,
     rules: [

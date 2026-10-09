@@ -2,8 +2,8 @@ import { describe, it } from 'mocha';
 import { expect } from 'chai';
 import { Effect } from 'effect';
 import ExcelJS from 'exceljs';
-import { getHeaderNames, type Worksheet } from '../../../src/libs/xlsx.ts';
-import { BUFFER_COL_COUNT, FORM_STYLE } from '../../../src/libs/form/index.ts';
+import { type Worksheet } from '../../../src/libs/xlsx.ts';
+import { FORM_STYLE, getBufferedLastColumnLetter } from '../../../src/libs/form/index.ts';
 import {
   getConditionalFormatting,
   getConditionalFormattingRule,
@@ -68,7 +68,7 @@ describe('form settings libs', () => {
 
       setSettingsHeaderFormatting(worksheet);
 
-      const lastCol = worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter;
+      const lastCol = getBufferedLastColumnLetter(worksheet);
       expect(getConditionalFormattings(worksheet)).to.have.length(1);
       expect(getConditionalFormatting(worksheet).ref).to.equal(`A1:${lastCol}1`);
       expect(getConditionalFormatting(worksheet).rules).to.have.length(4);
@@ -89,7 +89,7 @@ describe('form settings libs', () => {
 
       const chtx = workbook.getWorksheet('chtx');
       expect(chtx?.getCell('A1').value).to.equal('settings_header_names');
-      const lastCol = worksheet.getColumn(getHeaderNames(worksheet).length + BUFFER_COL_COUNT).letter;
+      const lastCol = getBufferedLastColumnLetter(worksheet);
       const rule = getDataValidation(worksheet, `A1:${lastCol}1`);
       expect(rule).to.deep.include({ type: 'list', errorStyle: 'information', error: 'Unexpected column name.' });
       expect(rule?.formulae).to.deep.equal(['\'chtx\'!$A$2:$A$6']);

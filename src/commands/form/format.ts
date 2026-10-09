@@ -5,13 +5,18 @@ import { FormService } from '../../services/form.ts';
 
 const formatFile = (filePath: string) => Terminal.Terminal.pipe(
   Effect.tap(terminal => terminal.display(`Formatting ${filePath}... `)),
-  Effect.tap(() => FormService.formatFile(filePath)),
-  Effect.tap(terminal => terminal.display('done\n')),
+  Effect.flatMap(terminal => FormService.formatFile(filePath).pipe(
+    Effect.tap(() => terminal.display('done\n')),
+    Effect.tapError(error => terminal.display(`failed: ${error.message}${
+      error.cause instanceof Error ? ` (${error.cause.message})` : ''
+    }\n`)),
+  )),
 );
 
 const getDirectoryFiles = (directory: string) => FileSystem.FileSystem.pipe(
   Effect.flatMap(fs => fs.readDirectory(directory)),
-  Effect.map(Array.filter(fileName => fileName.endsWith('.xlsx'))),
+  // Excel leaves a `~$<name>.xlsx` lock file next to each open workbook.
+  Effect.map(Array.filter(fileName => fileName.endsWith('.xlsx') && !fileName.startsWith('~$'))),
   Effect.map(Array.map(fileName => `${directory}/${fileName}`)),
 );
 
@@ -54,7 +59,9 @@ export const format = Command
     assertArgs(files, directories),
     Effect.andThen(getFilesToFormat(files, directories)),
     Effect.map(Array.map(formatFile)),
-    Effect.flatMap(Effect.all),
+    Effect.flatMap(effects => Effect.all(effects, { mode: 'validate' }).pipe(
+      Effect.mapError(() => new Error('Some files could not be formatted.')),
+    )),
     Effect.asVoid,
   )))
   .pipe(Command.withDescription('Apply conditional formatting to .xlsx form file(s).'));

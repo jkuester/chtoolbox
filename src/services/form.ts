@@ -1,6 +1,7 @@
 import { Effect, Option, pipe } from 'effect';
 import ExcelJS from 'exceljs';
-import { getWorksheetWithName, type Worksheet } from '../libs/xlsx.ts';
+import { writeFile } from 'node:fs/promises';
+import { getColumnLetter, getWorksheetWithName, type Worksheet } from '../libs/xlsx.ts';
 import {
   normalizeSurveyTypeValues,
   setSurveyBeginGroupFormatting,
@@ -42,11 +43,15 @@ import {
 
 const loadWorkbook = (filePath: string) => pipe(
   new ExcelJS.Workbook(),
-  workbook => Effect.tryPromise(() => workbook.xlsx.readFile(filePath)),
+  workbook => Effect.tryPromise({
+    try: () => workbook.xlsx.readFile(filePath),
+    catch: cause => new Error('Could not read the file as an .xlsx workbook.', { cause }),
+  }),
 );
-const saveWorkbook = (
-  filePath: string
-) => (workbook: ExcelJS.Workbook) => Effect.promise(() => workbook.xlsx.writeFile(filePath));
+const saveWorkbook = (filePath: string) => (workbook: ExcelJS.Workbook) => Effect.tryPromise({
+  try: async () => writeFile(filePath, new Uint8Array(await workbook.xlsx.writeBuffer())),
+  catch: cause => new Error('Could not write the file.', { cause }),
+});
 
 const formatSurveyHeaders = (workbook: ExcelJS.Workbook) => (surveySheet: Worksheet) => pipe(
   surveySheet,
@@ -77,10 +82,17 @@ const formatSurveyBody = (workbook: ExcelJS.Workbook) => (surveySheet: Worksheet
   Effect.tap(setSurveyDepthFormatting),
 );
 
+const assertSurveyTypeColumn = (surveySheet: Worksheet) => pipe(
+  getColumnLetter('type', surveySheet),
+  Effect.mapError(() => new Error('The survey sheet has no "type" column.')),
+  Effect.as(surveySheet),
+);
+
 const formatSurveyWorksheet = (workbook: ExcelJS.Workbook) => pipe(
   getWorksheetWithName(workbook)(SHEET_NAME_SURVEY),
   Option.map(surveySheet => pipe(
-    formatSurveyHeaders(workbook)(surveySheet),
+    assertSurveyTypeColumn(surveySheet),
+    Effect.flatMap(formatSurveyHeaders(workbook)),
     Effect.flatMap(formatSurveyBody(workbook)),
     Effect.asVoid,
   )),
@@ -126,10 +138,12 @@ const formatWorkbook = (workbook: ExcelJS.Workbook) => pipe(
   Effect.asVoid
 );
 
-const formatFile = Effect.fn((filePath: string): Effect.Effect<void, Error> => Effect.acquireUseRelease(
+const formatFile = Effect.fn((filePath: string): Effect.Effect<void, Error> => pipe(
   loadWorkbook(filePath),
-  formatWorkbook,
-  saveWorkbook(filePath)
+  Effect.tap(workbook => formatWorkbook(workbook).pipe(
+    Effect.catchAllDefect(cause => Effect.fail(new Error('Could not format the workbook.', { cause }))),
+  )),
+  Effect.flatMap(saveWorkbook(filePath)),
 ));
 
 export class FormService extends Effect.Service<FormService>()('chtoolbox/FormService', {
